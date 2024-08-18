@@ -5,10 +5,9 @@ const config = {
 	kit: {
 		adapter: adapter(),
 		prerender: {
-		  entries: []
+			entries: ['/']
 		}
-	  }
-	
+	}
 };
 
 export default config;

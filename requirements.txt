@@ -1,6 +1,7 @@
-Flask==2.0.1
-Flask-SQLAlchemy==2.5.1
-marshmallow==3.13.0
-Flask-CORS==3.0.10
+Flask>=3.0.0
+Flask-SQLAlchemy>=3.0.0
+marshmallow>=3.14.0
+Flask-CORS>=3.1.0
 pytest==6.2.4
-Flask-Migrate==3.1.0
+Flask-Migrate>=3.1.0
+werkzeug>=3.0.0

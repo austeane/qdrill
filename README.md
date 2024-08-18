@@ -74,3 +74,64 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 ### 8. UX and Design
 - **Figma Prototyping**: The user interface will be prototyped using Figma to ensure a well-thought-out design that prioritizes user experience. The final implementation will aim for a clean, modern, and responsive design.
 - **Design Aesthetic**: The design will follow a style similar to Figma, with a clean, minimalist look. The color scheme and fonts will be inspired by Figma, but with an emphasis on ensuring faster loading times and responsive filtering without noticeable delays.
+
+## Running Locally
+
+### Backend Setup
+
+1. **Create a virtual environment**:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Set environment variables**:
+   ```bash
+   export FLASK_APP=app
+   export FLASK_ENV=development
+   export DATABASE_URL=sqlite:///app.db
+   ```
+
+4. **Run the Flask server**:
+   ```bash
+   flask run
+   ```
+
+### Frontend Setup
+
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Run the development server**:
+   ```bash
+   npm run dev
+   ```
+
+3. **Build the application**:
+   ```bash
+   npm run build
+   ```
+
+### Running Database Migrations
+
+1. **Initialize the migration environment**:
+   ```bash
+   flask db init
+   ```
+
+2. **Create a new migration script**:
+   ```bash
+   flask db migrate -m "Initial migration"
+   ```
+
+3. **Apply the migration to the database**:
+   ```bash
+   flask db upgrade
+   ```

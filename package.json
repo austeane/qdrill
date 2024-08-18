@@ -10,7 +10,8 @@
 		"test": "playwright test",
 		"test:unit": "vitest",
 		"lint": "prettier --plugin-search-dir . --check . && eslint .",
-		"format": "prettier --plugin-search-dir . --write ."
+		"format": "prettier --plugin-search-dir . --write .",
+		"deploy": "vercel --prod"
 	},
 	"devDependencies": {
 		"@fontsource/fira-mono": "^4.5.10",
@@ -30,6 +31,10 @@
 		"vite": "^4.5.1",
 		"vitest": "^0.25.8",
 		"web-vitals": "^3.5.0"
+	},
+	"dependencies": {
+		"svelte-forms-lib": "^1.9.7",
+		"svelte-routing": "^1.5.0"
 	},
 	"type": "module"
 }

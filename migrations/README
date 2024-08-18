@@ -1,0 +1,29 @@
+# Migrations
+
+This directory contains the migration scripts for the SQLite database used in the Flask application.
+
+## Running Migrations
+
+To run the migrations, follow these steps:
+
+1. **Initialize the migration environment**:
+   ```bash
+   flask db init
+   ```
+
+2. **Create a new migration script**:
+   ```bash
+   flask db migrate -m "Initial migration"
+   ```
+
+3. **Apply the migration to the database**:
+   ```bash
+   flask db upgrade
+   ```
+
+## Commands
+
+- `flask db init`: Initializes the migration environment.
+- `flask db migrate -m "message"`: Creates a new migration script with the specified message.
+- `flask db upgrade`: Applies the migration to the database.
+- `flask db downgrade`: Reverts the last migration applied to the database.

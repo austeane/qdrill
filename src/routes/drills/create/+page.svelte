@@ -45,6 +45,8 @@
       images: $images
     };
 
+    console.log('Drill object:', drill);
+
     const response = await fetch('/api/drills', {
       method: 'POST',
       headers: {
@@ -54,8 +56,14 @@
     });
 
     if (response.ok) {
+      const data = await response.json();
+      console.log('Response status:', response.status);
+      console.log('Response body:', data);
       // Handle successful submission
     } else {
+      console.log('Response status:', response.status);
+      const errorData = await response.json();
+      console.log('Response body:', errorData);
       // Handle error
     }
   }

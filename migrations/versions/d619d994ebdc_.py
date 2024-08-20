@@ -1,8 +1,8 @@
-"""Initial migration
+"""empty message
 
-Revision ID: b2edf9364abb
+Revision ID: d619d994ebdc
 Revises: 
-Create Date: 2024-08-20 00:01:15.072218
+Create Date: 2024-08-20 10:45:23.902796
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'b2edf9364abb'
+revision = 'd619d994ebdc'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -27,8 +27,8 @@ def upgrade():
     sa.Column('complexity', sa.String(length=50), nullable=True),
     sa.Column('suggested_length', sa.String(length=50), nullable=False),
     sa.Column('number_of_people', sa.Integer(), nullable=True),
-    sa.Column('skills_focused_on', sa.String(length=255), nullable=False),
-    sa.Column('positions_focused_on', sa.String(length=255), nullable=False),
+    sa.Column('skills_focused_on', sa.PickleType(), nullable=False),
+    sa.Column('positions_focused_on', sa.PickleType(), nullable=False),
     sa.Column('video_link', sa.String(length=255), nullable=True),
     sa.Column('images', sa.PickleType(), nullable=True),
     sa.PrimaryKeyConstraint('id')

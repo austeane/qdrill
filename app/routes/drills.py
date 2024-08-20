@@ -45,6 +45,13 @@ def get_drills():
 
 @drills_bp.route('/<int:id>', methods=['GET'])
 def get_drill(id):
-    drill = Drill.query.get_or_404(id)
-    drill_schema = DrillSchema()
-    return jsonify(drill_schema.dump(drill)), 200
+    print(f"Received a GET request to /api/drills/{id}")
+    try:
+        drill = Drill.query.get_or_404(id)
+        print(f"Drill found: {drill}")
+        drill_schema = DrillSchema()
+        return jsonify(drill_schema.dump(drill)), 200
+    except Exception as e:
+        import traceback
+        print(f"Error occurred while fetching drill with ID {id}: ", str(e), type(e), traceback.format_exc())
+        return jsonify({"error": f"Drill with ID {id} not found"}), 404

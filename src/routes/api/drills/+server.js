@@ -4,6 +4,7 @@ const API_BASE_URL = 'http://localhost:5000';
 
 export async function POST({ request }) {
     const drill = await request.json();
+    console.log('Request body:', drill);
     const response = await fetch(`${API_BASE_URL}/api/drills`, {
         method: 'POST',
         headers: {
@@ -14,8 +15,13 @@ export async function POST({ request }) {
 
     if (response.ok) {
         const data = await response.json();
+        console.log('Response status:', response.status);
+        console.log('Response body:', data);
         return json(data);
     } else {
+        console.log('Response status:', response.status);
+        const errorData = await response.json();
+        console.log('Response body:', errorData);
         return json({ error: 'Failed to create drill' }, { status: response.status });
     }
 }

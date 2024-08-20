@@ -6,6 +6,11 @@ const config = {
 		adapter: adapter(),
 		prerender: {
 			entries: ['/']
+		},
+		vite: {
+			optimizeDeps: {
+				include: ['@sveltejs/kit', '@sveltejs/adapter-vercel']
+			}
 		}
 	}
 };

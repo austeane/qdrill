@@ -89,3 +89,17 @@ def test_get_practice_plan_by_id(client):
     response = client.get(f'/api/practice-plans/{practice_plan_id}')
     assert response.status_code == 200
     assert response.json['name'] == 'Practice Plan 1'
+
+def test_create_drill_with_string_fields(client):
+    response = client.post('/api/drills', json={
+        'name': 'Drill 2',
+        'brief_description': 'Another brief description',
+        'skill_level': 'Intermediate',
+        'suggested_length': '15 minutes',
+        'skills_focused_on': 'Skill 2',
+        'positions_focused_on': 'Position 2'
+    })
+    assert response.status_code == 201
+    assert response.json['name'] == 'Drill 2'
+    assert response.json['skills_focused_on'] == ['Skill 2']
+    assert response.json['positions_focused_on'] == ['Position 2']

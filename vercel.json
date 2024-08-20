@@ -11,5 +11,10 @@
       "src": "/api/(.*)",
       "dest": "/app/routes/$1.py"
     }
-  ]
+  ],
+  "functions": {
+    "api/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  }
 }

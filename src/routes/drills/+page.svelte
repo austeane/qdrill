@@ -21,6 +21,7 @@
       positions.set(Array.from(positionsSet));
     } else {
       console.error('Expected data to be an array');
+      drills.set([]);
     }
   });
 

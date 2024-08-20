@@ -45,16 +45,16 @@
 
 <section>
   <h1>{$drill.name}</h1>
-  <p>{$drill.briefDescription}</p>
-  <p>{$drill.detailedDescription}</p>
-  <p>Skill Level: {$drill.skillLevel}</p>
+  <p>{$drill.brief_description}</p>
+  <p>{$drill.detailed_description}</p>
+  <p>Skill Level: {$drill.skill_level}</p>
   <p>Complexity: {$drill.complexity}</p>
-  <p>Suggested Length: {$drill.suggestedLength}</p>
-  <p>Number of People Required: {$drill.numberOfPeople}</p>
-  <p>Skills Focused On: {$drill.skillsFocusedOn.join(', ')}</p>
-  <p>Positions Focused On: {$drill.positionsFocusedOn.join(', ')}</p>
-  {#if $drill.videoLink}
-    <p>Video: <a href={$drill.videoLink} target="_blank">Watch Video</a></p>
+  <p>Suggested Length: {$drill.suggested_length}</p>
+  <p>Number of People Required: {$drill.number_of_people}</p>
+  <p>Skills Focused On: {$drill.skills_focused_on.join(', ')}</p>
+  <p>Positions Focused On: {$drill.positions_focused_on.join(', ')}</p>
+  {#if $drill.video_link}
+    <p>Video: <a href={$drill.video_link} target="_blank">Watch Video</a></p>
   {/if}
   {#if $drill.images}
     <div>

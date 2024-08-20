@@ -4,12 +4,20 @@
     {
       "src": "app/**/*.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "src/**/*",
+      "use": "@sveltejs/adapter-vercel"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "/app/routes/$1.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/src/$1"
     }
   ]
 }

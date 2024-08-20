@@ -135,3 +135,24 @@ QDrill is a web-based application designed to be a sports drill bank and practic
    ```bash
    flask db upgrade
    ```
+
+### Deployment on Vercel
+
+To deploy both the frontend and backend on Vercel, follow these steps:
+
+1. **Install Vercel CLI**:
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **Login to Vercel**:
+   ```bash
+   vercel login
+   ```
+
+3. **Deploy the application**:
+   ```bash
+   vercel --prod
+   ```
+
+This will deploy both the SvelteKit frontend and the Flask backend to Vercel, making your application accessible on your custom domain.

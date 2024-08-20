@@ -1,4 +1,5 @@
-from marshmallow import Schema, fields, validate
+from marshmallow import Schema, fields, validate, post_load
+from app.models import Drill, PracticePlan
 
 class DrillSchema(Schema):
     id = fields.Int(dump_only=True)
@@ -14,6 +15,10 @@ class DrillSchema(Schema):
     video_link = fields.Str(validate=validate.Length(max=255))
     images = fields.List(fields.Str())
 
+    @post_load
+    def make_drill(self, data, **kwargs):
+        return Drill(**data)
+
 class PracticePlanSchema(Schema):
     id = fields.Int(dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(max=100))
@@ -26,3 +31,7 @@ class PracticePlanSchema(Schema):
     time_per_drill = fields.Str(validate=validate.Length(max=50))
     breaks_between_drills = fields.Str(validate=validate.Length(max=50))
     total_practice_time = fields.Str(validate=validate.Length(max=50))
+
+    @post_load
+    def make_practice_plan(self, data, **kwargs):
+        return PracticePlan(**data)

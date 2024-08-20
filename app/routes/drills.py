@@ -7,19 +7,23 @@ drills_bp = Blueprint('drills', __name__)
 
 @drills_bp.route('/', methods=['POST'])
 def create_drill():
-    data = request.get_json()
-    print("Request data: ", data)
-    drill_schema = DrillSchema()
-    errors = drill_schema.validate(data)
-    if errors:
-        return jsonify(errors), 400
-    drill = drill_schema.load(data)
-    print("Created drill object: ", drill)
-    db.session.add(drill)
-    db.session.commit()
-    response = drill_schema.jsonify(drill)
-    print("Response data: ", response)
-    return response, 201
+    try:
+        data = request.get_json()
+        print("Request data: ", data)
+        drill_schema = DrillSchema()
+        errors = drill_schema.validate(data)
+        if errors:
+            return jsonify(errors), 400
+        drill = drill_schema.load(data)
+        print("Created drill object: ", drill)
+        db.session.add(drill)
+        db.session.commit()
+        response = drill_schema.jsonify(drill)
+        print("Response data: ", response)
+        return response, 201
+    except Exception as e:
+        print("Error occurred: ", str(e))
+        return jsonify({"error": "An error occurred while processing the request"}), 500
 
 @drills_bp.route('/', methods=['GET'])
 def get_drills():

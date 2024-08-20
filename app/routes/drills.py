@@ -12,6 +12,15 @@ def create_drill():
     try:
         data = request.get_json()
         print("Request data: ", data)
+        
+        # Check if 'skills_focused_on' is a string and convert to list
+        if isinstance(data.get('skills_focused_on'), str):
+            data['skills_focused_on'] = [data['skills_focused_on']]
+        
+        # Check if 'positions_focused_on' is a string and convert to list
+        if isinstance(data.get('positions_focused_on'), str):
+            data['positions_focused_on'] = [data['positions_focused_on']]
+        
         drill_schema = DrillSchema()
         
         # Validate the data

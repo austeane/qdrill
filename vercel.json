@@ -3,9 +3,6 @@
   "functions": {
     "api/*.js": {
       "runtime": "nodejs18.x"
-    },
-    "app/**/*.py": {
-      "runtime": "@vercel/python@3.12.0"
     }
   },
   "routes": [

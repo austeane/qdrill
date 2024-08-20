@@ -10,8 +10,8 @@ class DrillSchema(Schema):
     complexity = fields.Str(validate=validate.Length(max=50))
     suggested_length = fields.Str(required=True, validate=validate.Length(max=50))
     number_of_people = fields.Int()
-    skills_focused_on = fields.Str(required=True, validate=validate.Length(max=255))
-    positions_focused_on = fields.Str(required=True, validate=validate.Length(max=255))
+    skills_focused_on = fields.List(fields.Str(), required=True)
+    positions_focused_on = fields.List(fields.Str(), required=True)
     video_link = fields.Str(validate=validate.Length(max=255))
     images = fields.List(fields.Str())
 

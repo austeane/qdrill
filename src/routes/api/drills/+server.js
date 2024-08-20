@@ -3,7 +3,13 @@ import { json } from '@sveltejs/kit';
 const API_BASE_URL = 'http://127.0.0.1:5000';
 
 export async function POST({ request }) {
-    const drill = await request.json();
+    let drill;
+    try {
+        drill = await request.json();
+    } catch (error) {
+        console.error('Error parsing JSON request:', error);
+        return json({ error: 'Failed to parse JSON request' }, { status: 400 });
+    }
     console.log('Request body:', drill);
     const response = await fetch(`${API_BASE_URL}/api/drills`, {
         method: 'POST',

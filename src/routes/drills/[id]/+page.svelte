@@ -51,8 +51,8 @@
   <p>Complexity: {$drill.complexity}</p>
   <p>Suggested Length: {$drill.suggested_length}</p>
   <p>Number of People Required: {$drill.number_of_people}</p>
-  <p>Skills Focused On: {Array.isArray($drill.skills_focused_on) ? $drill.skills_focused_on.join(', ') : $drill.skills_focused_on.split(', ').join(', ')}</p>
-  <p>Positions Focused On: {Array.isArray($drill.positions_focused_on) ? $drill.positions_focused_on.join(', ') : $drill.positions_focused_on.split(', ').join(', ')}</p>
+  <p>Skills Focused On: {Array.isArray($drill.skills_focused_on) ? $drill.skills_focused_on.join(', ') : (typeof $drill.skills_focused_on === 'string' ? $drill.skills_focused_on.split(', ').join(', ') : '')}</p>
+  <p>Positions Focused On: {Array.isArray($drill.positions_focused_on) ? $drill.positions_focused_on.join(', ') : (typeof $drill.positions_focused_on === 'string' ? $drill.positions_focused_on.split(', ').join(', ') : '')}</p>
   {#if $drill.video_link}
     <p>Video: <a href={$drill.video_link} target="_blank">Watch Video</a></p>
   {/if}

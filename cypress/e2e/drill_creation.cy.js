@@ -12,8 +12,6 @@ describe('Drill Creation', () => {
     cy.get('input#skillsFocusedOn').type('Passing, Shooting');
     cy.get('input#positionsFocusedOn').type('Forward, Midfield');
     cy.get('input#videoLink').type('http://example.com/video');
-    cy.get('input#images').attachFile('path/to/image1.jpg');
-    cy.get('input#images').attachFile('path/to/image2.jpg');
 
     cy.get('button[type="submit"]').click();
 

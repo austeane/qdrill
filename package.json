@@ -36,7 +36,10 @@
 	},
 	"dependencies": {
 		"svelte-forms-lib": "^1.9.7",
-		"svelte-routing": "^1.5.0"
+		"svelte-routing": "^1.5.0",
+		"mock-aws-s3": "^5.0.0",
+		"aws-sdk": "^2.1048.0",
+		"nock": "^13.2.4"
 	},
 	"type": "module"
 }

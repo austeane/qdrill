@@ -11,16 +11,25 @@
   onMount(async () => {
     const response = await fetch('/api/drills');
     const data = await response.json();
-    drills.set(data);
+    if (Array.isArray(data)) {
+      drills.set(data);
 
-    const skillLevelsSet = new Set(data.map(drill => drill.skill_level));
-    skillLevels.set(Array.from(skillLevelsSet));
+      const skillLevelsSet = new Set(data.map(drill => drill.skill_level));
+      skillLevels.set(Array.from(skillLevelsSet));
 
-    const positionsSet = new Set(data.map(drill => drill.positions_focused_on).flat());
-    positions.set(Array.from(positionsSet));
+      const positionsSet = new Set(data.map(drill => drill.positions_focused_on).flat());
+      positions.set(Array.from(positionsSet));
+    } else {
+      console.error('Expected data to be an array');
+      drills.set([]);
+    }
   });
 
   function filterDrills(drills, skillLevel, position) {
+    if (!Array.isArray(drills)) {
+      console.error('Expected drills to be an array');
+      return [];
+    }
     return drills.filter(drill => {
       return (
         (skillLevel ? drill.skill_level === skillLevel : true) &&

@@ -8,7 +8,7 @@ app.config.from_object('config.Config')
 
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
-CORS(app,  resources={r"/*": {"origins": "*"}})
+CORS(app)
 
 from app.routes.drills import drills_bp
 from app.routes.practice_plans import practice_plans_bp

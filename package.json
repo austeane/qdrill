@@ -35,11 +35,11 @@
 		"web-vitals": "^3.5.0"
 	},
 	"dependencies": {
+		"aws-sdk": "^2.1678.0",
+		"mock-aws-s3": "^4.0.2",
+		"nock": "^13.5.4",
 		"svelte-forms-lib": "^1.9.7",
-		"svelte-routing": "^1.5.0",
-		"mock-aws-s3": "^5.0.0",
-		"aws-sdk": "^2.1048.0",
-		"nock": "^13.2.4"
+		"svelte-routing": "^1.5.0"
 	},
 	"type": "module"
 }

@@ -4,9 +4,12 @@ from app.models import Drill
 from app.schemas import DrillSchema
 
 drills_bp = Blueprint('drills', __name__)
+print("Im updating code at all")
 
 @drills_bp.route('/', methods=['POST'])
 def create_drill():
+    print("Received a POST request to /api/drills")
+
     try:
         data = request.get_json()
         print("Request data: ", data)

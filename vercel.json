@@ -1,20 +1,17 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "app/**/*.py",
-      "use": "@vercel/python"
+  "functions": {
+    "api/*.js": {
+      "runtime": "nodejs18.x"
+    },
+    "app/**/*.py": {
+      "runtime": "@vercel/python"
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "/app/routes/$1.py"
     }
-  ],
-  "functions": {
-    "api/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  }
+  ]
 }

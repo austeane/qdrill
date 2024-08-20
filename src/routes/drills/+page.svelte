@@ -13,18 +13,18 @@
     const data = await response.json();
     drills.set(data);
 
-    const skillLevelsSet = new Set(data.map(drill => drill.skillLevel));
+    const skillLevelsSet = new Set(data.map(drill => drill.skill_level));
     skillLevels.set(Array.from(skillLevelsSet));
 
-    const positionsSet = new Set(data.map(drill => drill.positionsFocusedOn).flat());
+    const positionsSet = new Set(data.map(drill => drill.positions_focused_on).flat());
     positions.set(Array.from(positionsSet));
   });
 
   function filterDrills(drills, skillLevel, position) {
     return drills.filter(drill => {
       return (
-        (skillLevel ? drill.skillLevel === skillLevel : true) &&
-        (position ? drill.positionsFocusedOn.includes(position) : true)
+        (skillLevel ? drill.skill_level === skillLevel : true) &&
+        (position ? drill.positions_focused_on.includes(position) : true)
       );
     });
   }
@@ -62,7 +62,7 @@
     {#each filterDrills($drills, $selectedSkillLevel, $selectedPosition) as drill}
       <li>
         <a href={`/drills/${drill.id}`}>{drill.name}</a>
-        <p>{drill.briefDescription}</p>
+        <p>{drill.brief_description}</p>
       </li>
     {/each}
   </ul>

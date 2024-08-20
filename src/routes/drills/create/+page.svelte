@@ -3,15 +3,15 @@
   import { writable } from 'svelte/store';
 
   let name = writable('');
-  let briefDescription = writable('');
-  let detailedDescription = writable('');
-  let skillLevel = writable('');
+  let brief_description = writable('');
+  let detailed_description = writable('');
+  let skill_level = writable('');
   let complexity = writable('');
-  let suggestedLength = writable('');
-  let numberOfPeople = writable('');
-  let skillsFocusedOn = writable('');
-  let positionsFocusedOn = writable('');
-  let videoLink = writable('');
+  let suggested_length = writable('');
+  let number_of_people = writable('');
+  let skills_focused_on = writable('');
+  let positions_focused_on = writable('');
+  let video_link = writable('');
   let images = writable([]);
 
   let errors = writable({});
@@ -19,11 +19,11 @@
   function validateForm() {
     let newErrors = {};
     if (!$name) newErrors.name = 'Name is required';
-    if (!$briefDescription) newErrors.briefDescription = 'Brief description is required';
-    if (!$skillLevel) newErrors.skillLevel = 'Skill level is required';
-    if (!$suggestedLength) newErrors.suggestedLength = 'Suggested length of time is required';
-    if (!$skillsFocusedOn) newErrors.skillsFocusedOn = 'Skills focused on are required';
-    if (!$positionsFocusedOn) newErrors.positionsFocusedOn = 'Positions focused on are required';
+    if (!$brief_description) newErrors.brief_description = 'Brief description is required';
+    if (!$skill_level) newErrors.skill_level = 'Skill level is required';
+    if (!$suggested_length) newErrors.suggested_length = 'Suggested length of time is required';
+    if (!$skills_focused_on) newErrors.skills_focused_on = 'Skills focused on are required';
+    if (!$positions_focused_on) newErrors.positions_focused_on = 'Positions focused on are required';
     errors.set(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -33,15 +33,15 @@
 
     const drill = {
       name: $name,
-      briefDescription: $briefDescription,
-      detailedDescription: $detailedDescription,
-      skillLevel: $skillLevel,
+      brief_description: $brief_description,
+      detailed_description: $detailed_description,
+      skill_level: $skill_level,
       complexity: $complexity,
-      suggestedLength: $suggestedLength,
-      numberOfPeople: $numberOfPeople,
-      skillsFocusedOn: $skillsFocusedOn,
-      positionsFocusedOn: $positionsFocusedOn,
-      videoLink: $videoLink,
+      suggested_length: $suggested_length,
+      number_of_people: $number_of_people,
+      skills_focused_on: $skills_focused_on,
+      positions_focused_on: $positions_focused_on,
+      video_link: $video_link,
       images: $images
     };
 
@@ -87,23 +87,23 @@
     </div>
 
     <div>
-      <label for="briefDescription">Brief Description:</label>
-      <input id="briefDescription" bind:value={$briefDescription} />
-      {#if $errors.briefDescription}
-        <p class="error">{$errors.briefDescription}</p>
+      <label for="brief_description">Brief Description:</label>
+      <input id="brief_description" bind:value={$brief_description} />
+      {#if $errors.brief_description}
+        <p class="error">{$errors.brief_description}</p>
       {/if}
     </div>
 
     <div>
-      <label for="detailedDescription">Detailed Description:</label>
-      <textarea id="detailedDescription" bind:value={$detailedDescription}></textarea>
+      <label for="detailed_description">Detailed Description:</label>
+      <textarea id="detailed_description" bind:value={$detailed_description}></textarea>
     </div>
 
     <div>
-      <label for="skillLevel">Skill Level:</label>
-      <input id="skillLevel" bind:value={$skillLevel} />
-      {#if $errors.skillLevel}
-        <p class="error">{$errors.skillLevel}</p>
+      <label for="skill_level">Skill Level:</label>
+      <input id="skill_level" bind:value={$skill_level} />
+      {#if $errors.skill_level}
+        <p class="error">{$errors.skill_level}</p>
       {/if}
     </div>
 
@@ -113,37 +113,37 @@
     </div>
 
     <div>
-      <label for="suggestedLength">Suggested Length of Time:</label>
-      <input id="suggestedLength" bind:value={$suggestedLength} />
-      {#if $errors.suggestedLength}
-        <p class="error">{$errors.suggestedLength}</p>
+      <label for="suggested_length">Suggested Length of Time:</label>
+      <input id="suggested_length" bind:value={$suggested_length} />
+      {#if $errors.suggested_length}
+        <p class="error">{$errors.suggested_length}</p>
       {/if}
     </div>
 
     <div>
-      <label for="numberOfPeople">Number of People Required:</label>
-      <input id="numberOfPeople" bind:value={$numberOfPeople} />
+      <label for="number_of_people">Number of People Required:</label>
+      <input id="number_of_people" bind:value={$number_of_people} />
     </div>
 
     <div>
-      <label for="skillsFocusedOn">Skills Focused On:</label>
-      <input id="skillsFocusedOn" bind:value={$skillsFocusedOn} />
-      {#if $errors.skillsFocusedOn}
-        <p class="error">{$errors.skillsFocusedOn}</p>
+      <label for="skills_focused_on">Skills Focused On:</label>
+      <input id="skills_focused_on" bind:value={$skills_focused_on} />
+      {#if $errors.skills_focused_on}
+        <p class="error">{$errors.skills_focused_on}</p>
       {/if}
     </div>
 
     <div>
-      <label for="positionsFocusedOn">Positions Focused On:</label>
-      <input id="positionsFocusedOn" bind:value={$positionsFocusedOn} />
-      {#if $errors.positionsFocusedOn}
-        <p class="error">{$errors.positionsFocusedOn}</p>
+      <label for="positions_focused_on">Positions Focused On:</label>
+      <input id="positions_focused_on" bind:value={$positions_focused_on} />
+      {#if $errors.positions_focused_on}
+        <p class="error">{$errors.positions_focused_on}</p>
       {/if}
     </div>
 
     <div>
-      <label for="videoLink">Video Link:</label>
-      <input id="videoLink" bind:value={$videoLink} />
+      <label for="video_link">Video Link:</label>
+      <input id="video_link" bind:value={$video_link} />
     </div>
 
     <div>

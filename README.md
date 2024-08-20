@@ -99,7 +99,7 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 
 4. **Run the Flask server**:
    ```bash
-   flask run
+   flask run --port 5000
    ```
 
 ### Frontend Setup

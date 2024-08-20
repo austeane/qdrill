@@ -9,8 +9,8 @@ class Drill(db.Model):
     complexity = db.Column(db.String(50))
     suggested_length = db.Column(db.String(50), nullable=False)
     number_of_people = db.Column(db.Integer)
-    skills_focused_on = db.Column(db.String(255), nullable=False)
-    positions_focused_on = db.Column(db.String(255), nullable=False)
+    skills_focused_on = db.Column(db.PickleType, nullable=False)  # P87d9
+    positions_focused_on = db.Column(db.PickleType, nullable=False)  # P55a0
     video_link = db.Column(db.String(255))
     images = db.Column(db.PickleType)
 

@@ -39,7 +39,9 @@
 		"mock-aws-s3": "^4.0.2",
 		"nock": "^13.5.4",
 		"svelte-forms-lib": "^1.9.7",
-		"svelte-routing": "^1.5.0"
+		"svelte-routing": "^1.5.0",
+		"@vercel/postgres": "^1.0.0",
+		"pg": "^8.7.1"
 	},
 	"type": "module"
 }

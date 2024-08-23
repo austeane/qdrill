@@ -1,53 +1,32 @@
 import { json } from '@sveltejs/kit';
+import { Client } from '@vercel/postgres';
 
-   const API_BASE_URL = 'http://127.0.0.1:5000';
+const client = new Client();
+await client.connect();
 
-   export async function POST({ request }) {
-       const drill = await request.json();
-       console.log('Request body:', JSON.stringify(drill, null, 2));
-       console.log('Sending request to Flask server...');
-       try {
-           console.log(`Sending POST request to ${API_BASE_URL}/api/drills`);
-           const response = await fetch(`${API_BASE_URL}/api/drills`, {
-               method: 'POST',
-               headers: {
-                   'Content-Type': 'application/json'
-               },
-               body: JSON.stringify(drill)
-           });
-           console.log('Response received from Flask server.');
-           console.log('Response status:', response.status);
-           console.log('Response headers:', JSON.stringify(Object.fromEntries(response.headers), null, 2));
-           
-           if (response.ok) {
-               const data = await response.json();
-               console.log('Response body:', JSON.stringify(data, null, 2));
-               return json(data);
-           } else {
-               const errorText = await response.text();
-               console.log('Error response body:', errorText);
-               try {
-                   const errorData = JSON.parse(errorText);
-                   console.log('Parsed error data:', errorData);
-                   return json({ error: 'Failed to create drill', details: errorData }, { status: response.status });
-               } catch (parseError) {
-                   console.log('Failed to parse error response as JSON');
-                   return json({ error: 'Failed to create drill', rawError: errorText }, { status: response.status });
-               }
-           }
-       } catch (error) {
-           console.error('Error occurred while sending request:', error);
-           return json({ error: 'An error occurred while sending the request', details: error.toString() }, { status: 500 });
-       }
-   }
+export async function POST({ request }) {
+    const drill = await request.json();
+    const { name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images } = drill;
+
+    try {
+        const result = await client.query(
+            `INSERT INTO drills (name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+            [name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images]
+        );
+        return json(result.rows[0]);
+    } catch (error) {
+        console.error('Error occurred while inserting drill:', error);
+        return json({ error: 'An error occurred while creating the drill', details: error.toString() }, { status: 500 });
+    }
+}
 
 export async function GET() {
-    const response = await fetch(`${API_BASE_URL}/api/drills`);
-
-    if (response.ok) {
-        const data = await response.json();
-        return json(data);
-    } else {
-        return json({ error: 'Failed to retrieve drills' }, { status: response.status });
+    try {
+        const result = await client.query('SELECT * FROM drills');
+        return json(result.rows);
+    } catch (error) {
+        console.error('Error occurred while fetching drills:', error);
+        return json({ error: 'Failed to retrieve drills', details: error.toString() }, { status: 500 });
     }
 }

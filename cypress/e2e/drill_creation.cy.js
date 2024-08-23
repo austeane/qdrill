@@ -16,7 +16,7 @@ describe('Drill Creation', () => {
 
     cy.get('button[type="submit"]').click();
 
-    cy.visit('/drills');
+    cy.url().should('include', '/drills/');
     cy.contains('Test Drill').should('exist');
   });
 

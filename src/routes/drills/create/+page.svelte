@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { writable } from 'svelte/store';
+  import { goto } from '$app/navigation';
 
   let name = writable('');
   let brief_description = writable('');
@@ -63,12 +64,11 @@
       const data = await response.json();
       console.log('Response status:', response.status);
       console.log('Response body:', data);
-      // Handle successful submission
+      goto(`/drills/${data.id}`);
     } else {
       console.log('Response status:', response.status);
       const errorData = await response.json();
       console.log('Response body:', errorData);
-      // Handle error
     }
   }
 </script>

@@ -9,32 +9,53 @@
   let upvotes = writable(0);
 
   onMount(async () => {
-    const response = await fetch(`/api/drills/${$page.params.id}`);
-    const data = await response.json();
-    drill.set(data);
-    upvotes.set(data.upvotes);
-    comments.set(data.comments);
+    try {
+      const response = await fetch(`/api/drills/${$page.params.id}`);
+      if (!response.ok) {
+        throw new Error(`Error fetching drill details: ${response.statusText}`);
+      }
+      const data = await response.json();
+      drill.set(data);
+      upvotes.set(data.upvotes);
+      comments.set(Array.isArray(data.comments) ? data.comments : []);
+    } catch (error) {
+      console.error(error);
+    }
   });
 
   async function addComment() {
-    const response = await fetch(`/api/drills/${$page.params.id}/comments`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ comment: $newComment })
-    });
-    const data = await response.json();
-    comments.update(current => [...current, data]);
-    newComment.set('');
+    try {
+      const response = await fetch(`/api/drills/${$page.params.id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ comment: $newComment })
+      });
+      if (!response.ok) {
+        throw new Error(`Error adding comment: ${response.statusText}`);
+      }
+      const data = await response.json();
+      comments.update(current => [...current, data]);
+      newComment.set('');
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   async function upvote() {
-    const response = await fetch(`/api/drills/${$page.params.id}/upvote`, {
-      method: 'POST'
-    });
-    const data = await response.json();
-    upvotes.set(data.upvotes);
+    try {
+      const response = await fetch(`/api/drills/${$page.params.id}/upvote`, {
+        method: 'POST'
+      });
+      if (!response.ok) {
+        throw new Error(`Error upvoting: ${response.statusText}`);
+      }
+      const data = await response.json();
+      upvotes.set(data.upvotes);
+    } catch (error) {
+      console.error(error);
+    }
   }
 </script>
 
@@ -58,7 +79,7 @@
   {/if}
   {#if $drill.images}
     <div>
-      {#each $drill.images as image}
+      {#each Array.isArray($drill.images) ? $drill.images : [] as image}
         <img src={image} alt="Drill Image" />
       {/each}
     </div>

@@ -5,7 +5,7 @@
   let name = writable('');
   let brief_description = writable('');
   let detailed_description = writable('');
-  let skill_level = writable('');
+  let skill_level = writable([]);
   let complexity = writable('');
   let suggested_length = writable('');
   let number_of_people_min = writable('');
@@ -21,7 +21,7 @@
     let newErrors = {};
     if (!$name) newErrors.name = 'Name is required';
     if (!$brief_description) newErrors.brief_description = 'Brief description is required';
-    if (!$skill_level) newErrors.skill_level = 'Skill level is required';
+    if ($skill_level.length === 0) newErrors.skill_level = 'Skill level is required';
     if (!$suggested_length) newErrors.suggested_length = 'Suggested length of time is required';
     if ($skills_focused_on.length === 0) newErrors.skills_focused_on = 'Skills focused on are required';
     if ($positions_focused_on.length === 0) newErrors.positions_focused_on = 'Positions focused on are required';
@@ -105,8 +105,7 @@
 
     <div>
       <label for="skill_level">Skill Level:</label>
-      <select id="skill_level" bind:value={$skill_level}>
-        <option value="">Select Skill Level</option>
+      <select id="skill_level" bind:value={$skill_level} multiple>
         <option value="new to sport">New to Sport</option>
         <option value="beginner">Beginner</option>
         <option value="intermediate">Intermediate</option>
@@ -132,10 +131,10 @@
       <label for="suggested_length">Suggested Length of Time:</label>
       <select id="suggested_length" bind:value={$suggested_length}>
         <option value="">Select Length of Time</option>
-        <option value="0-5">0-5</option>
-        <option value="5-15">5-15</option>
-        <option value="15-30">15-30</option>
-        <option value="30-60">30-60</option>
+        <option value="0-5 minutes">0-5 minutes</option>
+        <option value="5-15 minutes">5-15 minutes</option>
+        <option value="15-30 minutes">15-30 minutes</option>
+        <option value="30-60 minutes">30-60 minutes</option>
       </select>
       {#if $errors.suggested_length}
         <p class="error">{$errors.suggested_length}</p>
@@ -228,6 +227,14 @@
     padding: 0.5rem;
     font-size: 1rem;
     width: 100%;
+  }
+
+  select[multiple] {
+    border: 2px solid blue;
+  }
+
+  select:not([multiple]) {
+    border: 2px solid green;
   }
 
   button {

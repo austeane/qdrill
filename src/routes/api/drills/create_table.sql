@@ -3,7 +3,7 @@ CREATE TABLE drills (
     name VARCHAR(255) NOT NULL,
     brief_description TEXT NOT NULL,
     detailed_description TEXT,
-    skill_level VARCHAR(50) NOT NULL,
+    skill_level TEXT[] NOT NULL,
     complexity VARCHAR(50),
     suggested_length VARCHAR(50) NOT NULL,
     number_of_people_min INT DEFAULT 0,

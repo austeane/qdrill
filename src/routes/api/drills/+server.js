@@ -8,6 +8,10 @@ export async function POST({ request }) {
     const drill = await request.json();
     let { name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images } = drill;
 
+    if (typeof skill_level === 'string') {
+        skill_level = [skill_level];
+    }
+
     if (typeof skills_focused_on === 'string') {
         skills_focused_on = [skills_focused_on];
     }
@@ -37,6 +41,7 @@ export async function GET() {
     try {
         const result = await client.query('SELECT * FROM drills');
         const drills = result.rows.map(drill => {
+            drill.skill_level = Array.isArray(drill.skill_level) ? drill.skill_level : [];
             drill.comments = Array.isArray(drill.comments) ? drill.comments : [];
             drill.images = Array.isArray(drill.images) ? drill.images : [];
             return drill;

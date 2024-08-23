@@ -35,9 +35,11 @@
 		"web-vitals": "^3.5.0"
 	},
 	"dependencies": {
+		"@vercel/postgres": "^0.9.0",
 		"aws-sdk": "^2.1678.0",
 		"mock-aws-s3": "^4.0.2",
 		"nock": "^13.5.4",
+		"pg": "^8.7.1",
 		"svelte-forms-lib": "^1.9.7",
 		"svelte-routing": "^1.5.0"
 	},

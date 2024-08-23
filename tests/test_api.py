@@ -23,9 +23,11 @@ def test_create_drill(client):
         'name': 'Drill 1',
         'brief_description': 'Brief description',
         'skill_level': 'Beginner',
-        'suggested_length': '10 minutes',
-        'skills_focused_on': 'Skill 1',
-        'positions_focused_on': 'Position 1'
+        'complexity': 'Low',
+        'suggested_length': '5-15',
+        'number_of_people': {'min': 3, 'max': 10},
+        'skills_focused_on': ['driving', 'catching'],
+        'positions_focused_on': ['Beater', 'Chaser']
     })
     assert response.status_code == 201
     assert response.json['name'] == 'Drill 1'
@@ -35,9 +37,11 @@ def test_get_drills(client):
         'name': 'Drill 1',
         'brief_description': 'Brief description',
         'skill_level': 'Beginner',
-        'suggested_length': '10 minutes',
-        'skills_focused_on': 'Skill 1',
-        'positions_focused_on': 'Position 1'
+        'complexity': 'Low',
+        'suggested_length': '5-15',
+        'number_of_people': {'min': 3, 'max': 10},
+        'skills_focused_on': ['driving', 'catching'],
+        'positions_focused_on': ['Beater', 'Chaser']
     })
     response = client.get('/api/drills')
     assert response.status_code == 200
@@ -48,9 +52,11 @@ def test_get_drill_by_id(client):
         'name': 'Drill 1',
         'brief_description': 'Brief description',
         'skill_level': 'Beginner',
-        'suggested_length': '10 minutes',
-        'skills_focused_on': 'Skill 1',
-        'positions_focused_on': 'Position 1'
+        'complexity': 'Low',
+        'suggested_length': '5-15',
+        'number_of_people': {'min': 3, 'max': 10},
+        'skills_focused_on': ['driving', 'catching'],
+        'positions_focused_on': ['Beater', 'Chaser']
     })
     drill_id = response.json['id']
     response = client.get(f'/api/drills/{drill_id}')
@@ -95,11 +101,13 @@ def test_create_drill_with_string_fields(client):
         'name': 'Drill 2',
         'brief_description': 'Another brief description',
         'skill_level': 'Intermediate',
-        'suggested_length': '15 minutes',
-        'skills_focused_on': 'Skill 2',
-        'positions_focused_on': 'Position 2'
+        'complexity': 'Medium',
+        'suggested_length': '15-30',
+        'number_of_people': {'min': 5, 'max': 15},
+        'skills_focused_on': ['decision making', 'throwing'],
+        'positions_focused_on': ['Keeper', 'Seeker']
     })
     assert response.status_code == 201
     assert response.json['name'] == 'Drill 2'
-    assert response.json['skills_focused_on'] == ['Skill 2']
-    assert response.json['positions_focused_on'] == ['Position 2']
+    assert response.json['skills_focused_on'] == ['decision making', 'throwing']
+    assert response.json['positions_focused_on'] == ['Keeper', 'Seeker']

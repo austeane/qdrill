@@ -5,12 +5,13 @@ describe('Drill Creation', () => {
     cy.get('input#name').type('Test Drill');
     cy.get('input#brief_description').type('A brief description of the test drill');
     cy.get('textarea#detailed_description').type('A detailed description of the test drill');
-    cy.get('input#skill_level').type('Beginner');
-    cy.get('input#complexity').type('Low');
-    cy.get('input#suggested_length').type('10 minutes');
-    cy.get('input#number_of_people').type('5');
-    cy.get('input#skills_focused_on').type('Passing, Shooting');
-    cy.get('input#positions_focused_on').type('Forward, Midfield');
+    cy.get('select#skill_level').select('Beginner');
+    cy.get('select#complexity').select('Low');
+    cy.get('select#suggested_length').select('5-15');
+    cy.get('input#number_of_people_min').type('3');
+    cy.get('input#number_of_people_max').type('10');
+    cy.get('select#skills_focused_on').select(['Passing', 'Shooting']);
+    cy.get('select#positions_focused_on').select(['Forward', 'Midfield']);
     cy.get('input#video_link').type('http://example.com/video');
 
     cy.get('button[type="submit"]').click();

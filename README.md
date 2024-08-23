@@ -2,12 +2,12 @@
 This is starting from a boilerplate svelte app on vercel, and will become the following
 
 ## Overview
-QDrill is a web-based application designed to be a sports drill bank and practice planning tool for a niche sport. The application will allow users to create, manage, and share drills, as well as plan practices. The user experience (UX) is a high priority, with an emphasis on smooth, responsive interactions and a modern design. The application is expected to handle up to a few hundred concurrent users and will be built with a combination of SvelteKit (frontend) and Python (backend).
+QDrill is a web-based application designed to be a sports drill bank and practice planning tool for a niche sport. The application will allow users to create, manage, and share drills, as well as plan practices. The user experience (UX) is a high priority, with an emphasis on smooth, responsive interactions and a modern design. The application is expected to handle up to a few hundred concurrent users and will be built with a combination of SvelteKit (frontend) and SvelteKit (backend).
 
 ## Technology Stack
 - **Frontend**: Svelte with SvelteKit
-- **Backend**: Python (using Flask or Django)
-- **Database**: SQLite (for lightweight, server-side data storage)
+- **Backend**: SvelteKit
+- **Database**: Vercel Postgres
 - **Deployment**: Hosted on Vercel with a custom domain (e.g., qdrill.app)
 - **Testing**: 
   - **Frontend**: Jest for unit testing, with potential use of Cypress for end-to-end testing.
@@ -58,8 +58,8 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 - **User Access**: All users will have the same level of access. Each user will have their own private drills and practice plans, and they can save public drills and plans. Users can see the drills and plans they have saved.
 
 ### 5. Backend and Data Management
-- **SQLite Database**: Used for storing all application data, including drills, practice plans, user accounts, and comments.
-- **API Integration**: The SvelteKit frontend will communicate with the Python backend via RESTful APIs to manage drill creation, filtering, user management, and more.
+- **Vercel Postgres Database**: Used for storing all application data, including drills, practice plans, user accounts, and comments.
+- **API Integration**: The SvelteKit frontend will communicate with the SvelteKit backend via RESTful APIs to manage drill creation, filtering, user management, and more.
 - **Media Management**: Images will be hosted directly on the application, while videos will be linked from external sources (e.g., YouTube, cloud storage).
 
 ### 6. Deployment and Hosting
@@ -79,31 +79,6 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 
 ### Backend Setup
 
-1. **Create a virtual environment**:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Set environment variables**:
-   ```bash
-   export FLASK_APP=app
-   export FLASK_ENV=development
-   export DATABASE_URL=sqlite:///app.db
-   ```
-
-4. **Run the Flask server**:
-   ```bash
-   flask run --port 5000
-   ```
-
-### Frontend Setup
-
 1. **Install dependencies**:
    ```bash
    npm install
@@ -119,19 +94,34 @@ QDrill is a web-based application designed to be a sports drill bank and practic
    npm run build
    ```
 
-### Running Database Migrations
+### Database Setup
 
-1. **Initialize the migration environment**:
+1. **Install Vercel CLI**:
    ```bash
-   flask db init
+   npm install -g vercel
    ```
 
-2. **Create a new migration script**:
+2. **Login to Vercel**:
    ```bash
-   flask db migrate -m "Initial migration"
+   vercel login
    ```
 
-3. **Apply the migration to the database**:
+3. **Link your project**:
    ```bash
-   flask db upgrade
+   vercel link
+   ```
+
+4. **Add Vercel Postgres**:
+   ```bash
+   vercel addons create postgres
+   ```
+
+5. **Get the connection string**:
+   ```bash
+   vercel env pull .env
+   ```
+
+6. **Run database migrations**:
+   ```bash
+   vercel postgres migrate
    ```

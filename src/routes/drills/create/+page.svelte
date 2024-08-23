@@ -8,9 +8,10 @@
   let skill_level = writable('');
   let complexity = writable('');
   let suggested_length = writable('');
-  let number_of_people = writable('');
-  let skills_focused_on = writable('');
-  let positions_focused_on = writable('');
+  let number_of_people_min = writable('');
+  let number_of_people_max = writable('');
+  let skills_focused_on = writable([]);
+  let positions_focused_on = writable([]);
   let video_link = writable('');
   let images = writable([]);
 
@@ -22,8 +23,8 @@
     if (!$brief_description) newErrors.brief_description = 'Brief description is required';
     if (!$skill_level) newErrors.skill_level = 'Skill level is required';
     if (!$suggested_length) newErrors.suggested_length = 'Suggested length of time is required';
-    if (!$skills_focused_on) newErrors.skills_focused_on = 'Skills focused on are required';
-    if (!$positions_focused_on) newErrors.positions_focused_on = 'Positions focused on are required';
+    if ($skills_focused_on.length === 0) newErrors.skills_focused_on = 'Skills focused on are required';
+    if ($positions_focused_on.length === 0) newErrors.positions_focused_on = 'Positions focused on are required';
     errors.set(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -38,7 +39,10 @@
       skill_level: $skill_level,
       complexity: $complexity,
       suggested_length: $suggested_length,
-      number_of_people: $number_of_people,
+      number_of_people: {
+        min: $number_of_people_min || 0,
+        max: $number_of_people_max || 99
+      },
       skills_focused_on: $skills_focused_on,
       positions_focused_on: $positions_focused_on,
       video_link: $video_link,
@@ -101,7 +105,14 @@
 
     <div>
       <label for="skill_level">Skill Level:</label>
-      <input id="skill_level" bind:value={$skill_level} />
+      <select id="skill_level" bind:value={$skill_level}>
+        <option value="">Select Skill Level</option>
+        <option value="new to sport">New to Sport</option>
+        <option value="beginner">Beginner</option>
+        <option value="intermediate">Intermediate</option>
+        <option value="advanced">Advanced</option>
+        <option value="elite">Elite</option>
+      </select>
       {#if $errors.skill_level}
         <p class="error">{$errors.skill_level}</p>
       {/if}
@@ -109,25 +120,47 @@
 
     <div>
       <label for="complexity">Complexity:</label>
-      <input id="complexity" bind:value={$complexity} />
+      <select id="complexity" bind:value={$complexity}>
+        <option value="">Select Complexity</option>
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+      </select>
     </div>
 
     <div>
       <label for="suggested_length">Suggested Length of Time:</label>
-      <input id="suggested_length" bind:value={$suggested_length} />
+      <select id="suggested_length" bind:value={$suggested_length}>
+        <option value="">Select Length of Time</option>
+        <option value="0-5">0-5</option>
+        <option value="5-15">5-15</option>
+        <option value="15-30">15-30</option>
+        <option value="30-60">30-60</option>
+      </select>
       {#if $errors.suggested_length}
         <p class="error">{$errors.suggested_length}</p>
       {/if}
     </div>
 
     <div>
-      <label for="number_of_people">Number of People Required:</label>
-      <input id="number_of_people" bind:value={$number_of_people} />
+      <label for="number_of_people_min">Min Number of People:</label>
+      <input id="number_of_people_min" bind:value={$number_of_people_min} />
+    </div>
+
+    <div>
+      <label for="number_of_people_max">Max Number of People:</label>
+      <input id="number_of_people_max" bind:value={$number_of_people_max} />
     </div>
 
     <div>
       <label for="skills_focused_on">Skills Focused On:</label>
-      <input id="skills_focused_on" bind:value={$skills_focused_on} />
+      <select id="skills_focused_on" bind:value={$skills_focused_on} multiple>
+        <option value="driving">Driving</option>
+        <option value="decision making">Decision Making</option>
+        <option value="catching">Catching</option>
+        <option value="throwing">Throwing</option>
+        <option value="cardio">Cardio</option>
+      </select>
       {#if $errors.skills_focused_on}
         <p class="error">{$errors.skills_focused_on}</p>
       {/if}
@@ -135,7 +168,12 @@
 
     <div>
       <label for="positions_focused_on">Positions Focused On:</label>
-      <input id="positions_focused_on" bind:value={$positions_focused_on} />
+      <select id="positions_focused_on" bind:value={$positions_focused_on} multiple>
+        <option value="Beater">Beater</option>
+        <option value="Chaser">Chaser</option>
+        <option value="Keeper">Keeper</option>
+        <option value="Seeker">Seeker</option>
+      </select>
       {#if $errors.positions_focused_on}
         <p class="error">{$errors.positions_focused_on}</p>
       {/if}
@@ -185,7 +223,8 @@
   }
 
   input,
-  textarea {
+  textarea,
+  select {
     padding: 0.5rem;
     font-size: 1rem;
     width: 100%;

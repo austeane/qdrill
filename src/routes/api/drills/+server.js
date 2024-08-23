@@ -16,6 +16,10 @@ export async function POST({ request }) {
         positions_focused_on = [positions_focused_on];
     }
 
+    if (!Array.isArray(images)) {
+        images = [];
+    }
+
     try {
         const result = await client.query(
             `INSERT INTO drills (name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images) 
@@ -32,7 +36,12 @@ export async function POST({ request }) {
 export async function GET() {
     try {
         const result = await client.query('SELECT * FROM drills');
-        return json(result.rows);
+        const drills = result.rows.map(drill => {
+            drill.comments = Array.isArray(drill.comments) ? drill.comments : [];
+            drill.images = Array.isArray(drill.images) ? drill.images : [];
+            return drill;
+        });
+        return json(drills);
     } catch (error) {
         console.error('Error occurred while fetching drills:', error);
         return json({ error: 'Failed to retrieve drills', details: error.toString() }, { status: 500 });

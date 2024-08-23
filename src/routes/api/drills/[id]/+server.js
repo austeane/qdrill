@@ -8,6 +8,8 @@ export async function GET({ params }) {
         const response = await fetch(`${API_BASE_URL}/api/drills/${id}`);
         if (response.ok) {
             const data = await response.json();
+            data.comments = Array.isArray(data.comments) ? data.comments : [];
+            data.images = Array.isArray(data.images) ? data.images : [];
             return json(data);
         } else {
             return json({ error: `Drill with ID ${id} not found` }, { status: 404 });

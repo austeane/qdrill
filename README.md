@@ -2,7 +2,7 @@
 This is starting from a boilerplate svelte app on vercel, and will become the following
 
 ## Overview
-QDrill is a web-based application designed to be a sports drill bank and practice planning tool for a niche sport. The application will allow users to create, manage, and share drills, as well as plan practices. The user experience (UX) is a high priority, with an emphasis on smooth, responsive interactions and a modern design. The application is expected to handle up to a few hundred concurrent users and will be built with a combination of SvelteKit (frontend) and SvelteKit (backend).
+QDrill is a web-based application designed to be a sports drill bank and practice planning tool for a niche sport. The application will allow users to create, manage, and share drills, as well as plan practices. The user experience (UX) is a high priority, with an emphasis on smooth, responsive interactions and a modern design. The application is expected to handle up to a few hundred concurrent users and will be built with a combination of SvelteKit (frontend) and SvelteKit (backend). The project uses `sveltekit`, `vercel`, and `vercel dev` for development and deployment.
 
 ## Technology Stack
 - **Frontend**: Svelte with SvelteKit
@@ -86,7 +86,7 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 
 2. **Run the development server**:
    ```bash
-   npm run dev
+   vercel dev
    ```
 
 3. **Build the application**:
@@ -124,4 +124,18 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 6. **Run database migrations**:
    ```bash
    vercel postgres migrate
+   ```
+
+### Deployment
+
+1. **Deploy to Vercel**:
+   ```bash
+   vercel --prod
+   ```
+
+### Building the Application
+
+1. **Build the application using SvelteKit**:
+   ```bash
+   npm run build
    ```

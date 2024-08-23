@@ -6,7 +6,15 @@ await client.connect();
 
 export async function POST({ request }) {
     const drill = await request.json();
-    const { name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images } = drill;
+    let { name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images } = drill;
+
+    if (typeof skills_focused_on === 'string') {
+        skills_focused_on = [skills_focused_on];
+    }
+
+    if (typeof positions_focused_on === 'string') {
+        positions_focused_on = [positions_focused_on];
+    }
 
     try {
         const result = await client.query(

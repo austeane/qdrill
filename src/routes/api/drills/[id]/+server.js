@@ -1,15 +1,17 @@
 import { json } from '@sveltejs/kit';
+import { createClient } from '@vercel/postgres';
 
-const API_BASE_URL = 'http://127.0.0.1:5000';
+const client = createClient();
+await client.connect();
 
 export async function GET({ params }) {
     const { id } = params;
     console.log(`Fetching drill with ID: ${id}`);
     const drillId = parseInt(id, 10);
     try {
-        const response = await fetch(`${API_BASE_URL}/api/drills/${drillId}`);
-        if (response.ok) {
-            const data = await response.json();
+        const result = await client.query('SELECT * FROM drills WHERE id = $1', [drillId]);
+        if (result.rows.length > 0) {
+            const data = result.rows[0];
             data.comments = Array.isArray(data.comments) ? data.comments : [];
             data.images = Array.isArray(data.images) ? data.images : [];
             return json(data);

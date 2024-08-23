@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
-import { Client } from '@vercel/postgres';
+import { createClient } from '@vercel/postgres';
 
-const client = new Client();
+const client = createClient();
 await client.connect();
 
 export async function POST({ request }) {

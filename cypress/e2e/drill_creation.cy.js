@@ -29,4 +29,14 @@ describe('Drill Creation', () => {
     cy.get('select#skills_focused_on').should('have.css', 'border', '2px solid blue');
     cy.get('select#positions_focused_on').should('have.css', 'border', '2px solid blue');
   });
+
+  it('should change the color of multi-select buttons when selected', () => {
+    cy.visit('/drills/create');
+
+    cy.get('.skill-level-button').contains('Beginner').click();
+    cy.get('.skill-level-button').contains('Beginner').should('have.class', 'selected');
+
+    cy.get('.position-button').contains('Forward').click();
+    cy.get('.position-button').contains('Forward').should('have.class', 'selected');
+  });
 });

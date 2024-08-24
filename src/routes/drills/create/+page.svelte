@@ -17,6 +17,22 @@
   let images = writable([]);
 
   let errors = writable({});
+  let numberWarnings = {
+    number_of_people_min: '',
+    number_of_people_max: ''
+  };
+
+  function validateNumber(value, field) {
+    if (value === '') {
+      numberWarnings[field] = '';
+      return;
+    }
+    if (!Number.isInteger(Number(value))) {
+      numberWarnings[field] = 'Please enter a whole number';
+    } else {
+      numberWarnings[field] = '';
+    }
+  }
 
   function validateForm() {
     let newErrors = {};
@@ -26,6 +42,15 @@
     if (!$suggested_length) newErrors.suggested_length = 'Suggested length of time is required';
     if ($skills_focused_on.length === 0) newErrors.skills_focused_on = 'Skills focused on are required';
     if ($positions_focused_on.length === 0) newErrors.positions_focused_on = 'Positions focused on are required';
+    
+    // Add validation for number fields
+    if ($number_of_people_min && !Number.isInteger(Number($number_of_people_min))) {
+      newErrors.number_of_people_min = 'Min number of people must be a whole number';
+    }
+    if ($number_of_people_max && !Number.isInteger(Number($number_of_people_max))) {
+      newErrors.number_of_people_max = 'Max number of people must be a whole number';
+    }
+    
     errors.set(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -114,7 +139,7 @@
     </div>
 
     <div>
-      <label for="skill_level" class="block text-sm font-medium text-gray-700">Skill Level:</label>
+      <label for="skill_level" class="block text-sm font-medium text-gray-700">Appropriate for Skill Level:</label>
       <div class="flex flex-wrap gap-2 mt-1">
         <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skill_level, 'new to sport')}>New to Sport</button>
         <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skill_level, 'beginner')}>Beginner</button>
@@ -153,12 +178,34 @@
 
     <div>
       <label for="number_of_people_min" class="block text-sm font-medium text-gray-700">Min Number of People:</label>
-      <input id="number_of_people_min" bind:value={$number_of_people_min} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" />
+      <input 
+        id="number_of_people_min" 
+        bind:value={$number_of_people_min} 
+        on:input={() => validateNumber($number_of_people_min, 'number_of_people_min')}
+        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" 
+      />
+      {#if numberWarnings.number_of_people_min}
+        <p class="warning">{numberWarnings.number_of_people_min}</p>
+      {/if}
+      {#if $errors.number_of_people_min}
+        <p class="error">{$errors.number_of_people_min}</p>
+      {/if}
     </div>
 
     <div>
       <label for="number_of_people_max" class="block text-sm font-medium text-gray-700">Max Number of People:</label>
-      <input id="number_of_people_max" bind:value={$number_of_people_max} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" />
+      <input 
+        id="number_of_people_max" 
+        bind:value={$number_of_people_max} 
+        on:input={() => validateNumber($number_of_people_max, 'number_of_people_max')}
+        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" 
+      />
+      {#if numberWarnings.number_of_people_max}
+        <p class="warning">{numberWarnings.number_of_people_max}</p>
+      {/if}
+      {#if $errors.number_of_people_max}
+        <p class="error">{$errors.number_of_people_max}</p>
+      {/if}
     </div>
 
     <div>
@@ -205,6 +252,10 @@
 <style>
   .error {
     color: red;
+    font-size: 0.8rem;
+  }
+  .warning {
+    color: orange;
     font-size: 0.8rem;
   }
 </style>

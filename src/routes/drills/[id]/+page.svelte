@@ -68,7 +68,7 @@
   <h1>{$drill.name}</h1>
   <p>{$drill.brief_description}</p>
   <p>{$drill.detailed_description}</p>
-  <p>Skill Level: {$drill.skill_level}</p>
+  <p>Appropriate for Skill Levels: {$drill.skill_level}</p>
   <p>Complexity: {$drill.complexity}</p>
   <p>Suggested Length: {$drill.suggested_length}</p>
   <p>Number of People Required: {$drill.number_of_people}</p>

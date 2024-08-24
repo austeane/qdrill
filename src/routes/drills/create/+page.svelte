@@ -71,6 +71,16 @@
       console.log('Response body:', errorData);
     }
   }
+
+  function toggleSelection(store, value) {
+    store.update(selected => {
+      if (selected.includes(value)) {
+        return selected.filter(item => item !== value);
+      } else {
+        return [...selected, value];
+      }
+    });
+  }
 </script>
 
 <svelte:head>
@@ -78,48 +88,48 @@
   <meta name="description" content="Create a new drill" />
 </svelte:head>
 
-<section>
-  <h1>Create Drill</h1>
+<section class="container mx-auto p-4">
+  <h1 class="text-2xl font-bold text-center mb-4">Create Drill</h1>
 
-  <form on:submit|preventDefault={handleSubmit}>
+  <form on:submit|preventDefault={handleSubmit} class="space-y-4">
     <div>
-      <label for="name">Name:</label>
-      <input id="name" bind:value={$name} />
+      <label for="name" class="block text-sm font-medium text-gray-700">Name:</label>
+      <input id="name" bind:value={$name} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" />
       {#if $errors.name}
         <p class="error">{$errors.name}</p>
       {/if}
     </div>
 
     <div>
-      <label for="brief_description">Brief Description:</label>
-      <input id="brief_description" bind:value={$brief_description} />
+      <label for="brief_description" class="block text-sm font-medium text-gray-700">Brief Description:</label>
+      <input id="brief_description" bind:value={$brief_description} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" />
       {#if $errors.brief_description}
         <p class="error">{$errors.brief_description}</p>
       {/if}
     </div>
 
     <div>
-      <label for="detailed_description">Detailed Description:</label>
-      <textarea id="detailed_description" bind:value={$detailed_description}></textarea>
+      <label for="detailed_description" class="block text-sm font-medium text-gray-700">Detailed Description:</label>
+      <textarea id="detailed_description" bind:value={$detailed_description} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"></textarea>
     </div>
 
     <div>
-      <label for="skill_level">Skill Level:</label>
-      <select id="skill_level" bind:value={$skill_level} multiple>
-        <option value="new to sport">New to Sport</option>
-        <option value="beginner">Beginner</option>
-        <option value="intermediate">Intermediate</option>
-        <option value="advanced">Advanced</option>
-        <option value="elite">Elite</option>
-      </select>
+      <label for="skill_level" class="block text-sm font-medium text-gray-700">Skill Level:</label>
+      <div class="flex flex-wrap gap-2 mt-1">
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skill_level, 'new to sport')}>New to Sport</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skill_level, 'beginner')}>Beginner</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skill_level, 'intermediate')}>Intermediate</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skill_level, 'advanced')}>Advanced</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skill_level, 'elite')}>Elite</button>
+      </div>
       {#if $errors.skill_level}
         <p class="error">{$errors.skill_level}</p>
       {/if}
     </div>
 
     <div>
-      <label for="complexity">Complexity:</label>
-      <select id="complexity" bind:value={$complexity}>
+      <label for="complexity" class="block text-sm font-medium text-gray-700">Complexity:</label>
+      <select id="complexity" bind:value={$complexity} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
         <option value="">Select Complexity</option>
         <option value="Low">Low</option>
         <option value="Medium">Medium</option>
@@ -128,8 +138,8 @@
     </div>
 
     <div>
-      <label for="suggested_length">Suggested Length of Time:</label>
-      <select id="suggested_length" bind:value={$suggested_length}>
+      <label for="suggested_length" class="block text-sm font-medium text-gray-700">Suggested Length of Time:</label>
+      <select id="suggested_length" bind:value={$suggested_length} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
         <option value="">Select Length of Time</option>
         <option value="0-5 minutes">0-5 minutes</option>
         <option value="5-15 minutes">5-15 minutes</option>
@@ -142,114 +152,57 @@
     </div>
 
     <div>
-      <label for="number_of_people_min">Min Number of People:</label>
-      <input id="number_of_people_min" bind:value={$number_of_people_min} />
+      <label for="number_of_people_min" class="block text-sm font-medium text-gray-700">Min Number of People:</label>
+      <input id="number_of_people_min" bind:value={$number_of_people_min} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" />
     </div>
 
     <div>
-      <label for="number_of_people_max">Max Number of People:</label>
-      <input id="number_of_people_max" bind:value={$number_of_people_max} />
+      <label for="number_of_people_max" class="block text-sm font-medium text-gray-700">Max Number of People:</label>
+      <input id="number_of_people_max" bind:value={$number_of_people_max} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" />
     </div>
 
     <div>
-      <label for="skills_focused_on">Skills Focused On:</label>
-      <select id="skills_focused_on" bind:value={$skills_focused_on} multiple>
-        <option value="driving">Driving</option>
-        <option value="decision making">Decision Making</option>
-        <option value="catching">Catching</option>
-        <option value="throwing">Throwing</option>
-        <option value="cardio">Cardio</option>
-      </select>
+      <label for="skills_focused_on" class="block text-sm font-medium text-gray-700">Skills Focused On:</label>
+      <div class="flex flex-wrap gap-2 mt-1">
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skills_focused_on, 'driving')}>Driving</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skills_focused_on, 'decision making')}>Decision Making</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skills_focused_on, 'catching')}>Catching</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skills_focused_on, 'throwing')}>Throwing</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skills_focused_on, 'cardio')}>Cardio</button>
+      </div>
       {#if $errors.skills_focused_on}
         <p class="error">{$errors.skills_focused_on}</p>
       {/if}
     </div>
 
     <div>
-      <label for="positions_focused_on">Positions Focused On:</label>
-      <select id="positions_focused_on" bind:value={$positions_focused_on} multiple>
-        <option value="Beater">Beater</option>
-        <option value="Chaser">Chaser</option>
-        <option value="Keeper">Keeper</option>
-        <option value="Seeker">Seeker</option>
-      </select>
+      <label for="positions_focused_on" class="block text-sm font-medium text-gray-700">Positions Focused On:</label>
+      <div class="flex flex-wrap gap-2 mt-1">
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(positions_focused_on, 'Beater')}>Beater</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(positions_focused_on, 'Chaser')}>Chaser</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(positions_focused_on, 'Keeper')}>Keeper</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(positions_focused_on, 'Seeker')}>Seeker</button>
+      </div>
       {#if $errors.positions_focused_on}
         <p class="error">{$errors.positions_focused_on}</p>
       {/if}
     </div>
 
     <div>
-      <label for="video_link">Video Link:</label>
-      <input id="video_link" bind:value={$video_link} />
+      <label for="video_link" class="block text-sm font-medium text-gray-700">Video Link:</label>
+      <input id="video_link" bind:value={$video_link} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" />
     </div>
 
     <div>
-      <label for="images">Images:</label>
-      <input id="images" type="file" multiple on:change={e => images.set(Array.from(e.target.files))} />
+      <label for="images" class="block text-sm font-medium text-gray-700">Images:</label>
+      <input id="images" type="file" multiple on:change={e => images.set(Array.from(e.target.files))} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" />
     </div>
 
-    <button type="submit">Create Drill</button>
+    <button type="submit" class="mt-4 w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Create Drill</button>
   </form>
 </section>
 
 <style>
-  section {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    flex: 0.6;
-  }
-
-  h1 {
-    width: 100%;
-    text-align: center;
-  }
-
-  form {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    max-width: 600px;
-  }
-
-  div {
-    margin: 1rem 0;
-  }
-
-  label {
-    margin-right: 0.5rem;
-  }
-
-  input,
-  textarea,
-  select {
-    padding: 0.5rem;
-    font-size: 1rem;
-    width: 100%;
-  }
-
-  select[multiple] {
-    border: 2px solid blue;
-  }
-
-  select:not([multiple]) {
-    border: 2px solid green;
-  }
-
-  button {
-    padding: 0.5rem;
-    font-size: 1rem;
-    background-color: var(--color-theme-1);
-    color: white;
-    border: none;
-    cursor: pointer;
-  }
-
-  button:hover {
-    background-color: var(--color-theme-2);
-  }
-
   .error {
     color: red;
     font-size: 0.8rem;

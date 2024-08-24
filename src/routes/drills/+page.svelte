@@ -44,37 +44,41 @@
   <meta name="description" content="List of all drills" />
 </svelte:head>
 
-<section>
-  <h1>Drill Listing</h1>
+<section class="container mx-auto p-4">
+  <h1 class="text-2xl font-bold text-center mb-4">Drill Listing</h1>
 
-  <div>
-    <label for="skillLevel">Filter by Skill Level:</label>
-    <select id="skillLevel" bind:value={$selectedSkillLevel}>
-      <option value="">All</option>
-      {#each $skillLevels as skillLevel}
-        <option value={skillLevel}>{skillLevel}</option>
-      {/each}
-    </select>
+  <div class="sticky top-0 bg-white z-10">
+    <div class="flex overflow-x-auto space-x-4 py-2">
+      <div class="flex-shrink-0">
+        <label for="skillLevel" class="block text-sm font-medium text-gray-700">Filter by Skill Level:</label>
+        <select id="skillLevel" bind:value={$selectedSkillLevel} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+          <option value="">All</option>
+          {#each $skillLevels as skillLevel}
+            <option value={skillLevel}>{skillLevel}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="flex-shrink-0">
+        <label for="position" class="block text-sm font-medium text-gray-700">Filter by Position:</label>
+        <select id="position" bind:value={$selectedPosition} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+          <option value="">All</option>
+          {#each $positions as position}
+            <option value={position}>{position}</option>
+          {/each}
+        </select>
+      </div>
+    </div>
   </div>
 
-  <div>
-    <label for="position">Filter by Position:</label>
-    <select id="position" bind:value={$selectedPosition}>
-      <option value="">All</option>
-      {#each $positions as position}
-        <option value={position}>{position}</option>
-      {/each}
-    </select>
-  </div>
-
-  <ul>
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4 overflow-y-auto">
     {#each filterDrills($drills, $selectedSkillLevel, $selectedPosition) as drill}
-      <li>
-        <a href={`/drills/${drill.id}`}>{drill.name}</a>
-        <p>{drill.brief_description}</p>
-      </li>
+      <div class="bg-white shadow-md rounded-lg p-4">
+        <a href={`/drills/${drill.id}`} class="text-lg font-semibold text-indigo-600 hover:underline">{drill.name}</a>
+        <p class="mt-2 text-gray-600">{drill.brief_description}</p>
+      </div>
     {/each}
-  </ul>
+  </div>
 </section>
 
 <style>

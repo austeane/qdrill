@@ -107,3 +107,9 @@ button:focus:not(:focus-visible) {
 	width: 1px;
 	white-space: nowrap;
 }
+
+/* Add CSS rules to change the background color of multi-select buttons when selected */
+.selected {
+	background-color: var(--color-theme-1);
+	color: white;
+}

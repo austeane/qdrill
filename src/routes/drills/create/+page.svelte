@@ -106,6 +106,26 @@
       }
     });
   }
+
+  $: {
+    const skillLevelButtons = document.querySelectorAll('.skill-level-button');
+    skillLevelButtons.forEach(button => {
+      if ($skill_level.includes(button.textContent.toLowerCase())) {
+        button.classList.add('selected');
+      } else {
+        button.classList.remove('selected');
+      }
+    });
+
+    const positionButtons = document.querySelectorAll('.position-button');
+    positionButtons.forEach(button => {
+      if ($positions_focused_on.includes(button.textContent)) {
+        button.classList.add('selected');
+      } else {
+        button.classList.remove('selected');
+      }
+    });
+  }
 </script>
 
 <svelte:head>
@@ -141,11 +161,11 @@
     <div>
       <label for="skill_level" class="block text-sm font-medium text-gray-700">Appropriate for Skill Level:</label>
       <div class="flex flex-wrap gap-2 mt-1">
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skill_level, 'new to sport')}>New to Sport</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skill_level, 'beginner')}>Beginner</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skill_level, 'intermediate')}>Intermediate</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skill_level, 'advanced')}>Advanced</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skill_level, 'elite')}>Elite</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'new to sport')}>New to Sport</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'beginner')}>Beginner</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'intermediate')}>Intermediate</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'advanced')}>Advanced</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'elite')}>Elite</button>
       </div>
       {#if $errors.skill_level}
         <p class="error">{$errors.skill_level}</p>
@@ -211,11 +231,11 @@
     <div>
       <label for="skills_focused_on" class="block text-sm font-medium text-gray-700">Skills Focused On:</label>
       <div class="flex flex-wrap gap-2 mt-1">
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skills_focused_on, 'driving')}>Driving</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skills_focused_on, 'decision making')}>Decision Making</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skills_focused_on, 'catching')}>Catching</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skills_focused_on, 'throwing')}>Throwing</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(skills_focused_on, 'cardio')}>Cardio</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skills_focused_on, 'driving')}>Driving</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skills_focused_on, 'decision making')}>Decision Making</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skills_focused_on, 'catching')}>Catching</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skills_focused_on, 'throwing')}>Throwing</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skills_focused_on, 'cardio')}>Cardio</button>
       </div>
       {#if $errors.skills_focused_on}
         <p class="error">{$errors.skills_focused_on}</p>
@@ -225,10 +245,10 @@
     <div>
       <label for="positions_focused_on" class="block text-sm font-medium text-gray-700">Positions Focused On:</label>
       <div class="flex flex-wrap gap-2 mt-1">
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(positions_focused_on, 'Beater')}>Beater</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(positions_focused_on, 'Chaser')}>Chaser</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(positions_focused_on, 'Keeper')}>Keeper</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300" on:click={() => toggleSelection(positions_focused_on, 'Seeker')}>Seeker</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Beater')}>Beater</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Chaser')}>Chaser</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Keeper')}>Keeper</button>
+        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Seeker')}>Seeker</button>
       </div>
       {#if $errors.positions_focused_on}
         <p class="error">{$errors.positions_focused_on}</p>

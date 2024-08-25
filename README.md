@@ -72,7 +72,6 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 - **Cypress**: Potentially used for end-to-end testing to ensure the entire user flow, from drill creation to practice plan publishing, works smoothly.
 
 ### 8. UX and Design
-- **Figma Prototyping**: The user interface will be prototyped using Figma to ensure a well-thought-out design that prioritizes user experience. The final implementation will aim for a clean, modern, and responsive design.
 - **Design Aesthetic**: The design will follow a style similar to Figma, with a clean, minimalist look. The color scheme and fonts will be inspired by Figma, but with an emphasis on ensuring faster loading times and responsive filtering without noticeable delays.
 
 ## Running Locally

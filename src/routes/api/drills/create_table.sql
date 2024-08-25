@@ -1,3 +1,8 @@
+CREATE TABLE IF NOT EXISTS skills (
+  skill TEXT PRIMARY KEY,
+  drills_used_in INTEGER DEFAULT 0,
+  usage_count INTEGER DEFAULT 0
+);
 CREATE TABLE drills (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -11,5 +16,4 @@ CREATE TABLE drills (
     skills_focused_on TEXT[],
     positions_focused_on TEXT[],
     video_link VARCHAR(255),
-    images TEXT[]
-);
+    images TEXT[]);

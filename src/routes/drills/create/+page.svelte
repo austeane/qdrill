@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { writable } from 'svelte/store';
   import { goto } from '$app/navigation';
+  import DiagramDrawer from '../../../components/DiagramDrawer.svelte';
 
   let name = writable('');
   let brief_description = writable('');
@@ -12,6 +13,9 @@
   let number_of_people_min = writable('');
   let number_of_people_max = writable('');
   let skills_focused_on = writable([]);
+  let selectedSkills = writable([]);
+  let newSkill = writable('');
+  let skillSuggestions = writable([]);
   let positions_focused_on = writable([]);
   let video_link = writable('');
   let images = writable([]);
@@ -21,6 +25,76 @@
     number_of_people_min: '',
     number_of_people_max: ''
   };
+
+  let mounted = false;
+
+  let diagramData = '';
+
+  function handleDiagramSave(event) {
+    diagramData = event.detail;
+  }
+
+  onMount(async () => {
+    const response = await fetch('/api/skills');
+    const data = await response.json();
+    skills_focused_on.set(data);
+    mounted = true;
+  });
+
+  function handleSkillInput() {
+    const input = $newSkill.toLowerCase();
+    if (input.length > 0) {
+      skillSuggestions.set($skills_focused_on.filter(skill => 
+        skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill)
+      ));
+    } else {
+      skillSuggestions.set([]);
+    }
+  }
+
+  function handleSkillKeydown(event) {
+    if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault();
+      addSkill();
+    }
+  }
+
+  function addSkill() {
+    if ($newSkill && !$selectedSkills.includes($newSkill)) {
+      selectedSkills.update(skills => [...skills, $newSkill]);
+      if (!$skills_focused_on.includes($newSkill)) {
+        addNewSkill($newSkill);
+      }
+      newSkill.set('');
+      skillSuggestions.set([]);
+    }
+  }
+
+  function removeSkill(skill) {
+    selectedSkills.update(skills => skills.filter(s => s !== skill));
+  }
+
+  function selectSkill(skill) {
+    if (!$selectedSkills.includes(skill)) {
+      selectedSkills.update(skills => [...skills, skill]);
+    }
+    newSkill.set('');
+    skillSuggestions.set([]);
+  }
+
+  async function addNewSkill(skill) {
+    const response = await fetch('/api/skills', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ skill })
+    });
+    if (response.ok) {
+      skills_focused_on.update(skills => [...skills, skill]);
+      selectSkill(skill);
+    }
+  }
 
   function validateNumber(value, field) {
     if (value === '') {
@@ -40,7 +114,7 @@
     if (!$brief_description) newErrors.brief_description = 'Brief description is required';
     if ($skill_level.length === 0) newErrors.skill_level = 'Skill level is required';
     if (!$suggested_length) newErrors.suggested_length = 'Suggested length of time is required';
-    if ($skills_focused_on.length === 0) newErrors.skills_focused_on = 'Skills focused on are required';
+    if ($selectedSkills.length === 0) newErrors.skills_focused_on = 'Skills focused on are required';
     if ($positions_focused_on.length === 0) newErrors.positions_focused_on = 'Positions focused on are required';
     
     // Add validation for number fields
@@ -69,10 +143,11 @@
         min: $number_of_people_min || 0,
         max: $number_of_people_max || 99
       },
-      skills_focused_on: $skills_focused_on,
+      skills_focused_on: $selectedSkills,
       positions_focused_on: $positions_focused_on,
       video_link: $video_link,
-      images: $images
+      images: $images,
+      diagram: diagramData
     };
 
     console.log('Drill object:', drill);
@@ -107,24 +182,26 @@
     });
   }
 
-  $: {
-    const skillLevelButtons = document.querySelectorAll('.skill-level-button');
-    skillLevelButtons.forEach(button => {
-      if ($skill_level.includes(button.textContent.toLowerCase())) {
-        button.classList.add('selected');
-      } else {
-        button.classList.remove('selected');
-      }
-    });
+  $: if (mounted) {
+    if (typeof window !== 'undefined') {
+      const skillLevelButtons = document.querySelectorAll('.skill-level-button');
+      skillLevelButtons.forEach(button => {
+        if ($skill_level.includes(button.textContent.toLowerCase())) {
+          button.classList.add('selected');
+        } else {
+          button.classList.remove('selected');
+        }
+      });
 
-    const positionButtons = document.querySelectorAll('.position-button');
-    positionButtons.forEach(button => {
-      if ($positions_focused_on.includes(button.textContent)) {
-        button.classList.add('selected');
-      } else {
-        button.classList.remove('selected');
-      }
-    });
+      const positionButtons = document.querySelectorAll('.position-button');
+      positionButtons.forEach(button => {
+        if ($positions_focused_on.includes(button.textContent)) {
+          button.classList.add('selected');
+        } else {
+          button.classList.remove('selected');
+        }
+      });
+    }
   }
 </script>
 
@@ -231,12 +308,48 @@
     <div>
       <label for="skills_focused_on" class="block text-sm font-medium text-gray-700">Skills Focused On:</label>
       <div class="flex flex-wrap gap-2 mt-1">
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skills_focused_on, 'driving')}>Driving</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skills_focused_on, 'decision making')}>Decision Making</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skills_focused_on, 'catching')}>Catching</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skills_focused_on, 'throwing')}>Throwing</button>
-        <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skills_focused_on, 'cardio')}>Cardio</button>
+        {#each $selectedSkills as skill}
+          <button
+            type="button"
+            class="px-3 py-1 rounded-full border border-gray-300 skill-level-button selected"
+            on:click={() => removeSkill(skill)}
+          >
+            {skill} ×
+          </button>
+        {/each}
       </div>
+      <div class="flex mt-2">
+        <input
+          type="text"
+          id="skill_input"
+          bind:value={$newSkill}
+          on:input={handleSkillInput}
+          on:keydown={handleSkillKeydown}
+          placeholder="Type a skill and press Enter"
+          class="flex-grow pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-l-md"
+        />
+        <button
+          type="button"
+          on:click={addSkill}
+          class="px-4 py-2 bg-indigo-600 text-white rounded-r-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          Add Skill
+        </button>
+      </div>
+      {#if $skillSuggestions.length > 0}
+        <ul class="mt-1 bg-white border border-gray-300 rounded-md shadow-sm">
+          {#each $skillSuggestions as suggestion}
+            <li>
+              <button
+                class="w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                on:click={() => selectSkill(suggestion)}
+              >
+                {suggestion}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
       {#if $errors.skills_focused_on}
         <p class="error">{$errors.skills_focused_on}</p>
       {/if}
@@ -263,6 +376,11 @@
     <div>
       <label for="images" class="block text-sm font-medium text-gray-700">Images:</label>
       <input id="images" type="file" multiple on:change={e => images.set(Array.from(e.target.files))} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" />
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700">Diagram:</label>
+      <DiagramDrawer on:save={handleDiagramSave} />
     </div>
 
     <button type="submit" class="mt-4 w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Create Drill</button>

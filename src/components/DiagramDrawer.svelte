@@ -4,6 +4,9 @@
   const quaffleUrl = '/images/quaffle.webp';
   const bludgerUrl = '/images/bludger.webp';
 
+  export let data = null;
+  export let id = ''; // Add this line to accept an id prop
+
   const dispatch = createEventDispatcher();
   let canvas;
   let fabricCanvas;
@@ -20,9 +23,15 @@
       backgroundColor: '#f0f0f0'
     });
 
-    addStandardShapes();
-    addPlayers();
-    addInitialBalls();
+    if (data) {
+      fabricCanvas.loadFromJSON(data, () => {
+        fabricCanvas.renderAll();
+      });
+    } else {
+      addStandardShapes();
+      addPlayers();
+      addInitialBalls();
+    }
 
     fabricCanvas.on('keydown', function(e) {
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -259,18 +268,17 @@
   }
 
   function saveDiagram() {
-    const diagramData = getDiagramAsImage();
+    const diagramData = fabricCanvas.toJSON();
     dispatch('save', diagramData);
   }
-
+  
   function preventSubmit(event) {
     event.preventDefault();
   }
 </script>
 
 <div>
-  <label for="diagram-canvas">Diagram:</label>
-  <canvas id="diagram-canvas" bind:this={canvas}></canvas>
+  <canvas bind:this={canvas} {id}></canvas>
 </div>
 <div>
   <button on:click|preventDefault={() => addNewPlayer('red', 'green')}>Add Red Player</button>
@@ -282,7 +290,6 @@
   <button on:click|preventDefault={addQuaffle}>Add Quaffle</button>
   <button on:click|preventDefault={deleteSelectedObjects}>Delete Selected</button>
 </div>
-<button on:click|preventDefault={saveDiagram}>Save Diagram</button>
 
 <style>
   canvas {

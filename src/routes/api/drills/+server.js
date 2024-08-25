@@ -24,7 +24,7 @@ async function updateSkills(skills, drillId) {
 
 export async function POST({ request }) {
     const drill = await request.json();
-    let { name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images } = drill;
+    let { name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images, diagrams } = drill;
 
     if (typeof skill_level === 'string') {
         skill_level = [skill_level];
@@ -42,11 +42,26 @@ export async function POST({ request }) {
         images = [];
     }
 
+    if (diagrams && Array.isArray(diagrams)) {
+        diagrams = diagrams.map(diagram => {
+          if (typeof diagram === 'string') {
+            try {
+              return JSON.parse(diagram);
+            } catch (e) {
+              console.error('Error parsing diagram data:', e);
+              return null;
+            }
+          }
+          return diagram;
+        }).filter(diagram => diagram !== null);
+      } else {
+        diagrams = [];
+      }
     try {
         const result = await client.query(
-            `INSERT INTO drills (name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
-            [name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people.min, number_of_people.max, skills_focused_on, positions_focused_on, video_link, images]
+            `INSERT INTO drills (name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
+            [name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people.min, number_of_people.max, skills_focused_on, positions_focused_on, video_link, images, diagrams]
         );
         
         const drillId = result.rows[0].id;
@@ -77,7 +92,7 @@ export async function GET() {
 
 export async function PUT({ request }) {
   const drill = await request.json();
-  let { id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images } = drill;
+  let { id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images, diagrams } = drill;
 
   try {
     // First, get the existing skills for this drill
@@ -89,10 +104,10 @@ export async function PUT({ request }) {
       `UPDATE drills SET 
        name = $2, brief_description = $3, detailed_description = $4, skill_level = $5, 
        complexity = $6, suggested_length = $7, number_of_people_min = $8, number_of_people_max = $9, 
-       skills_focused_on = $10, positions_focused_on = $11, video_link = $12, images = $13
+       skills_focused_on = $10, positions_focused_on = $11, video_link = $12, images = $13, diagrams = $14
        WHERE id = $1 RETURNING *`,
       [id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, 
-       number_of_people.min, number_of_people.max, skills_focused_on, positions_focused_on, video_link, images]
+       number_of_people.min, number_of_people.max, skills_focused_on, positions_focused_on, video_link, images, diagrams]
     );
 
     // Update skills

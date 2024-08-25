@@ -28,11 +28,11 @@
 
   let mounted = false;
 
-  let diagramData = '';
+  let diagramData = writable(null);
 
   function handleDiagramSave(event) {
-    diagramData = event.detail;
-  }
+    diagramData.set(event.detail);
+}
 
   onMount(async () => {
     const response = await fetch('/api/skills');
@@ -147,7 +147,7 @@
       positions_focused_on: $positions_focused_on,
       video_link: $video_link,
       images: $images,
-      diagram: diagramData
+      diagrams: $diagramData ? [$diagramData] : []
     };
 
     console.log('Drill object:', drill);
@@ -379,10 +379,11 @@
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700">Diagram:</label>
-      <DiagramDrawer on:save={handleDiagramSave} />
+      <label for="diagram-canvas" class="block text-sm font-medium text-gray-700">Diagram:</label>
+      <DiagramDrawer on:save={handleDiagramSave} id="diagram-canvas" />
+      <button type="button" on:click={handleDiagramSave} class="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Save Diagram</button>
     </div>
-
+    
     <button type="submit" class="mt-4 w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Create Drill</button>
   </form>
 </section>

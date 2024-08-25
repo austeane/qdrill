@@ -40,6 +40,7 @@
       d.diagrams[index] = updatedDiagram;
       return d;
     });
+    editableDiagram.set(null); // Reset the editable diagram after saving
   }
 
   async function addComment() {
@@ -129,10 +130,10 @@
     </div>
   {/if}
 
-  {#if $editableDiagram}
+  {#if $editableDiagram !== null}
     <div>
       <h3>Edit Diagram</h3>
-      <DiagramDrawer data={$editableDiagram} on:save={handleDiagramSave} />
+      <DiagramDrawer data={$editableDiagram} on:save={(event) => handleDiagramSave(event, $drill.diagrams.indexOf($editableDiagram))} />
     </div>
   {/if}
 </section>

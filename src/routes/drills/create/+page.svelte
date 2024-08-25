@@ -33,8 +33,8 @@
   let diagramDrawerComponent;
 
   function handleDiagramSave(event) {
-    const updatedDiagram = JSON.stringify(event.detail);
-    editableDiagram.set(JSON.parse(updatedDiagram));
+    const updatedDiagram = event.detail;
+    diagramData.set(updatedDiagram);
     // Here you would typically send the updated diagram to the server
     // For example:
     // updateDiagramOnServer(updatedDiagram);
@@ -137,6 +137,8 @@
 
   async function handleSubmit() {
     if (!validateForm()) return;
+    console.log('Diagram data before sending:', $diagramData);
+
 
     const drill = {
       name: $name,

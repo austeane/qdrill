@@ -40,6 +40,13 @@
     });
 
     fabricCanvas.renderAll();
+
+    // FIXME: This is a suboptimal solution to force a rerender after a delay.
+    // It's implemented as a last resort due to persistent rendering issues.
+    // Investigate root cause and replace with a more robust solution when possible.
+    setTimeout(() => {
+      fabricCanvas.renderAll();
+    }, 100);
   });
 
   afterUpdate(() => {

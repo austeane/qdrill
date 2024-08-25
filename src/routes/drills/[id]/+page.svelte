@@ -2,11 +2,13 @@
   import { onMount } from 'svelte';
   import { writable } from 'svelte/store';
   import { page } from '$app/stores';
+  import DiagramDrawer from '../../../components/DiagramDrawer.svelte';
 
   let drill = writable({});
   let comments = writable([]);
   let newComment = writable('');
   let upvotes = writable(0);
+  let editableDiagram = writable(null);
 
   onMount(async () => {
     try {
@@ -22,6 +24,15 @@
       console.error(error);
     }
   });
+
+  function editDiagram(index) {
+    editableDiagram.set($drill.diagrams[index]);
+  }
+
+  function handleDiagramSave(event) {
+    const updatedDiagram = event.detail;
+    editableDiagram.set(updatedDiagram);
+  }
 
   async function addComment() {
     try {
@@ -97,6 +108,25 @@
     <input type="text" bind:value={$newComment} placeholder="Add a comment" />
     <button on:click={addComment}>Submit</button>
   </div>
+
+  {#if $drill.diagrams && $drill.diagrams.length > 0}
+    <div>
+      <h2>Diagrams</h2>
+      {#each $drill.diagrams as diagram, index}
+        <div>
+          <DiagramDrawer data={diagram} on:save={handleDiagramSave} />
+          <button on:click={() => editDiagram(index)}>Edit</button>
+        </div>
+      {/each}
+    </div>
+  {/if}
+
+  {#if $editableDiagram}
+    <div>
+      <h3>Edit Diagram</h3>
+      <DiagramDrawer data={$editableDiagram} on:save={handleDiagramSave} />
+    </div>
+  {/if}
 </section>
 
 <style>

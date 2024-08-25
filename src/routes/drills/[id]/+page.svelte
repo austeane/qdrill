@@ -17,6 +17,11 @@
         throw new Error(`Error fetching drill details: ${response.statusText}`);
       }
       const data = await response.json();
+      if (data.diagrams) {
+        data.diagrams = data.diagrams.map(diagram => 
+          typeof diagram === 'string' ? JSON.parse(diagram) : diagram
+        );
+      }
       drill.set(data);
       upvotes.set(data.upvotes);
       comments.set(Array.isArray(data.comments) ? data.comments : []);
@@ -29,9 +34,12 @@
     editableDiagram.set($drill.diagrams[index]);
   }
 
-  function handleDiagramSave(event) {
+  function handleDiagramSave(event, index) {
     const updatedDiagram = event.detail;
-    editableDiagram.set(updatedDiagram);
+    drill.update(d => {
+      d.diagrams[index] = updatedDiagram;
+      return d;
+    });
   }
 
   async function addComment() {
@@ -114,7 +122,7 @@
       <h2>Diagrams</h2>
       {#each $drill.diagrams as diagram, index}
         <div>
-          <DiagramDrawer data={diagram} on:save={handleDiagramSave} />
+          <DiagramDrawer data={diagram} on:save={(event) => handleDiagramSave(event, index)} />
           <button on:click={() => editDiagram(index)}>Edit</button>
         </div>
       {/each}

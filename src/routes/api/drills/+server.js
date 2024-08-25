@@ -24,7 +24,14 @@ async function updateSkills(skills, drillId) {
 
 export async function POST({ request }) {
     const drill = await request.json();
+    console.log('API - Received drill data:', JSON.stringify(drill));
     let { name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images, diagrams } = drill;
+
+    if (!Array.isArray(diagrams)) {
+        diagrams = diagrams ? [diagrams] : [];
+    }
+
+    console.log('API - Extracted diagrams:', JSON.stringify(diagrams));
 
     if (typeof skill_level === 'string') {
         skill_level = [skill_level];
@@ -42,21 +49,6 @@ export async function POST({ request }) {
         images = [];
     }
 
-    if (diagrams && Array.isArray(diagrams)) {
-        diagrams = diagrams.map(diagram => {
-          if (typeof diagram === 'string') {
-            try {
-              return JSON.parse(diagram);
-            } catch (e) {
-              console.error('Error parsing diagram data:', e);
-              return null;
-            }
-          }
-          return diagram;
-        }).filter(diagram => diagram !== null);
-      } else {
-        diagrams = [];
-      }
     try {
         const result = await client.query(
             `INSERT INTO drills (name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams) 

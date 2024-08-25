@@ -30,9 +30,15 @@
 
   let diagramData = writable(null);
 
+  let diagramDrawerComponent;
+
   function handleDiagramSave(event) {
-    diagramData.set(event.detail);
-}
+    const updatedDiagram = JSON.stringify(event.detail);
+    editableDiagram.set(JSON.parse(updatedDiagram));
+    // Here you would typically send the updated diagram to the server
+    // For example:
+    // updateDiagramOnServer(updatedDiagram);
+  }
 
   onMount(async () => {
     const response = await fetch('/api/skills');
@@ -150,7 +156,7 @@
       diagrams: $diagramData ? [$diagramData] : []
     };
 
-    console.log('Drill object:', drill);
+    console.log('Drill creation page - Sending drill data:', JSON.stringify(drill));
 
     const response = await fetch('/api/drills', {
       method: 'POST',
@@ -380,8 +386,8 @@
 
     <div>
       <label for="diagram-canvas" class="block text-sm font-medium text-gray-700">Diagram:</label>
-      <DiagramDrawer on:save={handleDiagramSave} id="diagram-canvas" />
-      <button type="button" on:click={handleDiagramSave} class="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Save Diagram</button>
+      <DiagramDrawer on:save={handleDiagramSave} id="diagram-canvas" bind:this={diagramDrawerComponent} />
+      <button type="button" on:click={() => diagramDrawerComponent.saveDiagram()} class="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Save Diagram</button>
     </div>
     
     <button type="submit" class="mt-4 w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Create Drill</button>

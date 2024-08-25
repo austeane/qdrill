@@ -14,6 +14,14 @@ export async function GET({ params }) {
             const data = result.rows[0];
             data.comments = Array.isArray(data.comments) ? data.comments : [];
             data.images = Array.isArray(data.images) ? data.images : [];
+            data.diagrams = Array.isArray(data.diagrams) ? data.diagrams.map(diagram => {
+                try {
+                    return typeof diagram === 'string' ? JSON.parse(diagram) : diagram;
+                } catch (e) {
+                    console.error('Error parsing diagram:', e);
+                    return null;
+                }
+            }).filter(diagram => diagram !== null) : [];
             return json(data);
         } else {
             return json({ error: `Drill with ID ${drillId} not found` }, { status: 404 });

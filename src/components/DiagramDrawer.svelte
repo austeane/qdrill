@@ -1,5 +1,5 @@
 <script>
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { onMount, afterUpdate, createEventDispatcher } from 'svelte';
   import * as fabric from 'fabric';
   const quaffleUrl = '/images/quaffle.webp';
   const bludgerUrl = '/images/bludger.webp';
@@ -38,6 +38,14 @@
         deleteSelectedObjects();
       }
     });
+
+    fabricCanvas.renderAll();
+  });
+
+  afterUpdate(() => {
+    if (fabricCanvas) {
+      fabricCanvas.renderAll();
+    }
   });
 
   function deleteSelectedObjects() {
@@ -267,7 +275,7 @@
     return fabricCanvas.toDataURL();
   }
 
-  function saveDiagram() {
+  export function saveDiagram() {
     const diagramData = fabricCanvas.toJSON();
     dispatch('save', diagramData);
   }

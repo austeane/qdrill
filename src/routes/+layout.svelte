@@ -9,10 +9,14 @@
 	export let data;
 
 	$: if (browser && data?.analyticsId) {
+		const analyticsId = data.analyticsId === 'VERCEL_ANALYTICS_ID' 
+			? import.meta.env.VITE_VERCEL_ANALYTICS_ID 
+			: data.analyticsId;
+		
 		webVitals({
 			path: $page.url.pathname,
 			params: $page.params,
-			analyticsId: data.analyticsId
+			analyticsId
 		});
 	}
 </script>

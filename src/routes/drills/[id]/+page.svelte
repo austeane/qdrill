@@ -87,11 +87,16 @@
 <section>
   <h1>{$drill.name}</h1>
   <p>{$drill.brief_description}</p>
+  <div class="flex justify-center mt-4 mb-4">
+    <a href="/drills/{$page.params.id}/edit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+      Edit Drill
+    </a>
+  </div>
   <p>{$drill.detailed_description}</p>
   <p>Appropriate for Skill Levels: {$drill.skill_level}</p>
   <p>Complexity: {$drill.complexity}</p>
   <p>Suggested Length: {$drill.suggested_length}</p>
-  <p>Number of People Required: {$drill.number_of_people}</p>
+  <p>Number of People Required: {$drill.number_of_people_min} - {$drill.number_of_people_max}</p>
   <p>Skills Focused On: {Array.isArray($drill.skills_focused_on) ? $drill.skills_focused_on.join(', ') : (typeof $drill.skills_focused_on === 'string' ? $drill.skills_focused_on.split(', ').join(', ') : '')}</p>
   <p>Positions Focused On: {Array.isArray($drill.positions_focused_on) ? $drill.positions_focused_on.join(', ') : (typeof $drill.positions_focused_on === 'string' ? $drill.positions_focused_on.split(', ').join(', ') : '')}</p>
   {#if $drill.video_link}
@@ -123,19 +128,12 @@
       <h2>Diagrams</h2>
       {#each $drill.diagrams as diagram, index}
         <div>
-          <DiagramDrawer data={diagram} on:save={(event) => handleDiagramSave(event, index)} />
-          <button on:click={() => editDiagram(index)}>Edit</button>
+          <DiagramDrawer data={diagram} on:save={(event) => handleDiagramSave(event, index)} showSaveButton={false} />
         </div>
       {/each}
     </div>
   {/if}
 
-  {#if $editableDiagram !== null}
-    <div>
-      <h3>Edit Diagram</h3>
-      <DiagramDrawer data={$editableDiagram} on:save={(event) => handleDiagramSave(event, $drill.diagrams.indexOf($editableDiagram))} />
-    </div>
-  {/if}
 </section>
 
 <style>

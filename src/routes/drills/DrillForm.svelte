@@ -44,16 +44,43 @@
 
   let mounted = false;
 
-  let diagramData = writable(drill.diagrams?.[0] ?? null);
+  let diagrams = writable(drill.diagrams?.length > 0 ? drill.diagrams : [null]);
+  let diagramKey = 0;
 
-  let diagramDrawerComponent;
+  function addDiagram() {
+    diagrams.update(d => [...d, null]);
+    diagramKey++;
+  }
 
-  function handleDiagramSave(event) {
+  function deleteDiagram(index) {
+    if (confirm('Are you sure you want to delete this diagram?')) {
+      diagrams.update(d => d.filter((_, i) => i !== index));
+      diagramKey++;
+    }
+  }
+
+  function moveDiagram(index, direction) {
+    console.log(`Moving diagram at index ${index} ${direction > 0 ? 'down' : 'up'}`);
+    diagrams.update(d => {
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= d.length) return d;
+      const newDiagrams = [...d];
+      [newDiagrams[index], newDiagrams[newIndex]] = [newDiagrams[newIndex], newDiagrams[index]];
+      console.log('Updated diagrams:', newDiagrams);
+      return newDiagrams;
+    });
+    diagramKey++;
+  }
+
+  function handleDiagramSave(event, index) {
     const updatedDiagram = event.detail;
-    console.log('Diagram saved:', updatedDiagram);
-    diagramData.set(updatedDiagram);
-  }  
-  
+    diagrams.update(d => {
+      const newDiagrams = [...d];
+      newDiagrams[index] = updatedDiagram;
+      return newDiagrams;
+    });
+  }
+
   onMount(async () => {
     const response = await fetch('/api/skills');
     const data = await response.json();
@@ -151,11 +178,7 @@
 
   async function handleSubmit() {
     if (!validateForm()) return;
-    console.log('Diagram data before sending:', $diagramData);
-
-    if (!$diagramData) {
-      console.log('No diagram data available');
-    }
+    console.log('Diagram data before sending:', $diagrams);
 
     const method = drill.id ? 'PUT' : 'POST';
     const url = drill.id ? `/api/drills/${drill.id}` : '/api/drills';
@@ -178,7 +201,7 @@
       positions_focused_on: $positions_focused_on,
       video_link: $video_link,
       images: $images,
-      diagrams: $diagramData ? [$diagramData] : []
+      diagrams: $diagrams
     };
 
     console.log('Drill data being sent:', JSON.stringify(drillData));
@@ -410,8 +433,29 @@
     </div>
 
     <div>
-      <label for="diagram-canvas" class="block text-sm font-medium text-gray-700">Diagram:</label>
-      <DiagramDrawer on:save={handleDiagramSave} id="diagram-canvas" data={$diagramData} showSaveButton={true} />
+      <h3 class="block text-sm font-medium text-gray-700">Diagrams:</h3>
+      {#each $diagrams as diagram, index (index + '-' + diagramKey)}
+        <div class="mt-2 border p-4 rounded">
+          <label for={`diagram-canvas-${index}`} class="text-lg font-semibold mb-2">Diagram {index + 1}</label>
+          <DiagramDrawer 
+            on:save={(event) => handleDiagramSave(event, index)} 
+            id={`diagram-canvas-${index}`} 
+            data={diagram} 
+            {index}
+            showSaveButton={true} 
+          />
+          <div class="mt-2 flex justify-between">
+            <button type="button" on:click={() => deleteDiagram(index)} class="text-red-600 hover:text-red-800">Delete</button>
+            <div>
+              <button type="button" on:click={() => moveDiagram(index, -1)} disabled={index === 0} class="text-blue-600 hover:text-blue-800 mr-2">Move Up</button>
+              <button type="button" on:click={() => moveDiagram(index, 1)} disabled={index === $diagrams.length - 1} class="text-blue-600 hover:text-blue-800">Move Down</button>
+            </div>
+          </div>
+        </div>
+      {/each}
+      <button type="button" on:click={addDiagram} class="mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+        Add New Diagram
+      </button>
     </div>
     
     <button type="submit" class="mt-4 w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">

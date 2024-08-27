@@ -31,7 +31,9 @@ export async function POST({ request }) {
         diagrams = diagrams ? [diagrams] : [];
     }
 
-    console.log('API - Extracted diagrams:', JSON.stringify(diagrams));
+    diagrams = diagrams.map(diagram => JSON.stringify(diagram));
+
+    console.log('API - Processed diagrams:', JSON.stringify(diagrams));
 
     if (typeof skill_level === 'string') {
         skill_level = [skill_level];
@@ -90,6 +92,11 @@ export async function PUT({ request }) {
     // First, get the existing skills for this drill
     const existingSkillsResult = await client.query('SELECT skills_focused_on FROM drills WHERE id = $1', [id]);
     const existingSkills = existingSkillsResult.rows[0].skills_focused_on;
+
+    if (!Array.isArray(diagrams)) {
+        diagrams = diagrams ? [diagrams] : [];
+    }
+    diagrams = diagrams.map(diagram => JSON.stringify(diagram));
 
     // Update the drill
     const result = await client.query(

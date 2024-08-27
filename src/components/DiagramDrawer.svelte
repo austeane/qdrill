@@ -7,6 +7,7 @@
   export let data = null;
   export let id = ''; // Add this line to accept an id prop
   export let showSaveButton = false; // Add this line to control save button visibility
+  export let index; // Add this line to display the current index
 
   const dispatch = createEventDispatcher();
   let canvas;

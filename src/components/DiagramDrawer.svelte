@@ -6,6 +6,7 @@
 
   export let data = null;
   export let id = ''; // Add this line to accept an id prop
+  export let showSaveButton = false; // Add this line to control save button visibility
 
   const dispatch = createEventDispatcher();
   let canvas;
@@ -284,9 +285,9 @@
 
   export function saveDiagram() {
     const diagramData = fabricCanvas.toJSON();
+    console.log('Saving diagram:', diagramData);
     dispatch('save', diagramData);
-  }
-  
+  }  
   function preventSubmit(event) {
     event.preventDefault();
   }
@@ -304,6 +305,9 @@
   <button on:click|preventDefault={addBludger}>Add Bludger</button>
   <button on:click|preventDefault={addQuaffle}>Add Quaffle</button>
   <button on:click|preventDefault={deleteSelectedObjects}>Delete Selected</button>
+  {#if showSaveButton}
+    <button on:click|preventDefault={saveDiagram}>Save Diagram</button>
+  {/if}
 </div>
 
 <style>

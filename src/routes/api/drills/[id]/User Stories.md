@@ -102,15 +102,14 @@ src/routes/practice-plans/create/+page.svelte (new file)
 4:
 Issue: Add Break Insertion Functionality
 Description:
-Implement the ability to add breaks between drills in the practice plan.
+Implement the ability to add breaks between drills in the practice plan. Breaks should be treated as separate entities from drills, with their own properties and behavior.
 Tasks:
-Add an "Add Break" button between drill items
-Implement a function to insert a break with a default duration of 5 minutes
-Allow users to modify the break duration
-Include breaks in the drag and drop reordering functionality
-Related files:
-src/routes/practice-plans/create/+page.svelte (new file)
-
+1. Create a new Break component to represent breaks in the practice plan.
+Add an "Add Break" button between drill items in the practice plan creation page.
+Implement a function to insert a break with a default duration of 5 minutes.
+Allow users to modify the break duration directly in the practice plan.
+Include breaks in the drag and drop reordering functionality alongside drills.
+Update the plan metrics calculation to account for break durations.
 
 5:
 Issue: Implement Automatic Calculation of Plan Metrics

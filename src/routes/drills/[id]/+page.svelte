@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { writable } from 'svelte/store';
   import { page } from '$app/stores';
+  import { cart } from '$lib/stores/cartStore';
   import DiagramDrawer from '../../../components/DiagramDrawer.svelte';
 
   let drill = writable({});
@@ -77,6 +78,12 @@
       console.error(error);
     }
   }
+
+  function addDrillToPlan() {
+    cart.addDrill($drill);
+    // Show notification
+    alert('Drill added to plan');
+  }
 </script>
 
 <svelte:head>
@@ -91,6 +98,12 @@
     <a href="/drills/{$page.params.id}/edit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
       Edit Drill
     </a>
+    <button
+      on:click={addDrillToPlan}
+      class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+    >
+      Add Drill to Plan
+    </button>
   </div>
   <p>{$drill.detailed_description}</p>
   <p>Appropriate for Skill Levels: {$drill.skill_level}</p>

@@ -1,12 +1,16 @@
 <script>
   import { onMount } from 'svelte';
   import { writable } from 'svelte/store';
+  import { cart } from '$lib/stores/cartStore';
+  import { goto } from '$app/navigation';
+  import { toast } from '@zerodevx/svelte-toast';
 
   let drills = writable([]);
   let skillLevels = writable([]);
   let positions = writable([]);
   let selectedSkillLevel = writable('');
   let selectedPosition = writable('');
+  let selectedDrills = writable([]);
 
   onMount(async () => {
     const response = await fetch('/api/drills');
@@ -37,15 +41,44 @@
       );
     });
   }
+
+  function toggleDrillSelection(drill) {
+    selectedDrills.update(drills => {
+      if (drills.some(d => d.id === drill.id)) {
+        return drills.filter(d => d.id !== drill.id);
+      } else {
+        return [...drills, drill];
+      }
+    });
+  }
+
+  function addSelectedDrillsToPlan() {
+    $selectedDrills.forEach(drill => {
+      cart.addDrill(drill);
+    });
+    selectedDrills.set([]);
+    toast.push('Selected drills added to plan');
+  }
+
+  function createPlan() {
+    $selectedDrills.forEach(drill => {
+      cart.addDrill(drill);
+    });
+    cart.saveToStorage($cart);
+    selectedDrills.set([]);
+    goto('/practice-plans/create');
+  }
+
+  $: selectedDrillCount = $selectedDrills.length;
 </script>
 
 <svelte:head>
-  <title>Drill Listing</title>
+  <title>Drills</title>
   <meta name="description" content="List of all drills" />
 </svelte:head>
 
-<section class="container mx-auto p-4">
-  <h1 class="text-2xl font-bold text-center mb-4">Drill Listing</h1>
+<section>
+  <h1>Drills</h1>
 
   <div class="sticky top-0 bg-white z-10">
     <div class="flex overflow-x-auto space-x-4 py-2">
@@ -71,10 +104,34 @@
     </div>
   </div>
 
+  {#if selectedDrillCount > 0}
+    <div class="fixed bottom-4 right-4 flex flex-col space-y-2">
+      <button
+        on:click={addSelectedDrillsToPlan}
+        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+      >
+        Add Selected Drills to Plan ({selectedDrillCount})
+      </button>
+      <button
+        on:click={createPlan}
+        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+      >
+        Create Plan with Selected {selectedDrillCount} Drill{selectedDrillCount !== 1 ? 's' : ''}
+      </button>
+    </div>
+  {/if}
+
   <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4 overflow-y-auto">
     {#each filterDrills($drills, $selectedSkillLevel, $selectedPosition) as drill}
       <div class="bg-white shadow-md rounded-lg p-4">
-        <a href={`/drills/${drill.id}`} class="text-lg font-semibold text-indigo-600 hover:underline">{drill.name}</a>
+        <div class="flex items-center justify-between">
+          <a href={`/drills/${drill.id}`} class="text-lg font-semibold text-indigo-600 hover:underline">{drill.name}</a>
+          <input
+            type="checkbox"
+            checked={$selectedDrills.some(d => d.id === drill.id)}
+            on:change={() => toggleDrillSelection(drill)}
+          />
+        </div>
         <p class="mt-2 text-gray-600">{drill.brief_description}</p>
       </div>
     {/each}

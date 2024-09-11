@@ -48,14 +48,45 @@ src/routes/+layout.svelte (update navigation)
 
 
 2:
-Issue: Implement Drill Selection Functionality
+Issue: Implement Drill Selection and Cart Functionality
 Description:
-Add the ability to select drills from the drill listing page and store them temporarily for creating a practice plan.
+Add the ability to select drills from both the drill listing page and the drill details page, and implement a cart system for creating a practice plan.
+
 Tasks:
-Add checkboxes next to each drill in the drill listing page
-Implement a "Create Plan with Selected Drills" button that appears when at least one drill is selected
-Create a store to temporarily hold selected drills
-Redirect to the practice plan creation page when the button is clicked
+1. Drill Listing Page:
+   - Add checkboxes next to each drill in the drill listing page
+   - Implement a "Add Selected Drills to Plan" button that appears when at least one drill is selected
+
+2. Drill Details Page:
+   - Add an "Add Drill to Plan" button on the drill details page
+
+3. Cart Functionality:
+   - Create a store to temporarily hold selected drills
+   - Implement a shopping cart symbol in the top right of the page
+   - Create an expandable cart view that shows selected drill titles
+   - Add the ability to remove drills from the cart
+
+4. Create Plan Button:
+   - Implement a "Create Plan with Selected [number] Drills" button at the top of the page
+   - Update the button text dynamically based on the number of selected drills
+
+5. Navigation:
+   - Redirect to the practice plan creation page when the "Create Plan" button is clicked
+
+6. User Feedback:
+   - Provide visual feedback when drills are added to or removed from the cart
+   - Show a notification or animation when the cart is updated
+
+7. Persistence:
+   - Implement local storage to persist selected drills between page reloads
+
+Related files:
+- src/routes/drills/+page.svelte (update drill listing page)
+- src/routes/drills/[id]/+page.svelte (update drill details page)
+- src/lib/stores/cartStore.js (new file for cart store)
+- src/components/Cart.svelte (new component for cart functionality)
+- src/routes/+layout.svelte (update to include cart symbol)
+
 
 3:
 Issue: Implement Drag and Drop for Drill Reordering

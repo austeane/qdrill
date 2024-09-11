@@ -4,6 +4,7 @@
 	import { webVitals } from '$lib/vitals';
 	import Header from './Header.svelte';
 	import './styles.css';
+	import Cart from '../components/Cart.svelte';
 
 	/** @type {import('./$types').LayoutServerData} */
 	export let data;
@@ -28,6 +29,8 @@
 		<slot />
 	</main>
 </div>
+
+<Cart />
 
 <style>
 	.app {

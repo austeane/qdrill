@@ -26,6 +26,9 @@ importers:
       '@vercel/postgres':
         specifier: ^0.9.0
         version: 0.9.0
+      '@zerodevx/svelte-toast':
+        specifier: ^0.9.5
+        version: 0.9.5(svelte@4.2.19)
       aws-sdk:
         specifier: ^2.1683.0
         version: 2.1683.0
@@ -41,6 +44,9 @@ importers:
       pg:
         specifier: ^8.12.0
         version: 8.12.0
+      svelte-dnd-action:
+        specifier: ^0.9.50
+        version: 0.9.50(svelte@4.2.19)
       svelte-forms-lib:
         specifier: ^2.0.1
         version: 2.0.1
@@ -546,6 +552,11 @@ packages:
 
   '@vitest/utils@2.0.5':
     resolution: {integrity: sha512-d8HKbqIcya+GR67mkZbrzhS5kKhtp8dQLcmRZLGTscGVg7yImT82cIrhtn2L8+VujWcy6KZweApgNmPsTAO/UQ==}
+
+  '@zerodevx/svelte-toast@0.9.5':
+    resolution: {integrity: sha512-JLeB/oRdJfT+dz9A5bgd3Z7TuQnBQbeUtXrGIrNWMGqWbabpepBF2KxtWVhL2qtxpRqhae2f6NAOzH7xs4jUSw==}
+    peerDependencies:
+      svelte: ^3.57.0 || ^4.0.0
 
   abab@2.0.6:
     resolution: {integrity: sha512-j2afSsaIENvHZN2B8GOpF566vZ5WVk5opAiMTvWgaQT8DkbOqsTfvNAvHoRGU2zzP8cPoqys+xHTRDWW8L+/BA==}
@@ -2356,6 +2367,11 @@ packages:
     peerDependencies:
       svelte: ^3.55.0 || ^4.0.0-next.0 || ^4.0.0 || ^5.0.0-next.0
 
+  svelte-dnd-action@0.9.50:
+    resolution: {integrity: sha512-EnUyBmiMjflGr+NKfPmPpyareKEbQkdVGRTv6YyBHIEXPOv92XHgPHubErQ1tOaXaZ2c7y4Gja85uA1/Desw/Q==}
+    peerDependencies:
+      svelte: '>=3.23.0 || ^5.0.0-next.0'
+
   svelte-eslint-parser@0.41.0:
     resolution: {integrity: sha512-L6f4hOL+AbgfBIB52Z310pg1d2QjRqm7wy3kI1W6hhdhX5bvu7+f0R6w4ykp5HoDdzq+vGhIJmsisaiJDGmVfA==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
@@ -3189,6 +3205,10 @@ snapshots:
       estree-walker: 3.0.3
       loupe: 3.1.1
       tinyrainbow: 1.2.0
+
+  '@zerodevx/svelte-toast@0.9.5(svelte@4.2.19)':
+    dependencies:
+      svelte: 4.2.19
 
   abab@2.0.6:
     optional: true
@@ -5086,6 +5106,10 @@ snapshots:
       - sass
       - stylus
       - sugarss
+
+  svelte-dnd-action@0.9.50(svelte@4.2.19):
+    dependencies:
+      svelte: 4.2.19
 
   svelte-eslint-parser@0.41.0(svelte@4.2.19):
     dependencies:

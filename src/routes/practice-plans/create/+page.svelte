@@ -3,7 +3,8 @@
   import { writable } from 'svelte/store';
   import { cart } from '$lib/stores/cartStore';
   import { dndzone } from 'svelte-dnd-action';
-  import { ChevronDownIcon, ChevronUpIcon } from 'svelte-feather-icons';
+  import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon } from 'svelte-feather-icons';
+  import DiagramDrawer from '../../../components/DiagramDrawer.svelte';
 
   let planName = writable('');
   let planDescription = writable('');
@@ -13,6 +14,8 @@
   let playerRange = writable({ min: 0, max: 0 });
   let skillLevelRange = writable({ min: 0, max: 0 });
   let complexityDistribution = writable({ low: 0, medium: 0, high: 0 });
+
+  let currentDiagramIndex = writable({});
 
   onMount(() => {
     cart.loadFromStorage();
@@ -116,6 +119,24 @@
     }
   }
 
+  function nextDiagram(drillIndex) {
+    currentDiagramIndex.update(indices => {
+      const current = indices[drillIndex] || 0;
+      const max = $selectedItems[drillIndex].diagrams.length - 1;
+      indices[drillIndex] = current < max ? current + 1 : 0;
+      return indices;
+    });
+  }
+
+  function prevDiagram(drillIndex) {
+    currentDiagramIndex.update(indices => {
+      const current = indices[drillIndex] || 0;
+      const max = $selectedItems[drillIndex].diagrams.length - 1;
+      indices[drillIndex] = current > 0 ? current - 1 : max;
+      return indices;
+    });
+  }
+
   $: {
     calculateMetrics();
   }
@@ -172,18 +193,39 @@
             <button on:click={() => removeItem(index)} class="text-red-600 hover:text-red-800">Remove</button>
           </div>
           {#if item.type === 'drill' && item.expanded}
-            <div class="mt-2 p-2 bg-gray-50 rounded">
-              {#if item.brief_description}<p><strong>Brief Description:</strong> {item.brief_description}</p>{/if}
-              {#if item.detailed_description}<p><strong>Detailed Description:</strong> {item.detailed_description}</p>{/if}
-              {#if item.skill_level}<p><strong>Skill Level:</strong> {Array.isArray(item.skill_level) ? item.skill_level.join(', ') : item.skill_level}</p>{/if}
-              {#if item.complexity}<p><strong>Complexity:</strong> {item.complexity}</p>{/if}
-              {#if item.number_of_people?.min && item.number_of_people?.max}
-                <p><strong>Number of People:</strong> {item.number_of_people.min} - {item.number_of_people.max}</p>
-              {/if}
-              {#if item.skills_focused_on}<p><strong>Skills Focused On:</strong> {Array.isArray(item.skills_focused_on) ? item.skills_focused_on.join(', ') : item.skills_focused_on}</p>{/if}
-              {#if item.positions_focused_on}<p><strong>Positions Focused On:</strong> {Array.isArray(item.positions_focused_on) ? item.positions_focused_on.join(', ') : item.positions_focused_on}</p>{/if}
-              {#if item.video_link}
-                <p><strong>Video Link:</strong> <a href={item.video_link} target="_blank" rel="noopener noreferrer">Watch Video</a></p>
+            <div class="mt-2 p-2 bg-gray-50 rounded flex">
+              <div class="flex-1">
+                {#if item.brief_description}<p><strong>Brief Description:</strong> {item.brief_description}</p>{/if}
+                {#if item.detailed_description}<p><strong>Detailed Description:</strong> {item.detailed_description}</p>{/if}
+                {#if item.skill_level}<p><strong>Skill Level:</strong> {Array.isArray(item.skill_level) ? item.skill_level.join(', ') : item.skill_level}</p>{/if}
+                {#if item.complexity}<p><strong>Complexity:</strong> {item.complexity}</p>{/if}
+                {#if item.number_of_people?.min && item.number_of_people?.max}
+                  <p><strong>Number of People:</strong> {item.number_of_people.min} - {item.number_of_people.max}</p>
+                {/if}
+                {#if item.skills_focused_on}<p><strong>Skills Focused On:</strong> {Array.isArray(item.skills_focused_on) ? item.skills_focused_on.join(', ') : item.skills_focused_on}</p>{/if}
+                {#if item.positions_focused_on}<p><strong>Positions Focused On:</strong> {Array.isArray(item.positions_focused_on) ? item.positions_focused_on.join(', ') : item.positions_focused_on}</p>{/if}
+                {#if item.video_link}
+                  <p><strong>Video Link:</strong> <a href={item.video_link} target="_blank" rel="noopener noreferrer">Watch Video</a></p>
+                {/if}
+              </div>
+              {#if item.diagrams && item.diagrams.length > 0}
+                <div class="flex-1 ml-4">
+                  <div class="relative">
+                    <DiagramDrawer data={item.diagrams[$currentDiagramIndex[index] || 0]} showSaveButton={false} />
+                    {#if item.diagrams.length > 1}
+                      <div class="absolute top-1/2 left-0 transform -translate-y-1/2">
+                        <button on:click={() => prevDiagram(index)} class="bg-gray-200 rounded-full p-1">
+                          <ChevronLeftIcon size="20" />
+                        </button>
+                      </div>
+                      <div class="absolute top-1/2 right-0 transform -translate-y-1/2">
+                        <button on:click={() => nextDiagram(index)} class="bg-gray-200 rounded-full p-1">
+                          <ChevronRightIcon size="20" />
+                        </button>
+                      </div>
+                    {/if}
+                  </div>
+                </div>
               {/if}
             </div>
           {/if}

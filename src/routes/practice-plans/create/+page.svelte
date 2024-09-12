@@ -3,6 +3,7 @@
   import { writable } from 'svelte/store';
   import { cart } from '$lib/stores/cartStore';
   import { dndzone } from 'svelte-dnd-action';
+  import { ChevronDownIcon, ChevronUpIcon } from 'svelte-feather-icons';
 
   let planName = writable('');
   let planDescription = writable('');
@@ -15,7 +16,7 @@
 
   onMount(() => {
     cart.loadFromStorage();
-    selectedItems.set($cart.map(drill => ({ ...drill, type: 'drill' })));
+    selectedItems.set($cart.map(drill => ({ ...drill, type: 'drill', expanded: false })));
   });
 
   function handleDndConsider(e) {
@@ -62,34 +63,65 @@
     let minSkillLevel = Infinity;
     let maxSkillLevel = 0;
     let complexityCount = { low: 0, medium: 0, high: 0 };
+    let totalDrills = 0;
 
     $selectedItems.forEach(item => {
       if (item.type === 'drill') {
-        totalTime += parseInt(item.suggested_length);
-        minPlayers = Math.min(minPlayers, item.number_of_people_min);
-        maxPlayers = Math.max(maxPlayers, item.number_of_people_max);
-        minSkillLevel = Math.min(minSkillLevel, item.skill_level);
-        maxSkillLevel = Math.max(maxSkillLevel, item.skill_level);
+        const suggestedLength = parseInt(item.suggested_length.split('-')[1]) || 0;
+        totalTime += suggestedLength;
+        minPlayers = Math.min(minPlayers, parseInt(item.number_of_people?.min) || Infinity);
+        maxPlayers = Math.max(maxPlayers, parseInt(item.number_of_people?.max) || 0);
+        item.skill_level.forEach(level => {
+          const levelValue = getSkillLevelValue(level);
+          minSkillLevel = Math.min(minSkillLevel, levelValue);
+          maxSkillLevel = Math.max(maxSkillLevel, levelValue);
+        });
         complexityCount[item.complexity.toLowerCase()]++;
-      } else {
-        totalTime += item.duration;
+        totalDrills++;
+      } else if (item.type === 'break') {
+        totalTime += parseInt(item.duration) || 0;
       }
     });
 
     estimatedTime.set(totalTime);
-    playerRange.set({ min: minPlayers, max: maxPlayers });
-    skillLevelRange.set({ min: minSkillLevel, max: maxSkillLevel });
+    playerRange.set({ min: minPlayers === Infinity ? 0 : minPlayers, max: maxPlayers });
+    skillLevelRange.set({ min: minSkillLevel === Infinity ? 0 : minSkillLevel, max: maxSkillLevel });
     complexityDistribution.set({
-      low: (complexityCount.low / $selectedItems.length) * 100,
-      medium: (complexityCount.medium / $selectedItems.length) * 100,
-      high: (complexityCount.high / $selectedItems.length) * 100
+      low: totalDrills > 0 ? (complexityCount.low / totalDrills) * 100 : 0,
+      medium: totalDrills > 0 ? (complexityCount.medium / totalDrills) * 100 : 0,
+      high: totalDrills > 0 ? (complexityCount.high / totalDrills) * 100 : 0
     });
   }
+  
+  function getSkillLevelValue(level) {
+  const levels = ['new to sport', 'beginner', 'intermediate', 'advanced', 'elite'];
+    return levels.indexOf(level.toLowerCase());
+  }
 
-  $: calculateMetrics();
+  function getSkillLevelName(value) {
+    const levels = ['New to Sport', 'Beginner', 'Intermediate', 'Advanced', 'Elite'];
+    return levels[value] || '';
+  }
+
+  function toggleExpand(index) {
+    try {
+      console.log('Toggling item:', $selectedItems[index]);
+      selectedItems.update(items => {
+        const updatedItems = [...items];
+        updatedItems[index].expanded = !updatedItems[index].expanded;
+        return updatedItems;
+      });
+    } catch (error) {
+      console.error('Error toggling expand:', error);
+    }
+  }
+
+  $: {
+    calculateMetrics();
+  }
 
   $: totalDuration = $selectedItems.reduce((total, item) => {
-    return total + (item.type === 'drill' ? parseInt(item.suggested_length) : item.duration);
+    return total + (item.type === 'drill' ? parseInt(item.suggested_length.split('-')[1]) : item.duration);
   }, 0);
 </script>
 
@@ -114,7 +146,19 @@
           <div class="flex justify-between items-center bg-gray-100 p-2 rounded cursor-move">
             {#if item.type === 'drill'}
               <span>{item.name}</span>
-              <span>{item.suggested_length} minutes</span>
+              <div class="flex items-center">
+                <span>{item.suggested_length} minutes</span>
+                <button
+                  on:click={() => toggleExpand(index)}
+                  class="ml-2 p-1 rounded-full hover:bg-gray-200"
+                >
+                  {#if item.expanded}
+                    <ChevronUpIcon size="20" />
+                  {:else}
+                    <ChevronDownIcon size="20" />
+                  {/if}
+                </button>
+              </div>
             {:else}
               <span>Break</span>
               <input
@@ -127,6 +171,22 @@
             {/if}
             <button on:click={() => removeItem(index)} class="text-red-600 hover:text-red-800">Remove</button>
           </div>
+          {#if item.type === 'drill' && item.expanded}
+            <div class="mt-2 p-2 bg-gray-50 rounded">
+              {#if item.brief_description}<p><strong>Brief Description:</strong> {item.brief_description}</p>{/if}
+              {#if item.detailed_description}<p><strong>Detailed Description:</strong> {item.detailed_description}</p>{/if}
+              {#if item.skill_level}<p><strong>Skill Level:</strong> {Array.isArray(item.skill_level) ? item.skill_level.join(', ') : item.skill_level}</p>{/if}
+              {#if item.complexity}<p><strong>Complexity:</strong> {item.complexity}</p>{/if}
+              {#if item.number_of_people?.min && item.number_of_people?.max}
+                <p><strong>Number of People:</strong> {item.number_of_people.min} - {item.number_of_people.max}</p>
+              {/if}
+              {#if item.skills_focused_on}<p><strong>Skills Focused On:</strong> {Array.isArray(item.skills_focused_on) ? item.skills_focused_on.join(', ') : item.skills_focused_on}</p>{/if}
+              {#if item.positions_focused_on}<p><strong>Positions Focused On:</strong> {Array.isArray(item.positions_focused_on) ? item.positions_focused_on.join(', ') : item.positions_focused_on}</p>{/if}
+              {#if item.video_link}
+                <p><strong>Video Link:</strong> <a href={item.video_link} target="_blank" rel="noopener noreferrer">Watch Video</a></p>
+              {/if}
+            </div>
+          {/if}
           {#if index < $selectedItems.length - 1}
             <div class="relative">
               <hr class="my-2 border-gray-300" />
@@ -145,34 +205,30 @@
 
   <div class="mb-4">
     <h2 class="text-xl font-semibold mb-2">Plan Metrics</h2>
-    <div class="mb-2">
-      <label for="estimatedTime" class="block text-sm font-medium text-gray-700">Estimated Time:</label>
-      <input id="estimatedTime" type="number" bind:value={$estimatedTime} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-    </div>
-    <div class="mb-2">
-      <label for="playerRange" class="block text-sm font-medium text-gray-700">Player Range:</label>
-      <input id="playerRangeMin" type="number" bind:value={$playerRange.min} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-      <input id="playerRangeMax" type="number" bind:value={$playerRange.max} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-    </div>
-    <div class="mb-2">
-      <label for="skillLevelRange" class="block text-sm font-medium text-gray-700">Skill Level Range:</label>
-      <input id="skillLevelRangeMin" type="number" bind:value={$skillLevelRange.min} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-      <input id="skillLevelRangeMax" type="number" bind:value={$skillLevelRange.max} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-    </div>
-    <div class="mb-2">
-      <label for="complexityDistribution" class="block text-sm font-medium text-gray-700">Complexity Distribution:</label>
-      <div class="flex space-x-2">
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700">Low:</label>
-          <input id="complexityLow" type="number" bind:value={$complexityDistribution.low} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label for="estimatedTime" class="block text-sm font-medium text-gray-700">Estimated Time:</label>
+        <input id="estimatedTime" type="text" readonly value={`${$estimatedTime} minutes`} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+      </div>
+      <div>
+        <label for="playerRange" class="block text-sm font-medium text-gray-700">Player Range:</label>
+        <input id="playerRange" type="text" readonly value={`${$playerRange.min} - ${$playerRange.max}`} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+      </div>
+      <div>
+        <label for="skillLevelRange" class="block text-sm font-medium text-gray-700">Skill Level Range:</label>
+        <input id="skillLevelRange" type="text" readonly value={`${getSkillLevelName($skillLevelRange.min)} - ${getSkillLevelName($skillLevelRange.max)}`} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+      </div>
+      <div>
+        <label for="complexityDistribution" class="block text-sm font-medium text-gray-700">Complexity Distribution:</label>
+        <div class="flex mt-1">
+          <div class="bg-green-500 h-4" style="width: {$complexityDistribution.low}%"></div>
+          <div class="bg-yellow-500 h-4" style="width: {$complexityDistribution.medium}%"></div>
+          <div class="bg-red-500 h-4" style="width: {$complexityDistribution.high}%"></div>
         </div>
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700">Medium:</label>
-          <input id="complexityMedium" type="number" bind:value={$complexityDistribution.medium} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-        </div>
-        <div class="flex-1">
-          <label class="block text-sm font-medium text-gray-700">High:</label>
-          <input id="complexityHigh" type="number" bind:value={$complexityDistribution.high} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+        <div class="flex justify-between text-xs mt-1">
+          <span>Low: {$complexityDistribution.low.toFixed(1)}%</span>
+          <span>Medium: {$complexityDistribution.medium.toFixed(1)}%</span>
+          <span>High: {$complexityDistribution.high.toFixed(1)}%</span>
         </div>
       </div>
     </div>

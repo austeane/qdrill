@@ -47,6 +47,9 @@ importers:
       svelte-dnd-action:
         specifier: ^0.9.50
         version: 0.9.50(svelte@4.2.19)
+      svelte-feather-icons:
+        specifier: ^4.1.0
+        version: 4.1.0
       svelte-forms-lib:
         specifier: ^2.0.1
         version: 2.0.1
@@ -2381,6 +2384,9 @@ packages:
       svelte:
         optional: true
 
+  svelte-feather-icons@4.1.0:
+    resolution: {integrity: sha512-fcTL4VzEN4BoccQJjKiui0b9DWEsmO6zGpI0tQTJbthRtNrYheoU487zyA1BD8rj9kj6jbKGmGVo7zbSdRvMvA==}
+
   svelte-forms-lib@2.0.1:
     resolution: {integrity: sha512-kwbJ3ynsepsrrJyAMrvSc0Lj/myc9vfI2DL8OKxgArZimrNYsRh1gENYhvrcKEI3BiZrv8q3VFfmGo/GMyk7Zg==}
 
@@ -2429,6 +2435,10 @@ packages:
 
   svelte-routing@2.13.0:
     resolution: {integrity: sha512-/NTxqTwLc7Dq306hARJrH2HLXOBtKd7hu8nxgoFDlK0AC4SOKnzisiX/9m8Uksei1QAWtlAEdF91YphNM8iDMg==}
+
+  svelte@3.59.2:
+    resolution: {integrity: sha512-vzSyuGr3eEoAtT/A6bmajosJZIUWySzY2CzB3w2pgPvnkUjGqlDnsNnA0PMO+mMAhuyMul6C2uuZzY6ELSkzyA==}
+    engines: {node: '>= 8'}
 
   svelte@4.2.19:
     resolution: {integrity: sha512-IY1rnGr6izd10B0A8LqsBfmlT5OILVuZ7XsI0vdGPEvuonFV7NYEUK4dAkm9Zg2q0Um92kYjTpS1CAP3Nh/KWw==}
@@ -5121,6 +5131,10 @@ snapshots:
     optionalDependencies:
       svelte: 4.2.19
 
+  svelte-feather-icons@4.1.0:
+    dependencies:
+      svelte: 3.59.2
+
   svelte-forms-lib@2.0.1:
     dependencies:
       dequal: 2.0.3
@@ -5143,6 +5157,8 @@ snapshots:
       typescript: 5.5.4
 
   svelte-routing@2.13.0: {}
+
+  svelte@3.59.2: {}
 
   svelte@4.2.19:
     dependencies:

@@ -113,19 +113,51 @@ Update the plan metrics calculation to account for break durations.
 
 5:
 Issue: Implement Automatic Calculation of Plan Metrics
+
 Description:
-Add functionality to automatically calculate and display plan metrics, with the ability for users to modify them.
+Add functionality to automatically calculate and display plan metrics for practice plans. These metrics will provide users with valuable insights about their created plans. The calculations should update dynamically as drills are added, removed, or reordered within the plan. Users should also have the ability to manually adjust these values if needed.
+
 Tasks:
-Implement functions to calculate:
-Estimated time to complete the plan
-Player range
-Skill level range
-Complexity level distribution
-Display these metrics on the practice plan creation page
-Allow users to manually adjust these values
-Update calculations when drills are added, removed, or reordered
+1. Implement calculation functions:
+   a. Estimated time to complete the plan:
+      - Sum up the suggested length of all drills and breaks in the plan
+   b. Player range:
+      - Determine the minimum and maximum number of players required across all drills
+   c. Skill level range:
+      - Identify the lowest and highest skill levels among the drills
+   d. Complexity level distribution:
+      - Calculate the percentage of drills for each complexity level (Low, Medium, High)
+
+2. Display metrics:
+   - Create a new section in the practice plan creation page to show these metrics
+   - Use appropriate UI components (e.g., progress bars, charts) to visualize the data
+
+3. Allow manual adjustments:
+   - Add input fields or sliders next to each metric for users to modify values
+   - Implement logic to handle conflicts between manual adjustments and calculated values
+
+4. Dynamic updates:
+   - Set up event listeners or reactive statements to recalculate metrics when:
+     * Drills are added to the plan
+     * Drills are removed from the plan
+     * Drills are reordered within the plan
+     * Break durations are modified
+
+5. Optimize performance:
+   - Ensure calculations are efficient and don't cause noticeable lag, especially for larger plans
+
+6. Error handling and validation:
+   - Implement checks to handle edge cases (e.g., empty plans, invalid manual inputs)
+   - Provide user feedback for any calculation errors or inconsistencies
+
 Related files:
 src/routes/practice-plans/create/+page.svelte (new file)
+
+Additional Considerations:
+- Ensure the UI is responsive and works well on both desktop and mobile devices
+- Consider adding tooltips or help text to explain each metric
+- Implement data persistence to save calculated metrics along with the practice plan
+
 
 6:
 Issue: Create API Endpoint for Saving Practice Plans

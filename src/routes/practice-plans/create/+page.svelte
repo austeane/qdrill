@@ -8,6 +8,11 @@
   let planDescription = writable('');
   let selectedItems = writable([]);
 
+  let estimatedTime = writable(0);
+  let playerRange = writable({ min: 0, max: 0 });
+  let skillLevelRange = writable({ min: 0, max: 0 });
+  let complexityDistribution = writable({ low: 0, medium: 0, high: 0 });
+
   onMount(() => {
     cart.loadFromStorage();
     selectedItems.set($cart.map(drill => ({ ...drill, type: 'drill' })));
@@ -49,6 +54,39 @@
       return updatedItems;
     });
   }
+
+  function calculateMetrics() {
+    let totalTime = 0;
+    let minPlayers = Infinity;
+    let maxPlayers = 0;
+    let minSkillLevel = Infinity;
+    let maxSkillLevel = 0;
+    let complexityCount = { low: 0, medium: 0, high: 0 };
+
+    $selectedItems.forEach(item => {
+      if (item.type === 'drill') {
+        totalTime += parseInt(item.suggested_length);
+        minPlayers = Math.min(minPlayers, item.number_of_people_min);
+        maxPlayers = Math.max(maxPlayers, item.number_of_people_max);
+        minSkillLevel = Math.min(minSkillLevel, item.skill_level);
+        maxSkillLevel = Math.max(maxSkillLevel, item.skill_level);
+        complexityCount[item.complexity.toLowerCase()]++;
+      } else {
+        totalTime += item.duration;
+      }
+    });
+
+    estimatedTime.set(totalTime);
+    playerRange.set({ min: minPlayers, max: maxPlayers });
+    skillLevelRange.set({ min: minSkillLevel, max: maxSkillLevel });
+    complexityDistribution.set({
+      low: (complexityCount.low / $selectedItems.length) * 100,
+      medium: (complexityCount.medium / $selectedItems.length) * 100,
+      high: (complexityCount.high / $selectedItems.length) * 100
+    });
+  }
+
+  $: calculateMetrics();
 
   $: totalDuration = $selectedItems.reduce((total, item) => {
     return total + (item.type === 'drill' ? parseInt(item.suggested_length) : item.duration);
@@ -103,6 +141,41 @@
         </li>
       {/each}
     </ul>
+  </div>
+
+  <div class="mb-4">
+    <h2 class="text-xl font-semibold mb-2">Plan Metrics</h2>
+    <div class="mb-2">
+      <label for="estimatedTime" class="block text-sm font-medium text-gray-700">Estimated Time:</label>
+      <input id="estimatedTime" type="number" bind:value={$estimatedTime} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+    </div>
+    <div class="mb-2">
+      <label for="playerRange" class="block text-sm font-medium text-gray-700">Player Range:</label>
+      <input id="playerRangeMin" type="number" bind:value={$playerRange.min} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+      <input id="playerRangeMax" type="number" bind:value={$playerRange.max} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+    </div>
+    <div class="mb-2">
+      <label for="skillLevelRange" class="block text-sm font-medium text-gray-700">Skill Level Range:</label>
+      <input id="skillLevelRangeMin" type="number" bind:value={$skillLevelRange.min} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+      <input id="skillLevelRangeMax" type="number" bind:value={$skillLevelRange.max} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+    </div>
+    <div class="mb-2">
+      <label for="complexityDistribution" class="block text-sm font-medium text-gray-700">Complexity Distribution:</label>
+      <div class="flex space-x-2">
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700">Low:</label>
+          <input id="complexityLow" type="number" bind:value={$complexityDistribution.low} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+        </div>
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700">Medium:</label>
+          <input id="complexityMedium" type="number" bind:value={$complexityDistribution.medium} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+        </div>
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700">High:</label>
+          <input id="complexityHigh" type="number" bind:value={$complexityDistribution.high} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="mb-4">

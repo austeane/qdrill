@@ -5,6 +5,7 @@
 	import Header from './Header.svelte';
 	import './styles.css';
 	import Cart from '../components/Cart.svelte';
+	import { SvelteToast } from '@zerodevx/svelte-toast';
 
 	/** @type {import('./$types').LayoutServerData} */
 	export let data;
@@ -31,6 +32,8 @@
 </div>
 
 <Cart />
+
+<SvelteToast />
 
 <style>
 	.app {

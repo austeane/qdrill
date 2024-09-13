@@ -161,13 +161,54 @@ Additional Considerations:
 
 6:
 Issue: Create API Endpoint for Saving Practice Plans
+
 Description:
-Implement a server-side API endpoint to save created practice plans.
+Implement a robust server-side API endpoint to save created practice plans. This endpoint will handle the creation and storage of practice plans, ensuring data integrity and providing appropriate feedback to the client.
+
 Tasks:
-Create a new API route for saving practice plans
-Implement data validation for the incoming practice plan data
-Save the practice plan data to the database
-Return appropriate success/error responses
+1. Create a new API route:
+   - Implement a POST route at `/api/practice-plans`
+   - Set up proper request handling and error catching
+
+2. Implement data validation:
+   - Validate required fields (e.g., plan name, description, drills)
+   - Ensure drill IDs exist in the database
+   - Validate data types and formats (e.g., dates, numbers)
+   - Implement sanitization to prevent XSS attacks
+
+3. Database interaction:
+   - Design and create a `practice_plans` table in the database, creating the CREATE TABLE query
+   - Implement database queries to insert new practice plan data
+   - Handle potential database errors and constraints
+
+4. Response handling:
+   - Return a 201 status code with the created practice plan data on success
+   - Return appropriate error codes (400 for bad requests, 500 for server errors)
+   - Provide detailed error messages for easier client-side debugging
+
+5. Logging and monitoring:
+   - Implement logging for successful creations and errors
+   - Log what query is being ran on the db for insertion
+   - Set up performance monitoring for the endpoint
+
+6. Testing:
+   - Write unit tests for the API endpoint
+   - Create integration tests to ensure proper database interaction
+
+7. Documentation:
+   - Document the API endpoint, including request format and possible responses
+   - Update any relevant API documentation or swagger files
+
+Additional Considerations:
+- Implement rate limiting to prevent abuse
+- Consider adding authentication to restrict access to authorized users only
+- Ensure the endpoint follows RESTful principles
+- Optimize database queries for performance
+
+Related files:
+- src/routes/api/practice-plans/+server.js (new file)
+- src/lib/db.js (update to include practice plan related queries)
+- tests/api/practice-plans.test.js (new file for testing)
 
 7:
 Issue: Implement Form Submission and Error Handling

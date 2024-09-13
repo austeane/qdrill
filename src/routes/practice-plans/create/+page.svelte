@@ -5,17 +5,19 @@
   import { dndzone } from 'svelte-dnd-action';
   import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon } from 'svelte-feather-icons';
   import DiagramDrawer from '../../../components/DiagramDrawer.svelte';
+  import { goto } from '$app/navigation';
+  import { toast } from '@zerodevx/svelte-toast';
 
   let planName = writable('');
   let planDescription = writable('');
   let selectedItems = writable([]);
-
   let estimatedTime = writable(0);
   let playerRange = writable({ min: 0, max: 0 });
   let skillLevelRange = writable({ min: 0, max: 0 });
   let complexityDistribution = writable({ low: 0, medium: 0, high: 0 });
-
   let currentDiagramIndex = writable({});
+  let isSubmitting = writable(false);
+  let errors = writable({});
 
   onMount(() => {
     cart.loadFromStorage();
@@ -30,13 +32,53 @@
     selectedItems.set(e.detail.items);
   }
 
-  function submitPlan() {
-    // Placeholder for submit logic
-    console.log('Plan submitted:', {
+  async function submitPlan() {
+    errors.set({});
+    if (!$planName) {
+      errors.update(e => ({ ...e, planName: 'Plan name is required' }));
+      return;
+    }
+    if ($selectedItems.length === 0) {
+      errors.update(e => ({ ...e, selectedItems: 'At least one drill or break is required' }));
+      return;
+    }
+
+    isSubmitting.set(true);
+    const planData = {
       name: $planName,
       description: $planDescription,
-      items: $selectedItems
-    });
+      items: $selectedItems,
+      estimatedTime: $estimatedTime,
+      playerRange: $playerRange,
+      skillLevelRange: $skillLevelRange,
+      complexityDistribution: $complexityDistribution
+    };
+
+    try {
+      const response = await fetch('/api/practice-plans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(planData)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.push('Practice plan created successfully');
+        goto(`/practice-plans/${data.id}`);
+      } else {
+        const errorData = await response.json();
+        errors.set(errorData.errors || { general: 'An error occurred while creating the practice plan' });
+        toast.push('Failed to create practice plan', { theme: { '--toastBackground': 'red' } });
+      }
+    } catch (error) {
+      console.error('Error submitting practice plan:', error);
+      errors.set({ general: 'An unexpected error occurred' });
+      toast.push('An unexpected error occurred', { theme: { '--toastBackground': 'red' } });
+    } finally {
+      isSubmitting.set(false);
+    }
   }
 
   function removeItem(index) {
@@ -152,6 +194,9 @@
   <div class="mb-4">
     <label for="planName" class="block text-sm font-medium text-gray-700">Plan Name:</label>
     <input id="planName" bind:value={$planName} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+    {#if $errors.planName}
+      <p class="text-red-500 text-sm mt-1">{$errors.planName}</p>
+    {/if}
   </div>
 
   <div class="mb-4">
@@ -280,7 +325,19 @@
     <p class="text-lg font-semibold">Total Duration: {totalDuration} minutes</p>
   </div>
 
-  <button on:click={submitPlan} class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-    Create Plan
+  {#if $errors.selectedItems}
+    <p class="text-red-500 text-sm mb-2">{$errors.selectedItems}</p>
+  {/if}
+
+  {#if $errors.general}
+    <p class="text-red-500 text-sm mb-2">{$errors.general}</p>
+  {/if}
+
+  <button 
+    on:click={submitPlan} 
+    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+    disabled={$isSubmitting}
+  >
+    {$isSubmitting ? 'Creating Plan...' : 'Create Plan'}
   </button>
 </div>

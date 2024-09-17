@@ -9,5 +9,11 @@ export default defineConfig({
 	optimizeDeps: {
 		include: ['@sveltejs/kit', '@sveltejs/adapter-vercel'],
 		exclude: ['@mapbox/node-pre-gyp']
+	},
+	resolve: {
+		alias: {
+			$components: '/src/components',
+			$lib: '/src/lib'
+		}
 	}
 });

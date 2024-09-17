@@ -32,6 +32,9 @@ importers:
       aws-sdk:
         specifier: ^2.1691.0
         version: 2.1691.0
+      csv-parse:
+        specifier: ^5.5.6
+        version: 5.5.6
       fabric:
         specifier: ^6.4.2
         version: 6.4.2(bufferutil@4.0.8)
@@ -918,6 +921,9 @@ packages:
   cssstyle@4.1.0:
     resolution: {integrity: sha512-h66W1URKpBS5YMI/V8PyXvTMFT8SupJ1IzoIV8IeBC/ji8WVmrO8dGlTi+2dh6whmdk6BiKJLD/ZBkhWbcg6nA==}
     engines: {node: '>=18'}
+
+  csv-parse@5.5.6:
+    resolution: {integrity: sha512-uNpm30m/AGSkLxxy7d9yRXpJQFrZzVWLFBkS+6ngPcZkw/5k3L/jjFuj7tVnEpRn+QgmiXr21nDlhCiUK4ij2A==}
 
   cypress@13.14.2:
     resolution: {integrity: sha512-lsiQrN17vHMB2fnvxIrKLAjOr9bPwsNbPZNrWf99s4u+DVmCY6U+w7O3GGG9FvP4EUVYaDu+guWeNLiUzBrqvA==}
@@ -3475,6 +3481,8 @@ snapshots:
     dependencies:
       rrweb-cssom: 0.7.1
     optional: true
+
+  csv-parse@5.5.6: {}
 
   cypress@13.14.2:
     dependencies:

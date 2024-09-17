@@ -67,7 +67,6 @@ export async function POST({ request }) {
         return json({ error: 'An error occurred while creating the drill', details: error.toString() }, { status: 500 });
     }
 }
-
 export async function GET() {
     try {
         const result = await client.query('SELECT * FROM drills');
@@ -83,7 +82,6 @@ export async function GET() {
         return json({ error: 'Failed to retrieve drills', details: error.toString() }, { status: 500 });
     }
 }
-
 export async function PUT({ request }) {
   const drill = await request.json();
   let { id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images, diagrams } = drill;

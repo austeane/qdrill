@@ -25,6 +25,9 @@
 			<li aria-current={$page.url.pathname === '/drills/create' ? 'page' : undefined}>
 				<a href="/drills/create">Drill Creation</a>
 			</li>
+			<li aria-current={$page.url.pathname === '/drills/bulk-upload' ? 'page' : undefined}>
+				<a href="/drills/bulk-upload">Bulk Drill Upload</a>
+			</li>
 			<li aria-current={$page.url.pathname === '/practice-plans' ? 'page' : undefined}>
 				<a href="/practice-plans">Practice Plans</a>
 			</li>

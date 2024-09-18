@@ -54,11 +54,24 @@ function parseDrill(record) {
     skills_focused_on: parseArray(record['Skills Focused On']),
     positions_focused_on: parseArray(record['Positions Focused On']),
     video_link: record['Video Link'],
+    diagrams: parseDiagrams(record['Diagrams']), // Add this line
     errors: []
   };
 
   validateDrill(drill);
   return drill;
+}
+
+// Add this new function to parse diagrams
+function parseDiagrams(diagramsString) {
+  if (!diagramsString) return [];
+  try {
+    const diagrams = JSON.parse(diagramsString);
+    return Array.isArray(diagrams) ? diagrams : [diagrams];
+  } catch (error) {
+    console.error('Error parsing diagrams:', error);
+    return [];
+  }
 }
 
 function parseArray(value = '') {

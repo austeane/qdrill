@@ -35,8 +35,20 @@ export async function POST({ request }) {
           skills_focused_on,
           positions_focused_on,
           video_link,
-          diagram
+          images,
+          diagrams
         } = drill;
+
+        // Process diagrams
+        let processedDiagrams = diagrams;
+
+        // Ensure diagrams is an array
+        if (!Array.isArray(processedDiagrams)) {
+          processedDiagrams = diagrams ? [diagrams] : [];
+        }
+
+        // Stringify each diagram object for storage in the database
+        processedDiagrams = processedDiagrams.map(diagram => JSON.stringify(diagram));
 
         return client.query(
           `INSERT INTO drills (
@@ -51,9 +63,10 @@ export async function POST({ request }) {
             skills_focused_on,
             positions_focused_on,
             video_link,
-            images
+            images,
+            diagrams
           ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
           )`,
           [
             name,
@@ -67,7 +80,8 @@ export async function POST({ request }) {
             skills_focused_on,
             positions_focused_on,
             video_link || null,
-            diagram ? [diagram] : []
+            images || [],
+            processedDiagrams
           ]
         );
       });
@@ -79,12 +93,12 @@ export async function POST({ request }) {
     } catch (error) {
       await client.query('ROLLBACK');
       console.error('Error importing drills:', error);
-      return json({ error: 'Failed to import drills' }, { status: 500 });
+      return json({ error: 'Failed to import drills', details: error.toString() }, { status: 500 });
     } finally {
       client.release();
     }
   } catch (error) {
     console.error('Error processing import request:', error);
-    return json({ error: 'Invalid request payload' }, { status: 400 });
+    return json({ error: 'Invalid request payload', details: error.toString() }, { status: 400 });
   }
 }

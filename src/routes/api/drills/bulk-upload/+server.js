@@ -38,31 +38,30 @@ export async function POST({ request }) {
 
 function parseDrill(record) {
   const drill = {
-    name: record.name,
-    brief_description: record.brief_description,
-    detailed_description: record.detailed_description,
-    skill_level: parseArray(record.skill_level),
-    complexity: record.complexity,
+    name: record['Name'],
+    brief_description: record['Brief Description'],
+    detailed_description: record['Detailed Description'],
+    skill_level: parseArray(record['Skill Level']),
+    complexity: record['Complexity'],
     suggested_length: {
-      min: parseInt(record.suggested_length_min),
-      max: parseInt(record.suggested_length_max)
+      min: parseInt(record['Suggested Length Min']),
+      max: parseInt(record['Suggested Length Max'])
     },
     number_of_people: {
-      min: parseInt(record.number_of_people_min),
-      max: parseInt(record.number_of_people_max)
+      min: parseInt(record['Number of People Min']),
+      max: parseInt(record['Number of People Max'])
     },
-    skills_focused_on: parseArray(record.skills_focused_on),
-    positions_focused_on: parseArray(record.positions_focused_on),
-    video_link: record.video_link,
+    skills_focused_on: parseArray(record['Skills Focused On']),
+    positions_focused_on: parseArray(record['Positions Focused On']),
+    video_link: record['Video Link'],
     errors: []
   };
 
   validateDrill(drill);
-
   return drill;
 }
 
-function parseArray(value) {
+function parseArray(value = '') {
   return value.split(',').map(item => item.trim());
 }
 

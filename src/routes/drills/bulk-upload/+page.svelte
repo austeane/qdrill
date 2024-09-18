@@ -239,13 +239,17 @@
     }
   
     function saveDiagram(event) {
-      const { diagramData } = event.detail;
-      parsedDrills.update((drills) => {
-        drills[currentDrillIndex].diagram = diagramData;
-        return drills;
-      });
-      showDiagramDrawer = false;
-    }
+       const { diagramData } = event.detail;
+       parsedDrills.update((drills) => {
+         const drill = drills[currentDrillIndex];
+         if (!Array.isArray(drill.diagrams)) {
+           drill.diagrams = [];
+         }
+         drill.diagrams.push(diagramData);
+         return drills;
+       });
+       showDiagramDrawer = false;
+     }
   
     $: validDrillsCount = $parsedDrills.filter(drill => drill.errors.length === 0).length;
   </script>

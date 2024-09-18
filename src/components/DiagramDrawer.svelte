@@ -5,18 +5,30 @@
   const bludgerUrl = '/images/bludger.webp';
 
   export let data = null;
-  export let id = ''; // Add this line to accept an id prop
-  export let showSaveButton = false; // Add this line to control save button visibility
-  export let index; // Add this line to display the current index
+  export let id = '';
+  export let showSaveButton = false;
+  export let index;
 
   const dispatch = createEventDispatcher();
   let canvas;
   let fabricCanvas;
   let lastAddedPosition = { x: 100, y: 100 };
 
-  let ballSize = 20; // Adjust this value to change the size of the balls
-  let ballStartX = 60; // Starting X position for the balls
-  let ballY = 130; // Y position for all balls
+  let ballSize = 20;
+  let ballStartX = 60;
+  let ballY = 130;
+
+  function updateLastAddedPosition() {
+    // Update the position for the next added player
+    lastAddedPosition.x += 50;
+    if (lastAddedPosition.x > fabricCanvas.width - 50) {
+      lastAddedPosition.x = 50;
+      lastAddedPosition.y += 50;
+    }
+    if (lastAddedPosition.y > fabricCanvas.height - 50) {
+      lastAddedPosition.y = 50;
+    }
+  }
 
   onMount(() => {
     fabricCanvas = new fabric.Canvas(canvas, {
@@ -25,11 +37,13 @@
       backgroundColor: '#f0f0f0'
     });
 
-    if (data) {
+    if (data && Object.keys(data).length > 0) {
+      // Load existing diagram data
       fabricCanvas.loadFromJSON(data, () => {
         fabricCanvas.renderAll();
       });
     } else {
+      // Create a new diagram with default shapes
       addStandardShapes();
       addPlayers();
       addInitialBalls();
@@ -43,9 +57,6 @@
 
     fabricCanvas.renderAll();
 
-    // FIXME: This is a suboptimal solution to force a rerender after a delay.
-    // It's implemented as a last resort due to persistent rendering issues.
-    // Investigate root cause and replace with a more robust solution when possible.
     setTimeout(() => {
       fabricCanvas.renderAll();
     }, 100);
@@ -133,7 +144,7 @@
       fabricImage.scale(ballSize / Math.max(img.width, img.height));
       fabricCanvas.add(fabricImage);
       fabricCanvas.renderAll();
-      ballStartX += ballSize + 3; // Move the next ball position
+      ballStartX += ballSize + 3;
     };
     img.onerror = function() {
       console.error('Failed to load quaffle image');
@@ -144,7 +155,7 @@
   function addBludger() {
     const img = new Image();
     img.onload = function() {
-      const bludgerSize = ballSize * 2; // Make bludgers twice as big
+      const bludgerSize = ballSize * 2;
       const fabricImage = new fabric.Image(img, {
         left: ballStartX,
         top: ballY,
@@ -156,7 +167,7 @@
       fabricImage.scale(bludgerSize / Math.max(img.width, img.height));
       fabricCanvas.add(fabricImage);
       fabricCanvas.renderAll();
-      ballStartX += bludgerSize + 3; // Adjust spacing based on new size
+      ballStartX += bludgerSize + 3;
     };
     img.onerror = function() {
       console.error('Failed to load bludger image');
@@ -168,7 +179,7 @@
     for (let i = 0; i < 3; i++) {
       addBludger();
     }
-    ballStartX += 10; // Add a little extra space before the quaffle
+    ballStartX += 10;
     addQuaffle();
   }
 
@@ -179,7 +190,7 @@
       stroke: ['white', 'green', 'yellow'].includes(headColor) ? 'black' : headColor,
       strokeWidth: 1,
       left: -5,
-      top: -10.5  // Adjusted to touch the body
+      top: -10.5
     });
 
     const body = new fabric.Line([0, 0, 0, 20], {
@@ -210,20 +221,19 @@
 
   function addStandardShapes() {
     const hoopSizes = [
-      { width: 40, height: 80 },  // Smallest
-      { width: 40, height: 120 }, // Tallest
-      { width: 40, height: 100 }  // Medium
+      { width: 40, height: 80 },
+      { width: 40, height: 120 },
+      { width: 40, height: 100 }
     ];
-    const spacing = 20; // Reduced spacing between hoops
-    const scaleFactor = 0.55; // 75% shrinkage
+    const spacing = 20;
+    const scaleFactor = 0.55;
     const canvasWidth = 500;
     const canvasHeight = 300;
-    const startY = canvasHeight * 0.25; // 25% down the diagram
+    const startY = canvasHeight * 0.25;
     const maxHeight = Math.max(...hoopSizes.map(size => size.height));
 
-    // Calculate total width of all hoops
     const totalWidth = hoopSizes.reduce((sum, size) => sum + size.width, 0) + spacing * (hoopSizes.length - 1);
-    const startX = (canvasWidth - totalWidth * scaleFactor) / 2; // Center horizontally
+    const startX = (canvasWidth - totalWidth * scaleFactor) / 2;
 
     let hoops = [];
 
@@ -270,8 +280,8 @@
       positionColors.forEach((headColor, positionIndex) => {
         for (let i = 0; i < playerCounts[positionIndex]; i++) {
           const player = createStickFigure(teamColor, headColor);
-          const x = 50 + playerIndex * 60;  // Spread players horizontally
-          const y = 180 + teamIndex * 60;   // Red team on top, blue team below
+          const x = 50 + playerIndex * 60;
+          const y = 180 + teamIndex * 60;
           player.set({ left: x, top: y });
           fabricCanvas.add(player);
           playerIndex++;

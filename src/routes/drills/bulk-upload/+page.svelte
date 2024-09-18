@@ -11,8 +11,6 @@
     let uploadSummary = writable(null);
     let parsedDrills = writable([]);
     let filterOption = writable('all');
-    let showDiagramDrawer = false;
-    let currentDrillIndex = null;
   
     $: filteredDrills = $parsedDrills.filter(drill => {
       if ($filterOption === 'all') return true;
@@ -192,6 +190,11 @@
           drill.errors.push('Video link must be a valid URL');
         }
       }
+
+      // Initialize diagrams as an empty array if not present
+      if (!Array.isArray(drill.diagrams)) {
+        drill.diagrams = [];
+      }
     }
   
     function removeDrill(index) {
@@ -233,23 +236,31 @@
       }
     }
   
-    function openDiagramDrawer(index) {
-      currentDrillIndex = index;
-      showDiagramDrawer = true;
+    function addDiagram(drillIndex) {
+      // Ensure that diagrams array exists and add a new empty diagram
+      parsedDrills.update((drills) => {
+        if (!drills[drillIndex].diagrams) {
+          drills[drillIndex].diagrams = [];
+        }
+        drills[drillIndex].diagrams.push({}); // Add new empty diagram
+        return drills;
+      });
     }
   
-    function saveDiagram(event) {
-       const { diagramData } = event.detail;
-       parsedDrills.update((drills) => {
-         const drill = drills[currentDrillIndex];
-         if (!Array.isArray(drill.diagrams)) {
-           drill.diagrams = [];
-         }
-         drill.diagrams.push(diagramData);
-         return drills;
-       });
-       showDiagramDrawer = false;
-     }
+    function deleteDiagram(drillIndex, diagramIndex) {
+      parsedDrills.update((drills) => {
+        drills[drillIndex].diagrams.splice(diagramIndex, 1);
+        return drills;
+      });
+    }
+  
+    function saveDiagram(drillIndex, diagramIndex, event) {
+      const diagramData = event.detail;
+      parsedDrills.update((drills) => {
+        drills[drillIndex].diagrams[diagramIndex] = diagramData;
+        return drills;
+      });
+    }
   
     $: validDrillsCount = $parsedDrills.filter(drill => drill.errors.length === 0).length;
   </script>
@@ -421,6 +432,23 @@
                 {#if drill.errors.includes('Video link must be a valid URL')}
                   <p class="text-red-500 text-sm">Video link must be a valid URL</p>
                 {/if}
+
+                <!-- Diagrams Section -->
+                <div>
+                  <h4>Diagrams:</h4>
+                  {#each drill.diagrams as diagram, diagIndex}
+                    <div class="diagram-container">
+                      <DiagramDrawer
+                        bind:data={drill.diagrams[diagIndex]}
+                        showSaveButton
+                        on:save={(event) => saveDiagram(index, diagIndex, event)}
+                      />
+                      <button on:click={() => deleteDiagram(index, diagIndex)}>Delete Diagram</button>
+                    </div>
+                  {/each}
+                  <button on:click={() => addDiagram(index)}>Add New Diagram</button>
+                </div>
+
                 <button class="mt-2 text-green-500" on:click={() => saveDrill(index)}>Save</button>
                 <button class="mt-2 ml-2 text-gray-500" on:click={() => cancelEdit(index)}>Cancel</button>
               {:else}
@@ -434,9 +462,23 @@
                     {/each}
                   </div>
                 {/if}
+
+                <!-- Diagrams Section -->
+                {#if drill.diagrams && drill.diagrams.length > 0}
+                  <div>
+                    <h4>Diagrams:</h4>
+                    {#each drill.diagrams as diagram, diagIndex}
+                      <div class="diagram-thumbnail" on:click={() => editDiagram(index, diagIndex)}>
+                        <!-- Thumbnail or placeholder for the diagram -->
+                        <DiagramDrawer data={diagram} showSaveButton={false} />
+                      </div>
+                    {/each}
+                  </div>
+                {/if}
+
                 <button class="mt-2 text-blue-500" on:click={() => editDrill(index)}>Edit</button>
                 <button class="mt-2 ml-2 text-red-500" on:click={() => removeDrill(index)}>Remove</button>
-                <button class="mt-2 text-purple-500" on:click={() => openDiagramDrawer(index)}>
+                <button class="mt-2 text-purple-500" on:click={() => addDiagram(index)}>
                   Add Diagram
                 </button>
               {/if}
@@ -456,20 +498,40 @@
     </div>
   </div>
 
-  {#if showDiagramDrawer}
-    <div class="modal">
-      <DiagramDrawer
-        bind:data={$parsedDrills[currentDrillIndex].diagram}
-        showSaveButton
-        on:save={saveDiagram}
-      />
-      <button on:click={() => (showDiagramDrawer = false)}>Close</button>
-    </div>
-  {/if}
-
   <style>
     .border-red-500 {
       border-color: red;
       border-width: 2px;
+    }
+
+    .diagram-container {
+      margin-bottom: 1em;
+    }
+
+    .diagram-thumbnail {
+      cursor: pointer;
+      display: inline-block;
+      margin-right: 1em;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal > * {
+      background-color: white;
+      padding: 1em;
+      border-radius: 8px;
+      max-width: 90%;
+      max-height: 90%;
+      overflow: auto;
     }
   </style>

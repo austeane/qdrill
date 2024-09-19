@@ -50,7 +50,11 @@
   
         const result = await response.json();
         uploadSummary.set(result.summary);
-        parsedDrills.set(result.drills);
+        parsedDrills.set(result.drills.map(drill => ({
+          ...drill,
+          isEditing: false,
+          editableDiagramIndex: null
+        })));
       } catch (error) {
         console.error('Error uploading CSV:', error);
         toast.push('Failed to upload CSV file', { theme: { '--toastBackground': 'red' } });
@@ -76,19 +80,23 @@
   
     function editDrill(index) {
       parsedDrills.update((drills) => {
-        drills[index].isEditing = true;
-        return drills;
+        const newDrills = [...drills];
+        const drill = { ...newDrills[index], isEditing: true };
+        newDrills[index] = drill;
+        return newDrills;
       });
     }
   
     function saveDrill(index) {
       parsedDrills.update((drills) => {
-        const drill = drills[index];
+        const newDrills = [...drills];
+        const drill = { ...newDrills[index] };
         validateDrill(drill);
         if (drill.errors.length === 0) {
           drill.isEditing = false;
         }
-        return drills;
+        newDrills[index] = drill;
+        return newDrills;
       });
     }
   
@@ -256,9 +264,29 @@
   
     function saveDiagram(drillIndex, diagramIndex, event) {
       const diagramData = event.detail;
+      console.log('bulk-upload: saveDiagram called for drillIndex:', drillIndex, 'diagramIndex:', diagramIndex);
       parsedDrills.update((drills) => {
-        drills[drillIndex].diagrams[diagramIndex] = diagramData;
-        return drills;
+        const newDrills = [...drills];
+        newDrills[drillIndex].diagrams[diagramIndex] = diagramData;
+        newDrills[drillIndex].editableDiagramIndex = null;
+        return newDrills;
+      });
+      toast.push('Diagram saved successfully', { theme: { '--toastBackground': 'green' } });
+    }
+  
+    function editDiagram(drillIndex, diagramIndex) {
+      parsedDrills.update((drills) => {
+        const newDrills = [...drills];
+        newDrills[drillIndex].editableDiagramIndex = diagramIndex;
+        return newDrills;
+      });
+    }
+  
+    function cancelEditDiagram(drillIndex) {
+      parsedDrills.update((drills) => {
+        const newDrills = [...drills];
+        newDrills[drillIndex].editableDiagramIndex = null;
+        return newDrills;
       });
     }
   
@@ -437,14 +465,19 @@
                 <div>
                   <h4>Diagrams:</h4>
                   {#each drill.diagrams as diagram, diagIndex}
-                    <div class="diagram-container">
+                    {#if drill.editableDiagramIndex === diagIndex}
                       <DiagramDrawer
-                        bind:data={drill.diagrams[diagIndex]}
-                        showSaveButton
+                        data={diagram}
+                        index={diagIndex}
+                        showSaveButton={true}
                         on:save={(event) => saveDiagram(index, diagIndex, event)}
                       />
-                      <button on:click={() => deleteDiagram(index, diagIndex)}>Delete Diagram</button>
-                    </div>
+                      <button on:click={() => cancelEditDiagram(index)}>Cancel</button>
+                    {:else}
+                      <div class="diagram-thumbnail" on:click={() => editDiagram(index, diagIndex)}>
+                        <DiagramDrawer data={diagram} showSaveButton={false} index={diagIndex} />
+                      </div>
+                    {/if}
                   {/each}
                   <button on:click={() => addDiagram(index)}>Add New Diagram</button>
                 </div>
@@ -469,8 +502,7 @@
                     <h4>Diagrams:</h4>
                     {#each drill.diagrams as diagram, diagIndex}
                       <div class="diagram-thumbnail" on:click={() => editDiagram(index, diagIndex)}>
-                        <!-- Thumbnail or placeholder for the diagram -->
-                        <DiagramDrawer data={diagram} showSaveButton={false} />
+                        <DiagramDrawer data={diagram} showSaveButton={false} index={diagIndex} />
                       </div>
                     {/each}
                   </div>

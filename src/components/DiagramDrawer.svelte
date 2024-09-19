@@ -296,9 +296,10 @@
 
   export function saveDiagram() {
     const diagramData = fabricCanvas.toJSON();
-    console.log('Saving diagram:', diagramData);
+    console.log('DiagramDrawer: Dispatching save event with data:', diagramData);
     dispatch('save', diagramData);
-  }  
+  }
+
   function preventSubmit(event) {
     event.preventDefault();
   }

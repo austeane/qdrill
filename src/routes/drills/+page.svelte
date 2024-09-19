@@ -1,190 +1,264 @@
 <script>
   import { onMount } from 'svelte';
+  import FilterPanel from '$components/FilterPanel.svelte';
   import { writable } from 'svelte/store';
-  import { cart } from '$lib/stores/cartStore';
-  import { goto } from '$app/navigation';
-  import { toast } from '@zerodevx/svelte-toast';
 
+  // Drill data
   let drills = writable([]);
-  let skillLevels = writable([]);
-  let positions = writable([]);
-  let selectedSkillLevel = writable('');
-  let selectedPosition = writable('');
-  let selectedDrills = writable([]);
 
+  // Available filter options
+  let skillLevels = [];
+  let complexities = [];
+  let skillsFocusedOn = [];
+  let positionsFocusedOn = [];
+  let numberOfPeopleOptions = { min: null, max: null };
+  let suggestedLengths = { min: null, max: null };
+
+  // Selected Filters
+  let selectedSkillLevels = [];
+  let selectedComplexities = [];
+  let selectedSkillsFocusedOn = [];
+  let selectedPositionsFocusedOn = [];
+  let selectedNumberOfPeople = { min: null, max: null };
+  let selectedSuggestedLengths = { min: null, max: null };
+  let selectedHasVideo = null;
+  let selectedHasDiagrams = null;
+  let selectedHasImages = null;
+  let selectedHasDiagram = false;
+
+  // Search Query
+  let searchQuery = '';
+
+  // Fetch drills and available filter options from the database
   onMount(async () => {
     const response = await fetch('/api/drills');
     const data = await response.json();
-    if (Array.isArray(data)) {
-      drills.set(data);
+    drills.set(data);
 
-      const skillLevelsSet = new Set(data.map(drill => drill.skill_level));
-      skillLevels.set(Array.from(skillLevelsSet));
+    // Extracting available options for filters
+    const drillsData = data; // Use data directly here
 
-      const positionsSet = new Set(data.map(drill => drill.positions_focused_on).flat());
-      positions.set(Array.from(positionsSet));
-    } else {
-      console.error('Expected data to be an array');
-      drills.set([]);
-    }
-  });
+    // Initialize sets to collect unique values
+    const skillLevelSet = new Set();
+    const complexitySet = new Set();
+    const skillsFocusedSet = new Set();
+    const positionsFocusedSet = new Set();
+    let minNumberOfPeople = Infinity;
+    let maxNumberOfPeople = -Infinity;
+    let minSuggestedLength = Infinity;
+    let maxSuggestedLength = -Infinity;
 
-  function filterDrills(drills, skillLevel, position) {
-    if (!Array.isArray(drills)) {
-      console.error('Expected drills to be an array');
-      return [];
-    }
-    return drills.filter(drill => {
-      return (
-        (skillLevel ? drill.skill_level === skillLevel : true) &&
-        (position ? drill.positions_focused_on.includes(position) : true)
-      );
-    });
-  }
+    drillsData.forEach(drill => {
+      // Skill Levels
+      drill.skill_level.forEach(level => skillLevelSet.add(level));
 
-  function toggleDrillSelection(drill) {
-    selectedDrills.update(drills => {
-      if (drills.some(d => d.id === drill.id)) {
-        return drills.filter(d => d.id !== drill.id);
-      } else {
-        return [...drills, drill];
+      // Complexities
+      if (drill.complexity) complexitySet.add(drill.complexity);
+
+      // Skills Focused On
+      if (Array.isArray(drill.skills_focused_on)) {
+        drill.skills_focused_on.forEach(skill => skillsFocusedSet.add(skill));
+      }
+
+      // Positions Focused On
+      if (Array.isArray(drill.positions_focused_on)) {
+        drill.positions_focused_on.forEach(pos => positionsFocusedSet.add(pos));
+      }
+
+      // Number of People
+      if (drill.number_of_people_min < minNumberOfPeople) {
+        minNumberOfPeople = drill.number_of_people_min;
+      }
+      if (drill.number_of_people_max > maxNumberOfPeople) {
+        maxNumberOfPeople = drill.number_of_people_max;
+      }
+
+      // Suggested Length
+      const length = parseInt(drill.suggested_length, 10);
+      if (!isNaN(length)) {
+        if (length < minSuggestedLength) {
+          minSuggestedLength = length;
+        }
+        if (length > maxSuggestedLength) {
+          maxSuggestedLength = length;
+        }
       }
     });
-  }
 
-  function addSelectedDrillsToPlan() {
-    $selectedDrills.forEach(drill => {
-      cart.addDrill(drill);
-    });
-    selectedDrills.set([]);
-    toast.push('Selected drills added to plan');
-  }
+    // Set available options
+    skillLevels = Array.from(skillLevelSet);
+    complexities = Array.from(complexitySet);
+    skillsFocusedOn = Array.from(skillsFocusedSet);
+    positionsFocusedOn = Array.from(positionsFocusedSet);
+    numberOfPeopleOptions = { min: minNumberOfPeople, max: maxNumberOfPeople };
+    suggestedLengths = { min: minSuggestedLength, max: maxSuggestedLength };
+  });
 
-  function createPlan() {
-    $selectedDrills.forEach(drill => {
-      cart.addDrill(drill);
-    });
-    cart.saveToStorage($cart);
-    selectedDrills.set([]);
-    goto('/practice-plans/create');
-  }
+  // Filtering logic
+  $: filteredDrills = $drills.filter(drill => {
+    let matches = true;
 
-  $: selectedDrillCount = $selectedDrills.length;
+    // Search filtering
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      const nameMatch = drill.name.toLowerCase().includes(query);
+      const briefDescMatch = drill.brief_description.toLowerCase().includes(query);
+      const detailedDescMatch = drill.detailed_description ? drill.detailed_description.toLowerCase().includes(query) : false;
+      matches = matches && (nameMatch || briefDescMatch || detailedDescMatch);
+    }
+
+    // Skill Levels
+    if (selectedSkillLevels.length > 0) {
+      matches = matches && drill.skill_level.some(level => selectedSkillLevels.includes(level));
+    }
+
+    // Complexities
+    if (selectedComplexities.length > 0) {
+      matches = matches && selectedComplexities.includes(drill.complexity);
+    }
+
+    // Skills Focused On
+    if (selectedSkillsFocusedOn.length > 0) {
+      matches = matches && drill.skills_focused_on.some(skill => selectedSkillsFocusedOn.includes(skill));
+    }
+
+    // Positions Focused On
+    if (selectedPositionsFocusedOn.length > 0) {
+      matches = matches && drill.positions_focused_on.some(pos => selectedPositionsFocusedOn.includes(pos));
+    }
+
+    // Number of People
+    if (selectedNumberOfPeople.min !== null) {
+      matches = matches && drill.number_of_people_min >= selectedNumberOfPeople.min;
+    }
+    if (selectedNumberOfPeople.max !== null) {
+      matches = matches && drill.number_of_people_max <= selectedNumberOfPeople.max;
+    }
+
+    // Suggested Lengths
+    if (selectedSuggestedLengths.min !== null) {
+      matches = matches && drill.suggested_length >= selectedSuggestedLengths.min;
+    }
+    if (selectedSuggestedLengths.max !== null) {
+      matches = matches && drill.suggested_length <= selectedSuggestedLengths.max;
+    }
+
+    // Has Video
+    if (selectedHasVideo !== null) {
+      matches = matches && ((selectedHasVideo && drill.video_link) || (!selectedHasVideo && !drill.video_link));
+    }
+
+    // Has Diagrams
+    if (selectedHasDiagrams !== null) {
+      const hasDiagrams = Array.isArray(drill.diagrams) && drill.diagrams.length > 0;
+      matches = matches && ((selectedHasDiagrams && hasDiagrams) || (!selectedHasDiagrams && !hasDiagrams));
+    }
+
+    // Has Images
+    if (selectedHasImages !== null) {
+      const hasImages = Array.isArray(drill.images) && drill.images.length > 0;
+      matches = matches && ((selectedHasImages && hasImages) || (!selectedHasImages && !hasImages));
+    }
+
+    // Has Diagram
+    if (selectedHasDiagram) {
+      matches = matches && Array.isArray(drill.diagrams) && drill.diagrams.length > 0;
+    }
+
+    return matches;
+  });
 </script>
 
-<svelte:head>
-  <title>Drills</title>
-  <meta name="description" content="List of all drills" />
-</svelte:head>
-
-<section>
-  <h1>Drills</h1>
-
-  <div class="sticky top-0 bg-white z-10">
-    <div class="flex overflow-x-auto space-x-4 py-2">
-      <div class="flex-shrink-0">
-        <label for="skillLevel" class="block text-sm font-medium text-gray-700">Filter by Skill Level:</label>
-        <select id="skillLevel" bind:value={$selectedSkillLevel} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-          <option value="">All</option>
-          {#each $skillLevels as skillLevel}
-            <option value={skillLevel}>{skillLevel}</option>
-          {/each}
-        </select>
-      </div>
-
-      <div class="flex-shrink-0">
-        <label for="position" class="block text-sm font-medium text-gray-700">Filter by Position:</label>
-        <select id="position" bind:value={$selectedPosition} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-          <option value="">All</option>
-          {#each $positions as position}
-            <option value={position}>{position}</option>
-          {/each}
-        </select>
-      </div>
-    </div>
-  </div>
-
-  {#if selectedDrillCount > 0}
-    <div class="fixed bottom-4 right-4 flex flex-col space-y-2">
-      <button
-        on:click={addSelectedDrillsToPlan}
-        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-      >
-        Add Selected Drills to Plan ({selectedDrillCount})
-      </button>
-      <button
-        on:click={createPlan}
-        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-      >
-        Create Plan with Selected {selectedDrillCount} Drill{selectedDrillCount !== 1 ? 's' : ''}
-      </button>
-    </div>
-  {/if}
-
-  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4 overflow-y-auto">
-    {#each filterDrills($drills, $selectedSkillLevel, $selectedPosition) as drill}
-      <div class="bg-white shadow-md rounded-lg p-4">
-        <div class="flex items-center justify-between">
-          <a href={`/drills/${drill.id}`} class="text-lg font-semibold text-indigo-600 hover:underline">{drill.name}</a>
-          <input
-            type="checkbox"
-            checked={$selectedDrills.some(d => d.id === drill.id)}
-            on:change={() => toggleDrillSelection(drill)}
-          />
-        </div>
-        <p class="mt-2 text-gray-600">{drill.brief_description}</p>
-      </div>
-    {/each}
-  </div>
-</section>
-
 <style>
-  section {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    flex: 0.6;
+  .drills-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
   }
-
-  h1 {
+  .drills-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+  }
+  .drill-item {
+    border: 1px solid #e2e8f0;
+    padding: 1.5rem;
+    background-color: #fff;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease-in-out;
+  }
+  .drill-item:hover {
+    transform: translateY(-5px);
+  }
+  .drill-item h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #2d3748;
+  }
+  .drill-item p {
+    margin-bottom: 0.5rem;
+    color: #4a5568;
+  }
+  .search-input {
+    margin-bottom: 2rem;
+    padding: 0.75rem;
     width: 100%;
-    text-align: center;
-  }
-
-  div {
-    margin: 1rem 0;
-  }
-
-  label {
-    margin-right: 0.5rem;
-  }
-
-  select {
-    padding: 0.5rem;
+    box-sizing: border-box;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.25rem;
     font-size: 1rem;
   }
-
-  ul {
-    list-style: none;
-    padding: 0;
-  }
-
-  li {
-    margin: 1rem 0;
-  }
-
-  a {
-    font-weight: bold;
+  .drill-link {
     text-decoration: none;
-    color: var(--color-theme-1);
-  }
-
-  a:hover {
-    text-decoration: underline;
-  }
-
-  p {
-    margin: 0.5rem 0 0;
+    color: inherit;
+    display: block;
   }
 </style>
+
+<div class="drills-container">
+  <h1>Drills</h1>
+
+  <FilterPanel
+    {skillLevels}
+    {complexities}
+    {skillsFocusedOn}
+    {positionsFocusedOn}
+    {numberOfPeopleOptions}
+    {suggestedLengths}
+    bind:selectedSkillLevels
+    bind:selectedComplexities
+    bind:selectedSkillsFocusedOn
+    bind:selectedPositionsFocusedOn
+    bind:selectedNumberOfPeople
+    bind:selectedSuggestedLengths
+    bind:selectedHasVideo
+    bind:selectedHasDiagrams
+    bind:selectedHasImages
+    bind:selectedHasDiagram
+  />
+
+  <input
+    type="text"
+    placeholder="Search drills..."
+    class="search-input"
+    bind:value={searchQuery}
+  />
+
+  <div class="drills-list">
+    {#each filteredDrills as drill}
+      <a href="/drills/{drill.id}" class="drill-link">
+        <div class="drill-item">
+          <h2>{drill.name}</h2>
+          <p>{drill.brief_description}</p>
+          <p><strong>Skill Levels:</strong> {drill.skill_level.join(', ')}</p>
+          <p><strong>Complexity:</strong> {drill.complexity}</p>
+          <p><strong>Suggested Length:</strong> {drill.suggested_length} minutes</p>
+          <p><strong>Number of People:</strong> {drill.number_of_people_min} - {drill.number_of_people_max}</p>
+        </div>
+      </a>
+    {/each}
+  </div>
+</div>

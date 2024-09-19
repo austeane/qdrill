@@ -91,114 +91,99 @@
   <meta name="description" content="Details of the selected drill" />
 </svelte:head>
 
-<section>
-  <h1>{$drill.name}</h1>
-  <p>{$drill.brief_description}</p>
-  <div class="flex justify-center mt-4 mb-4">
-    <a href="/drills/{$page.params.id}/edit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-      Edit Drill
-    </a>
-    <button
-      on:click={addDrillToPlan}
-      class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-    >
-      Add Drill to Plan
-    </button>
-  </div>
-  <p>{$drill.detailed_description}</p>
-  <p>Appropriate for Skill Levels: {$drill.skill_level}</p>
-  <p>Complexity: {$drill.complexity}</p>
-  <p>Suggested Length: {$drill.suggested_length}</p>
-  <p>Number of People Required: {$drill.number_of_people_min} - {$drill.number_of_people_max}</p>
-  <p>Skills Focused On: {Array.isArray($drill.skills_focused_on) ? $drill.skills_focused_on.join(', ') : (typeof $drill.skills_focused_on === 'string' ? $drill.skills_focused_on.split(', ').join(', ') : '')}</p>
-  <p>Positions Focused On: {Array.isArray($drill.positions_focused_on) ? $drill.positions_focused_on.join(', ') : (typeof $drill.positions_focused_on === 'string' ? $drill.positions_focused_on.split(', ').join(', ') : '')}</p>
-  {#if $drill.video_link}
-    <p>Video: <a href={$drill.video_link} target="_blank">Watch Video</a></p>
-  {/if}
-  {#if $drill.images}
-    <div>
-      {#each Array.isArray($drill.images) ? $drill.images : [] as image}
-        <img src={image} alt="Drill Image" />
-      {/each}
+<section class="max-w-4xl mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-center mb-6">{$drill.name}</h1>
+  
+  <div class="bg-white shadow-md rounded-lg p-6 mb-8">
+    <p class="text-xl mb-4">{$drill.brief_description}</p>
+    
+    <div class="flex justify-center space-x-4 mb-6">
+      <a href="/drills/{$page.params.id}/edit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+        Edit Drill
+      </a>
+      <button
+        on:click={addDrillToPlan}
+        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+      >
+        Add Drill to Plan
+      </button>
     </div>
-  {/if}
 
-  <button on:click={upvote}>Upvote ({$upvotes})</button>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div>
+        <h2 class="text-lg font-semibold mb-2">Drill Details</h2>
+        <p><strong>Skill Levels:</strong> {$drill.skill_level}</p>
+        <p><strong>Complexity:</strong> {$drill.complexity}</p>
+        <p><strong>Suggested Length:</strong> {$drill.suggested_length} minutes</p>
+        <p><strong>Number of People:</strong> {$drill.number_of_people_min} - {$drill.number_of_people_max}</p>
+      </div>
+      <div>
+        <h2 class="text-lg font-semibold mb-2">Focus Areas</h2>
+        <p><strong>Skills:</strong> {Array.isArray($drill.skills_focused_on) ? $drill.skills_focused_on.join(', ') : (typeof $drill.skills_focused_on === 'string' ? $drill.skills_focused_on.split(', ').join(', ') : '')}</p>
+        <p><strong>Positions:</strong> {Array.isArray($drill.positions_focused_on) ? $drill.positions_focused_on.join(', ') : (typeof $drill.positions_focused_on === 'string' ? $drill.positions_focused_on.split(', ').join(', ') : '')}</p>
+      </div>
+    </div>
 
-  <div>
-    <h2>Comments</h2>
-    <ul>
-      {#each $comments as comment}
-        <li>{comment}</li>
-      {/each}
-    </ul>
-    <input type="text" bind:value={$newComment} placeholder="Add a comment" />
-    <button on:click={addComment}>Submit</button>
-  </div>
+    <div class="mb-6">
+      <h2 class="text-lg font-semibold mb-2">Detailed Description</h2>
+      <p class="whitespace-pre-wrap">{$drill.detailed_description}</p>
+    </div>
 
-  {#if $drill.diagrams && $drill.diagrams.length > 0}
-    <div>
-      <h2>Diagrams</h2>
-      {#each $drill.diagrams as diagram, index}
-        <div>
-          <DiagramDrawer data={diagram} on:save={(event) => handleDiagramSave(event, index)} showSaveButton={false} />
+    {#if $drill.video_link}
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold mb-2">Video</h2>
+        <a href={$drill.video_link} target="_blank" class="text-blue-500 hover:text-blue-700 transition duration-300">Watch Video</a>
+      </div>
+    {/if}
+
+    {#if $drill.images && $drill.images.length > 0}
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold mb-2">Images</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {#each Array.isArray($drill.images) ? $drill.images : [] as image}
+            <img src={image} alt="Drill Image" class="w-full h-48 object-cover rounded-lg" />
+          {/each}
         </div>
-      {/each}
-    </div>
-  {/if}
+      </div>
+    {/if}
 
+    <div class="mb-6">
+      <button on:click={upvote} class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+        Upvote ({$upvotes})
+      </button>
+    </div>
+
+    <div class="mb-6">
+      <h2 class="text-lg font-semibold mb-2">Comments</h2>
+      <ul class="space-y-2">
+        {#each $comments as comment}
+          <li class="bg-gray-100 p-2 rounded">{comment}</li>
+        {/each}
+      </ul>
+      <div class="mt-4 flex space-x-2">
+        <input type="text" bind:value={$newComment} placeholder="Add a comment" class="flex-grow border rounded p-2" />
+        <button on:click={addComment} class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+          Submit
+        </button>
+      </div>
+    </div>
+
+    {#if $drill.diagrams && $drill.diagrams.length > 0}
+      <div>
+        <h2 class="text-lg font-semibold mb-2">Diagrams</h2>
+        {#each $drill.diagrams as diagram, index}
+          <div class="mb-4">
+            <DiagramDrawer data={diagram} on:save={(event) => handleDiagramSave(event, index)} showSaveButton={false} />
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </div>
 </section>
 
 <style>
-  section {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    flex: 0.6;
-  }
-
-  h1 {
-    width: 100%;
-    text-align: center;
-  }
-
-  p {
-    text-align: center;
-  }
-
-  img {
-    max-width: 100%;
-    height: auto;
-    margin: 1rem 0;
-  }
-
-  button {
-    margin: 1rem 0;
-    padding: 0.5rem 1rem;
-    font-size: 1rem;
-    cursor: pointer;
-  }
-
-  div {
-    width: 100%;
-    max-width: 600px;
-    margin: 1rem 0;
-  }
-
-  ul {
-    list-style: none;
-    padding: 0;
-  }
-
-  li {
-    margin: 0.5rem 0;
-  }
-
-  input {
-    width: 100%;
-    padding: 0.5rem;
-    font-size: 1rem;
-    margin: 0.5rem 0;
+  /* You can remove most of the styles here as we're using Tailwind classes */
+  :global(body) {
+    background-color: #f3f4f6;
   }
 </style>

@@ -12,15 +12,16 @@
         isOpen = !isOpen;
     }
 
-    function removeDrill(id) {
-        cart.removeDrill(id);
+    function removeDrill(drill) {
+        cart.toggleDrill(drill);
     }
 
-    $: {
-        if (typeof window !== 'undefined') {
-            cart.saveToStorage($cart);
-        }
-    }
+    // Remove this reactive statement
+    // $: {
+    //     if (typeof window !== 'undefined') {
+    //         cart.saveToStorage($cart);
+    //     }
+    // }
 </script>
 
 <div class="fixed top-4 right-4 z-50">
@@ -42,7 +43,7 @@
                         <li class="flex justify-between items-center mb-2">
                             <span>{drill.name}</span>
                             <button
-                                on:click={() => removeDrill(drill.id)}
+                                on:click={() => removeDrill(drill)}
                                 class="text-red-500 hover:text-red-700"
                             >
                                 ✕

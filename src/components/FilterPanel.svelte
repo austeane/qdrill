@@ -16,6 +16,8 @@
   export let selectedHasDiagrams = null;
   export let selectedHasImages = null;
   export let selectedHasDiagram = false;
+  export const numberOfPeopleOptions = { min: null, max: null };
+  export const suggestedLengths = { min: null, max: null };
 
   // Toggle states for each filter
   let showSkillLevels = false;

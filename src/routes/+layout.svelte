@@ -4,7 +4,7 @@
 	import { webVitals } from '$lib/vitals';
 	import Header from './Header.svelte';
 	import './styles.css';
-	import Cart from '../components/Cart.svelte';
+	import Cart from '../components/Cart.svelte'; // Add this import
 	import { SvelteToast } from '@zerodevx/svelte-toast';
 
 	/** @type {import('./$types').LayoutServerData} */

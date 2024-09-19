@@ -1,10 +1,11 @@
 <script>
   import { onMount } from 'svelte';
   import FilterPanel from '$components/FilterPanel.svelte';
-  import { writable } from 'svelte/store';
+  import { cart } from '$lib/stores/cartStore';
+  import { tick } from 'svelte';
 
   // Drill data
-  let drills = writable([]);
+  let drills = [];
 
   // Available filter options
   let skillLevels = [];
@@ -29,73 +30,103 @@
   // Search Query
   let searchQuery = '';
 
+  // Object to hold temporary button states ('added', 'removed', or null)
+  let buttonStates = {};
+
+  // Reactive set of drill IDs currently in the cart
+  $: drillsInCart = new Set($cart.map(d => d.id));
+
+  // Function to handle adding/removing drills from the cart
+  async function toggleDrillInCart(drill) {
+    const isInCart = drillsInCart.has(drill.id);
+    if (isInCart) {
+      cart.removeDrill(drill.id);
+      buttonStates[drill.id] = 'removed';
+    } else {
+      cart.addDrill(drill);
+      buttonStates[drill.id] = 'added';
+    }
+
+    // Wait for the store to update
+    await tick();
+
+    // After a short delay, reset the button state
+    setTimeout(() => {
+      buttonStates[drill.id] = null;
+    }, 500);
+  }
+
   // Fetch drills and available filter options from the database
   onMount(async () => {
-    const response = await fetch('/api/drills');
-    const data = await response.json();
-    drills.set(data);
+    try {
+      const response = await fetch('/api/drills');
+      const data = await response.json();
+      drills = data;
 
-    // Extracting available options for filters
-    const drillsData = data; // Use data directly here
+      // Extracting available options for filters
+      const drillsData = data;
 
-    // Initialize sets to collect unique values
-    const skillLevelSet = new Set();
-    const complexitySet = new Set();
-    const skillsFocusedSet = new Set();
-    const positionsFocusedSet = new Set();
-    let minNumberOfPeople = Infinity;
-    let maxNumberOfPeople = -Infinity;
-    let minSuggestedLength = Infinity;
-    let maxSuggestedLength = -Infinity;
+      // Initialize sets to collect unique values
+      const skillLevelSet = new Set();
+      const complexitySet = new Set();
+      const skillsFocusedSet = new Set();
+      const positionsFocusedSet = new Set();
+      let minNumberOfPeople = Infinity;
+      let maxNumberOfPeople = -Infinity;
+      let minSuggestedLength = Infinity;
+      let maxSuggestedLength = -Infinity;
 
-    drillsData.forEach(drill => {
-      // Skill Levels
-      drill.skill_level.forEach(level => skillLevelSet.add(level));
+      drillsData.forEach(drill => {
+        // Skill Levels
+        drill.skill_level.forEach(level => skillLevelSet.add(level));
 
-      // Complexities
-      if (drill.complexity) complexitySet.add(drill.complexity);
+        // Complexities
+        if (drill.complexity) complexitySet.add(drill.complexity);
 
-      // Skills Focused On
-      if (Array.isArray(drill.skills_focused_on)) {
-        drill.skills_focused_on.forEach(skill => skillsFocusedSet.add(skill));
-      }
-
-      // Positions Focused On
-      if (Array.isArray(drill.positions_focused_on)) {
-        drill.positions_focused_on.forEach(pos => positionsFocusedSet.add(pos));
-      }
-
-      // Number of People
-      if (drill.number_of_people_min < minNumberOfPeople) {
-        minNumberOfPeople = drill.number_of_people_min;
-      }
-      if (drill.number_of_people_max > maxNumberOfPeople) {
-        maxNumberOfPeople = drill.number_of_people_max;
-      }
-
-      // Suggested Length
-      const length = parseInt(drill.suggested_length, 10);
-      if (!isNaN(length)) {
-        if (length < minSuggestedLength) {
-          minSuggestedLength = length;
+        // Skills Focused On
+        if (Array.isArray(drill.skills_focused_on)) {
+          drill.skills_focused_on.forEach(skill => skillsFocusedSet.add(skill));
         }
-        if (length > maxSuggestedLength) {
-          maxSuggestedLength = length;
-        }
-      }
-    });
 
-    // Set available options
-    skillLevels = Array.from(skillLevelSet);
-    complexities = Array.from(complexitySet);
-    skillsFocusedOn = Array.from(skillsFocusedSet);
-    positionsFocusedOn = Array.from(positionsFocusedSet);
-    numberOfPeopleOptions = { min: minNumberOfPeople, max: maxNumberOfPeople };
-    suggestedLengths = { min: minSuggestedLength, max: maxSuggestedLength };
+        // Positions Focused On
+        if (Array.isArray(drill.positions_focused_on)) {
+          drill.positions_focused_on.forEach(pos => positionsFocusedSet.add(pos));
+        }
+
+        // Number of People
+        if (drill.number_of_people_min < minNumberOfPeople) {
+          minNumberOfPeople = drill.number_of_people_min;
+        }
+        if (drill.number_of_people_max > maxNumberOfPeople) {
+          maxNumberOfPeople = drill.number_of_people_max;
+        }
+
+        // Suggested Length
+        const length = parseInt(drill.suggested_length, 10);
+        if (!isNaN(length)) {
+          if (length < minSuggestedLength) {
+            minSuggestedLength = length;
+          }
+          if (length > maxSuggestedLength) {
+            maxSuggestedLength = length;
+          }
+        }
+      });
+
+      // Set available options
+      skillLevels = Array.from(skillLevelSet);
+      complexities = Array.from(complexitySet);
+      skillsFocusedOn = Array.from(skillsFocusedSet);
+      positionsFocusedOn = Array.from(positionsFocusedSet);
+      numberOfPeopleOptions = { min: minNumberOfPeople, max: maxNumberOfPeople };
+      suggestedLengths = { min: minSuggestedLength, max: maxSuggestedLength };
+    } catch (error) {
+      console.error('Error fetching drills:', error);
+    }
   });
 
   // Filtering logic
-  $: filteredDrills = $drills.filter(drill => {
+  $: filteredDrills = drills.filter(drill => {
     let matches = true;
 
     // Search filtering
@@ -187,6 +218,8 @@
     border-radius: 0.5rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s ease-in-out;
+    cursor: pointer;
+    position: relative;
   }
   .drill-item:hover {
     transform: translateY(-5px);
@@ -211,15 +244,68 @@
     border-radius: 0.25rem;
     font-size: 1rem;
   }
-  .drill-link {
+  .drill-title {
+    text-decoration: underline;
+    color: #3182ce;
+    cursor: pointer;
+  }
+  .drill-title:hover {
+    color: #2b6cb0;
+  }
+
+  /* Add styles for the create practice plan button */
+  .create-plan-button {
+    display: inline-block;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1.5rem;
+    background-color: #4299e1; /* blue */
+    color: white;
+    border-radius: 0.5rem;
     text-decoration: none;
-    color: inherit;
-    display: block;
+    font-weight: bold;
+  }
+  .create-plan-button:hover {
+    background-color: #3182ce; /* darker blue */
+  }
+
+  /* Styles for the add/remove button */
+  .add-remove-button {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.3s, color 0.3s;
+  }
+  .add-remove-button.added {
+    background-color: #48bb78; /* green */
+    color: white;
+  }
+  .add-remove-button.removed {
+    background-color: #f56565; /* red */
+    color: white;
+  }
+  .add-remove-button.default {
+    background-color: #4299e1; /* blue */
+    color: white;
+  }
+  .add-remove-button:hover {
+    opacity: 0.9;
   }
 </style>
 
 <div class="drills-container">
   <h1>Drills</h1>
+
+  <!-- Add the create practice plan button at the top -->
+  <a
+    href="/practice-plans/create"
+    class="create-plan-button"
+  >
+    Create Practice Plan with {$cart.length} Drill{$cart.length !== 1 ? 's' : ''}
+  </a>
 
   <FilterPanel
     {skillLevels}
@@ -249,16 +335,41 @@
 
   <div class="drills-list">
     {#each filteredDrills as drill}
-      <a href="/drills/{drill.id}" class="drill-link">
-        <div class="drill-item">
-          <h2>{drill.name}</h2>
-          <p>{drill.brief_description}</p>
-          <p><strong>Skill Levels:</strong> {drill.skill_level.join(', ')}</p>
-          <p><strong>Complexity:</strong> {drill.complexity}</p>
-          <p><strong>Suggested Length:</strong> {drill.suggested_length} minutes</p>
-          <p><strong>Number of People:</strong> {drill.number_of_people_min} - {drill.number_of_people_max}</p>
-        </div>
-      </a>
+      <div class="drill-item">
+        <h2>
+          <a
+            href="/drills/{drill.id}"
+            class="drill-title"
+            on:click|stopPropagation
+          >
+            {drill.name}
+          </a>
+        </h2>
+        <p>{drill.brief_description}</p>
+        <p><strong>Skill Levels:</strong> {drill.skill_level.join(', ')}</p>
+        <p><strong>Complexity:</strong> {drill.complexity}</p>
+        <p><strong>Suggested Length:</strong> {drill.suggested_length} minutes</p>
+        <p><strong>Number of People:</strong> {drill.number_of_people_min} - {drill.number_of_people_max}</p>
+
+        <!-- Add to practice plan button -->
+        <button
+          class="add-remove-button
+            {buttonStates[drill.id] === 'added' ? 'added' : ''}
+            {buttonStates[drill.id] === 'removed' ? 'removed' : ''}
+            {buttonStates[drill.id] == null ? 'default' : ''}"
+          on:click={() => toggleDrillInCart(drill)}
+        >
+          {#if buttonStates[drill.id] === 'added'}
+            Added
+          {:else if buttonStates[drill.id] === 'removed'}
+            Removed
+          {:else if drillsInCart.has(drill.id)}
+            Remove from Practice Plan
+          {:else}
+            Add to Practice Plan
+          {/if}
+        </button>
+      </div>
     {/each}
   </div>
 </div>

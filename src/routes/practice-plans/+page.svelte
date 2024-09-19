@@ -1,63 +1,55 @@
 <script>
   import { onMount } from 'svelte';
-  import { writable } from 'svelte/store';
+  import { cart } from '$lib/stores/cartStore';
+  import { goto } from '$app/navigation';
 
-  let practicePlans = writable([]);
+  let isProcessing = false;
 
   onMount(async () => {
-    const response = await fetch('/api/practice-plans');
-    const data = await response.json();
-    practicePlans.set(data);
+    if ($cart.length > 0) {
+      isProcessing = true;
+      await goto('/practice-plans/create');
+    }
   });
 </script>
 
-<svelte:head>
-  <title>Practice Plans</title>
-  <meta name="description" content="List of all practice plans" />
-</svelte:head>
-
-<section>
-  <h1>Practice Plans</h1>
-
-  <ul>
-    {#each $practicePlans as plan}
-      <li>
-        <h2>{plan.name}</h2>
-        <p>{plan.description}</p>
-      </li>
-    {/each}
-  </ul>
-</section>
+{#if $cart.length === 0}
+  <div class="flex flex-col items-center justify-center h-full">
+    <p class="text-xl mb-4">Find drills to create a practice plan.</p>
+    <a href="/drills" class="text-blue-500 underline">Go to Drills</a>
+  </div>
+{:else if isProcessing}
+  <div class="flex items-center justify-center h-full">
+    <p class="text-xl">Preparing to create your practice plan...</p>
+  </div>
+{/if}
 
 <style>
-  section {
+  .flex {
     display: flex;
+  }
+  .flex-col {
     flex-direction: column;
-    justify-content: center;
+  }
+  .items-center {
     align-items: center;
-    flex: 0.6;
   }
-
-  h1 {
-    width: 100%;
-    text-align: center;
+  .justify-center {
+    justify-content: center;
   }
-
-  ul {
-    list-style: none;
-    padding: 0;
+  .h-full {
+    height: 100%;
   }
-
-  li {
-    margin: 1rem 0;
+  .text-xl {
+    font-size: 1.25rem;
   }
-
-  h2 {
-    font-size: 1.5rem;
-    margin: 0;
+  .mb-4 {
+    margin-bottom: 1rem;
   }
-
-  p {
-    margin: 0.5rem 0 0;
+  .text-blue-500 {
+    color: #3b82f6;
+  }
+  .underline {
+    text-decoration: underline;
   }
 </style>

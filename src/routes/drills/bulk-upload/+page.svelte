@@ -245,15 +245,16 @@
     }
   
     function addDiagram(drillIndex) {
-      // Ensure that diagrams array exists and add a new empty diagram
       parsedDrills.update((drills) => {
         if (!drills[drillIndex].diagrams) {
           drills[drillIndex].diagrams = [];
         }
+        const newDiagramIndex = drills[drillIndex].diagrams.length;
         drills[drillIndex].diagrams.push({}); // Add new empty diagram
+        drills[drillIndex].editableDiagramIndex = newDiagramIndex; // Set the new diagram as editable
         return drills;
-      });
-    }
+  });
+}
   
     function deleteDiagram(drillIndex, diagramIndex) {
       parsedDrills.update((drills) => {
@@ -264,29 +265,25 @@
   
     function saveDiagram(drillIndex, diagramIndex, event) {
       const diagramData = event.detail;
-      console.log('bulk-upload: saveDiagram called for drillIndex:', drillIndex, 'diagramIndex:', diagramIndex);
       parsedDrills.update((drills) => {
-        const newDrills = [...drills];
-        newDrills[drillIndex].diagrams[diagramIndex] = diagramData;
-        newDrills[drillIndex].editableDiagramIndex = null;
-        return newDrills;
+        drills[drillIndex].diagrams[diagramIndex] = diagramData;
+        drills[drillIndex].editableDiagramIndex = null;
+        return drills;
       });
       toast.push('Diagram saved successfully', { theme: { '--toastBackground': 'green' } });
     }
   
     function editDiagram(drillIndex, diagramIndex) {
       parsedDrills.update((drills) => {
-        const newDrills = [...drills];
-        newDrills[drillIndex].editableDiagramIndex = diagramIndex;
-        return newDrills;
+        drills[drillIndex] = { ...drills[drillIndex], editableDiagramIndex: diagramIndex };
+        return drills;
       });
     }
   
     function cancelEditDiagram(drillIndex) {
       parsedDrills.update((drills) => {
-        const newDrills = [...drills];
-        newDrills[drillIndex].editableDiagramIndex = null;
-        return newDrills;
+        drills[drillIndex].editableDiagramIndex = null;
+        return drills;
       });
     }
   
@@ -346,7 +343,7 @@
       <div class="mt-4">
         <h2 class="text-xl font-semibold mb-2">Parsed Drills</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {#each filteredDrills as drill, index}
+          {#each filteredDrills as drill, index (drill.id)}
             <div class="border p-4 rounded {drill.errors.length > 0 ? 'bg-yellow-100' : 'bg-white'}">
               {#if drill.isEditing}
                 <!-- Editable Fields -->
@@ -461,59 +458,44 @@
                   <p class="text-red-500 text-sm">Video link must be a valid URL</p>
                 {/if}
 
-                <!-- Diagrams Section -->
-                <div>
-                  <h4>Diagrams:</h4>
-                  {#each drill.diagrams as diagram, diagIndex}
-                    {#if drill.editableDiagramIndex === diagIndex}
-                      <DiagramDrawer
-                        data={diagram}
-                        index={diagIndex}
-                        showSaveButton={true}
-                        on:save={(event) => saveDiagram(index, diagIndex, event)}
-                      />
-                      <button on:click={() => cancelEditDiagram(index)}>Cancel</button>
-                    {:else}
-                      <div class="diagram-thumbnail" on:click={() => editDiagram(index, diagIndex)}>
-                        <DiagramDrawer data={diagram} showSaveButton={false} index={diagIndex} />
-                      </div>
-                    {/if}
-                  {/each}
-                  <button on:click={() => addDiagram(index)}>Add New Diagram</button>
-                </div>
-
                 <button class="mt-2 text-green-500" on:click={() => saveDrill(index)}>Save</button>
                 <button class="mt-2 ml-2 text-gray-500" on:click={() => cancelEdit(index)}>Cancel</button>
-              {:else}
-                <!-- Display Fields -->
-                <h3 class="font-semibold">{drill.name}</h3>
-                <p class="text-sm">{drill.brief_description}</p>
-                {#if drill.errors.length > 0}
-                  <div class="text-red-500 mt-2">
-                    {#each drill.errors as error}
-                      <p>{error}</p>
-                    {/each}
-                  </div>
-                {/if}
-
-                <!-- Diagrams Section -->
-                {#if drill.diagrams && drill.diagrams.length > 0}
-                  <div>
-                    <h4>Diagrams:</h4>
-                    {#each drill.diagrams as diagram, diagIndex}
-                      <div class="diagram-thumbnail" on:click={() => editDiagram(index, diagIndex)}>
-                        <DiagramDrawer data={diagram} showSaveButton={false} index={diagIndex} />
-                      </div>
-                    {/each}
-                  </div>
-                {/if}
-
-                <button class="mt-2 text-blue-500" on:click={() => editDrill(index)}>Edit</button>
-                <button class="mt-2 ml-2 text-red-500" on:click={() => removeDrill(index)}>Remove</button>
-                <button class="mt-2 text-purple-500" on:click={() => addDiagram(index)}>
-                  Add Diagram
-                </button>
               {/if}
+
+              <!-- Display Fields (Always Visible) -->
+              <h3 class="font-semibold">{drill.name}</h3>
+              <p class="text-sm">{drill.brief_description}</p>
+              {#if drill.errors.length > 0}
+                <div class="text-red-500 mt-2">
+                  {#each drill.errors as error}
+                    <p>{error}</p>
+                  {/each}
+                </div>
+              {/if}
+
+              <!-- Diagrams Section (Always Visible) -->
+              <div>
+                <h4>Diagrams:</h4>
+                {#each drill.diagrams as diagram, diagIndex (diagIndex)}
+                  <DiagramDrawer
+                    data={diagram}
+                    index={index}
+                    diagIndex={diagIndex}
+                    showSaveButton={drill.editableDiagramIndex === diagIndex}
+                    on:save={(event) => saveDiagram(index, diagIndex, event)}
+                  />
+                  {#if drill.editableDiagramIndex === diagIndex}
+                    <button on:click={() => cancelEditDiagram(index)}>Cancel</button>
+                  {:else}
+                    <button on:click={() => editDiagram(index, diagIndex)}>Edit Diagram</button>
+                  {/if}
+                {/each}
+              <button on:click={() => addDiagram(index)}>Add New Diagram</button>
+              </div>
+
+              <!-- Action Buttons (Always Visible) -->
+              <button class="mt-2 text-blue-500" on:click={() => editDrill(index)}>Edit</button>
+              <button class="mt-2 ml-2 text-red-500" on:click={() => removeDrill(index)}>Remove</button>
             </div>
           {/each}
         </div>

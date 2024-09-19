@@ -441,7 +441,7 @@
             on:save={(event) => handleDiagramSave(event, index)} 
             id={`diagram-canvas-${index}`} 
             data={diagram} 
-            {index}
+            index={diagramIndex}
             showSaveButton={true} 
           />
           <div class="mt-2 flex justify-between">

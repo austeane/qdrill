@@ -1,5 +1,69 @@
 import { json } from '@sveltejs/kit';
 import { parse } from 'csv-parse/sync';
+import * as Yup from 'yup';
+
+// Constants mapping numbers to representations
+const skillLevelMap = {
+  '1': 'New to Sport',
+  '2': 'Beginner',
+  '3': 'Intermediate',
+  '4': 'Advanced',
+  '5': 'Expert'
+};
+
+const complexityMap = {
+  '1': 'Low',
+  '2': 'Medium',
+  '3': 'High'
+};
+
+// Define your Yup schemas
+const drillSchema = Yup.object().shape({
+  name: Yup.string().required('Name is required'),
+  brief_description: Yup.string().required('Brief description is required'),
+  detailed_description: Yup.string().notRequired(),
+  skill_level: Yup.array()
+    .of(Yup.string().oneOf(Object.values(skillLevelMap), 'Invalid skill level'))
+    .min(1, 'At least one skill level is required')
+    .required('Skill level is required'),
+  complexity: Yup.string()
+    .oneOf(Object.values(complexityMap), 'Complexity must be Low, Medium, or High')
+    .nullable(),
+  suggested_length: Yup.object().shape({
+    min: Yup.number()
+      .positive('Suggested length min must be a positive integer')
+      .integer('Suggested length min must be an integer')
+      .required('Suggested length min is required'),
+    max: Yup.number()
+      .positive('Suggested length max must be a positive integer')
+      .integer('Suggested length max must be an integer')
+      .min(Yup.ref('min'), 'Suggested length max must be greater than or equal to min')
+      .required('Suggested length max is required'),
+  }),
+  number_of_people: Yup.object().shape({
+    min: Yup.number()
+      .positive('Number of people min must be a positive integer')
+      .integer('Number of people min must be an integer')
+      .nullable(),
+    max: Yup.number()
+      .positive('Number of people max must be a positive integer')
+      .integer('Number of people max must be an integer')
+      .min(Yup.ref('min'), 'Number of people max must be greater than or equal to min')
+      .nullable(),
+  }),
+  skills_focused_on: Yup.array()
+    .of(Yup.string())
+    .min(1, 'At least one skill is required')
+    .required('Skills focused on is required'),
+  positions_focused_on: Yup.array()
+    .of(Yup.string().oneOf(['Chaser', 'Beater', 'Keeper', 'Seeker'], 'Invalid position'))
+    .min(1, 'At least one position is required')
+    .required('Positions focused on is required'),
+  video_link: Yup.string()
+    .url('Video link must be a valid URL')
+    .nullable(),
+  diagrams: Yup.array().of(Yup.string()).notRequired(),
+});
 
 export async function POST({ request }) {
   try {
@@ -47,8 +111,8 @@ function parseDrill(record) {
     name: record['Name'],
     brief_description: record['Brief Description'],
     detailed_description: record['Detailed Description'],
-    skill_level: parseArray(record['Skill Level']).map(Number),
-    complexity: record['Complexity'] ? Number(record['Complexity']) : null,
+    skill_level: parseArray(record['Skill Level (1:New to Sport; 2:Beginner; 3:Intermediate; 4:Advanced; 5:Expert)']).map(level => skillLevelMap[level] || level),
+    complexity: record['Complexity (1:Low; 2:Medium; 3:High)'] ? complexityMap[record['Complexity (1:Low; 2:Medium; 3:High)']] : null,
     suggested_length: {
       min: parseInteger(record['Suggested Length Min']),
       max: parseInteger(record['Suggested Length Max'])
@@ -58,7 +122,7 @@ function parseDrill(record) {
       max: parseInteger(record['Number of People Max'])
     },
     skills_focused_on: parseArray(record['Skills Focused On']),
-    positions_focused_on: parseArray(record['Positions Focused On']),
+    positions_focused_on: parseArray(record['Positions Focused On (Chaser; Beater; Keeper; Seeker)']),
     video_link: record['Video Link'],
     diagrams: parseDiagrams(record['Diagrams']),
     errors: []
@@ -80,7 +144,10 @@ function parseDiagrams(diagramsString) {
 }
 
 function parseArray(value = '') {
-  return value.split(',').map(item => item.trim());
+  return value
+    .split(',')
+    .map(item => item.trim())
+    .filter(item => item !== '');
 }
 
 function parseInteger(value) {
@@ -88,93 +155,19 @@ function parseInteger(value) {
   return isNaN(parsed) ? null : parsed;
 }
 
-function validateDrill(drill) {
-  drill.errors = [];
+async function validateDrill(drill) {
+  try {
+    await drillSchema.validate(drill, { abortEarly: false });
+    drill.errors = [];
+  } catch (err) {
+    drill.errors = err.errors;
+  }
+}
 
-  // 1. Name: Required
-  if (!drill.name || drill.name.trim() === '') {
-    drill.errors.push('Name is required');
-  }
-
-  // 2. Brief Description: Required
-  if (!drill.brief_description || drill.brief_description.trim() === '') {
-    drill.errors.push('Brief description is required');
-  }
-
-  // 3. Skill Level: Required, array of numbers [1-5]
-  if (!Array.isArray(drill.skill_level) || drill.skill_level.length === 0) {
-    drill.errors.push('Skill level is required and must be an array of numbers');
-  } else {
-    const validSkillLevels = [1, 2, 3, 4, 5];
-    const invalidLevels = drill.skill_level.filter(
-      (level) => !validSkillLevels.includes(level)
-    );
-    if (invalidLevels.length > 0) {
-      drill.errors.push(`Invalid skill levels: ${invalidLevels.join(', ')}`);
-    }
-  }
-
-  // 4. Complexity: Optional, must be 1, 2, or 3
-  if (drill.complexity !== null) {
-    const validComplexities = [1, 2, 3];
-    if (!validComplexities.includes(drill.complexity)) {
-      drill.errors.push('Complexity must be 1 (Low), 2 (Medium), or 3 (High)');
-    }
-  }
-
-  // 5. Suggested Length: Required, positive integers, max >= min
-  const { min: minLength, max: maxLength } = drill.suggested_length;
-  if (!Number.isInteger(minLength) || minLength <= 0) {
-    drill.errors.push('Suggested length min must be a positive integer');
-  }
-  if (!Number.isInteger(maxLength) || maxLength <= 0) {
-    drill.errors.push('Suggested length max must be a positive integer');
-  }
-  if (maxLength < minLength) {
-    drill.errors.push('Suggested length max must be greater than or equal to min');
-  }
-
-  // 6. Number of People: Optional, positive integers, max >= min
-  const { min: minPeople, max: maxPeople } = drill.number_of_people;
-  if (minPeople !== null || maxPeople !== null) {
-    if (minPeople !== null && (!Number.isInteger(minPeople) || minPeople <= 0)) {
-      drill.errors.push('Number of people min must be a positive integer');
-    }
-    if (maxPeople !== null && (!Number.isInteger(maxPeople) || maxPeople <= 0)) {
-      drill.errors.push('Number of people max must be a positive integer');
-    }
-    if (maxPeople !== null && minPeople !== null && maxPeople < minPeople) {
-      drill.errors.push('Number of people max must be greater than or equal to min');
-    }
-  }
-
-  // 7. Skills Focused On: Required, must be an array
-  if (!Array.isArray(drill.skills_focused_on) || drill.skills_focused_on.length === 0) {
-    drill.errors.push('Skills focused on is required and must be an array');
-  }
-
-  // 8. Positions Focused On: Required, valid positions
-  const validPositions = ['Beater', 'Chaser', 'Keeper', 'Seeker'];
-  if (
-    !Array.isArray(drill.positions_focused_on) ||
-    drill.positions_focused_on.length === 0
-  ) {
-    drill.errors.push('Positions focused on is required and must be an array');
-  } else {
-    const invalidPositions = drill.positions_focused_on.filter(
-      (pos) => !validPositions.includes(pos)
-    );
-    if (invalidPositions.length > 0) {
-      drill.errors.push(`Invalid positions: ${invalidPositions.join(', ')}`);
-    }
-  }
-
-  // 9. Video Link: Optional, must be a valid URL if provided
-  if (drill.video_link) {
-    try {
-      new URL(drill.video_link);
-    } catch {
-      drill.errors.push('Video link must be a valid URL');
-    }
-  }
+// Map skill level descriptions back to numeric codes for editing
+function mapSkillLevelsForEdit(skillLevels) {
+  const inverseSkillLevelMap = Object.fromEntries(
+    Object.entries(skillLevelMap).map(([key, value]) => [value, key])
+  );
+  return skillLevels.map(level => inverseSkillLevelMap[level] || level);
 }

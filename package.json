@@ -58,7 +58,8 @@
 		"svelte-dnd-action": "^0.9.50",
 		"svelte-feather-icons": "^4.1.0",
 		"svelte-forms-lib": "^2.0.1",
-		"svelte-routing": "^2.13.0"
+		"svelte-routing": "^2.13.0",
+		"yup": "^1.4.0"
 	},
 	"type": "module"
 }

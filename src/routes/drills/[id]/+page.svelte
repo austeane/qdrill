@@ -91,7 +91,7 @@
   <meta name="description" content="Details of the selected drill" />
 </svelte:head>
 
-<section class="max-w-4xl mx-auto px-4 py-8">
+<section class="bg-gray-100 max-w-4xl mx-auto px-4 py-8">
   <h1 class="text-3xl font-bold text-center mb-6">{$drill.name}</h1>
   
   <div class="bg-white shadow-md rounded-lg p-6 mb-8">
@@ -180,10 +180,3 @@
     {/if}
   </div>
 </section>
-
-<style>
-  /* You can remove most of the styles here as we're using Tailwind classes */
-  :global(body) {
-    background-color: #f3f4f6;
-  }
-</style>

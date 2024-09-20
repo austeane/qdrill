@@ -10,7 +10,6 @@
 <section>
 	<h1>Welcome to QDrill</h1>
 	<p>Your ultimate tool for creating and managing drills.</p>
-	<button on:click={() => console.log('Test button clicked')}>Test Button</button>
 </section>
 
 <style>

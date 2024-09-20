@@ -272,7 +272,7 @@
       <label for="name" class="block text-sm font-medium text-gray-700">Name:</label>
       <input id="name" bind:value={$name} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" />
       {#if $errors.name}
-        <p class="error">{$errors.name}</p>
+        <p class="text-red-500 text-sm mt-1">{$errors.name}</p>
       {/if}
     </div>
 
@@ -280,7 +280,7 @@
       <label for="brief_description" class="block text-sm font-medium text-gray-700">Brief Description:</label>
       <input id="brief_description" bind:value={$brief_description} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" />
       {#if $errors.brief_description}
-        <p class="error">{$errors.brief_description}</p>
+        <p class="text-red-500 text-sm mt-1">{$errors.brief_description}</p>
       {/if}
     </div>
 
@@ -299,7 +299,7 @@
         <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'elite')}>Elite</button>
       </div>
       {#if $errors.skill_level}
-        <p class="error">{$errors.skill_level}</p>
+        <p class="text-red-500 text-sm mt-1">{$errors.skill_level}</p>
       {/if}
     </div>
 
@@ -323,7 +323,7 @@
         <option value="30-60 minutes">30-60 minutes</option>
       </select>
       {#if $errors.suggested_length}
-        <p class="error">{$errors.suggested_length}</p>
+        <p class="text-red-500 text-sm mt-1">{$errors.suggested_length}</p>
       {/if}
     </div>
 
@@ -336,10 +336,10 @@
         class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" 
       />
       {#if numberWarnings.number_of_people_min}
-        <p class="warning">{numberWarnings.number_of_people_min}</p>
+        <p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_min}</p>
       {/if}
       {#if $errors.number_of_people_min}
-        <p class="error">{$errors.number_of_people_min}</p>
+        <p class="text-red-500 text-sm mt-1">{$errors.number_of_people_min}</p>
       {/if}
     </div>
 
@@ -352,10 +352,10 @@
         class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md" 
       />
       {#if numberWarnings.number_of_people_max}
-        <p class="warning">{numberWarnings.number_of_people_max}</p>
+        <p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_max}</p>
       {/if}
       {#if $errors.number_of_people_max}
-        <p class="error">{$errors.number_of_people_max}</p>
+        <p class="text-red-500 text-sm mt-1">{$errors.number_of_people_max}</p>
       {/if}
     </div>
 
@@ -405,7 +405,7 @@
         </ul>
       {/if}
       {#if $errors.skills_focused_on}
-        <p class="error">{$errors.skills_focused_on}</p>
+        <p class="text-red-500 text-sm mt-1">{$errors.skills_focused_on}</p>
       {/if}
     </div>
 
@@ -418,7 +418,7 @@
         <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Seeker')}>Seeker</button>
       </div>
       {#if $errors.positions_focused_on}
-        <p class="error">{$errors.positions_focused_on}</p>
+        <p class="text-red-500 text-sm mt-1">{$errors.positions_focused_on}</p>
       {/if}
     </div>
 
@@ -463,14 +463,3 @@
     </button>
   </form>
 </section>
-
-<style>
-  .error {
-    color: red;
-    font-size: 0.8rem;
-  }
-  .warning {
-    color: orange;
-    font-size: 0.8rem;
-  }
-</style>

@@ -6,9 +6,8 @@ await client.connect();
 
 export async function POST({ request }) {
   const practicePlan = await request.json();
-  const { name, description, drills } = practicePlan;
-
-  // Data validation
+  const { name, description, drills, practice_goals, phase_of_season, estimated_number_of_participants } = practicePlan;
+  
   if (!name || !drills || !Array.isArray(drills) || drills.length === 0) {
     return json(
       { error: 'Invalid practice plan data' },
@@ -16,65 +15,64 @@ export async function POST({ request }) {
     );
   }
 
+  const validPhases = [
+    'Offseason',
+    'Early season, new players',
+    'Mid season, skill building',
+    'Tournament tuneup',
+    'End of season, peaking'
+  ];
+  if (phase_of_season && !validPhases.includes(phase_of_season)) {
+    return json(
+      { error: 'Invalid phase of season' },
+      { status: 400 }
+    );
+  }
+
   try {
-    // Start a transaction
     await client.query('BEGIN');
 
-    // Insert the practice plan
     const planResult = await client.query(
-      `INSERT INTO practice_plans (name, description) 
-       VALUES ($1, $2) RETURNING id`,
-      [name, description]
+      `INSERT INTO practice_plans (name, description, practice_goals, phase_of_season, estimated_number_of_participants) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [name, description, practice_goals, phase_of_season, estimated_number_of_participants]
     );
 
     const planId = planResult.rows[0].id;
 
-    // Insert items (drills and breaks) associated with this plan
     for (let i = 0; i < drills.length; i++) {
       const item = drills[i];
       const orderInPlan = i + 1;
       const duration = item.duration || item.selected_duration;
 
       if (item.type === 'drill') {
-        // Ensure duration is present
-        if (!duration) {
-          throw new Error(`Duration not specified for drill ID ${item.id}`);
-        }
+        const diagramData = item.diagram_data || null;
 
         await client.query(
-          `INSERT INTO practice_plan_drills (practice_plan_id, drill_id, order_in_plan, duration, type) 
-           VALUES ($1, $2, $3, $4, 'drill')`,
-          [planId, item.id, orderInPlan, duration]
+          `INSERT INTO practice_plan_drills (practice_plan_id, drill_id, order_in_plan, duration, type, diagram_data) 
+           VALUES ($1, $2, $3, $4, 'drill', $5)`,
+          [planId, item.id, orderInPlan, duration, diagramData]
         );
       } else if (item.type === 'break') {
         await client.query(
-          `INSERT INTO practice_plan_drills (practice_plan_id, drill_id, order_in_plan, duration, type) 
-           VALUES ($1, NULL, $2, $3, 'break')`,
+          `INSERT INTO practice_plan_drills (practice_plan_id, order_in_plan, duration, type) 
+           VALUES ($1, $2, $3, 'break')`,
           [planId, orderInPlan, duration]
         );
       }
     }
 
-    // Commit the transaction
     await client.query('COMMIT');
 
-    console.log(`Practice plan created successfully. ID: ${planId}`);
     return json(
       { id: planId, message: 'Practice plan created successfully' },
       { status: 201 }
     );
   } catch (error) {
-    // Rollback the transaction in case of error
     await client.query('ROLLBACK');
-    console.error(
-      'Error occurred while inserting practice plan:',
-      error
-    );
+    console.error('Error occurred while inserting practice plan:', error);
     return json(
-      {
-        error: 'An error occurred while creating the practice plan',
-        details: error.toString()
-      },
+      { error: 'An error occurred while creating the practice plan', details: error.toString() },
       { status: 500 }
     );
   }
@@ -84,6 +82,9 @@ export async function GET() {
   try {
     const result = await client.query(`
       SELECT pp.*, 
+             pp.practice_goals,
+             pp.phase_of_season,
+             pp.estimated_number_of_participants,
              array_agg(ppd.drill_id ORDER BY ppd.order_in_plan) as drills,
              array_agg(ppd.duration ORDER BY ppd.order_in_plan) as drill_durations
       FROM practice_plans pp

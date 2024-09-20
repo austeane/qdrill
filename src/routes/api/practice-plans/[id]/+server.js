@@ -28,6 +28,7 @@ export async function GET({ params }) {
         ppd.duration,
         ppd.type,
         ppd.drill_id,
+        ppd.diagram_data AS ppd_diagram_data,  -- Alias to avoid confusion
         d.*
       FROM practice_plan_drills ppd
       LEFT JOIN drills d ON ppd.drill_id = d.id
@@ -44,6 +45,7 @@ export async function GET({ params }) {
           type: 'drill',
           duration: item.duration,
           order_in_plan: item.order_in_plan,
+          diagram_data: item.ppd_diagram_data, // Attach the diagram_data from practice_plan_drills
           drill: {
             id: item.drill_id,
             name: item.name,
@@ -59,7 +61,7 @@ export async function GET({ params }) {
             skills_focused_on: item.skills_focused_on,
             positions_focused_on: item.positions_focused_on,
             video_link: item.video_link,
-            diagram_data: item.diagram_data,
+            diagrams: item.diagrams, // Include original drill diagrams if needed
           },
         };
       } else if (item.type === 'break') {

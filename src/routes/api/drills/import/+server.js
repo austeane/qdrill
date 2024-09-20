@@ -4,7 +4,7 @@ const { Pool } = pkg;
 
 // Initialize PostgreSQL pool using environment variables
 const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL, // Use POSTGRES_URL from .env.development.local
+  connectionString: process.env.POSTGRES_URL, // Ensure this is correctly set in your environment
   ssl: {
     rejectUnauthorized: false
   }
@@ -73,7 +73,7 @@ export async function POST({ request }) {
             brief_description,
             detailed_description || null,
             skill_level,
-            complexity ? complexity.toString() : null,
+            complexity || null,
             `${suggested_length.min}-${suggested_length.max}`,
             number_of_people.min || 0,
             number_of_people.max || 99,

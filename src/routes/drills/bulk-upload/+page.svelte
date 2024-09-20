@@ -64,8 +64,8 @@
     }
   
     function downloadTemplate() {
-      const template = `Name,Brief Description,Detailed Description,Skill Level,Complexity,Suggested Length Min,Suggested Length Max,Number of People Min,Number of People Max,Skills Focused On,Positions Focused On,Video Link
-  Example Drill,A brief description,A more detailed description,"1,2,3",2,10,15,4,8,"Passing,Catching","Chaser,Beater",https://example.com/video`;
+      const template = `Name,Brief Description,Detailed Description,Skill Level (1:New to Sport; 2:Beginner; 3:Intermediate; 4:Advanced; 5:Expert),Complexity (1:Low; 2:Medium; 3:High),Suggested Length Min,Suggested Length Max,Number of People Min,Number of People Max,Skills Focused On,Positions Focused On (Chaser; Beater; Keeper; Seeker),Video Link,Diagrams
+Example Drill,A brief description,A more detailed description,"1,2,3",2,10,15,4,8,"Passing,Catching","Chaser,Beater",https://example.com/video,[]`;
   
       const blob = new Blob([template], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);

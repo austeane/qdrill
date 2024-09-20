@@ -201,15 +201,10 @@
     {#each filteredDrills as drill}
       <div
         class="border border-gray-200 p-6 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 cursor-pointer relative"
+        on:click={() => window.location.href = `/drills/${drill.id}`}
       >
         <h2 class="text-xl font-bold text-gray-800 mb-2">
-          <a
-            href="/drills/{drill.id}"
-            class="underline text-blue-600 hover:text-blue-800"
-            on:click|stopPropagation
-          >
-            {drill.name}
-          </a>
+          {drill.name}
         </h2>
         <p class="text-gray-600 mb-2">{drill.brief_description}</p>
         <p class="text-sm text-gray-500 mb-1">
@@ -233,7 +228,7 @@
             drillsInCart.has(drill.id) ? 'bg-red-500 hover:bg-red-600' :
             'bg-blue-500 hover:bg-blue-600'
           }"
-          on:click={() => toggleDrillInCart(drill)}
+          on:click|stopPropagation={() => toggleDrillInCart(drill)}
         >
           {#if buttonStates[drill.id] === 'added'}
             Added

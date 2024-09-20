@@ -70,16 +70,17 @@ export async function POST({ request }) {
 export async function GET() {
     try {
         const result = await client.query('SELECT * FROM drills');
-        const drills = result.rows.map(drill => {
-            drill.skill_level = Array.isArray(drill.skill_level) ? drill.skill_level : [];
-            drill.comments = Array.isArray(drill.comments) ? drill.comments : [];
-            drill.images = Array.isArray(drill.images) ? drill.images : [];
-            return drill;
-        });
+        // Assuming drills table has min_duration and max_duration fields
+        const drills = result.rows.map(drill => ({
+            ...drill,
+            min_duration: drill.min_duration || 5, // Default min_duration
+            max_duration: drill.max_duration || 15, // Default max_duration
+            suggested_length: drill.suggested_length || Math.floor((drill.min_duration + drill.max_duration) / 2)
+        }));
         return json(drills);
     } catch (error) {
-        console.error('Error occurred while fetching drills:', error);
-        return json({ error: 'Failed to retrieve drills', details: error.toString() }, { status: 500 });
+        console.error('Error fetching drills:', error);
+        return json({ error: 'Failed to fetch drills' }, { status: 500 });
     }
 }
 export async function PUT({ request }) {

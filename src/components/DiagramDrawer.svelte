@@ -306,27 +306,18 @@
 </script>
 
 <div>
-  <canvas bind:this={canvas} {id}></canvas>
+  <canvas bind:this={canvas} {id} class="border border-gray-300"></canvas>
 </div>
 <div>
-  <button on:click|preventDefault={() => addNewPlayer('red', 'green')}>Add Red Player</button>
-  <button on:click|preventDefault={() => addNewPlayer('blue', 'green')}>Add Blue Player</button>
-  <button on:click|preventDefault={addArrow}>Add Arrow</button>
-  <button on:click|preventDefault={addHoopGroup}>Add Hoop Group</button>
-  <button on:click|preventDefault={addTextBox}>Add Text Box</button>
-  <button on:click|preventDefault={addBludger}>Add Bludger</button>
-  <button on:click|preventDefault={addQuaffle}>Add Quaffle</button>
-  <button on:click|preventDefault={deleteSelectedObjects}>Delete Selected</button>
+  <button on:click|preventDefault={() => addNewPlayer('red', 'green')} class="m-1">Add Red Player</button>
+  <button on:click|preventDefault={() => addNewPlayer('blue', 'green')} class="m-1">Add Blue Player</button>
+  <button on:click|preventDefault={addArrow} class="m-1">Add Arrow</button>
+  <button on:click|preventDefault={addHoopGroup} class="m-1">Add Hoop Group</button>
+  <button on:click|preventDefault={addTextBox} class="m-1">Add Text Box</button>
+  <button on:click|preventDefault={addBludger} class="m-1">Add Bludger</button>
+  <button on:click|preventDefault={addQuaffle} class="m-1">Add Quaffle</button>
+  <button on:click|preventDefault={deleteSelectedObjects} class="m-1">Delete Selected</button>
   {#if showSaveButton}
-    <button on:click|preventDefault={saveDiagram}>Save Diagram</button>
+    <button on:click|preventDefault={saveDiagram} class="m-1">Save Diagram</button>
   {/if}
 </div>
-
-<style>
-  canvas {
-    border: 1px solid #ccc;
-  }
-  button {
-    margin: 5px;
-  }
-</style>

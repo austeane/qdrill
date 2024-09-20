@@ -351,7 +351,7 @@
                   type="text"
                   bind:value={drill.name}
                   placeholder="Name"
-                  class="{drill.errors.includes('Name is required') ? 'border-red-500' : ''}"
+                  class="{drill.errors.includes('Name is required') ? 'border-2 border-red-500' : ''}"
                   on:input={() => validateDrill(drill)}
                 />
                 {#if drill.errors.includes('Name is required')}
@@ -361,7 +361,7 @@
                   type="text"
                   bind:value={drill.brief_description}
                   placeholder="Brief Description"
-                  class="{drill.errors.includes('Brief description is required') ? 'border-red-500' : ''}"
+                  class="{drill.errors.includes('Brief description is required') ? 'border-2 border-red-500' : ''}"
                   on:input={() => validateDrill(drill)}
                 />
                 {#if drill.errors.includes('Brief description is required')}
@@ -371,7 +371,7 @@
                   type="text"
                   bind:value={drill.skill_level}
                   placeholder="Skill Level"
-                  class="{drill.errors.includes('Skill level is required and must be an array') ? 'border-red-500' : ''}"
+                  class="{drill.errors.includes('Skill level is required and must be an array') ? 'border-2 border-red-500' : ''}"
                   on:input={() => validateDrill(drill)}
                 />
                 {#if drill.errors.includes('Skill level is required and must be an array')}
@@ -381,7 +381,7 @@
                   type="text"
                   bind:value={drill.complexity}
                   placeholder="Complexity"
-                  class="{drill.errors.includes('Complexity must be 1 (Low), 2 (Medium), or 3 (High)') ? 'border-red-500' : ''}"
+                  class="{drill.errors.includes('Complexity must be 1 (Low), 2 (Medium), or 3 (High)') ? 'border-2 border-red-500' : ''}"
                   on:input={() => validateDrill(drill)}
                 />
                 {#if drill.errors.includes('Complexity must be 1 (Low), 2 (Medium), or 3 (High)')}
@@ -391,7 +391,7 @@
                   type="text"
                   bind:value={drill.suggested_length.min}
                   placeholder="Suggested Length Min"
-                  class="{drill.errors.includes('Suggested length min must be a positive integer') ? 'border-red-500' : ''}"
+                  class="{drill.errors.includes('Suggested length min must be a positive integer') ? 'border-2 border-red-500' : ''}"
                   on:input={() => validateDrill(drill)}
                 />
                 {#if drill.errors.includes('Suggested length min must be a positive integer')}
@@ -401,7 +401,7 @@
                   type="text"
                   bind:value={drill.suggested_length.max}
                   placeholder="Suggested Length Max"
-                  class="{drill.errors.includes('Suggested length max must be a positive integer') ? 'border-red-500' : ''}"
+                  class="{drill.errors.includes('Suggested length max must be a positive integer') ? 'border-2 border-red-500' : ''}"
                   on:input={() => validateDrill(drill)}
                 />
                 {#if drill.errors.includes('Suggested length max must be a positive integer')}
@@ -411,7 +411,7 @@
                   type="text"
                   bind:value={drill.number_of_people.min}
                   placeholder="Number of People Min"
-                  class="{drill.errors.includes('Number of people min must be a positive integer') ? 'border-red-500' : ''}"
+                  class="{drill.errors.includes('Number of people min must be a positive integer') ? 'border-2 border-red-500' : ''}"
                   on:input={() => validateDrill(drill)}
                 />
                 {#if drill.errors.includes('Number of people min must be a positive integer')}
@@ -421,7 +421,7 @@
                   type="text"
                   bind:value={drill.number_of_people.max}
                   placeholder="Number of People Max"
-                  class="{drill.errors.includes('Number of people max must be a positive integer') ? 'border-red-500' : ''}"
+                  class="{drill.errors.includes('Number of people max must be a positive integer') ? 'border-2 border-red-500' : ''}"
                   on:input={() => validateDrill(drill)}
                 />
                 {#if drill.errors.includes('Number of people max must be a positive integer')}
@@ -431,7 +431,7 @@
                   type="text"
                   bind:value={drill.skills_focused_on}
                   placeholder="Skills Focused On"
-                  class="{drill.errors.includes('Skills focused on is required and must be an array') ? 'border-red-500' : ''}"
+                  class="{drill.errors.includes('Skills focused on is required and must be an array') ? 'border-2 border-red-500' : ''}"
                   on:input={() => validateDrill(drill)}
                 />
                 {#if drill.errors.includes('Skills focused on is required and must be an array')}
@@ -441,7 +441,7 @@
                   type="text"
                   bind:value={drill.positions_focused_on}
                   placeholder="Positions Focused On"
-                  class="{drill.errors.includes('Positions focused on is required and must be an array') ? 'border-red-500' : ''}"
+                  class="{drill.errors.includes('Positions focused on is required and must be an array') ? 'border-2 border-red-500' : ''}"
                   on:input={() => validateDrill(drill)}
                 />
                 {#if drill.errors.includes('Positions focused on is required and must be an array')}
@@ -451,7 +451,7 @@
                   type="text"
                   bind:value={drill.video_link}
                   placeholder="Video Link"
-                  class="{drill.errors.includes('Video link must be a valid URL') ? 'border-red-500' : ''}"
+                  class="{drill.errors.includes('Video link must be a valid URL') ? 'border-2 border-red-500' : ''}"
                   on:input={() => validateDrill(drill)}
                 />
                 {#if drill.errors.includes('Video link must be a valid URL')}
@@ -512,40 +512,3 @@
     </div>
   </div>
 
-  <style>
-    .border-red-500 {
-      border-color: red;
-      border-width: 2px;
-    }
-
-    .diagram-container {
-      margin-bottom: 1em;
-    }
-
-    .diagram-thumbnail {
-      cursor: pointer;
-      display: inline-block;
-      margin-right: 1em;
-    }
-
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .modal > * {
-      background-color: white;
-      padding: 1em;
-      border-radius: 8px;
-      max-width: 90%;
-      max-height: 90%;
-      overflow: auto;
-    }
-  </style>

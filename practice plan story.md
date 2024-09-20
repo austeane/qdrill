@@ -1,0 +1,3 @@
+I need to add a practice plan viewing page similar to the drill viewing page. This practice plan viewing page should fit the needs of both the coach that made it, and the player that will be doing the plan. 
+It should at a glance show a summary of all the drills in a vertical timeline, with drills sized according to the mean amount of time it is expected to take. 
+Please create a new route for that and a page and server and possibly page.server.

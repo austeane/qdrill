@@ -18,13 +18,24 @@
   let isSubmitting = writable(false);
   let errors = writable({});
 
-  // Initialize selectedItems from the cart
-  $: selectedItems.set(
-    $cart.map(drill => ({ ...drill, type: 'drill', expanded: false }))
-  );
+  // Initialize selectedItems from the cart with duration settings
+  $: {
+    selectedItems.set(
+      $cart.map(drill => ({
+        ...drill,
+        id: drill.id || `drill-${Date.now()}-${Math.random()}`, // Ensure unique id
+        type: 'drill',
+        expanded: false,
+        // Initialize selected_duration to midpoint if not set
+        selected_duration: drill.min_duration && drill.max_duration
+          ? Math.floor((drill.min_duration + drill.max_duration) / 2)
+          : drill.suggested_length || 10 // Default to suggested_length or 10 minutes
+      }))
+    );
+  }
 
   // Update the dndzone configuration
-  let dndOptions = {
+  $: dndOptions = {
     items: $selectedItems,
     type: "column",
     flipDurationMs: 300,
@@ -51,10 +62,22 @@
     }
 
     isSubmitting.set(true);
+
+    // Prepare drills data with durations
+    const drillsData = $selectedItems.map(item => {
+      if (item.type === 'drill') {
+        return {
+          id: item.id,
+          duration: item.selected_duration || Math.floor((item.min_duration + item.max_duration) / 2)
+        };
+      }
+      return item; // For breaks, keep as is
+    });
+
     const planData = {
       name: planName,
       description: planDescription,
-      items: $selectedItems,
+      drills: drillsData,
     };
 
     try {
@@ -89,7 +112,12 @@
   function addBreak(index) {
     selectedItems.update(items => {
       const newItems = [...items];
-      newItems.splice(index + 1, 0, { id: `break-${Date.now()}`, name: 'Break', duration: 5, type: 'break' });
+      newItems.splice(index + 1, 0, { 
+        id: `break-${Date.now()}-${Math.random()}`, 
+        name: 'Break', 
+        duration: 5, 
+        type: 'break' 
+      });
       return newItems;
     });
   }
@@ -107,6 +135,18 @@
       const updatedItems = [...items];
       updatedItems[index].expanded = !updatedItems[index].expanded;
       return updatedItems;
+    });
+  }
+
+  // Function to handle duration changes for drills
+  function handleDurationChange(item, newDuration) {
+    selectedItems.update(items => {
+      return items.map(it => {
+        if (it.id === item.id) {
+          return { ...it, selected_duration: newDuration };
+        }
+        return it;
+      });
     });
   }
 </script>
@@ -131,66 +171,91 @@
   <div class="mb-4">
     <h2 class="text-xl font-semibold mb-2">Selected Drills and Breaks</h2>
     <ul
-      use:dndzone={dndOptions}
+      use:dndzone={{...dndOptions}}
       on:consider={handleDndConsider}
       on:finalize={handleDndFinalize}
       class="space-y-2"
     >
       {#each $selectedItems as item, index (item.id)}
         <li>
-          <div class="flex justify-between items-center bg-gray-100 p-2 rounded cursor-move">
+          <div class="flex flex-col">
+            <div class="flex justify-between items-center bg-gray-100 p-2 rounded cursor-move">
+              {#if item.type === 'drill'}
+                <span>{item.name}</span>
+                <div class="flex items-center space-x-4">
+                  <span>{item.selected_duration} minutes</span>
+                  <button on:click={() => toggleExpand(index)} class="p-1 rounded-full hover:bg-gray-200">
+                    {#if item.expanded}
+                      <ChevronUpIcon size="20" />
+                    {:else}
+                      <ChevronDownIcon size="20" />
+                    {/if}
+                  </button>
+                </div>
+              {:else}
+                <span>Break</span>
+                <input
+                  type="number"
+                  min="1"
+                  bind:value={item.duration}
+                  on:input={(e) => updateBreakDuration(index, parseInt(e.target.value))}
+                  class="w-16 text-right"
+                /> minutes
+              {/if}
+              <button on:click={() => removeItem(index)} class="text-red-600 hover:text-red-800">Remove</button>
+            </div>
+            {#if item.type === 'drill' && item.expanded}
+              <div class="mt-2 p-2 bg-gray-50 rounded">
+                {#if item.brief_description}<p><strong>Brief Description:</strong> {item.brief_description}</p>{/if}
+                {#if item.detailed_description}<p><strong>Detailed Description:</strong> {item.detailed_description}</p>{/if}
+                {#if item.skill_level}<p><strong>Skill Level:</strong> {Array.isArray(item.skill_level) ? item.skill_level.join(', ') : item.skill_level}</p>{/if}
+                {#if item.complexity}<p><strong>Complexity:</strong> {item.complexity}</p>{/if}
+                {#if item.number_of_people_min && item.number_of_people_max}
+                  <p><strong>Number of People:</strong> {item.number_of_people_min} - {item.number_of_people_max}</p>
+                {/if}
+                {#if item.skills_focused_on}<p><strong>Skills Focused On:</strong> {Array.isArray(item.skills_focused_on) ? item.skills_focused_on.join(', ') : item.skills_focused_on}</p>{/if}
+                {#if item.positions_focused_on}<p><strong>Positions Focused On:</strong> {Array.isArray(item.positions_focused_on) ? item.positions_focused_on.join(', ') : item.positions_focused_on}</p>{/if}
+                {#if item.video_link}
+                  <p><strong>Video Link:</strong> <a href={item.video_link} target="_blank" rel="noopener noreferrer">Watch Video</a></p>
+                {/if}
+              </div>
+            {/if}
+
             {#if item.type === 'drill'}
-              <span>{item.name}</span>
-              <div class="flex items-center">
-                <span>{item.suggested_length} minutes</span>
-                <button on:click={() => toggleExpand(index)} class="ml-2 p-1 rounded-full hover:bg-gray-200">
-                  {#if item.expanded}
-                    <ChevronUpIcon size="20" />
-                  {:else}
-                    <ChevronDownIcon size="20" />
-                  {/if}
+              <div class="mt-2 flex items-center space-x-4">
+                <label class="w-1/4">Duration:</label>
+                <input
+                  type="range"
+                  min="{item.min_duration}"
+                  max="{item.max_duration}"
+                  bind:value="{item.selected_duration}"
+                  on:input={(e) => handleDurationChange(item, parseInt(e.target.value))}
+                  class="flex-1"
+                />
+                <input
+                  type="number"
+                  min="{item.min_duration}"
+                  max="{item.max_duration}"
+                  bind:value="{item.selected_duration}"
+                  on:input={(e) => handleDurationChange(item, parseInt(e.target.value))}
+                  class="w-20 border-gray-300 rounded-md shadow-sm"
+                /> minutes
+              </div>
+            {/if}
+
+            <!-- Add Break Button between items -->
+            {#if index < $selectedItems.length - 1}
+              <div class="relative mt-2">
+                <hr class="my-2 border-gray-300" />
+                <button
+                  on:click={() => addBreak(index)}
+                  class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-600 hover:bg-gray-100"
+                >
+                  Add Break
                 </button>
               </div>
-            {:else}
-              <span>Break</span>
-              <input
-                type="number"
-                min="1"
-                bind:value={item.duration}
-                on:input={(e) => updateBreakDuration(index, parseInt(e.target.value))}
-                class="w-16 text-right"
-              /> minutes
             {/if}
-            <button on:click={() => removeItem(index)} class="text-red-600 hover:text-red-800">Remove</button>
           </div>
-          {#if item.type === 'drill' && item.expanded}
-            <div class="mt-2 p-2 bg-gray-50 rounded">
-              {#if item.brief_description}<p><strong>Brief Description:</strong> {item.brief_description}</p>{/if}
-              {#if item.detailed_description}<p><strong>Detailed Description:</strong> {item.detailed_description}</p>{/if}
-              {#if item.skill_level}<p><strong>Skill Level:</strong> {Array.isArray(item.skill_level) ? item.skill_level.join(', ') : item.skill_level}</p>{/if}
-              {#if item.complexity}<p><strong>Complexity:</strong> {item.complexity}</p>{/if}
-              {#if item.number_of_people_min && item.number_of_people_max}
-                <p><strong>Number of People:</strong> {item.number_of_people_min} - {item.number_of_people_max}</p>
-              {/if}
-              {#if item.skills_focused_on}<p><strong>Skills Focused On:</strong> {Array.isArray(item.skills_focused_on) ? item.skills_focused_on.join(', ') : item.skills_focused_on}</p>{/if}
-              {#if item.positions_focused_on}<p><strong>Positions Focused On:</strong> {Array.isArray(item.positions_focused_on) ? item.positions_focused_on.join(', ') : item.positions_focused_on}</p>{/if}
-              {#if item.video_link}
-                <p><strong>Video Link:</strong> <a href={item.video_link} target="_blank" rel="noopener noreferrer">Watch Video</a></p>
-              {/if}
-            </div>
-          {/if}
-          <!-- Add Break Button between items -->
-          {#if index < $selectedItems.length - 1}
-            <div class="relative">
-              <hr class="my-2 border-gray-300" />
-              <button
-                on:click={() => addBreak(index)}
-                class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-600 hover:bg-gray-100"
-              >
-                Add Break
-              </button>
-            </div>
-          {/if}
         </li>
       {/each}
     </ul>

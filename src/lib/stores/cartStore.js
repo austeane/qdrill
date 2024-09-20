@@ -39,6 +39,10 @@ function createCartStore() {
         return updatedDrills;
       });
     },
+    clear: () => {
+      set([]);
+      localStorage.removeItem('cartDrills');
+    },
     clearCart: () => {
       set([]);
       localStorage.removeItem('cartDrills');

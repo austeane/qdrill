@@ -70,9 +70,9 @@ export async function POST({ request }) {
 export async function GET() {
     try {
         const result = await client.query('SELECT * FROM drills');
-        // Assuming drills table has min_duration and max_duration fields
         const drills = result.rows.map(drill => ({
             ...drill,
+            diagrams: drill.diagrams || [], // Ensure diagrams are included
             min_duration: drill.min_duration || 5, // Default min_duration
             max_duration: drill.max_duration || 15, // Default max_duration
             suggested_length: drill.suggested_length || Math.floor((drill.min_duration + drill.max_duration) / 2)

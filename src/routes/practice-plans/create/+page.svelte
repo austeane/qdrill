@@ -18,6 +18,18 @@
   let isSubmitting = writable(false);
   let errors = writable({});
 
+  // New Fields
+  let phaseOfSeasonOptions = [
+    'Offseason',
+    'Early season, new players',
+    'Mid season, skill building',
+    'Tournament tuneup',
+    'End of season, peaking'
+  ];
+  let phaseOfSeason = '';
+  let estimatedNumberOfParticipants = '';
+  let practiceGoals = writable(['']);
+
   // Initialize selectedItems from the cart with duration settings
   $: {
     selectedItems.set(
@@ -26,6 +38,7 @@
         id: drill.id || `drill-${Date.now()}-${Math.random()}`, // Ensure unique id
         type: 'drill',
         expanded: false,
+        diagram_data: drill.diagrams && drill.diagrams.length > 0 ? drill.diagrams[0] : null, // Initialize diagram_data
         // Initialize selected_duration to midpoint if not set
         selected_duration: drill.min_duration && drill.max_duration
           ? Math.floor((drill.min_duration + drill.max_duration) / 2)
@@ -60,24 +73,36 @@
       errors.update(e => ({ ...e, selectedItems: 'At least one drill or break is required' }));
       return;
     }
+    if (phaseOfSeason && !phaseOfSeasonOptions.includes(phaseOfSeason)) {
+      errors.update(e => ({ ...e, phaseOfSeason: 'Invalid phase of season selected' }));
+      return;
+    }
+    if (estimatedNumberOfParticipants && (!Number.isInteger(+estimatedNumberOfParticipants) || +estimatedNumberOfParticipants <= 0)) {
+      errors.update(e => ({ ...e, estimatedNumberOfParticipants: 'Estimated number of participants must be a positive integer' }));
+      return;
+    }
 
     isSubmitting.set(true);
 
-    // Prepare drills data with durations
+    // Prepare drills data with durations and include the type and diagram_data
     const drillsData = $selectedItems.map(item => {
       if (item.type === 'drill') {
         return {
           id: item.id,
-          duration: item.selected_duration || Math.floor((item.min_duration + item.max_duration) / 2)
+          type: 'drill',
+          duration: item.selected_duration,
+          diagram_data: item.diagram_data
         };
       }
       return item; // For breaks, keep as is
     });
-
     const planData = {
       name: planName,
       description: planDescription,
-      drills: drillsData,
+      phase_of_season: phaseOfSeason || null,
+      estimated_number_of_participants: estimatedNumberOfParticipants ? parseInt(estimatedNumberOfParticipants) : null,
+      practice_goals: $practiceGoals.filter(goal => goal.trim() !== ''),
+      drills: drillsData
     };
 
     try {
@@ -89,11 +114,12 @@
 
       if (response.ok) {
         const data = await response.json();
+        cart.clear(); // Clear the cart after successful submission
         toast.push('Practice plan created successfully');
         goto(`/practice-plans/${data.id}`);
       } else {
         const errorData = await response.json();
-        errors.set(errorData.errors || { general: 'An error occurred while creating the practice plan' });
+        errors.set(errorData.errors || { general: errorData.error || 'An error occurred while creating the practice plan' });
         toast.push('Failed to create practice plan', { theme: { '--toastBackground': 'red' } });
       }
     } catch (error) {
@@ -149,6 +175,28 @@
       });
     });
   }
+
+  // Functions to manage Practice Goals
+  function addPracticeGoal() {
+    practiceGoals.update(goals => [...goals, '']);
+  }
+
+  function removePracticeGoal(index) {
+    practiceGoals.update(goals => goals.filter((_, i) => i !== index));
+  }
+
+  function updatePracticeGoal(index, value) {
+    practiceGoals.update(goals => goals.map((goal, i) => (i === index ? value : goal)));
+  }
+
+  // Add this function
+  function updateDiagramData(index, newDiagramData) {
+    selectedItems.update(items => {
+      const updatedItems = [...items];
+      updatedItems[index].diagram_data = newDiagramData;
+      return updatedItems;
+    });
+  }
 </script>
 
 <div class="container mx-auto p-4">
@@ -165,6 +213,49 @@
   <div class="mb-4">
     <label for="planDescription" class="block text-sm font-medium text-gray-700">Plan Description:</label>
     <textarea id="planDescription" bind:value={planDescription} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" rows="3"></textarea>
+  </div>
+
+  <div class="mb-4">
+    <label for="phaseOfSeason" class="block text-sm font-medium text-gray-700">Phase of Season:</label>
+    <select id="phaseOfSeason" bind:value={phaseOfSeason} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+      <option value="">Select Phase</option>
+      {#each phaseOfSeasonOptions as option}
+        <option value={option}>{option}</option>
+      {/each}
+    </select>
+    {#if $errors.phaseOfSeason}
+      <p class="text-red-500 text-sm mt-1">{$errors.phaseOfSeason}</p>
+    {/if}
+  </div>
+
+  <div class="mb-4">
+    <label for="estimatedNumberOfParticipants" class="block text-sm font-medium text-gray-700">Estimated Number of Participants:</label>
+    <input id="estimatedNumberOfParticipants" type="number" min="1" bind:value={estimatedNumberOfParticipants} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+    {#if $errors.estimatedNumberOfParticipants}
+      <p class="text-red-500 text-sm mt-1">{$errors.estimatedNumberOfParticipants}</p>
+    {/if}
+  </div>
+
+  <div class="mb-4">
+    <label class="block text-sm font-medium text-gray-700">Practice Goals:</label>
+    {#each $practiceGoals as goal, index}
+      <div class="flex items-center mt-2">
+        <input
+          type="text"
+          bind:value={$practiceGoals[index]}
+          on:input={(e) => updatePracticeGoal(index, e.target.value)}
+          placeholder="Enter practice goal"
+          class="flex-1 mr-2 border-gray-300 rounded-md shadow-sm"
+        />
+        {#if $practiceGoals.length > 1}
+          <button type="button" on:click={() => removePracticeGoal(index)} class="text-red-600 hover:text-red-800">Remove</button>
+        {/if}
+      </div>
+    {/each}
+    <button type="button" on:click={addPracticeGoal} class="mt-2 text-blue-600 hover:text-blue-800">Add Practice Goal</button>
+    {#if $errors.practice_goals}
+      <p class="text-red-500 text-sm mt-1">{$errors.practice_goals}</p>
+    {/if}
   </div>
 
   <!-- Selected Drills and Breaks with drag-and-drop -->
@@ -217,6 +308,14 @@
                 {#if item.positions_focused_on}<p><strong>Positions Focused On:</strong> {Array.isArray(item.positions_focused_on) ? item.positions_focused_on.join(', ') : item.positions_focused_on}</p>{/if}
                 {#if item.video_link}
                   <p><strong>Video Link:</strong> <a href={item.video_link} target="_blank" rel="noopener noreferrer">Watch Video</a></p>
+                {/if}
+                {#if item.diagram_data}
+                  <DiagramDrawer 
+                    data={item.diagram_data} 
+                    readonly={false} 
+                    showSaveButton={true}
+                    on:save={(event) => updateDiagramData(index, event.detail)}
+                  />
                 {/if}
               </div>
             {/if}
@@ -277,3 +376,14 @@
     {$isSubmitting ? 'Creating Plan...' : 'Create Plan'}
   </button>
 </div>
+
+<style>
+  .timeline {
+    display: flex;
+    flex-direction: column;
+  }
+  .timeline-item {
+    display: flex;
+    flex-direction: column;
+  }
+</style>

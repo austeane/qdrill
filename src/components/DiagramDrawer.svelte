@@ -8,6 +8,7 @@
   export let id = '';
   export let showSaveButton = false;
   export let index;
+  export let readonly = false;  // Add this line
 
   const dispatch = createEventDispatcher();
   let canvas;
@@ -34,7 +35,8 @@
     fabricCanvas = new fabric.Canvas(canvas, {
       width: 500,
       height: 300,
-      backgroundColor: '#f0f0f0'
+      backgroundColor: '#f0f0f0',
+      selection: !readonly  // Add this line
     });
 
     if (data && Object.keys(data).length > 0) {
@@ -60,6 +62,14 @@
     setTimeout(() => {
       fabricCanvas.renderAll();
     }, 100);
+
+    if (readonly) {
+      fabricCanvas.getObjects().forEach(obj => {
+        obj.selectable = false;
+        obj.evented = false;
+      });
+      fabricCanvas.renderAll();
+    }
   });
 
   afterUpdate(() => {
@@ -308,16 +318,18 @@
 <div>
   <canvas bind:this={canvas} {id} class="border border-gray-300"></canvas>
 </div>
-<div>
-  <button on:click|preventDefault={() => addNewPlayer('red', 'green')} class="m-1">Add Red Player</button>
-  <button on:click|preventDefault={() => addNewPlayer('blue', 'green')} class="m-1">Add Blue Player</button>
-  <button on:click|preventDefault={addArrow} class="m-1">Add Arrow</button>
-  <button on:click|preventDefault={addHoopGroup} class="m-1">Add Hoop Group</button>
-  <button on:click|preventDefault={addTextBox} class="m-1">Add Text Box</button>
-  <button on:click|preventDefault={addBludger} class="m-1">Add Bludger</button>
-  <button on:click|preventDefault={addQuaffle} class="m-1">Add Quaffle</button>
-  <button on:click|preventDefault={deleteSelectedObjects} class="m-1">Delete Selected</button>
-  {#if showSaveButton}
-    <button on:click|preventDefault={saveDiagram} class="m-1">Save Diagram</button>
-  {/if}
-</div>
+{#if !readonly}
+  <div>
+    <button on:click|preventDefault={() => addNewPlayer('red', 'green')} class="m-1">Add Red Player</button>
+    <button on:click|preventDefault={() => addNewPlayer('blue', 'green')} class="m-1">Add Blue Player</button>
+    <button on:click|preventDefault={addArrow} class="m-1">Add Arrow</button>
+    <button on:click|preventDefault={addHoopGroup} class="m-1">Add Hoop Group</button>
+    <button on:click|preventDefault={addTextBox} class="m-1">Add Text Box</button>
+    <button on:click|preventDefault={addBludger} class="m-1">Add Bludger</button>
+    <button on:click|preventDefault={addQuaffle} class="m-1">Add Quaffle</button>
+    <button on:click|preventDefault={deleteSelectedObjects} class="m-1">Delete Selected</button>
+    {#if showSaveButton}
+      <button on:click|preventDefault={saveDiagram} class="m-1">Save Diagram</button>
+    {/if}
+  </div>
+{/if}

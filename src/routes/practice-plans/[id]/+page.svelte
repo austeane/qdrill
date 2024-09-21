@@ -1,23 +1,27 @@
 <script>
     import DiagramDrawer from '$components/DiagramDrawer.svelte';
+    import { slide } from 'svelte/transition';
+    import { ChevronDownIcon, ChevronUpIcon } from 'svelte-feather-icons';
   
-    // Receive the practice plan data from the server-side load function
     export let data;
     const { practicePlan } = data;
   
-    // Manage the expanded state of each item
     let expandedItems = {};
   
-    // Calculate total duration
     const totalDuration = practicePlan.items.reduce((sum, item) => sum + item.duration, 0);
+
+    function toggleExpand(index) {
+        expandedItems[index] = !expandedItems[index];
+        expandedItems = expandedItems;
+    }
 </script>
-  
-<div class="container mx-auto p-6 bg-white shadow-md rounded-lg">
+
+<div class="container mx-auto p-4 sm:p-6 bg-white shadow-md rounded-lg">
     <header class="mb-6">
-        <h1 class="text-3xl font-extrabold text-gray-800">{practicePlan.name}</h1>
+        <h1 class="text-3xl font-extrabold text-gray-800 text-center">{practicePlan.name}</h1>
         
         {#if practicePlan.description}
-            <p class="mt-2 text-gray-600">{practicePlan.description}</p>
+            <p class="mt-2 text-gray-600 text-center">{practicePlan.description}</p>
         {/if}
     </header>
     
@@ -73,37 +77,32 @@
         {/if}
     </section>
   
-    <!-- Display the timeline -->
     <section>
         <h2 class="text-2xl font-bold text-gray-800 mb-4">Practice Plan Timeline</h2>
-        <div class="timeline space-y-4">
+        <div class="space-y-4">
             {#each practicePlan.items as item, index}
                 <div
-                    class="timeline-item bg-gray-50 rounded-lg shadow p-5 transition-transform transform hover:scale-105"
+                    class="bg-gray-50 rounded-lg shadow-md overflow-hidden cursor-pointer transition-colors duration-200 hover:bg-gray-100"
+                    on:click={() => toggleExpand(index)}
                 >
-                    <div class="item-header flex justify-between items-center mb-3">
-                        {#if item.type === 'drill'}
-                            <h3 class="text-xl font-semibold text-blue-700">{item.drill.name}</h3>
-                        {:else if item.type === 'break'}
-                            <h3 class="text-xl font-semibold text-red-500">Break</h3>
-                        {/if}
+                    <div class="p-4 sm:p-5 flex justify-between items-center">
+                        <h3 class="text-xl font-semibold {item.type === 'drill' ? 'text-blue-700' : 'text-red-500'}">
+                            {item.type === 'drill' ? item.drill.name : 'Break'}
+                        </h3>
                         <div class="flex items-center">
-                            <span class="text-gray-600 text-sm">{item.duration} mins</span>
+                            <span class="text-gray-600 mr-2">{item.duration} mins</span>
                             {#if item.type === 'drill'}
-                                <button
-                                    class="ml-4 text-blue-600 hover:text-blue-800 focus:outline-none"
-                                    on:click={() => (expandedItems[index] = !expandedItems[index])}
-                                    aria-expanded="{expandedItems[index] ? 'true' : 'false'}"
-                                    aria-controls="details-{index}"
-                                >
-                                    {expandedItems[index] ? 'Hide Details' : 'Show Details'}
-                                </button>
+                                {#if expandedItems[index]}
+                                    <ChevronUpIcon size="20" class="text-gray-500" />
+                                {:else}
+                                    <ChevronDownIcon size="20" class="text-gray-500" />
+                                {/if}
                             {/if}
                         </div>
                     </div>
-  
+                    
                     {#if item.type === 'drill' && expandedItems[index]}
-                        <div id="details-{index}" class="drill-details mt-2 p-4 bg-white rounded shadow-inner">
+                        <div transition:slide class="p-4 sm:p-5 bg-white border-t border-gray-200">
                             {#if item.drill.brief_description}
                                 <p class="mb-2"><strong>Brief Description:</strong> {item.drill.brief_description}</p>
                             {/if}
@@ -153,21 +152,23 @@
                             {#if item.diagram_data || (item.drill.diagrams && item.drill.diagrams.length > 0)}
                                 <div class="mt-4">
                                     <h4 class="text-lg font-semibold text-gray-700 mb-2">Diagram:</h4>
-                                    {#if item.diagram_data}
-                                        <DiagramDrawer 
-                                            data={item.diagram_data} 
-                                            readonly={true} 
-                                            showSaveButton={false}
-                                        />
-                                    {:else}
-                                        {#each item.drill.diagrams as diagram}
+                                    <div class="max-w-full overflow-x-auto">
+                                        {#if item.diagram_data}
                                             <DiagramDrawer 
-                                                data={diagram} 
+                                                data={item.diagram_data} 
                                                 readonly={true} 
                                                 showSaveButton={false}
                                             />
-                                        {/each}
-                                    {/if}
+                                        {:else}
+                                            {#each item.drill.diagrams as diagram}
+                                                <DiagramDrawer 
+                                                    data={diagram} 
+                                                    readonly={true} 
+                                                    showSaveButton={false}
+                                                />
+                                            {/each}
+                                        {/if}
+                                    </div>
                                 </div>
                             {/if}
                         </div>
@@ -177,13 +178,3 @@
         </div>
     </section>
 </div>
-  
-<style>
-    .timeline {
-        display: flex;
-        flex-direction: column;
-    }
-    .timeline-item {
-        transition: all 0.3s ease;
-    }
-</style>

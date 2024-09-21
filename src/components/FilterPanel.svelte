@@ -38,7 +38,6 @@
     // Toggle states for practice plans filters
     let showPhaseOfSeason = false;
     let showPracticeGoals = false;
-    let showHasDiagramDropdown = false; // Not needed, but kept for consistency
   
     // Function to reset all filters
     function resetFilters() {
@@ -129,10 +128,10 @@
       // Stop the event from propagating up to the parent div
       event.stopPropagation();
     }
-  </script>
+</script>
   
-  <!-- Filter Buttons -->
-  <div class="flex flex-wrap gap-2 mb-4">
+<!-- Filter Buttons -->
+<div class="flex flex-wrap gap-2 mb-4">
     <!-- Drills Filters -->
     {#if skillLevels.length || complexities.length || skillsFocusedOn.length || positionsFocusedOn.length || numberOfPeopleOptions.min || suggestedLengths.min || selectedHasVideo !== null || selectedHasDiagrams !== null || selectedHasImages !== null || selectedHasDiagram !== false}
       <!-- Skill Levels Filter -->
@@ -146,7 +145,6 @@
             aria-controls="skillLevels-content"
           >
             Skill Levels
-            <!-- Count Badge (Only show if selections exist) -->
             {#if selectedSkillLevels.length > 0}
               <span class="absolute top-0 right-0 bg-blue-500 text-white text-xs rounded-full px-1 transform translate-x-1/2 -translate-y-1/2">
                 ({selectedSkillLevels.length})
@@ -156,7 +154,7 @@
   
           {#if showSkillLevels}
             <div 
-              class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10" 
+              class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 max-w-full w-64 md:w-72 lg:w-64 xl:w-64" 
               on:click|stopPropagation
               on:keydown|stopPropagation
               role="menu"
@@ -173,8 +171,8 @@
         </div>
       {/if}
   
-      <!-- Repeat similar structure for other filters like Complexities, Skills Focused On, Positions Focused On -->
-  
+      <!-- Other filters (Drill Complexity, Skills Focused On, Positions Focused On, etc.) follow the same pattern -->
+      
       <!-- Has Video Filter -->
       <div class="relative">
         <button 
@@ -194,7 +192,7 @@
   
         {#if showHasVideo}
           <div 
-            class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10" 
+            class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 max-w-full w-64 md:w-72 lg:w-64 xl:w-64" 
             on:click|stopPropagation
             on:keydown|stopPropagation
             role="menu"
@@ -208,12 +206,6 @@
               <input type="radio" bind:group={selectedHasVideo} value={false} class="mr-2" on:click={handleCheckboxClick} />
               No
             </label>
-            <button
-              class="mt-4 px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600"
-              on:click={() => { selectedHasVideo = null; closeAllFilters(); }}
-            >
-              Clear
-            </button>
           </div>
         {/if}
       </div>
@@ -245,7 +237,7 @@
       </button>
     {/if}
   
-    <!-- Practice Plans Filters (similar structure) -->
+    <!-- Practice Plans Filters -->
     {#if phaseOfSeasonOptions.length || practiceGoalsOptions.length || selectedEstimatedParticipants.min !== null || selectedEstimatedParticipants.max !== null}
       <!-- Phase of Season Filter -->
       {#if phaseOfSeasonOptions.length}
@@ -267,7 +259,7 @@
   
           {#if showPhaseOfSeason}
             <div 
-              class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10" 
+              class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 max-w-full w-64 md:w-72 lg:w-64 xl:w-64" 
               on:click|stopPropagation
               on:keydown|stopPropagation
               role="menu"
@@ -304,7 +296,7 @@
   
           {#if showPracticeGoals}
             <div 
-              class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10" 
+              class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 max-w-full w-64 md:w-72 lg:w-64 xl:w-64" 
               on:click|stopPropagation
               on:keydown|stopPropagation
               role="menu"
@@ -324,7 +316,7 @@
       <!-- Estimated Participants Filter -->
       <div class="relative">
         <button 
-          class={`inline-flex items-center bg-gray-100 border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${showSuggestedLengths ? 'bg-gray-600 text-white' : 'text-gray-700 hover:bg-gray-200'}`}
+          class={`inline-flex items-center bg-gray-100 border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${showNumberOfPeople ? 'bg-gray-600 text-white' : 'text-gray-700 hover:bg-gray-200'}`}
           on:click={() => toggleFilter('numberOfPeople')}
           on:keydown={(e) => e.key === 'Enter' && toggleFilter('numberOfPeople')}
           aria-expanded={showNumberOfPeople}
@@ -346,7 +338,7 @@
   
         {#if showNumberOfPeople}
           <div 
-            class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10" 
+            class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 max-w-full w-64 md:w-72 lg:w-64 xl:w-64" 
             on:click|stopPropagation
             on:keydown|stopPropagation
             role="menu"
@@ -388,4 +380,4 @@
         aria-label="Close filters"
       ></div>
     {/if}
-  </div>
+</div>  

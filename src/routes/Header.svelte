@@ -1,135 +1,58 @@
 <script>
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	import logo from '$lib/images/svelte-logo.svg';
 	import github from '$lib/images/github.svg';
-</script>
-
-<header>
-	<div class="corner">
-		<a href="https://kit.svelte.dev">
-			<img src={logo} alt="SvelteKit" />
-		</a>
+  
+	let isMobileMenuOpen = false;
+  
+	// Optional: Close mobile menu on route change
+	$: if ($page.url.pathname !== '/') {
+	  isMobileMenuOpen = false;
+	}
+  </script>
+  
+  <header class="w-full bg-white shadow-md z-50">
+	<div class="container mx-auto px-4 sm:px-6 lg:px-8">
+	  <div class="flex items-center justify-between h-16">
+		<div class="flex items-center">
+		  <a href="/" class="flex-shrink-0">
+			<img class="h-8 w-8" src={logo} alt="SvelteKit Logo" />
+		  </a>
+		  <div class="hidden md:block ml-10">
+			<div class="flex items-baseline space-x-4">
+			  <a href="/" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-base font-semibold">Home</a>
+			  <a href="/drills" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-base font-semibold">Drill Listing</a>
+			  <a href="/drills/create" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-base font-semibold">Drill Creation</a>
+			  <a href="/drills/bulk-upload" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-base font-semibold">Bulk Drill Upload</a>
+			  <a href="/practice-plans" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-base font-semibold">Practice Plans</a>
+			</div>
+		  </div>
+		</div>
+		<div class="md:hidden">
+		  <button
+			on:click={() => (isMobileMenuOpen = !isMobileMenuOpen)}
+			class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gray-500"
+			aria-label="Toggle Navigation Menu"
+		  >
+			<svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+			  <path class:hidden={isMobileMenuOpen} stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+			  <path class:hidden={!isMobileMenuOpen} stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+			</svg>
+		  </button>
+		</div>
+	  </div>
 	</div>
-
-	<nav>
-		<svg viewBox="0 0 2 3" aria-hidden="true">
-			<path d="M0,0 L1,2 C1.5,3 1.5,3 2,3 L2,0 Z" />
-		</svg>
-		<ul>
-			<li aria-current={$page.url.pathname === '/' ? 'page' : undefined}>
-				<a href="/">Home</a>
-			</li>
-			<li aria-current={$page.url.pathname === '/drills' ? 'page' : undefined}>
-				<a href="/drills">Drill Listing</a>
-			</li>
-			<li aria-current={$page.url.pathname === '/drills/create' ? 'page' : undefined}>
-				<a href="/drills/create">Drill Creation</a>
-			</li>
-			<li aria-current={$page.url.pathname === '/drills/bulk-upload' ? 'page' : undefined}>
-				<a href="/drills/bulk-upload">Bulk Drill Upload</a>
-			</li>
-			<li aria-current={$page.url.pathname === '/practice-plans' ? 'page' : undefined}>
-				<a href="/practice-plans">Practice Plans</a>
-			</li>
-		</ul>
-		<svg viewBox="0 0 2 3" aria-hidden="true">
-			<path d="M0,0 L0,3 C0.5,3 0.5,3 1,2 L2,0 Z" />
-		</svg>
-	</nav>
-
-	<div class="corner">
-		<a href="https://github.com/sveltejs/kit">
-			<img src={github} alt="GitHub" />
-		</a>
-	</div>
-</header>
-
-<style>
-	header {
-		display: flex;
-		justify-content: space-between;
-	}
-
-	.corner {
-		width: 3em;
-		height: 3em;
-	}
-
-	.corner a {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 100%;
-		height: 100%;
-	}
-
-	.corner img {
-		width: 2em;
-		height: 2em;
-		object-fit: contain;
-	}
-
-	nav {
-		display: flex;
-		justify-content: center;
-		--background: rgba(255, 255, 255, 0.7);
-	}
-
-	svg {
-		width: 2em;
-		height: 3em;
-		display: block;
-	}
-
-	path {
-		fill: var(--background);
-	}
-
-	ul {
-		position: relative;
-		padding: 0;
-		margin: 0;
-		height: 3em;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		list-style: none;
-		background: var(--background);
-		background-size: contain;
-	}
-
-	li {
-		position: relative;
-		height: 100%;
-	}
-
-	li[aria-current='page']::before {
-		--size: 6px;
-		content: '';
-		width: 0;
-		height: 0;
-		position: absolute;
-		top: 0;
-		left: calc(50% - var(--size));
-		border: var(--size) solid transparent;
-		border-top: var(--size) solid var(--color-theme-1);
-	}
-
-	nav a {
-		display: flex;
-		height: 100%;
-		align-items: center;
-		padding: 0 0.5rem;
-		color: var(--color-text);
-		font-weight: 700;
-		font-size: 0.8rem;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		text-decoration: none;
-		transition: color 0.2s linear;
-	}
-
-	a:hover {
-		color: var(--color-theme-1);
-	}
-</style>
+  
+	{#if isMobileMenuOpen}
+	  <div class="md:hidden">
+		<div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+		  <a href="/" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 block px-3 py-2 rounded-md text-lg font-semibold">Home</a>
+		  <a href="/drills" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 block px-3 py-2 rounded-md text-lg font-semibold">Drill Listing</a>
+		  <a href="/drills/create" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 block px-3 py-2 rounded-md text-lg font-semibold">Drill Creation</a>
+		  <a href="/drills/bulk-upload" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 block px-3 py-2 rounded-md text-lg font-semibold">Bulk Drill Upload</a>
+		  <a href="/practice-plans" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 block px-3 py-2 rounded-md text-lg font-semibold">Practice Plans</a>
+		</div>
+	  </div>
+	{/if}
+  </header>

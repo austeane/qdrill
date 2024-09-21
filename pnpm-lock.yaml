@@ -44,6 +44,9 @@ importers:
       fabric:
         specifier: ^6.4.2
         version: 6.4.2(bufferutil@4.0.8)
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
       mock-aws-s3:
         specifier: ^4.0.2
         version: 4.0.2

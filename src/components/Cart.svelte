@@ -1,12 +1,7 @@
 <script>
     import { cart } from '$lib/stores/cartStore';
-    import { onMount } from 'svelte';
 
     let isOpen = false;
-
-    onMount(() => {
-        cart.loadFromStorage();
-    });
 
     function toggleCart() {
         isOpen = !isOpen;
@@ -15,13 +10,6 @@
     function removeDrill(drill) {
         cart.toggleDrill(drill);
     }
-
-    // Remove this reactive statement
-    // $: {
-    //     if (typeof window !== 'undefined') {
-    //         cart.saveToStorage($cart);
-    //     }
-    // }
 </script>
 
 <div class="fixed top-4 right-4 z-50">

@@ -87,20 +87,6 @@
     }, 500);
   }
 
-  // Function to clear all filters
-  function clearFilters() {
-    selectedSkillLevels = [];
-    selectedComplexities = [];
-    selectedSkillsFocusedOn = [];
-    selectedPositionsFocusedOn = [];
-    selectedNumberOfPeople = { min: null, max: null };
-    selectedSuggestedLengths = { min: null, max: null };
-    selectedHasVideo = null;
-    selectedHasDiagrams = null;
-    selectedHasImages = null;
-    selectedHasDiagram = false;
-  }
-
   // Filtering logic
   $: filteredDrills = drills.filter(drill => {
     let matches = true;
@@ -217,16 +203,6 @@
     >
       Create Practice Plan with {$cart.length} Drill{ $cart.length !== 1 ? 's' : ''}
     </a>
-  </div>
-
-  <!-- Clear Filters Button -->
-  <div class="flex justify-end mb-4">
-    <button
-      on:click={clearFilters}
-      class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-300"
-    >
-      Clear Filters
-    </button>
   </div>
 
   <!-- Filter Panel -->

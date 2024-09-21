@@ -1,11 +1,11 @@
 import { writable } from 'svelte/store';
 
 function createCartStore() {
-  const storedDrills = typeof window !== 'undefined' && localStorage.getItem('cartDrills')
+  const initialDrills = typeof window !== 'undefined' && localStorage.getItem('cartDrills')
     ? JSON.parse(localStorage.getItem('cartDrills'))
     : [];
 
-  const { subscribe, set, update } = writable(storedDrills);
+  const { subscribe, set, update } = writable(initialDrills);
 
   return {
     subscribe,
@@ -13,7 +13,9 @@ function createCartStore() {
       update(drills => {
         if (!drills.find(d => d.id === drill.id)) {
           const updatedDrills = [...drills, drill];
-          localStorage.setItem('cartDrills', JSON.stringify(updatedDrills));
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('cartDrills', JSON.stringify(updatedDrills));
+          }
           return updatedDrills;
         }
         return drills;
@@ -22,7 +24,9 @@ function createCartStore() {
     removeDrill: (id) => {
       update(drills => {
         const updatedDrills = drills.filter(d => d.id !== id);
-        localStorage.setItem('cartDrills', JSON.stringify(updatedDrills));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cartDrills', JSON.stringify(updatedDrills));
+        }
         return updatedDrills;
       });
     },
@@ -35,26 +39,19 @@ function createCartStore() {
         } else {
           updatedDrills = drills.filter(d => d.id !== drill.id);
         }
-        localStorage.setItem('cartDrills', JSON.stringify(updatedDrills));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cartDrills', JSON.stringify(updatedDrills));
+        }
         return updatedDrills;
       });
     },
     clear: () => {
       set([]);
-      localStorage.removeItem('cartDrills');
-    },
-    clearCart: () => {
-      set([]);
-      localStorage.removeItem('cartDrills');
-    },
-    loadFromStorage: () => {
       if (typeof window !== 'undefined') {
-        const storedDrills = localStorage.getItem('cartDrills');
-        if (storedDrills) {
-          set(JSON.parse(storedDrills));
-        }
+        localStorage.removeItem('cartDrills');
       }
     },
+    // Remove loadFromStorage method as it's no longer needed
   };
 }
 

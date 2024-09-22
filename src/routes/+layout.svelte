@@ -6,6 +6,7 @@
 	import './styles.css';
 	import Cart from '../components/Cart.svelte'; // Add this import
 	import { SvelteToast } from '@zerodevx/svelte-toast';
+	import FeedbackButton from '../components/FeedbackButton.svelte';
 
 	/** @type {import('./$types').LayoutServerData} */
 	export let data;
@@ -30,6 +31,10 @@
 		<slot />
 	</main>
 
+	<FeedbackButton />
+
+	<SvelteToast />
+
 	{#if $page.url.pathname === '/'}
 		<footer class="py-4 bg-gray-100">
 			<div class="container mx-auto text-center">
@@ -41,8 +46,6 @@
 </div>
 
 <Cart />
-
-<SvelteToast />
 
 <style>
 	.flex {

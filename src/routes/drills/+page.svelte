@@ -4,7 +4,7 @@
   import { cart } from '$lib/stores/cartStore';
   import { tick } from 'svelte';
   import { onDestroy, onMount } from 'svelte';
-  import { SvelteToast, toast } from '@zerodevx/svelte-toast'
+  import { SvelteToast, toast } from '@zerodevx/svelte-toast';
 
   export let data;
 
@@ -21,25 +21,18 @@
     suggestedLengths
   } = data.filterOptions || {};
 
-  // Calculate min and max values for number of people and suggested lengths
-  $: numberOfPeopleMin = Math.min(...drills.map(d => d.number_of_people_min));
-  $: numberOfPeopleMax = Math.max(...drills.map(d => d.number_of_people_max));
-  $: suggestedLengthMin = Math.min(...drills.map(d => d.suggested_length));
-  $: suggestedLengthMax = Math.max(...drills.map(d => d.suggested_length));
-
   // Selected Filters
   let selectedSkillLevels = [];
   let selectedComplexities = [];
   let selectedSkillsFocusedOn = [];
   let selectedPositionsFocusedOn = [];
-  let selectedNumberOfPeopleMin = null;
-  let selectedNumberOfPeopleMax = null;
-  let selectedSuggestedLengthsMin = null;
-  let selectedSuggestedLengthsMax = null;
-  let selectedHasVideo = null;
-  let selectedHasDiagrams = null;
-  let selectedHasImages = null;
-  let selectedHasDiagram = false; // Ensure this is initialized to false
+  let selectedNumberOfPeopleMin = 0;
+  let selectedNumberOfPeopleMax = 30;
+  let selectedSuggestedLengthsMin = 0;
+  let selectedSuggestedLengthsMax = 60;
+  let selectedHasVideo = false;
+  let selectedHasDiagrams = false;
+  let selectedHasImages = false;
 
   // Search Query
   let searchQuery = '';
@@ -95,9 +88,22 @@
     }, 500);
   }
 
+  // Helper function to parse suggested length
+  function parseSuggestedLength(lengthString) {
+    const match = lengthString.match(/(\d+)(?:-(\d+))?/);
+    if (match) {
+      return {
+        min: parseInt(match[1]),
+        max: parseInt(match[2] || match[1])
+      };
+    }
+    return { min: 0, max: 0 };
+  }
+
   // Filtering logic
   $: filteredDrills = drills.filter(drill => {
     let matches = true;
+    let excludedBy = [];
 
     // Search filtering
     if (searchQuery.trim() !== '') {
@@ -107,92 +113,106 @@
       const detailedDescMatch = drill.detailed_description
         ? drill.detailed_description.toLowerCase().includes(query)
         : false;
-      matches = matches && (nameMatch || briefDescMatch || detailedDescMatch);
+      if (!(nameMatch || briefDescMatch || detailedDescMatch)) {
+        matches = false;
+        excludedBy.push('Search Query');
+      }
     }
 
     // Skill Levels
     if (selectedSkillLevels.length > 0) {
-      matches =
-        matches &&
-        drill.skill_level.some(level => selectedSkillLevels.includes(level));
+      if (!drill.skill_level.some(level => selectedSkillLevels.includes(level))) {
+        matches = false;
+        excludedBy.push('Skill Levels');
+      }
     }
 
     // Complexities
     if (selectedComplexities.length > 0) {
-      matches = matches && selectedComplexities.includes(drill.complexity);
+      if (!selectedComplexities.includes(drill.complexity)) {
+        matches = false;
+        excludedBy.push('Complexities');
+      }
     }
 
     // Skills Focused On
     if (selectedSkillsFocusedOn.length > 0) {
-      matches =
-        matches &&
-        drill.skills_focused_on.some(skill =>
-          selectedSkillsFocusedOn.includes(skill)
-        );
+      if (!drill.skills_focused_on.some(skill => selectedSkillsFocusedOn.includes(skill))) {
+        matches = false;
+        excludedBy.push('Skills Focused On');
+      }
     }
 
     // Positions Focused On
     if (selectedPositionsFocusedOn.length > 0) {
-      matches =
-        matches &&
-        drill.positions_focused_on.some(pos =>
-          selectedPositionsFocusedOn.includes(pos)
-        );
+      if (!drill.positions_focused_on.some(pos => selectedPositionsFocusedOn.includes(pos))) {
+        matches = false;
+        excludedBy.push('Positions Focused On');
+      }
     }
 
-    // Number of People
-    if (selectedNumberOfPeopleMin !== null) {
-      matches = matches && drill.number_of_people_min >= selectedNumberOfPeopleMin;
-    }
-    if (selectedNumberOfPeopleMax !== null) {
-      matches = matches && drill.number_of_people_max <= selectedNumberOfPeopleMax;
+    // Number of People (Overlapping Range)
+    if (selectedNumberOfPeopleMin !== null || selectedNumberOfPeopleMax !== null) {
+      if (!(drill.number_of_people_max >= selectedNumberOfPeopleMin &&
+            drill.number_of_people_min <= selectedNumberOfPeopleMax)) {
+        matches = false;
+        excludedBy.push('Number of People');
+      }
     }
 
     // Suggested Lengths
-    if (selectedSuggestedLengthsMin !== null) {
-      matches = matches && drill.suggested_length >= selectedSuggestedLengthsMin;
-    }
-    if (selectedSuggestedLengthsMax !== null) {
-      matches = matches && drill.suggested_length <= selectedSuggestedLengthsMax;
+    if (selectedSuggestedLengthsMin !== null || selectedSuggestedLengthsMax !== null) {
+      const { min: drillMinLength, max: drillMaxLength } = parseSuggestedLength(drill.suggested_length);
+      if (drillMaxLength < selectedSuggestedLengthsMin || drillMinLength > selectedSuggestedLengthsMax) {
+        matches = false;
+        excludedBy.push('Suggested Lengths');
+      }
     }
 
     // Has Video
-    if (selectedHasVideo !== null) {
-      matches =
-        matches &&
-        ((selectedHasVideo && drill.video_link) ||
-          (!selectedHasVideo && !drill.video_link));
+    if (selectedHasVideo && !drill.video_link) {
+      matches = false;
+      excludedBy.push('Has Video');
     }
 
     // Has Diagrams
-    if (selectedHasDiagrams !== null) {
-      const hasDiagrams =
-        Array.isArray(drill.diagrams) && drill.diagrams.length > 0;
-      matches =
-        matches &&
-        ((selectedHasDiagrams && hasDiagrams) ||
-          (!selectedHasDiagrams && !hasDiagrams));
+    if (selectedHasDiagrams && !(Array.isArray(drill.diagrams) && drill.diagrams.length > 0)) {
+      matches = false;
+      excludedBy.push('Has Diagrams');
     }
 
     // Has Images
-    if (selectedHasImages !== null) {
-      const hasImages = Array.isArray(drill.images) && drill.images.length > 0;
-      matches =
-        matches &&
-        ((selectedHasImages && hasImages) ||
-          (!selectedHasImages && !hasImages));
+    if (selectedHasImages && !(Array.isArray(drill.images) && drill.images.length > 0)) {
+      matches = false;
+      excludedBy.push('Has Images');
     }
 
-    // Has Diagram
-    if (selectedHasDiagram === true) {
-      matches =
-        matches &&
-        Array.isArray(drill.diagrams) &&
-        drill.diagrams.length > 0;
+    if (!matches) {
+      console.log(`Drill "${drill.name}" excluded due to filters: ${excludedBy.join(', ')}`);
     }
 
     return matches;
   });
+
+  // Debugging logs
+  $: {
+    console.log("Total Drills:", drills.length);
+    console.log("Filtered Drills Count:", filteredDrills.length);
+    console.log("Current Filters:", {
+      searchQuery,
+      selectedSkillLevels,
+      selectedComplexities,
+      selectedSkillsFocusedOn,
+      selectedPositionsFocusedOn,
+      selectedNumberOfPeopleMin,
+      selectedNumberOfPeopleMax,
+      selectedSuggestedLengthsMin,
+      selectedSuggestedLengthsMax,
+      selectedHasVideo,
+      selectedHasDiagrams,
+      selectedHasImages
+    });
+  }
 </script>
 
 <svelte:head>
@@ -215,13 +235,13 @@
 
   <!-- Filter Panel -->
   <FilterPanel
-    class="mb-6"
+    customClass="mb-6"
     {skillLevels}
     {complexities}
     {skillsFocusedOn}
     {positionsFocusedOn}
-    numberOfPeopleOptions={{ min: numberOfPeopleMin, max: numberOfPeopleMax }}
-    suggestedLengths={{ min: suggestedLengthMin, max: suggestedLengthMax }}
+    {numberOfPeopleOptions}
+    {suggestedLengths}
     bind:selectedSkillLevels
     bind:selectedComplexities
     bind:selectedSkillsFocusedOn
@@ -233,7 +253,6 @@
     bind:selectedHasVideo
     bind:selectedHasDiagrams
     bind:selectedHasImages
-    bind:selectedHasDiagram
   />
 
   <!-- Search Input -->

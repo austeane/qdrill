@@ -21,17 +21,25 @@
     suggestedLengths
   } = data.filterOptions || {};
 
+  // Calculate min and max values for number of people and suggested lengths
+  $: numberOfPeopleMin = Math.min(...drills.map(d => d.number_of_people_min));
+  $: numberOfPeopleMax = Math.max(...drills.map(d => d.number_of_people_max));
+  $: suggestedLengthMin = Math.min(...drills.map(d => d.suggested_length));
+  $: suggestedLengthMax = Math.max(...drills.map(d => d.suggested_length));
+
   // Selected Filters
   let selectedSkillLevels = [];
   let selectedComplexities = [];
   let selectedSkillsFocusedOn = [];
   let selectedPositionsFocusedOn = [];
-  let selectedNumberOfPeople = { min: null, max: null };
-  let selectedSuggestedLengths = { min: null, max: null };
+  let selectedNumberOfPeopleMin = null;
+  let selectedNumberOfPeopleMax = null;
+  let selectedSuggestedLengthsMin = null;
+  let selectedSuggestedLengthsMax = null;
   let selectedHasVideo = null;
   let selectedHasDiagrams = null;
   let selectedHasImages = null;
-  let selectedHasDiagram = false;
+  let selectedHasDiagram = false; // Ensure this is initialized to false
 
   // Search Query
   let searchQuery = '';
@@ -133,19 +141,19 @@
     }
 
     // Number of People
-    if (selectedNumberOfPeople.min !== null) {
-      matches = matches && drill.number_of_people_min >= selectedNumberOfPeople.min;
+    if (selectedNumberOfPeopleMin !== null) {
+      matches = matches && drill.number_of_people_min >= selectedNumberOfPeopleMin;
     }
-    if (selectedNumberOfPeople.max !== null) {
-      matches = matches && drill.number_of_people_max <= selectedNumberOfPeople.max;
+    if (selectedNumberOfPeopleMax !== null) {
+      matches = matches && drill.number_of_people_max <= selectedNumberOfPeopleMax;
     }
 
     // Suggested Lengths
-    if (selectedSuggestedLengths.min !== null) {
-      matches = matches && drill.suggested_length >= selectedSuggestedLengths.min;
+    if (selectedSuggestedLengthsMin !== null) {
+      matches = matches && drill.suggested_length >= selectedSuggestedLengthsMin;
     }
-    if (selectedSuggestedLengths.max !== null) {
-      matches = matches && drill.suggested_length <= selectedSuggestedLengths.max;
+    if (selectedSuggestedLengthsMax !== null) {
+      matches = matches && drill.suggested_length <= selectedSuggestedLengthsMax;
     }
 
     // Has Video
@@ -176,7 +184,7 @@
     }
 
     // Has Diagram
-    if (selectedHasDiagram) {
+    if (selectedHasDiagram === true) {
       matches =
         matches &&
         Array.isArray(drill.diagrams) &&
@@ -212,14 +220,16 @@
     {complexities}
     {skillsFocusedOn}
     {positionsFocusedOn}
-    {numberOfPeopleOptions}
-    {suggestedLengths}
+    numberOfPeopleOptions={{ min: numberOfPeopleMin, max: numberOfPeopleMax }}
+    suggestedLengths={{ min: suggestedLengthMin, max: suggestedLengthMax }}
     bind:selectedSkillLevels
     bind:selectedComplexities
     bind:selectedSkillsFocusedOn
     bind:selectedPositionsFocusedOn
-    bind:selectedNumberOfPeople
-    bind:selectedSuggestedLengths
+    bind:selectedNumberOfPeopleMin
+    bind:selectedNumberOfPeopleMax
+    bind:selectedSuggestedLengthsMin
+    bind:selectedSuggestedLengthsMax
     bind:selectedHasVideo
     bind:selectedHasDiagrams
     bind:selectedHasImages

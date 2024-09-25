@@ -1,0 +1,55 @@
+Changes to home page
+
+I'm doing a ux/ui based redesign of my app. Here is what should change in the home page. 
+Please let me know if you have any questions. I would like this to still be great on mobile, and would like to use tailwind as much as possible, though custom css is fine if necessary.
+
+Current Design :
+Header:
+Simple navigation bar at the top with links: "Home," "Drill Listing," "Drill Creation," "Bulk Drill Upload," and "Practice Plans."
+The logo is on the left side of the navigation bar.
+Body:
+A large title that reads "Welcome to QDrill."
+A brief description: "Your ultimate tool for creating and managing drills."
+Footer:
+Contains links to "Privacy Policy" and "Terms of Service."
+A floating blue button with a cart icon in the bottom right.
+
+Proposed Design:
+Header:
+A redesigned navigation bar with a home icon on the left side and two menu items on the right: "Drills" and "Practice Plans."
+A shopping cart icon is in the upper-right corner, indicating an e-commerce-style component.
+Body:
+A bold title: "QDrill."
+Placeholder text underneath the title: "Insert blurb text about what QDrill is all about."
+A button labeled "Browse List of Drills" is directly under the blurb.
+A large gray rectangle to the right of the title and blurb, with placeholder shapes (triangles, squares, and circles) meant to represent some visual content (e.g., a diagram, illustration, or featured drill design).
+Below the main title area, there are three large buttons or cards arranged horizontally:
+Practice Plans card: Includes some placeholder text and a link that says "View Plans."
+Create New Drill card: Includes similar placeholder text and a link that says "Create Drill."
+About Us card: Placeholder text and a link to a page labeled "Go to Page."
+Implementation Details:
+To implement these changes, here’s a step-by-step guide for someone familiar with front-end development but not looking at the screenshots:
+
+1. Navigation Bar Updates:
+Before: The navigation bar spans the entire width, with all links (Home, Drill Listing, etc.) spread horizontally.
+After: Simplify the navigation by using an icon (e.g., home icon on the left) and condensing menu items to the right side ("Drills," "Practice Plans").
+Shopping Cart Icon: Add a cart icon to the top-right corner to replace the floating cart button from the original design.
+2. Body Section Layout:
+Before: The homepage is minimalist, with only a large text header and subheader, centered in the page.
+After: Introduce a more visually structured layout:
+Title Section:
+Keep the title "QDrill" in bold, followed by descriptive text about the app.
+Add a primary action button labeled “Browse List of Drills” directly below the blurb text.
+Introduce a large placeholder graphic area to the right of the title, consisting of simple shapes. This can be an SVG or image block intended for later graphics or app features.
+3. New Action Cards:
+Before: No cards or call-to-action sections exist.
+After: Introduce a new section of the homepage with three horizontally aligned cards or buttons:
+Card 1: Label it "Practice Plans," with a link directing users to a page that allows them to view practice plans. Add some explanatory text.
+Card 2: Label it "Create New Drill," similarly with a call-to-action for users to create a drill. Add placeholder text.
+Card 3: Label it "About Us," with a link directing to the about page. Placeholder text in the description.
+4. Footer:
+The footer remains similar to the previous version with links like "Privacy Policy" and "Terms of Service." It may no longer need a floating button, as the shopping cart is now in the header.
+Summary of Key Changes:
+Shift from a minimalist design to a more content-rich homepage.
+Simplified navigation with more visual organization, using cards and action buttons to direct users.
+Addition of placeholders for future graphics and improved user engagement through multiple calls to action (drill browsing, creation, practice plans).

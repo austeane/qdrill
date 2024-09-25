@@ -10,20 +10,20 @@ function createCartStore() {
   return {
     subscribe,
     addDrill: (drill) => {
-      update(drills => {
-        if (!drills.find(d => d.id === drill.id)) {
-          const updatedDrills = [...drills, drill];
+      update(items => {
+        if (!items.find(d => d.id === drill.id)) {
+          const updatedDrills = [...items, drill];
           if (typeof window !== 'undefined') {
             localStorage.setItem('cartDrills', JSON.stringify(updatedDrills));
           }
           return updatedDrills;
         }
-        return drills;
+        return items;
       });
     },
     removeDrill: (id) => {
-      update(drills => {
-        const updatedDrills = drills.filter(d => d.id !== id);
+      update(items => {
+        const updatedDrills = items.filter(d => d.id !== id);
         if (typeof window !== 'undefined') {
           localStorage.setItem('cartDrills', JSON.stringify(updatedDrills));
         }
@@ -31,13 +31,13 @@ function createCartStore() {
       });
     },
     toggleDrill: (drill) => {
-      update(drills => {
-        const index = drills.findIndex(d => d.id === drill.id);
+      update(items => {
+        const index = items.findIndex(d => d.id === drill.id);
         let updatedDrills;
         if (index === -1) {
-          updatedDrills = [...drills, drill];
+          updatedDrills = [...items, drill];
         } else {
-          updatedDrills = drills.filter(d => d.id !== drill.id);
+          updatedDrills = items.filter(d => d.id !== drill.id);
         }
         if (typeof window !== 'undefined') {
           localStorage.setItem('cartDrills', JSON.stringify(updatedDrills));
@@ -50,8 +50,7 @@ function createCartStore() {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('cartDrills');
       }
-    },
-    // Remove loadFromStorage method as it's no longer needed
+    }
   };
 }
 

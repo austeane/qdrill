@@ -2,15 +2,6 @@
 
 ## Tier 1: Immediate Actions
 
-### 1. Refactor Filtering Logic Using Stores and Derived Stores
-
-**Files Affected**:
-- `src/routes/drills/+page.svelte`
-- `src/lib/stores/drillsStore.js` (to be created)
-
-**Improvements**:
-- Move filtering logic from the compon  ent into Svelte stores to improve performance and readability.
-- Use `derived` stores to efficiently recalculate filtered results when dependencies change.
 
 ### 2. Avoid Module-Level Database Connections
 

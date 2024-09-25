@@ -3,6 +3,7 @@
   import { writable } from 'svelte/store';
   import { goto } from '$app/navigation';
   import DiagramDrawer from '../../components/DiagramDrawer.svelte';
+  import { dndzone } from 'svelte-dnd-action';
 
   export let drill = {
     id: null,
@@ -34,7 +35,10 @@
   let skillSuggestions = writable([]);
   let positions_focused_on = writable(drill.positions_focused_on ?? []);
   let video_link = writable(drill.video_link ?? '');
-  let images = writable(drill.images ?? []);
+  let images = writable(drill.images?.map((image, index) => ({
+    id: `image-${index}`,
+    file: image
+  })) ?? []);
 
   let errors = writable({});
   let numberWarnings = {
@@ -46,6 +50,8 @@
 
   let diagrams = writable(drill.diagrams?.length > 0 ? drill.diagrams : [null]);
   let diagramKey = 0;
+
+  let fileInput;
 
   function addDiagram() {
     diagrams.update(d => [...d, null]);
@@ -200,7 +206,7 @@
       skills_focused_on: $selectedSkills,
       positions_focused_on: $positions_focused_on,
       video_link: $video_link,
-      images: $images,
+      images: $images.map(img => img.file),
       diagrams: $diagrams
     };
 
@@ -236,6 +242,33 @@
     });
   }
 
+  function handleFileSelect(e) {
+    const files = Array.from(e.target.files);
+    images.update(currentImages => [
+      ...currentImages,
+      ...files.map((file, index) => ({
+        id: `new-image-${Date.now()}-${index}`,
+        file: file
+      }))
+    ]);
+  }
+
+  function removeImage(id) {
+    images.update(imgs => imgs.filter(img => img.id !== id));
+  }
+
+  function handleDndConsider(e) {
+    images.set(e.detail.items);
+  }
+
+  function handleDndFinalize(e) {
+    images.set(e.detail.items);
+  }
+
+  function triggerFileInput() {
+    fileInput.click();
+  }
+
   $: if (mounted) {
     if (typeof window !== 'undefined') {
       const skillLevelButtons = document.querySelectorAll('.skill-level-button');
@@ -264,206 +297,284 @@
   <meta name="description" content={drill.id ? 'Edit an existing drill' : 'Create a new drill'} />
 </svelte:head>
 
-<section class="container mx-auto p-4">
-  <div class="max-w-lg mx-auto">
-    <h1 class="text-2xl font-bold text-center mb-6">{drill.id ? 'Edit Drill' : 'Create Drill'}</h1>
-    <form on:submit|preventDefault={handleSubmit} class="space-y-6">
-      <div class="flex flex-col">
-        <label for="name" class="mb-1 text-sm font-medium text-gray-700">Drill Name:</label>
-        <input id="name" bind:value={$name} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      {#if $errors.name}
-        <p class="text-red-500 text-sm mt-1">{$errors.name}</p>
-      {/if}
+<section class="container mx-auto p-4 h-screen">
+  <div class="flex flex-col md:flex-row h-full gap-4 transition-all duration-300 ease-in-out">
+    <!-- Left Column: Form -->
+    <div class="flex-1 min-w-0 overflow-y-auto p-4 border rounded-md transition-all duration-300 ease-in-out">
+      <div class="max-w-lg mx-auto">
+        <h1 class="text-2xl font-bold text-center mb-6">{drill.id ? 'Edit Drill' : 'Create Drill'}</h1>
+        <form on:submit|preventDefault={handleSubmit} class="space-y-6">
+          <div class="flex flex-col">
+            <label for="name" class="mb-1 text-sm font-medium text-gray-700">Drill Name:</label>
+            <input id="name" bind:value={$name} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          {#if $errors.name}
+            <p class="text-red-500 text-sm mt-1">{$errors.name}</p>
+          {/if}
 
-      <div class="flex flex-col">
-        <label for="brief_description" class="mb-1 text-sm font-medium text-gray-700">Brief Description:</label>
-        <input id="brief_description" bind:value={$brief_description} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-      {#if $errors.brief_description}
-        <p class="text-red-500 text-sm mt-1">{$errors.brief_description}</p>
-      {/if}
+          <div class="flex flex-col">
+            <label for="brief_description" class="mb-1 text-sm font-medium text-gray-700">Brief Description:</label>
+            <p class="text-xs text-gray-500 mb-1">For display on the drill listings page</p>
+            <input id="brief_description" bind:value={$brief_description} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          {#if $errors.brief_description}
+            <p class="text-red-500 text-sm mt-1">{$errors.brief_description}</p>
+          {/if}
 
-      <div class="flex flex-col">
-        <label for="detailed_description" class="mb-1 text-sm font-medium text-gray-700">Detailed Description:</label>
-        <textarea id="detailed_description" bind:value={$detailed_description} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-      </div>
+          <div class="flex flex-col">
+            <label for="detailed_description" class="mb-1 text-sm font-medium text-gray-700">Detailed Description:</label>
+            <p class="text-xs text-gray-500 mb-1">As much detail as would be needed for a new coach to teach this drill</p>
+            <textarea id="detailed_description" bind:value={$detailed_description} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+          </div>
 
-      <div class="flex flex-col">
-        <label for="skill_level" class="mb-1 text-sm font-medium text-gray-700">Appropriate for Skill Level:</label>
-        <div class="flex flex-wrap gap-2">
-          <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'new to sport')}>New to Sport</button>
-          <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'beginner')}>Beginner</button>
-          <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'intermediate')}>Intermediate</button>
-          <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'advanced')}>Advanced</button>
-          <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'elite')}>Elite</button>
-        </div>
-      </div>
-      {#if $errors.skill_level}
-        <p class="text-red-500 text-sm mt-1">{$errors.skill_level}</p>
-      {/if}
-
-      <div class="flex flex-col">
-        <label for="complexity" class="mb-1 text-sm font-medium text-gray-700">Complexity:</label>
-        <select id="complexity" bind:value={$complexity} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">Select Complexity</option>
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-        </select>
-      </div>
-
-      <div class="flex flex-col">
-        <label for="suggested_length" class="mb-1 text-sm font-medium text-gray-700">Suggested Length of Time:</label>
-        <select id="suggested_length" bind:value={$suggested_length} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">Select Length of Time</option>
-          <option value="0-5 minutes">0-5 minutes</option>
-          <option value="5-15 minutes">5-15 minutes</option>
-          <option value="15-30 minutes">15-30 minutes</option>
-          <option value="30-60 minutes">30-60 minutes</option>
-        </select>
-      </div>
-      {#if $errors.suggested_length}
-        <p class="text-red-500 text-sm mt-1">{$errors.suggested_length}</p>
-      {/if}
-
-      <div class="flex flex-col">
-        <label for="number_of_people_min" class="mb-1 text-sm font-medium text-gray-700">Min Number of People:</label>
-        <input 
-          id="number_of_people_min" 
-          bind:value={$number_of_people_min} 
-          on:input={() => validateNumber($number_of_people_min, 'number_of_people_min')}
-          class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
-        />
-      </div>
-      {#if numberWarnings.number_of_people_min}
-        <p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_min}</p>
-      {/if}
-      {#if $errors.number_of_people_min}
-        <p class="text-red-500 text-sm mt-1">{$errors.number_of_people_min}</p>
-      {/if}
-
-      <div class="flex flex-col">
-        <label for="number_of_people_max" class="mb-1 text-sm font-medium text-gray-700">Max Number of People:</label>
-        <input 
-          id="number_of_people_max" 
-          bind:value={$number_of_people_max} 
-          on:input={() => validateNumber($number_of_people_max, 'number_of_people_max')}
-          class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
-        />
-      </div>
-      {#if numberWarnings.number_of_people_max}
-        <p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_max}</p>
-      {/if}
-      {#if $errors.number_of_people_max}
-        <p class="text-red-500 text-sm mt-1">{$errors.number_of_people_max}</p>
-      {/if}
-
-      <div class="flex flex-col">
-        <label for="skills_focused_on" class="mb-1 text-sm font-medium text-gray-700">Skills Focused On:</label>
-        <div class="flex flex-wrap gap-2">
-          {#each $selectedSkills as skill}
-            <button
-              type="button"
-              class="px-3 py-1 rounded-full border border-gray-300 skill-level-button selected"
-              on:click={() => removeSkill(skill)}
-            >
-              {skill} ×
-            </button>
-          {/each}
-        </div>
-        <div class="flex mt-2">
-          <input
-            type="text"
-            id="skill_input"
-            bind:value={$newSkill}
-            on:input={handleSkillInput}
-            on:keydown={handleSkillKeydown}
-            placeholder="Type a skill and press Enter"
-            class="flex-grow p-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            type="button"
-            on:click={addSkill}
-            class="px-4 py-2 bg-indigo-600 text-white rounded-r-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Add Skill
-          </button>
-        </div>
-        {#if $skillSuggestions.length > 0}
-          <ul class="mt-1 bg-white border border-gray-300 rounded-md shadow-sm">
-            {#each $skillSuggestions as suggestion}
-              <li>
-                <button
-                  class="w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                  on:click={() => selectSkill(suggestion)}
-                >
-                  {suggestion}
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-      {#if $errors.skills_focused_on}
-        <p class="text-red-500 text-sm mt-1">{$errors.skills_focused_on}</p>
-      {/if}
-
-      <div class="flex flex-col">
-        <label for="positions_focused_on" class="mb-1 text-sm font-medium text-gray-700">Positions Focused On:</label>
-        <div class="flex flex-wrap gap-2">
-          <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Beater')}>Beater</button>
-          <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Chaser')}>Chaser</button>
-          <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Keeper')}>Keeper</button>
-          <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Seeker')}>Seeker</button>
-        </div>
-      </div>
-      {#if $errors.positions_focused_on}
-        <p class="text-red-500 text-sm mt-1">{$errors.positions_focused_on}</p>
-      {/if}
-
-      <div class="flex flex-col">
-        <label for="video_link" class="mb-1 text-sm font-medium text-gray-700">Video Link:</label>
-        <input id="video_link" bind:value={$video_link} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-
-      <div class="flex flex-col">
-        <label for="images" class="mb-1 text-sm font-medium text-gray-700">Images:</label>
-        <input id="images" type="file" multiple on:change={e => images.set(Array.from(e.target.files))} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      </div>
-
-      <div class="flex flex-col">
-        <h3 class="mb-1 text-sm font-medium text-gray-700">Diagrams:</h3>
-        {#each $diagrams as diagram, index (index + '-' + diagramKey)}
-          <div class="mt-2 border p-4 rounded">
-            <label for={`diagram-canvas-${index}`} class="text-lg font-semibold mb-2">Diagram {index + 1}</label>
-            <DiagramDrawer 
-              on:save={(event) => handleDiagramSave(event, index)} 
-              id={`diagram-canvas-${index}`} 
-              data={diagram} 
-              index={index}
-              showSaveButton={true} 
-            />
-            <div class="mt-2 flex justify-between">
-              <button type="button" on:click={() => deleteDiagram(index)} class="text-red-600 hover:text-red-800">Delete</button>
-              <div>
-                <button type="button" on:click={() => moveDiagram(index, -1)} disabled={index === 0} class="text-blue-600 hover:text-blue-800 mr-2">Move Up</button>
-                <button type="button" on:click={() => moveDiagram(index, 1)} disabled={index === $diagrams.length - 1} class="text-blue-600 hover:text-blue-800">Move Down</button>
-              </div>
+          <div class="flex flex-col">
+            <label for="skill_level" class="mb-1 text-sm font-medium text-gray-700">Appropriate for Skill Level:</label>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'new to sport')}>New to Sport</button>
+              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'beginner')}>Beginner</button>
+              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'intermediate')}>Intermediate</button>
+              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'advanced')}>Advanced</button>
+              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'elite')}>Elite</button>
             </div>
           </div>
-        {/each}
-        <button type="button" on:click={addDiagram} class="mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-          Add New Diagram
-        </button>
+          {#if $errors.skill_level}
+            <p class="text-red-500 text-sm mt-1">{$errors.skill_level}</p>
+          {/if}
+
+          <div class="flex flex-col">
+            <label for="complexity" class="mb-1 text-sm font-medium text-gray-700">Complexity:</label>
+            <select id="complexity" bind:value={$complexity} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Select Complexity</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+
+          <div class="flex flex-col">
+            <label for="suggested_length" class="mb-1 text-sm font-medium text-gray-700">Suggested Length of Time:</label>
+            <select id="suggested_length" bind:value={$suggested_length} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Select Length of Time</option>
+              <option value="0-5 minutes">0-5 minutes</option>
+              <option value="5-15 minutes">5-15 minutes</option>
+              <option value="15-30 minutes">15-30 minutes</option>
+              <option value="30-60 minutes">30-60 minutes</option>
+            </select>
+          </div>
+          {#if $errors.suggested_length}
+            <p class="text-red-500 text-sm mt-1">{$errors.suggested_length}</p>
+          {/if}
+
+          <div class="flex flex-col">
+            <label for="number_of_people_min" class="mb-1 text-sm font-medium text-gray-700">Min Number of People:</label>
+            <input 
+              id="number_of_people_min" 
+              bind:value={$number_of_people_min} 
+              on:input={() => validateNumber($number_of_people_min, 'number_of_people_min')}
+              class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+            />
+          </div>
+          {#if numberWarnings.number_of_people_min}
+            <p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_min}</p>
+          {/if}
+          {#if $errors.number_of_people_min}
+            <p class="text-red-500 text-sm mt-1">{$errors.number_of_people_min}</p>
+          {/if}
+
+          <div class="flex flex-col">
+            <label for="number_of_people_max" class="mb-1 text-sm font-medium text-gray-700">Max Number of People:</label>
+            <input 
+              id="number_of_people_max" 
+              bind:value={$number_of_people_max} 
+              on:input={() => validateNumber($number_of_people_max, 'number_of_people_max')}
+              class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+            />
+          </div>
+          {#if numberWarnings.number_of_people_max}
+            <p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_max}</p>
+          {/if}
+          {#if $errors.number_of_people_max}
+            <p class="text-red-500 text-sm mt-1">{$errors.number_of_people_max}</p>
+          {/if}
+
+          <div class="flex flex-col">
+            <label for="skills_focused_on" class="mb-1 text-sm font-medium text-gray-700">Skills Focused On:</label>
+            <div class="flex flex-wrap gap-2">
+              {#each $selectedSkills as skill}
+                <button
+                  type="button"
+                  class="px-3 py-1 rounded-full border border-gray-300 skill-level-button selected"
+                  on:click={() => removeSkill(skill)}
+                >
+                  {skill} ×
+                </button>
+              {/each}
+            </div>
+            <div class="flex mt-2">
+              <input
+                type="text"
+                id="skill_input"
+                bind:value={$newSkill}
+                on:input={handleSkillInput}
+                on:keydown={handleSkillKeydown}
+                placeholder="Type a skill and press Enter"
+                class="flex-grow p-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                on:click={addSkill}
+                class="px-4 py-2 bg-indigo-600 text-white rounded-r-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Add Skill
+              </button>
+            </div>
+            {#if $skillSuggestions.length > 0}
+              <ul class="mt-1 bg-white border border-gray-300 rounded-md shadow-sm">
+                {#each $skillSuggestions as suggestion}
+                  <li>
+                    <button
+                      class="w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                      on:click={() => selectSkill(suggestion)}
+                    >
+                      {suggestion}
+                    </button>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </div>
+          {#if $errors.skills_focused_on}
+            <p class="text-red-500 text-sm mt-1">{$errors.skills_focused_on}</p>
+          {/if}
+
+          <div class="flex flex-col">
+            <label for="positions_focused_on" class="mb-1 text-sm font-medium text-gray-700">Positions Focused On:</label>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Beater')}>Beater</button>
+              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Chaser')}>Chaser</button>
+              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Keeper')}>Keeper</button>
+              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Seeker')}>Seeker</button>
+            </div>
+          </div>
+          {#if $errors.positions_focused_on}
+            <p class="text-red-500 text-sm mt-1">{$errors.positions_focused_on}</p>
+          {/if}
+
+          <div class="flex flex-col">
+            <label for="video_link" class="mb-1 text-sm font-medium text-gray-700">Video Link:</label>
+            <input id="video_link" bind:value={$video_link} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+
+          <button
+            type="submit"
+            class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            {drill.id ? 'Update Drill' : 'Create Drill'}
+          </button>
+        </form>
       </div>
-      
-      <button
-        type="submit"
-        class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      >
-        {drill.id ? 'Update Drill' : 'Create Drill'}
+    </div>
+
+    <!-- Right Column: Diagrams and Images -->
+    <div class="flex-1 min-w-0 overflow-y-auto p-4 border rounded-md transition-all duration-300 ease-in-out">
+      <h2 class="text-xl font-semibold mb-4">Diagrams and Images</h2>
+      {#each $diagrams as diagram, index (index + '-' + diagramKey)}
+        <div class="mt-2 border p-4 rounded">
+          <label for={`diagram-canvas-${index}`} class="text-lg font-semibold mb-2">Diagram {index + 1}</label>
+          <DiagramDrawer 
+            on:save={(event) => handleDiagramSave(event, index)} 
+            id={`diagram-canvas-${index}`} 
+            data={diagram} 
+            index={index}
+            showSaveButton={true} 
+          />
+          <div class="mt-2 flex justify-between">
+            <button type="button" on:click={() => deleteDiagram(index)} class="text-red-600 hover:text-red-800">Delete</button>
+            <div>
+              <button type="button" on:click={() => moveDiagram(index, -1)} disabled={index === 0} class="text-blue-600 hover:text-blue-800 mr-2">Move Up</button>
+              <button type="button" on:click={() => moveDiagram(index, 1)} disabled={index === $diagrams.length - 1} class="text-blue-600 hover:text-blue-800">Move Down</button>
+            </div>
+          </div>
+        </div>
+      {/each}
+      <button type="button" on:click={addDiagram} class="mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+        Add New Diagram
       </button>
-    </form>
+
+      <!-- Images Section -->
+      <div class="mt-6">
+        <h3 class="text-lg font-semibold mb-2">Images</h3>
+        
+        <!-- Drag and drop zone for images -->
+        <div use:dndzone={{items: $images}} on:consider={handleDndConsider} on:finalize={handleDndFinalize}
+             class="grid grid-cols-2 md:grid-cols-3 gap-4 min-h-[100px] p-4 border-2 border-dashed border-gray-300 rounded-md">
+          {#each $images as image (image.id)}
+            <div class="relative group bg-white border rounded-md overflow-hidden">
+              <img src={URL.createObjectURL(image.file)} alt={`Image ${image.id}`} 
+                   class="w-full h-32 object-cover" />
+              <div class="absolute top-0 left-0 right-0 flex justify-between items-center p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                <span class="text-sm cursor-move">Drag to reorder</span>
+                <button
+                  type="button"
+                  on:click={() => removeImage(image.id)}
+                  class="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          {:else}
+            <p class="text-gray-600 col-span-full text-center">No images uploaded. Drag and drop images here or use the button below to add.</p>
+          {/each}
+        </div>
+
+        <!-- Image upload button and hidden file input -->
+        <div class="mt-4 flex items-center">
+          <button
+            type="button"
+            on:click={triggerFileInput}
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Add Images
+          </button>
+          <input
+            bind:this={fileInput}
+            type="file"
+            multiple
+            accept="image/*"
+            on:change={handleFileSelect}
+            class="hidden"
+          />
+          <span class="ml-4 text-sm text-gray-600">or drag and drop images above</span>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
+
+<style>
+  /* Optional: Customize scrollbar for better UX */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 100, 100, 0.5);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(100, 100, 100, 0.7);
+  }
+
+  /* Optional: Highlight selected buttons */
+  .selected {
+    background-color: #3b82f6; /* Tailwind's blue-500 */
+    color: white;
+  }
+
+  /* Optional: Add some styling for drag and drop */
+  :global(.dndzone.dropzone) {
+    background-color: rgba(59, 130, 246, 0.1); /* Light blue background when dragging over */
+  }
+</style>

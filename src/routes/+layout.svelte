@@ -1,51 +1,49 @@
 <script>
-	import { browser } from '$app/environment';
-	import { page } from '$app/stores';
-	import { webVitals } from '$lib/vitals';
-	import Header from './Header.svelte';
-	import './styles.css';
-	import Cart from '../components/Cart.svelte'; // Add this import
-	import { SvelteToast } from '@zerodevx/svelte-toast';
-	import FeedbackButton from '../components/FeedbackButton.svelte';
+  import { browser } from '$app/environment';
+  import { page } from '$app/stores';
+  import { webVitals } from '$lib/vitals';
+  import Header from './Header.svelte';
+  import './styles.css';
+  import { SvelteToast } from '@zerodevx/svelte-toast';
+  import FeedbackButton from '../components/FeedbackButton.svelte';
 
-	/** @type {import('./$types').LayoutServerData} */
-	export let data;
+  /** @type {import('./$types').LayoutServerData} */
+  export let data;
 
-	$: if (browser && data?.analyticsId) {
-		const analyticsId = data.analyticsId === 'VERCEL_ANALYTICS_ID' 
-			? import.meta.env.VITE_VERCEL_ANALYTICS_ID 
-			: data.analyticsId;
-		
-		webVitals({
-			path: $page.url.pathname,
-			params: $page.params,
-			analyticsId
-		});
-	}
+  $: if (browser && data?.analyticsId) {
+    const analyticsId = data.analyticsId === 'VERCEL_ANALYTICS_ID'
+      ? import.meta.env.VITE_VERCEL_ANALYTICS_ID
+      : data.analyticsId;
+
+    webVitals({
+      path: $page.url.pathname,
+      params: $page.params,
+      analyticsId
+    });
+  }
 </script>
 
 <div class="flex flex-col min-h-screen">
-	<Header />
+  <Header />
 
-	<main class="flex-1">
-		<slot />
-	</main>
+  <main class="flex-1">
+    <slot />
+  </main>
 
-	<FeedbackButton />
+  <FeedbackButton />
 
-	<SvelteToast />
+  <SvelteToast />
 
-	{#if $page.url.pathname === '/'}
-		<footer class="py-4 bg-gray-100">
-			<div class="container mx-auto text-center">
-				<a href="/privacy-policy" class="text-blue-500 hover:text-blue-700 mr-4">Privacy Policy</a>
-				<a href="/terms-of-service" class="text-blue-500 hover:text-blue-700">Terms of Service</a>
-			</div>
-		</footer>
-	{/if}
+  {#if $page.url.pathname === '/'}
+    <footer class="py-4 bg-gray-100">
+      <div class="container mx-auto text-center">
+        <a href="/privacy-policy" class="text-blue-500 hover:text-blue-700 mr-4">Privacy Policy</a>
+        <a href="/terms-of-service" class="text-blue-500 hover:text-blue-700">Terms of Service</a>
+      </div>
+    </footer>
+  {/if}
 </div>
 
-<Cart />
 
 <style>
 	.flex {

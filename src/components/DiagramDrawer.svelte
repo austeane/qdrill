@@ -1,5 +1,6 @@
 <script>
-  import { onMount, afterUpdate, createEventDispatcher } from 'svelte';
+  import { onMount, afterUpdate, createEventDispatcher, onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
   import * as fabric from 'fabric';
   const quaffleUrl = '/images/quaffle.webp';
   const bludgerUrl = '/images/bludger.webp';
@@ -8,7 +9,7 @@
   export let id = '';
   export let showSaveButton = false;
   export let index;
-  export let readonly = false;  // Add this line
+  export let readonly = false;
 
   const dispatch = createEventDispatcher();
   let canvas;
@@ -19,8 +20,12 @@
   let ballStartX = 60;
   let ballY = 130;
 
+  const contentWidth = 500;
+  const contentHeight = 600;
+  let canvasWrapper;
+  let scalingFactor = 1;
+
   function updateLastAddedPosition() {
-    // Update the position for the next added player
     lastAddedPosition.x += 50;
     if (lastAddedPosition.x > fabricCanvas.width - 50) {
       lastAddedPosition.x = 50;
@@ -31,21 +36,33 @@
     }
   }
 
+  function resizeCanvas() {
+    if (!fabricCanvas || !canvasWrapper) return;
+    const wrapperWidth = canvasWrapper.clientWidth;
+    scalingFactor = wrapperWidth / contentWidth;
+
+    fabricCanvas.setWidth(contentWidth * scalingFactor);
+    fabricCanvas.setHeight(contentHeight * scalingFactor);
+    fabricCanvas.setZoom(scalingFactor);
+
+    fabricCanvas.renderAll();
+  }
+
   onMount(() => {
+    if (!browser) return;
+
     fabricCanvas = new fabric.Canvas(canvas, {
-      width: 500,
-      height: 300,
+      width: contentWidth,
+      height: contentHeight,
       backgroundColor: '#f0f0f0',
-      selection: !readonly  // Add this line
+      selection: !readonly
     });
 
     if (data && Object.keys(data).length > 0) {
-      // Load existing diagram data
       fabricCanvas.loadFromJSON(data, () => {
         fabricCanvas.renderAll();
       });
     } else {
-      // Create a new diagram with default shapes
       addStandardShapes();
       addPlayers();
       addInitialBalls();
@@ -70,6 +87,17 @@
       });
       fabricCanvas.renderAll();
     }
+
+    resizeCanvas();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', resizeCanvas);
+    }
+  });
+
+  onDestroy(() => {
+    if (browser && typeof window !== 'undefined') {
+      window.removeEventListener('resize', resizeCanvas);
+    }
   });
 
   afterUpdate(() => {
@@ -87,7 +115,10 @@
 
   function addNewPlayer(teamColor, headColor) {
     const player = createStickFigure(teamColor, headColor);
-    player.set({ left: lastAddedPosition.x, top: lastAddedPosition.y });
+    player.set({
+      left: lastAddedPosition.x * scalingFactor,
+      top: lastAddedPosition.y * scalingFactor
+    });
     fabricCanvas.add(player);
     updateLastAddedPosition();
     fabricCanvas.renderAll();
@@ -110,8 +141,8 @@
       angle: 90
     });
     const group = new fabric.Group([arrow, arrowHead], {
-      left: lastAddedPosition.x,
-      top: lastAddedPosition.y,
+      left: lastAddedPosition.x * scalingFactor,
+      top: lastAddedPosition.y * scalingFactor,
       selectable: true,
       hasControls: true
     });
@@ -122,15 +153,18 @@
 
   function addHoopGroup() {
     const hoopGroup = addStandardShapes();
-    hoopGroup.set({ left: lastAddedPosition.x, top: lastAddedPosition.y });
+    hoopGroup.set({
+      left: lastAddedPosition.x * scalingFactor,
+      top: lastAddedPosition.y * scalingFactor
+    });
     updateLastAddedPosition();
     fabricCanvas.renderAll();
   }
 
   function addTextBox() {
     const text = new fabric.Textbox('Edit me', {
-      left: lastAddedPosition.x,
-      top: lastAddedPosition.y,
+      left: lastAddedPosition.x * scalingFactor,
+      top: lastAddedPosition.y * scalingFactor,
       width: 150,
       fontSize: 20,
       fill: 'black'
@@ -144,8 +178,8 @@
     const img = new Image();
     img.onload = function() {
       const fabricImage = new fabric.Image(img, {
-        left: ballStartX,
-        top: ballY,
+        left: ballStartX * scalingFactor,
+        top: ballY * scalingFactor,
         selectable: true,
         hasControls: true,
         originX: 'center',
@@ -167,8 +201,8 @@
     img.onload = function() {
       const bludgerSize = ballSize * 2;
       const fabricImage = new fabric.Image(img, {
-        left: ballStartX,
-        top: ballY,
+        left: ballStartX * scalingFactor,
+        top: ballY * scalingFactor,
         selectable: true,
         hasControls: true,
         originX: 'center',
@@ -292,7 +326,7 @@
           const player = createStickFigure(teamColor, headColor);
           const x = 50 + playerIndex * 60;
           const y = 180 + teamIndex * 60;
-          player.set({ left: x, top: y });
+          player.set({ left: x * scalingFactor, top: y * scalingFactor });
           fabricCanvas.add(player);
           playerIndex++;
         }
@@ -301,7 +335,22 @@
   }
 
   export function getDiagramAsImage() {
-    return fabricCanvas.toDataURL();
+    const originalZoom = fabricCanvas.getZoom();
+    fabricCanvas.setZoom(1);
+    fabricCanvas.setWidth(contentWidth);
+    fabricCanvas.setHeight(contentHeight);
+
+    const dataURL = fabricCanvas.toDataURL({
+      format: 'png',
+      multiplier: 1
+    });
+
+    fabricCanvas.setZoom(scalingFactor);
+    fabricCanvas.setWidth(contentWidth * scalingFactor);
+    fabricCanvas.setHeight(contentHeight * scalingFactor);
+    fabricCanvas.renderAll();
+
+    return dataURL;
   }
 
   export function saveDiagram() {
@@ -315,9 +364,23 @@
   }
 </script>
 
-<div>
+<div bind:this={canvasWrapper} class="diagram-wrapper">
   <canvas bind:this={canvas} {id} class="border border-gray-300"></canvas>
 </div>
+
+<style>
+  .diagram-wrapper {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  canvas {
+    width: 100% !important;
+    height: auto !important;
+  }
+</style>
+
 {#if !readonly}
   <div>
     <button on:click|preventDefault={() => addNewPlayer('red', 'green')} class="m-1">Add Red Player</button>

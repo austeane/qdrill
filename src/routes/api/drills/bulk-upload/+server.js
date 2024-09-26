@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { parse } from 'csv-parse/sync';
 import * as Yup from 'yup';
+import { PREDEFINED_SKILLS } from '$lib/constants/skills';
 
 // Constants mapping numbers to representations
 const skillLevelMap = {
@@ -121,7 +122,9 @@ function parseDrill(record) {
       min: parseInteger(record['Number of People Min']),
       max: parseInteger(record['Number of People Max'])
     },
-    skills_focused_on: parseArray(record['Skills Focused On']),
+    skills_focused_on: parseArray(record['Skills Focused On']).filter(skill => 
+      PREDEFINED_SKILLS.includes(skill) || skill.trim() !== ''
+    ),
     positions_focused_on: parseArray(record['Positions Focused On (Chaser; Beater; Keeper; Seeker)']),
     video_link: record['Video Link'],
     diagrams: parseDiagrams(record['Diagrams']),

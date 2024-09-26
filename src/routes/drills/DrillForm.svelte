@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import DiagramDrawer from '../../components/DiagramDrawer.svelte';
   import { dndzone } from 'svelte-dnd-action';
+  import { PREDEFINED_SKILLS } from '$lib/constants/skills';
 
   export let drill = {
     id: null,
@@ -33,6 +34,7 @@
   let selectedSkills = writable(drill.skills_focused_on ?? []);
   let newSkill = writable('');
   let skillSuggestions = writable([]);
+  let allSkills = writable([]);
   let positions_focused_on = writable(drill.positions_focused_on ?? []);
   let video_link = writable(drill.video_link ?? '');
   let images = writable(drill.images?.map((image, index) => ({
@@ -53,8 +55,26 @@
 
   let fileInput;
 
+  let showSkillsModal = false;
+  let skillSearchTerm = '';
+
+  $: filteredSkills = PREDEFINED_SKILLS.filter(skill => 
+    skill.toLowerCase().includes(skillSearchTerm.toLowerCase()) && 
+    !$selectedSkills.includes(skill)
+  );
+
+  let diagramRefs = [];
+
   function addDiagram() {
-    diagrams.update(d => [...d, null]);
+    // Save the current diagram if it exists
+    if (diagramRefs.length > 0) {
+      const lastDiagramRef = diagramRefs[diagramRefs.length - 1];
+      if (lastDiagramRef) {
+        lastDiagramRef.saveDiagram();
+      }
+    }
+
+    diagrams.update(d => [...d, {}]);
     diagramKey++;
   }
 
@@ -87,17 +107,25 @@
     });
   }
 
+  function handleMoveUp(index) {
+    moveDiagram(index, -1);
+  }
+
+  function handleMoveDown(index) {
+    moveDiagram(index, 1);
+  }
+
   onMount(async () => {
     const response = await fetch('/api/skills');
     const data = await response.json();
-    skills_focused_on.set(data);
+    allSkills.set([...PREDEFINED_SKILLS, ...data.filter(skill => !PREDEFINED_SKILLS.includes(skill))]);
     mounted = true;
   });
 
   function handleSkillInput() {
     const input = $newSkill.toLowerCase();
     if (input.length > 0) {
-      skillSuggestions.set($skills_focused_on.filter(skill => 
+      skillSuggestions.set($allSkills.filter(skill => 
         skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill)
       ));
     } else {
@@ -115,7 +143,7 @@
   function addSkill() {
     if ($newSkill && !$selectedSkills.includes($newSkill)) {
       selectedSkills.update(skills => [...skills, $newSkill]);
-      if (!$skills_focused_on.includes($newSkill)) {
+      if (!$allSkills.includes($newSkill)) {
         addNewSkill($newSkill);
       }
       newSkill.set('');
@@ -132,7 +160,7 @@
       selectedSkills.update(skills => [...skills, skill]);
     }
     newSkill.set('');
-    skillSuggestions.set([]);
+    skillSuggestions = PREDEFINED_SKILLS;
   }
 
   async function addNewSkill(skill) {
@@ -144,7 +172,7 @@
       body: JSON.stringify({ skill })
     });
     if (response.ok) {
-      skills_focused_on.update(skills => [...skills, skill]);
+      allSkills.update(skills => [...skills, skill]);
       selectSkill(skill);
     }
   }
@@ -267,6 +295,20 @@
 
   function triggerFileInput() {
     fileInput.click();
+  }
+
+  function openSkillsModal() {
+    showSkillsModal = true;
+  }
+
+  function closeSkillsModal() {
+    showSkillsModal = false;
+    skillSearchTerm = '';
+  }
+
+  function selectSkillFromModal(skill) {
+    selectSkill(skill);
+    closeSkillsModal();
   }
 
   $: if (mounted) {
@@ -399,7 +441,7 @@
 
           <div class="flex flex-col">
             <label for="skills_focused_on" class="mb-1 text-sm font-medium text-gray-700">Skills Focused On:</label>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap gap-2 mb-2">
               {#each $selectedSkills as skill}
                 <button
                   type="button"
@@ -428,6 +470,13 @@
                 Add Skill
               </button>
             </div>
+            <button
+              type="button"
+              on:click={openSkillsModal}
+              class="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            >
+              Browse Skills
+            </button>
             {#if $skillSuggestions.length > 0}
               <ul class="mt-1 bg-white border border-gray-300 rounded-md shadow-sm">
                 {#each $skillSuggestions as suggestion}
@@ -482,7 +531,10 @@
         <div class="mt-2 border p-4 rounded">
           <label for={`diagram-canvas-${index}`} class="text-lg font-semibold mb-2">Diagram {index + 1}</label>
           <DiagramDrawer 
+            bind:this={diagramRefs[index]}
             on:save={(event) => handleDiagramSave(event, index)} 
+            on:moveUp={() => handleMoveUp(index)}
+            on:moveDown={() => handleMoveDown(index)}
             id={`diagram-canvas-${index}`} 
             data={diagram} 
             index={index}
@@ -490,10 +542,6 @@
           />
           <div class="mt-2 flex justify-between">
             <button type="button" on:click={() => deleteDiagram(index)} class="text-red-600 hover:text-red-800">Delete</button>
-            <div>
-              <button type="button" on:click={() => moveDiagram(index, -1)} disabled={index === 0} class="text-blue-600 hover:text-blue-800 mr-2">Move Up</button>
-              <button type="button" on:click={() => moveDiagram(index, 1)} disabled={index === $diagrams.length - 1} class="text-blue-600 hover:text-blue-800">Move Down</button>
-            </div>
           </div>
         </div>
       {/each}
@@ -551,6 +599,43 @@
     </div>
   </div>
 </section>
+
+<!-- Skills Modal -->
+{#if showSkillsModal}
+  <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" on:click={closeSkillsModal}>
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" on:click|stopPropagation>
+      <div class="mt-3 text-center">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">Select Skills</h3>
+        <div class="mt-2">
+          <input
+            type="text"
+            bind:value={skillSearchTerm}
+            placeholder="Search skills..."
+            class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <div class="mt-2 max-h-60 overflow-y-auto">
+            {#each filteredSkills as skill}
+              <button
+                class="w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                on:click={() => selectSkillFromModal(skill)}
+              >
+                {skill}
+              </button>
+            {/each}
+          </div>
+        </div>
+        <div class="mt-4">
+          <button
+            on:click={closeSkillsModal}
+            class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   /* Optional: Customize scrollbar for better UX */

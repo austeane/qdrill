@@ -64,7 +64,8 @@
           on:mouseenter={() => isDrillsDropdownOpen = true}
           on:mouseleave={() => isDrillsDropdownOpen = false}
         >
-          <button
+          <a
+            href="/drills"
             class="text-gray-700 hover:text-gray-900 font-semibold flex items-center focus:outline-none"
             aria-haspopup="true"
             aria-expanded={isDrillsDropdownOpen}
@@ -74,7 +75,7 @@
             <svg class="ml-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
-          </button>
+          </a>
 
           <!-- Dropdown Menu -->
           <div
@@ -86,6 +87,7 @@
             role="menu"
             aria-label="Drills options"
           >
+            <a href="/drills" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">View Drills</a>
             <a href="/drills/create" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Create Drill</a>
             <a href="/drills/bulk-upload" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Bulk Upload</a>
           </div>
@@ -225,7 +227,8 @@
       <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
         <!-- Drills Dropdown in Mobile Menu -->
         <div class="relative drills-dropdown">
-          <button
+          <a
+            href="/drills"
             class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold flex justify-between items-center focus:outline-none"
             on:click={() => isDrillsDropdownOpen = !isDrillsDropdownOpen}
             aria-haspopup="true"
@@ -236,9 +239,10 @@
             <svg class="ml-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
-          </button>
+          </a>
           {#if isDrillsDropdownOpen}
             <div class="mt-1 space-y-1 pl-4">
+              <a href="/drills" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem">View Drills</a>
               <a href="/drills/create" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem">Create Drill</a>
               <a href="/drills/bulk-upload" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem">Bulk Upload</a>
             </div>

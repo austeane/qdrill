@@ -359,6 +359,16 @@
     dispatch('save', diagramData);
   }
 
+  export function moveUp() {
+    saveDiagram();
+    dispatch('moveUp');
+  }
+
+  export function moveDown() {
+    saveDiagram();
+    dispatch('moveDown');
+  }
+
   function preventSubmit(event) {
     event.preventDefault();
   }
@@ -394,5 +404,7 @@
     {#if showSaveButton}
       <button on:click|preventDefault={saveDiagram} class="m-1">Save Diagram</button>
     {/if}
+    <button on:click|preventDefault={moveUp} class="m-1">Move Up</button>
+    <button on:click|preventDefault={moveDown} class="m-1">Move Down</button>
   </div>
 {/if}

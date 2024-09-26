@@ -393,8 +393,16 @@
 
 {#if !readonly}
   <div>
-    <button on:click|preventDefault={() => addNewPlayer('red', 'green')} class="m-1">Add Red Player</button>
-    <button on:click|preventDefault={() => addNewPlayer('blue', 'green')} class="m-1">Add Blue Player</button>
+    <button on:click|preventDefault={() => addNewPlayer('red', 'white')} class="m-1">Add Red Chaser</button>
+    <button on:click|preventDefault={() => addNewPlayer('red', 'green')} class="m-1">Add Red Keeper</button>
+    <button on:click|preventDefault={() => addNewPlayer('red', 'black')} class="m-1">Add Red Beater</button>
+    <button on:click|preventDefault={() => addNewPlayer('red', 'yellow')} class="m-1">Add Red Seeker</button>
+    
+    <button on:click|preventDefault={() => addNewPlayer('blue', 'white')} class="m-1">Add Blue Chaser</button>
+    <button on:click|preventDefault={() => addNewPlayer('blue', 'green')} class="m-1">Add Blue Keeper</button>
+    <button on:click|preventDefault={() => addNewPlayer('blue', 'black')} class="m-1">Add Blue Beater</button>
+    <button on:click|preventDefault={() => addNewPlayer('blue', 'yellow')} class="m-1">Add Blue Seeker</button>
+    
     <button on:click|preventDefault={addArrow} class="m-1">Add Arrow</button>
     <button on:click|preventDefault={addHoopGroup} class="m-1">Add Hoop Group</button>
     <button on:click|preventDefault={addTextBox} class="m-1">Add Text Box</button>
@@ -408,3 +416,4 @@
     <button on:click|preventDefault={moveDown} class="m-1">Move Down</button>
   </div>
 {/if}
+

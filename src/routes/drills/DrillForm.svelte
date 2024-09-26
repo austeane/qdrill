@@ -211,6 +211,13 @@
   }
 
   async function handleSubmit() {
+    // Automatically save all diagrams before submitting
+    diagramRefs.forEach(ref => {
+      if (ref && typeof ref.saveDiagram === 'function') {
+        ref.saveDiagram();
+      }
+    });
+
     if (!validateForm()) return;
     console.log('Diagram data before sending:', $diagrams);
 

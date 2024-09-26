@@ -68,12 +68,6 @@
       addInitialBalls();
     }
 
-    fabricCanvas.on('keydown', function(e) {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        deleteSelectedObjects();
-      }
-    });
-
     fabricCanvas.renderAll();
 
     setTimeout(() => {
@@ -375,7 +369,7 @@
 </script>
 
 <div bind:this={canvasWrapper} class="diagram-wrapper">
-  <canvas bind:this={canvas} {id} class="border border-gray-300"></canvas>
+  <canvas bind:this={canvas} {id} class="border border-gray-300" tabindex="0"></canvas>
 </div>
 
 <style>
@@ -393,6 +387,11 @@
 
 {#if !readonly}
   <div>
+    {#if showSaveButton}
+      <button on:click|preventDefault={saveDiagram} class="m-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+        Save Diagram
+      </button>
+    {/if}
     <button on:click|preventDefault={() => addNewPlayer('red', 'white')} class="m-1">Add Red Chaser</button>
     <button on:click|preventDefault={() => addNewPlayer('red', 'green')} class="m-1">Add Red Keeper</button>
     <button on:click|preventDefault={() => addNewPlayer('red', 'black')} class="m-1">Add Red Beater</button>
@@ -409,9 +408,6 @@
     <button on:click|preventDefault={addBludger} class="m-1">Add Bludger</button>
     <button on:click|preventDefault={addQuaffle} class="m-1">Add Quaffle</button>
     <button on:click|preventDefault={deleteSelectedObjects} class="m-1">Delete Selected</button>
-    {#if showSaveButton}
-      <button on:click|preventDefault={saveDiagram} class="m-1">Save Diagram</button>
-    {/if}
     <button on:click|preventDefault={moveUp} class="m-1">Move Up</button>
     <button on:click|preventDefault={moveDown} class="m-1">Move Down</button>
   </div>

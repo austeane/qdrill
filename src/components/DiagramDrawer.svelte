@@ -3,17 +3,9 @@
   import { browser } from '$app/environment';
   import * as fabric from 'fabric';
 
-  // Extend fabric.Image to customize serialization
-  fabric.Image.prototype.toObject = (function(toObject) {
-    return function() {
-      return fabric.util.object.extend(toObject.call(this), {
-        src: this.srcPath // Use 'srcPath' for serialization
-      });
-    };
-  })(fabric.Image.prototype.toObject);
-
-  const quaffleUrl = new URL('/images/quaffle.webp', import.meta.url).href;
-  const bludgerUrl = new URL('/images/bludger.png', import.meta.url).href;
+  // Define relative URLs for images
+  const quaffleUrl = '/images/quaffle.webp';
+  const bludgerUrl = '/images/bludger.webp';
 
   export let data = null;
   export let id = '';
@@ -76,23 +68,10 @@
       console.log('onMount: Data exists, preparing to load');
       console.log('Original data:', JSON.stringify(data));
 
-      // Update image URLs before loading
-      const updatedData = JSON.parse(JSON.stringify(data));
-      updatedData.objects = updatedData.objects.map(obj => {
-        if (obj.type === 'image') {
-          console.log('Processing image object:', obj.src);
-          if (obj.src) {
-            // Reconstruct full URL using import.meta.url
-            obj.src = new URL(obj.srcPath || obj.src, import.meta.url).href;
-            console.log('Updated image src to', obj.src);
-          }
-        }
-        return obj;
-      });
+      // Ensure data is treated as a plain object, not a store
+      const plainData = typeof data === 'function' ? data() : data;
 
-      console.log('Updated data:', JSON.stringify(updatedData));
-
-      fabricCanvas.loadFromJSON(updatedData, () => {
+      fabricCanvas.loadFromJSON(plainData, () => {
         console.log('Canvas loaded from JSON');
         fabricCanvas.renderAll();
       }, (o, object) => {
@@ -221,7 +200,7 @@
         hasControls: true,
         originX: 'center',
         originY: 'center',
-        srcPath: '/images/quaffle.webp' // Set the relative path
+        src: quaffleUrl // Use relative URL directly
       });
       fabricImage.scale(ballSize / Math.max(img.width, img.height));
       fabricCanvas.add(fabricImage);
@@ -248,7 +227,7 @@
         hasControls: true,
         originX: 'center',
         originY: 'center',
-        srcPath: '/images/bludger.png' // Set the relative path
+        src: bludgerUrl // Use relative URL directly
       });
       fabricImage.scale(bludgerSize / Math.max(img.width, img.height));
       fabricCanvas.add(fabricImage);

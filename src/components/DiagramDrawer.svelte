@@ -2,6 +2,16 @@
   import { onMount, afterUpdate, createEventDispatcher, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
   import * as fabric from 'fabric';
+
+  // Extend fabric.Image to customize serialization
+  fabric.Image.prototype.toObject = (function(toObject) {
+    return function() {
+      return fabric.util.object.extend(toObject.call(this), {
+        src: this.srcPath // Use 'srcPath' for serialization
+      });
+    };
+  })(fabric.Image.prototype.toObject);
+
   const quaffleUrl = new URL('/images/quaffle.webp', import.meta.url).href;
   const bludgerUrl = new URL('/images/bludger.png', import.meta.url).href;
 
@@ -71,12 +81,10 @@
       updatedData.objects = updatedData.objects.map(obj => {
         if (obj.type === 'image') {
           console.log('Processing image object:', obj.src);
-          if (obj.src.includes('quaffle')) {
-            console.log('Updating quaffle URL from', obj.src, 'to', quaffleUrl);
-            obj.src = quaffleUrl;
-          } else if (obj.src.includes('bludger')) {
-            console.log('Updating bludger URL from', obj.src, 'to', bludgerUrl);
-            obj.src = bludgerUrl;
+          if (obj.src) {
+            // Reconstruct full URL using import.meta.url
+            obj.src = new URL(obj.srcPath || obj.src, import.meta.url).href;
+            console.log('Updated image src to', obj.src);
           }
         }
         return obj;
@@ -203,6 +211,7 @@
   function addQuaffle() {
     console.log('Adding quaffle, URL:', quaffleUrl);
     const img = new Image();
+    img.crossOrigin = 'Anonymous'; // Set crossOrigin
     img.onload = function() {
       console.log('Quaffle image loaded successfully');
       const fabricImage = new fabric.Image(img, {
@@ -211,7 +220,8 @@
         selectable: true,
         hasControls: true,
         originX: 'center',
-        originY: 'center'
+        originY: 'center',
+        srcPath: '/images/quaffle.webp' // Set the relative path
       });
       fabricImage.scale(ballSize / Math.max(img.width, img.height));
       fabricCanvas.add(fabricImage);
@@ -227,6 +237,7 @@
   function addBludger() {
     console.log('Adding bludger, URL:', bludgerUrl);
     const img = new Image();
+    img.crossOrigin = 'Anonymous'; // Set crossOrigin
     img.onload = function() {
       console.log('Bludger image loaded successfully');
       const bludgerSize = ballSize * 2;
@@ -236,7 +247,8 @@
         selectable: true,
         hasControls: true,
         originX: 'center',
-        originY: 'center'
+        originY: 'center',
+        srcPath: '/images/bludger.png' // Set the relative path
       });
       fabricImage.scale(bludgerSize / Math.max(img.width, img.height));
       fabricCanvas.add(fabricImage);

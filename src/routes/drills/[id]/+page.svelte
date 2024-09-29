@@ -173,7 +173,12 @@
         <h2 class="text-lg font-semibold mb-2">Diagrams</h2>
         {#each $drill.diagrams as diagram, index}
           <div class="mb-4">
-            <DiagramDrawer data={diagram} on:save={(event) => handleDiagramSave(event, index)} showSaveButton={false} />
+            <DiagramDrawer 
+              data={diagram} 
+              on:save={(event) => handleDiagramSave(event, index)} 
+              showSaveButton={false} 
+              {index}
+            />
           </div>
         {/each}
       </div>

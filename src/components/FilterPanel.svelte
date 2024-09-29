@@ -1,4 +1,5 @@
 <script>
+    import RangeSlider from 'svelte-range-slider-pips';
     import {
       selectedSkillLevels,
       selectedComplexities,
@@ -44,6 +45,10 @@
     let showPhaseOfSeason = false;
     let showPracticeGoals = false;
     let showEstimatedParticipants = false;
+  
+    // Set up variables for the sliders
+    let numberOfPeopleRange = [$selectedNumberOfPeopleMin, $selectedNumberOfPeopleMax];
+    let suggestedLengthsRange = [$selectedSuggestedLengthsMin, $selectedSuggestedLengthsMax];
   
     // Function to reset all filters
     function resetFilters() {
@@ -324,36 +329,23 @@
                     tabindex="0"
                 >
                     <label class="block text-sm font-medium text-gray-700 mb-2">Participants Range</label>
-                    <div class="relative">
-                        <input 
-                            type="range" 
-                            min={numberOfPeopleOptions.min} 
-                            max={numberOfPeopleOptions.max} 
-                            bind:value={$selectedNumberOfPeopleMin}
-                            on:input={() => {
-                                if ($selectedNumberOfPeopleMin > $selectedNumberOfPeopleMax) {
-                                    selectedNumberOfPeopleMax.set($selectedNumberOfPeopleMin);
-                                }
-                            }}
-                            class="absolute w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                        <input 
-                            type="range" 
-                            min={numberOfPeopleOptions.min} 
-                            max={numberOfPeopleOptions.max} 
-                            bind:value={$selectedNumberOfPeopleMax}
-                            on:input={() => {
-                                if ($selectedNumberOfPeopleMax < $selectedNumberOfPeopleMin) {
-                                    selectedNumberOfPeopleMin.set($selectedNumberOfPeopleMax);
-                                }
-                            }}
-                            class="absolute w-full h-2 bg-transparent rounded-lg appearance-none cursor-pointer"
-                        />
-                    </div>
-                    <div class="flex justify-between mt-4 text-sm text-gray-600">
-                        <span>{$selectedNumberOfPeopleMin === 0 ? 'Any' : `${$selectedNumberOfPeopleMin} Participants`}</span>
-                        <span>{$selectedNumberOfPeopleMax === 30 ? 'Any' : `${$selectedNumberOfPeopleMax} Participants`}</span>
-                    </div>
+                    <RangeSlider
+                        bind:values={numberOfPeopleRange}
+                        min={numberOfPeopleOptions.min}
+                        max={numberOfPeopleOptions.max}
+                        step={1}
+                        float
+                        pips
+                        all="label"
+                        first="label"
+                        last="label"
+                        rest="pip"
+                        pipstep={5}
+                        on:change={() => {
+                            selectedNumberOfPeopleMin.set(numberOfPeopleRange[0]);
+                            selectedNumberOfPeopleMax.set(numberOfPeopleRange[1]);
+                        }}
+                    />
                 </div>
             {/if}
         </div>
@@ -381,36 +373,23 @@
                     tabindex="0"
                 >
                     <label class="block text-sm font-medium text-gray-700 mb-2">Length Range (mins)</label>
-                    <div class="relative">
-                        <input 
-                            type="range" 
-                            min={suggestedLengths.min} 
-                            max={suggestedLengths.max} 
-                            bind:value={$selectedSuggestedLengthsMin}
-                            on:input={() => {
-                                if ($selectedSuggestedLengthsMin > $selectedSuggestedLengthsMax) {
-                                    selectedSuggestedLengthsMax.set($selectedSuggestedLengthsMin);
-                                }
-                            }}
-                            class="absolute w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                        <input 
-                            type="range" 
-                            min={suggestedLengths.min} 
-                            max={suggestedLengths.max} 
-                            bind:value={$selectedSuggestedLengthsMax}
-                            on:input={() => {
-                                if ($selectedSuggestedLengthsMax < $selectedSuggestedLengthsMin) {
-                                    selectedSuggestedLengthsMin.set($selectedSuggestedLengthsMax);
-                                }
-                            }}
-                            class="absolute w-full h-2 bg-transparent rounded-lg appearance-none cursor-pointer"
-                        />
-                    </div>
-                    <div class="flex justify-between mt-4 text-sm text-gray-600">
-                        <span>{$selectedSuggestedLengthsMin === 0 ? 'Any' : `${$selectedSuggestedLengthsMin} mins`}</span>
-                        <span>{$selectedSuggestedLengthsMax === 60 ? 'Any' : `${$selectedSuggestedLengthsMax} mins`}</span>
-                    </div>
+                    <RangeSlider
+                        bind:values={suggestedLengthsRange}
+                        min={suggestedLengths.min}
+                        max={suggestedLengths.max}
+                        step={1}
+                        float
+                        pips
+                        all="label"
+                        first="label"
+                        last="label"
+                        rest="pip"
+                        pipstep={15}
+                        on:change={() => {
+                            selectedSuggestedLengthsMin.set(suggestedLengthsRange[0]);
+                            selectedSuggestedLengthsMax.set(suggestedLengthsRange[1]);
+                        }}
+                    />
                 </div>
             {/if}
         </div>

@@ -59,7 +59,22 @@
     });
 
     if (data && Object.keys(data).length > 0) {
-      fabricCanvas.loadFromJSON(data, () => {
+      // Update image URLs before loading
+      // Todo: Probably not the most graceful way to solve.
+      //    Issue was that localhost files were being loaded in production
+      const updatedData = JSON.parse(JSON.stringify(data));
+      updatedData.objects = updatedData.objects.map(obj => {
+        if (obj.type === 'image') {
+          if (obj.src.includes('quaffle')) {
+            obj.src = quaffleUrl;
+          } else if (obj.src.includes('bludger')) {
+            obj.src = bludgerUrl;
+          }
+        }
+        return obj;
+      });
+
+      fabricCanvas.loadFromJSON(updatedData, () => {
         fabricCanvas.renderAll();
       });
     } else {
@@ -412,4 +427,3 @@
     <button on:click|preventDefault={moveDown} class="m-1">Move Down</button>
   </div>
 {/if}
-

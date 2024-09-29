@@ -2,8 +2,8 @@
   import { onMount, afterUpdate, createEventDispatcher, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
   import * as fabric from 'fabric';
-  const quaffleUrl = '/images/quaffle.webp';
-  const bludgerUrl = '/images/bludger.webp';
+  const quaffleUrl = new URL('/images/quaffle.webp', import.meta.url).href;
+  const bludgerUrl = new URL('/images/bludger.png', import.meta.url).href;
 
   export let data = null;
   export let id = '';
@@ -184,8 +184,8 @@
       fabricCanvas.renderAll();
       ballStartX += ballSize + 3;
     };
-    img.onerror = function() {
-      console.error('Failed to load quaffle image');
+    img.onerror = function(e) {
+      console.error('Failed to load quaffle image:', e, 'URL:', img.src);
     };
     img.src = quaffleUrl;
   }
@@ -207,8 +207,8 @@
       fabricCanvas.renderAll();
       ballStartX += bludgerSize + 3;
     };
-    img.onerror = function() {
-      console.error('Failed to load bludger image');
+    img.onerror = function(e) {
+      console.error('Failed to load bludger image:', e, 'URL:', img.src);
     };
     img.src = bludgerUrl;
   }

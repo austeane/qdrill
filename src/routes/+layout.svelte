@@ -1,7 +1,7 @@
 <script>
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
-  import { webVitals } from '$lib/vitals';
+  // Remove the import for webVitals
   import Header from './Header.svelte';
   import './styles.css';
   import { SvelteToast } from '@zerodevx/svelte-toast';
@@ -10,17 +10,7 @@
   /** @type {import('./$types').LayoutServerData} */
   export let data;
 
-  $: if (browser && data?.analyticsId) {
-    const analyticsId = data.analyticsId === 'VERCEL_ANALYTICS_ID'
-      ? import.meta.env.VITE_VERCEL_ANALYTICS_ID
-      : data.analyticsId;
-
-    webVitals({
-      path: $page.url.pathname,
-      params: $page.params,
-      analyticsId
-    });
-  }
+  // Remove the $: block that calls webVitals
 </script>
 
 <div class="flex flex-col min-h-screen">
@@ -43,7 +33,6 @@
     </footer>
   {/if}
 </div>
-
 
 <style>
 	.flex {

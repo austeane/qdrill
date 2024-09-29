@@ -6,6 +6,7 @@
   import { dndzone } from 'svelte-dnd-action';
   import { PREDEFINED_SKILLS } from '$lib/constants/skills';
 
+  // Initialize stores
   export let drill = {
     id: null,
     name: '',
@@ -28,38 +29,33 @@
   let skill_level = writable(drill.skill_level ?? []);
   let complexity = writable(drill.complexity ?? '');
   let suggested_length = writable(drill.suggested_length ?? '');
-  let number_of_people_min = writable(drill.number_of_people_min ?? drill.number_of_people?.min ?? '');
-  let number_of_people_max = writable(drill.number_of_people_max ?? drill.number_of_people?.max ?? '');
+  let number_of_people_min = writable(drill.number_of_people?.min ?? '');
+  let number_of_people_max = writable(drill.number_of_people?.max ?? '');
   let skills_focused_on = writable(drill.skills_focused_on ?? []);
   let selectedSkills = writable(drill.skills_focused_on ?? []);
   let newSkill = writable('');
   let skillSuggestions = writable([]);
   let allSkills = writable([]);
+  let skillSearchTerm = writable('');  // Add this line
   let positions_focused_on = writable(drill.positions_focused_on ?? []);
   let video_link = writable(drill.video_link ?? '');
   let images = writable(drill.images?.map((image, index) => ({
     id: `image-${index}`,
     file: image
   })) ?? []);
+  let diagrams = writable(drill.diagrams?.length > 0 ? drill.diagrams : [null]);
 
   let errors = writable({});
-  let numberWarnings = {
-    number_of_people_min: '',
-    number_of_people_max: ''
-  };
-
+  let numberWarnings = writable({});
   let mounted = false;
-
-  let diagrams = writable(drill.diagrams?.length > 0 ? drill.diagrams : [null]);
   let diagramKey = 0;
-
   let fileInput;
-
   let showSkillsModal = false;
-  let skillSearchTerm = '';
+  let modalSkillSearchTerm = writable('');
+  let modalSkillSuggestions = writable([]);
 
-  $: filteredSkills = PREDEFINED_SKILLS.filter(skill => 
-    skill.toLowerCase().includes(skillSearchTerm.toLowerCase()) && 
+  $: filteredSkills = $allSkills.filter(skill => 
+    skill.toLowerCase().includes($skillSearchTerm.toLowerCase()) && 
     !$selectedSkills.includes(skill)
   );
 
@@ -131,6 +127,7 @@
     } else {
       skillSuggestions.set([]);
     }
+    skillSearchTerm.set(input);  // Update skillSearchTerm
   }
 
   function handleSkillKeydown(event) {
@@ -163,9 +160,35 @@
     skillSuggestions.set([]); // Corrected: Clear suggestions after selection
   }
 
+  function handleModalSkillInput() {
+    const input = $modalSkillSearchTerm.toLowerCase();
+    if (input.length > 0) {
+      modalSkillSuggestions.set($allSkills.filter(skill => 
+        skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill)
+      ));
+    } else {
+      modalSkillSuggestions.set($allSkills.filter(skill => !$selectedSkills.includes(skill)));
+    }
+  }
+
+  $: handleModalSkillInput();
+
+  function openSkillsModal() {
+    showSkillsModal = true;
+    modalSkillSearchTerm.set('');
+    modalSkillSuggestions.set($allSkills.filter(skill => !$selectedSkills.includes(skill)));
+  }
+
+  function closeSkillsModal() {
+    showSkillsModal = false;
+    modalSkillSearchTerm.set('');
+    modalSkillSuggestions.set([]);
+  }
+
   function selectSkillFromModal(skill) {
-    selectSkill(skill);
-    // Removed closeSkillsModal() to keep the modal open for multiple selections
+    if (!$selectedSkills.includes(skill)) {
+      selectedSkills.update(skills => [...skills, skill]);
+    }
   }
 
   async function addNewSkill(skill) {
@@ -309,16 +332,6 @@
     fileInput.click();
   }
 
-  function openSkillsModal() {
-    showSkillsModal = true;
-  }
-
-  function closeSkillsModal() {
-    showSkillsModal = false;
-    skillSearchTerm = '';
-    skillSuggestions.set([]); // Ensure suggestions are cleared when closing
-  }
-
   $: if (mounted) {
     if (typeof window !== 'undefined') {
       const skillLevelButtons = document.querySelectorAll('.skill-level-button');
@@ -448,36 +461,22 @@
           {/if}
 
           <div class="flex flex-col">
-            <label for="skills_focused_on" class="mb-1 text-sm font-medium text-gray-700">Skills Focused On:</label>
+            <label for="skills" class="mb-1 text-sm font-medium text-gray-700">Skills:</label>
             <div class="flex flex-wrap gap-2 mb-2">
               {#each $selectedSkills as skill}
-                <button
-                  type="button"
-                  class="px-3 py-1 rounded-full border border-gray-300 skill-level-button selected"
-                  on:click={() => removeSkill(skill)}
-                >
-                  {skill} ×
-                </button>
+                <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
+                  {skill}
+                  <button on:click={() => removeSkill(skill)} class="ml-1 text-blue-600 hover:text-blue-800">×</button>
+                </span>
               {/each}
             </div>
-            <div class="flex mt-2">
-              <input
-                type="text"
-                id="skill_input"
-                bind:value={$newSkill}
-                on:input={handleSkillInput}
-                on:keydown={handleSkillKeydown}
-                placeholder="Type a skill and press Enter"
-                class="flex-grow p-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                on:click={addSkill}
-                class="px-4 py-2 bg-indigo-600 text-white rounded-r-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Add Skill
-              </button>
-            </div>
+            <input
+              id="skills"
+              bind:value={$newSkill}
+              on:input={handleSkillInput}
+              placeholder="Add a skill"
+              class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
             <button
               type="button"
               on:click={openSkillsModal}
@@ -490,8 +489,9 @@
                 {#each $skillSuggestions as suggestion}
                   <li>
                     <button
-                      class="w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                      type="button"
                       on:click={() => selectSkill(suggestion)}
+                      class="w-full text-left px-3 py-2 hover:bg-gray-100"
                     >
                       {suggestion}
                     </button>
@@ -610,20 +610,19 @@
 
 <!-- Skills Modal -->
 {#if showSkillsModal}
-  <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" on:click={closeSkillsModal}>
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" on:click|stopPropagation>
+  <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" on:click|self={closeSkillsModal}>
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
       <div class="mt-3 text-center">
         <h3 class="text-lg leading-6 font-medium text-gray-900">Select Skills</h3>
         <div class="mt-2">
           <input
             type="text"
-            bind:value={skillSearchTerm}
+            bind:value={$modalSkillSearchTerm}
             placeholder="Search skills..."
-            on:input={handleSkillInput}
             class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <div class="mt-2 max-h-60 overflow-y-auto">
-            {#each $filteredSkills as skill}
+            {#each $modalSkillSuggestions as skill}
               <button
                 class="w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer"
                 on:click={() => selectSkillFromModal(skill)}
@@ -631,6 +630,9 @@
                 {skill}
               </button>
             {/each}
+            {#if $modalSkillSuggestions.length === 0}
+              <p class="text-gray-500">No skills found.</p>
+            {/if}
           </div>
         </div>
         <div class="mt-4">

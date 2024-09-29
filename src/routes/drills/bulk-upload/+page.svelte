@@ -355,7 +355,7 @@ Example Drill,A brief description,A more detailed description,"1,2,3",2,10,15,4,
 
   <div class="mb-6">
     <h2 class="text-2xl font-semibold mb-4">Parsed Drills</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="space-y-6">
       {#each filteredDrills as drill, index (drill.id)}
         <div class="border rounded-lg p-6 bg-white shadow-md {drill.errors.length > 0 ? 'border-yellow-500' : 'border-green-500'}">
           {#if drill.isEditing}

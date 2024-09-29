@@ -65,6 +65,9 @@ importers:
       svelte-forms-lib:
         specifier: ^2.0.1
         version: 2.0.1
+      svelte-range-slider-pips:
+        specifier: ^3.1.1
+        version: 3.1.1(svelte@4.2.19)
       svelte-routing:
         specifier: ^2.13.0
         version: 2.13.0
@@ -2408,6 +2411,11 @@ packages:
     engines: {node: ^12.20 || ^14.13.1 || >= 16}
     peerDependencies:
       svelte: ^3.19.0 || ^4.0.0
+
+  svelte-range-slider-pips@3.1.1:
+    resolution: {integrity: sha512-CaBczr0/egEr3ShYyFo3gDObZiYDEc7YBC35rQr8D2kWvisxCftE/+Znryk8YXva86Fq77tzQ4JeOfB+iUMjrg==}
+    peerDependencies:
+      svelte: ^4.0.0
 
   svelte-routing@2.13.0:
     resolution: {integrity: sha512-/NTxqTwLc7Dq306hARJrH2HLXOBtKd7hu8nxgoFDlK0AC4SOKnzisiX/9m8Uksei1QAWtlAEdF91YphNM8iDMg==}
@@ -5090,6 +5098,10 @@ snapshots:
       dequal: 2.0.3
 
   svelte-hmr@0.16.0(svelte@4.2.19):
+    dependencies:
+      svelte: 4.2.19
+
+  svelte-range-slider-pips@3.1.1(svelte@4.2.19):
     dependencies:
       svelte: 4.2.19
 

@@ -9,9 +9,9 @@ export const selectedComplexities = writable([]);
 export const selectedSkillsFocusedOn = writable([]);
 export const selectedPositionsFocusedOn = writable([]);
 export const selectedNumberOfPeopleMin = writable(0);
-export const selectedNumberOfPeopleMax = writable(30);
+export const selectedNumberOfPeopleMax = writable(100);
 export const selectedSuggestedLengthsMin = writable(0);
-export const selectedSuggestedLengthsMax = writable(60);
+export const selectedSuggestedLengthsMax = writable(120);
 export const selectedHasVideo = writable(false);
 export const selectedHasDiagrams = writable(false);
 export const selectedHasImages = writable(false);
@@ -92,18 +92,18 @@ export const filteredDrills = derived(
         }
       }
 
-      // Number of People
+      // Number of People: Check for any overlap
       if (
-        drill.number_of_people_min < $selectedNumberOfPeopleMin ||
-        drill.number_of_people_max > $selectedNumberOfPeopleMax
+        drill.number_of_people_min > $selectedNumberOfPeopleMax ||
+        drill.number_of_people_max < $selectedNumberOfPeopleMin
       ) {
         matches = false;
       }
 
-      // Suggested Lengths
+      // Suggested Lengths: Check for any overlap
       if (
-        drill.suggested_length < $selectedSuggestedLengthsMin ||
-        drill.suggested_length > $selectedSuggestedLengthsMax
+        drill.suggested_length > $selectedSuggestedLengthsMax ||
+        drill.suggested_length < $selectedSuggestedLengthsMin
       ) {
         matches = false;
       }

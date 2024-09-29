@@ -51,6 +51,8 @@
   onMount(() => {
     if (!browser) return;
 
+    console.log('onMount: Starting to initialize canvas');
+
     fabricCanvas = new fabric.Canvas(canvas, {
       width: contentWidth,
       height: contentHeight,
@@ -58,26 +60,41 @@
       selection: !readonly
     });
 
+    console.log('onMount: Canvas initialized');
+
     if (data && Object.keys(data).length > 0) {
+      console.log('onMount: Data exists, preparing to load');
+      console.log('Original data:', JSON.stringify(data));
+
       // Update image URLs before loading
-      // Todo: Probably not the most graceful way to solve.
-      //    Issue was that localhost files were being loaded in production
       const updatedData = JSON.parse(JSON.stringify(data));
       updatedData.objects = updatedData.objects.map(obj => {
         if (obj.type === 'image') {
+          console.log('Processing image object:', obj.src);
           if (obj.src.includes('quaffle')) {
+            console.log('Updating quaffle URL from', obj.src, 'to', quaffleUrl);
             obj.src = quaffleUrl;
           } else if (obj.src.includes('bludger')) {
+            console.log('Updating bludger URL from', obj.src, 'to', bludgerUrl);
             obj.src = bludgerUrl;
           }
         }
         return obj;
       });
 
+      console.log('Updated data:', JSON.stringify(updatedData));
+
       fabricCanvas.loadFromJSON(updatedData, () => {
+        console.log('Canvas loaded from JSON');
         fabricCanvas.renderAll();
+      }, (o, object) => {
+        console.log('Loading object:', object);
+        if (object.type === 'image') {
+          console.log('Image object src:', object.src);
+        }
       });
     } else {
+      console.log('onMount: No existing data, adding standard elements');
       addStandardShapes();
       addPlayers();
       addInitialBalls();
@@ -184,8 +201,10 @@
   }
 
   function addQuaffle() {
+    console.log('Adding quaffle, URL:', quaffleUrl);
     const img = new Image();
     img.onload = function() {
+      console.log('Quaffle image loaded successfully');
       const fabricImage = new fabric.Image(img, {
         left: ballStartX * scalingFactor,
         top: ballY * scalingFactor,
@@ -206,8 +225,10 @@
   }
 
   function addBludger() {
+    console.log('Adding bludger, URL:', bludgerUrl);
     const img = new Image();
     img.onload = function() {
+      console.log('Bludger image loaded successfully');
       const bludgerSize = ballSize * 2;
       const fabricImage = new fabric.Image(img, {
         left: ballStartX * scalingFactor,

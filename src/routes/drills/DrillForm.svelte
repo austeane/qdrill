@@ -147,7 +147,7 @@
         addNewSkill($newSkill);
       }
       newSkill.set('');
-      skillSuggestions.set([]);
+      skillSuggestions.set([]); // Ensure to use set here
     }
   }
 
@@ -160,7 +160,12 @@
       selectedSkills.update(skills => [...skills, skill]);
     }
     newSkill.set('');
-    skillSuggestions = PREDEFINED_SKILLS;
+    skillSuggestions.set([]); // Corrected: Clear suggestions after selection
+  }
+
+  function selectSkillFromModal(skill) {
+    selectSkill(skill);
+    // Removed closeSkillsModal() to keep the modal open for multiple selections
   }
 
   async function addNewSkill(skill) {
@@ -173,7 +178,7 @@
     });
     if (response.ok) {
       allSkills.update(skills => [...skills, skill]);
-      selectSkill(skill);
+      // No need to call selectSkill here again
     }
   }
 
@@ -311,11 +316,7 @@
   function closeSkillsModal() {
     showSkillsModal = false;
     skillSearchTerm = '';
-  }
-
-  function selectSkillFromModal(skill) {
-    selectSkill(skill);
-    closeSkillsModal();
+    skillSuggestions.set([]); // Ensure suggestions are cleared when closing
   }
 
   $: if (mounted) {
@@ -618,10 +619,11 @@
             type="text"
             bind:value={skillSearchTerm}
             placeholder="Search skills..."
+            on:input={handleSkillInput}
             class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <div class="mt-2 max-h-60 overflow-y-auto">
-            {#each filteredSkills as skill}
+            {#each $filteredSkills as skill}
               <button
                 class="w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer"
                 on:click={() => selectSkillFromModal(skill)}

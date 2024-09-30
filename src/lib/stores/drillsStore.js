@@ -149,9 +149,18 @@ export const paginatedDrills = derived(
 // Function to initialize drills data
 export function initializeDrills(data) {
   drills.set(data);
+  
+  // Calculate the max suggested length
+  const maxSuggestedLength = Math.max(...data.map(drill => drill.suggested_length.max));
+  
+  // Update the suggestedLengths store
+  suggestedLengths.set({ min: 0, max: maxSuggestedLength });
 }
 
 // Function to reset pagination when filters change
 filteredDrills.subscribe(() => {
   currentPage.set(1);
 });
+
+// Make sure you have a suggestedLengths store
+export const suggestedLengths = writable({ min: 0, max: 120 });

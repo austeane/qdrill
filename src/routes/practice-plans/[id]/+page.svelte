@@ -107,7 +107,8 @@
                                 <p class="mb-2"><strong>Brief Description:</strong> {item.drill.brief_description}</p>
                             {/if}
                             {#if item.drill.detailed_description}
-                                <p class="mb-2"><strong>Detailed Description:</strong> {item.drill.detailed_description}</p>
+                                <p class="mb-2"><strong>Detailed Description:</strong></p>
+                                <p class="whitespace-pre-wrap">{item.drill.detailed_description}</p>
                             {/if}
                             {#if item.drill.skill_level}
                                 <p class="mb-2">

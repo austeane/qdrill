@@ -4,6 +4,7 @@
   import { page } from '$app/stores';
   import { cart } from '$lib/stores/cartStore';
   import DiagramDrawer from '../../../components/DiagramDrawer.svelte';
+  import Breadcrumb from '../../../components/Breadcrumb.svelte';
 
   let drill = writable({});
   let comments = writable([]);
@@ -90,6 +91,8 @@
   <title>{$drill.name}</title>
   <meta name="description" content="Details of the selected drill" />
 </svelte:head>
+
+<Breadcrumb customSegments={[{ name: 'Drills', url: '/drills' }, { name: $drill.name }]} />
 
 <section class="max-w-4xl mx-auto px-4 py-8">
   <h1 class="text-3xl font-bold text-center mb-6">{$drill.name}</h1>

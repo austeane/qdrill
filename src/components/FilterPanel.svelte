@@ -147,7 +147,7 @@
       selectedSuggestedLengthsMin.set(suggestedLengths.min);
     }
   
-    $: if (suggestedLengths.max != null && $selectedSuggestedLengthsMax === 60) {
+    $: if (suggestedLengths.max != null && $selectedSuggestedLengthsMax === 120) {
       selectedSuggestedLengthsMax.set(suggestedLengths.max);
     }
   
@@ -360,7 +360,7 @@
             >
                 Suggested Lengths
                 <span class="ml-2 text-sm font-semibold">
-                    {$selectedSuggestedLengthsMin === 0 ? 'Any' : $selectedSuggestedLengthsMin} - {$selectedSuggestedLengthsMax === 60 ? 'Any' : $selectedSuggestedLengthsMax} mins
+                    {$selectedSuggestedLengthsMin === suggestedLengths.min ? 'Any' : $selectedSuggestedLengthsMin} - {$selectedSuggestedLengthsMax === suggestedLengths.max ? 'Any' : $selectedSuggestedLengthsMax} mins
                 </span>
             </button>
             

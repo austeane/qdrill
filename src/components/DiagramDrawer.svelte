@@ -1,5 +1,5 @@
 <script>
-  import { onMount, afterUpdate, createEventDispatcher, onDestroy } from 'svelte';
+  import { onMount, createEventDispatcher, onDestroy, tick } from 'svelte';
   import { browser } from '$app/environment';
   import * as fabric from 'fabric';
 
@@ -27,6 +27,9 @@
   let canvasWrapper;
   let scalingFactor = 1;
 
+  let renderAttempts = 0;
+  const maxRenderAttempts = 5;
+
   function updateLastAddedPosition() {
     lastAddedPosition.x += 50;
     if (lastAddedPosition.x > fabricCanvas.width - 50) {
@@ -50,8 +53,10 @@
     fabricCanvas.renderAll();
   }
 
-  onMount(() => {
+  onMount(async () => {
     if (!browser) return;
+
+    await tick(); // Ensure DOM is ready
 
     console.log('onMount: Starting to initialize canvas');
 
@@ -68,12 +73,11 @@
       console.log('onMount: Data exists, preparing to load');
       console.log('Original data:', JSON.stringify(data));
 
-      // Ensure data is treated as a plain object, not a store
       const plainData = typeof data === 'function' ? data() : data;
 
       fabricCanvas.loadFromJSON(plainData, () => {
         console.log('Canvas loaded from JSON');
-        fabricCanvas.renderAll();
+        attemptRender();
       }, (o, object) => {
         console.log('Loading object:', object);
         if (object.type === 'image') {
@@ -84,38 +88,50 @@
       console.log('onMount: No existing data, adding standard elements');
       addStandardShapes();
       addPlayers();
-      addInitialBalls();
+      await addInitialBalls(); // Wait for images to load
+      attemptRender();
     }
 
-    fabricCanvas.renderAll();
-
-    setTimeout(() => {
-      fabricCanvas.renderAll();
-    }, 100);
-
-    if (readonly) {
-      fabricCanvas.getObjects().forEach(obj => {
-        obj.selectable = false;
-        obj.evented = false;
-      });
-      fabricCanvas.renderAll();
-    }
-
-    resizeCanvas();
     if (typeof window !== 'undefined') {
       window.addEventListener('resize', resizeCanvas);
     }
   });
 
+  function attemptRender() {
+    console.log(`Attempt ${renderAttempts + 1} to render canvas`);
+    setTimeout(() => {
+      fabricCanvas.renderAll();
+      console.log(`Canvas rendered on attempt ${renderAttempts + 1}`);
+      
+      // Check if all objects are visible
+      const allObjectsVisible = fabricCanvas.getObjects().every(obj => obj.visible !== false);
+      console.log(`All objects visible: ${allObjectsVisible}`);
+
+      if (!allObjectsVisible && renderAttempts < maxRenderAttempts) {
+        renderAttempts++;
+        attemptRender();
+      } else {
+        finalizeInitialization();
+      }
+    }, 100 * (renderAttempts + 1)); // Increasing delay with each attempt
+  }
+
+  function finalizeInitialization() {
+    console.log('Finalizing initialization');
+    if (readonly) {
+      fabricCanvas.getObjects().forEach(obj => {
+        obj.selectable = false;
+        obj.evented = false;
+      });
+    }
+    fabricCanvas.renderAll();
+    resizeCanvas();
+    console.log('Initialization complete');
+  }
+
   onDestroy(() => {
     if (browser && typeof window !== 'undefined') {
       window.removeEventListener('resize', resizeCanvas);
-    }
-  });
-
-  afterUpdate(() => {
-    if (fabricCanvas) {
-      fabricCanvas.renderAll();
     }
   });
 

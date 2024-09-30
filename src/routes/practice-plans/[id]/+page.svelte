@@ -2,6 +2,7 @@
     import DiagramDrawer from '$components/DiagramDrawer.svelte';
     import { slide } from 'svelte/transition';
     import { ChevronDownIcon, ChevronUpIcon } from 'svelte-feather-icons';
+    import Breadcrumb from '../../../components/Breadcrumb.svelte';
   
     export let data;
     const { practicePlan } = data;
@@ -15,6 +16,8 @@
         expandedItems = expandedItems;
     }
 </script>
+
+<Breadcrumb customSegments={[{ name: 'Practice Plans', url: '/practice-plans' }, { name: practicePlan.name }]} />
 
 <div class="container mx-auto p-4 sm:p-6 bg-white shadow-md rounded-lg">
     <header class="mb-6">

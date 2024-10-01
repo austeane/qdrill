@@ -1,0 +1,426 @@
+To implement the team functionality as described, we'll need to make several changes to our database schema, backend API, and frontend components. Here's a detailed plan:
+
+1. Database Schema Updates
+
+Create a new migration file: `migrations/create_practice_plan_instances_table.sql`
+
+CREATE TABLE practice_plan_instances (
+  id SERIAL PRIMARY KEY,
+  team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+  practice_plan_id INTEGER REFERENCES practice_plans(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  location VARCHAR(255),
+  custom_notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+Create another migration file: `migrations/create_teams_table.sql`
+
+CREATE TABLE teams (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL UNIQUE,
+  description TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+2. Backend API Updates
+
+Create a new file: `src/routes/api/teams/+server.js`
+
+import { json } from '@sveltejs/kit';
+import { createClient } from '$lib/server/db/client';
+
+export async function POST({ request }) {
+  const { name, description } = await request.json();
+
+  if (!name || name.trim() === '') {
+    return json({ error: 'Team name is required' }, { status: 400 });
+  }
+
+  const client = createClient();
+  await client.connect();
+
+  try {
+    const result = await client.query(
+      `INSERT INTO teams (name, description) VALUES ($1, $2) RETURNING *`,
+      [name.trim(), description || null]
+    );
+    return json(result.rows[0], { status: 201 });
+  } catch (error) {
+    console.error('Error creating team:', error);
+    if (error.code === '23505') { // Unique violation
+      return json({ error: 'Team name already exists' }, { status: 409 });
+    }
+    return json({ error: 'Failed to create team' }, { status: 500 });
+  } finally {
+    await client.end();
+  }
+}
+
+export async function GET({ request }) {
+  const client = createClient();
+  await client.connect();
+
+  try {
+    const result = await client.query(`SELECT * FROM teams ORDER BY created_at DESC`);
+    return json(result.rows);
+  } catch (error) {
+    console.error('Error fetching teams:', error);
+    return json({ error: 'Failed to fetch teams' }, { status: 500 });
+  } finally {
+    await client.end();
+  }
+}
+
+Create a new file: `src/routes/api/teams/[team_id]/+server.js`
+
+import { json } from '@sveltejs/kit';
+import { createClient } from '$lib/server/db/client';
+
+export async function GET({ params }) {
+  const { team_id } = params;
+
+  const client = createClient();
+  await client.connect();
+
+  try {
+    // Fetch Team Details
+    const teamResult = await client.query(`SELECT * FROM teams WHERE id = $1`, [team_id]);
+
+    if (teamResult.rows.length === 0) {
+      return json({ error: 'Team not found' }, { status: 404 });
+    }
+
+    const team = teamResult.rows[0];
+
+    // Fetch Practice Plan Instances for the Team
+    const instancesResult = await client.query(
+      `SELECT ppi.*, pp.name as practice_plan_name, pp.description as practice_plan_description
+       FROM practice_plan_instances ppi
+       JOIN practice_plans pp ON ppi.practice_plan_id = pp.id
+       WHERE ppi.team_id = $1
+       ORDER BY ppi.date DESC`,
+      [team_id]
+    );
+
+    team.practice_plan_instances = instancesResult.rows;
+
+    return json(team);
+  } catch (error) {
+    console.error('Error fetching team details:', error);
+    return json({ error: 'Failed to fetch team details' }, { status: 500 });
+  } finally {
+    await client.end();
+  }
+}
+
+Create a new file: `src/routes/api/practice-plan-instances/+server.js`
+
+import { json } from '@sveltejs/kit';
+import { createClient } from '$lib/server/db/client';
+
+export async function POST({ request }) {
+  const { team_id, practice_plan_id, date, location, custom_notes } = await request.json();
+
+  if (!team_id || !practice_plan_id || !date) {
+    return json({ error: 'team_id, practice_plan_id, and date are required' }, { status: 400 });
+  }
+
+  const client = createClient();
+  await client.connect();
+
+  try {
+    // Verify Team Exists
+    const teamResult = await client.query(`SELECT id FROM teams WHERE id = $1`, [team_id]);
+    if (teamResult.rows.length === 0) {
+      return json({ error: 'Team not found' }, { status: 404 });
+    }
+
+    // Verify Practice Plan Exists
+    const planResult = await client.query(`SELECT id FROM practice_plans WHERE id = $1`, [practice_plan_id]);
+    if (planResult.rows.length === 0) {
+      return json({ error: 'Practice plan not found' }, { status: 404 });
+    }
+
+    // Create Practice Plan Instance
+    const instanceResult = await client.query(
+      `INSERT INTO practice_plan_instances (team_id, practice_plan_id, date, location, custom_notes)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [team_id, practice_plan_id, date, location || null, custom_notes || null]
+    );
+
+    return json(instanceResult.rows[0], { status: 201 });
+  } catch (error) {
+    console.error('Error creating practice plan instance:', error);
+    return json({ error: 'Failed to create practice plan instance' }, { status: 500 });
+  } finally {
+    await client.end();
+  }
+}
+
+export async function GET({ request }) {
+  const url = new URL(request.url);
+  const { team_id } = Object.fromEntries(url.searchParams.entries());
+
+  if (!team_id) {
+    return json({ error: 'team_id query parameter is required' }, { status: 400 });
+  }
+
+  const client = createClient();
+  await client.connect();
+
+  try {
+    // Fetch Practice Plan Instances for the Team
+    const instancesResult = await client.query(
+      `SELECT ppi.*, pp.name as practice_plan_name, pp.description as practice_plan_description
+       FROM practice_plan_instances ppi
+       JOIN practice_plans pp ON ppi.practice_plan_id = pp.id
+       WHERE ppi.team_id = $1
+       ORDER BY ppi.date DESC`,
+      [team_id]
+    );
+
+    return json(instancesResult.rows);
+  } catch (error) {
+    console.error('Error fetching practice plan instances:', error);
+    return json({ error: 'Failed to fetch practice plan instances' }, { status: 500 });
+  } finally {
+    await client.end();
+  }
+}
+
+3. Frontend Updates
+
+Create a new file: `src/routes/teams/create/+page.svelte`
+
+<script>
+  import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { toast } from '@zerodevx/svelte-toast';
+
+  let name = '';
+  let description = '';
+  let errors = {};
+
+  async function createTeam() {
+    errors = {};
+
+    if (!name.trim()) {
+      errors.name = 'Team name is required';
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), description: description.trim() })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.push('Team created successfully!', { theme: 'success' });
+        goto(`/teams/${data.id}`);
+      } else {
+        errors.general = data.error || 'Failed to create team';
+        toast.push(`Error: ${errors.general}`, { theme: 'error' });
+      }
+    } catch (error) {
+      console.error('Error creating team:', error);
+      errors.general = 'An unexpected error occurred';
+      toast.push(`Error: ${errors.general}`, { theme: 'error' });
+    }
+  }
+</script>
+
+<div class="max-w-md mx-auto p-6 bg-white shadow-md rounded-lg">
+  <h1 class="text-2xl font-bold mb-4">Create a New Team</h1>
+
+  {#if errors.general}
+    <div class="mb-4 text-red-500">
+      {errors.general}
+    </div>
+  {/if}
+
+  <form on:submit|preventDefault={createTeam}>
+    <div class="mb-4">
+      <label for="teamName" class="block text-sm font-medium text-gray-700">Team Name</label>
+      <input
+        id="teamName"
+        type="text"
+        bind:value={name}
+        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+        placeholder="Enter team name"
+      />
+      {#if errors.name}
+        <p class="text-red-500 text-sm mt-1">{errors.name}</p>
+      {/if}
+    </div>
+
+    <div class="mb-4">
+      <label for="teamDescription" class="block text-sm font-medium text-gray-700">Description</label>
+      <textarea
+        id="teamDescription"
+        bind:value={description}
+        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+        rows="4"
+        placeholder="Enter team description (optional)"
+      ></textarea>
+    </div>
+
+    <button
+      type="submit"
+      class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+    >
+      Create Team
+    </button>
+  </form>
+</div>
+
+Create a new file: `src/routes/teams/[team_id]/+page.svelte`
+
+<script>
+  import Breadcrumb from '$components/Breadcrumb.svelte';
+  import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { toast } from '@zerodevx/svelte-toast';
+
+  export let params;
+  export let data;
+
+  const { team } = data;
+
+  let newInstanceDate = '';
+  let newInstanceLocation = '';
+  let newInstanceNotes = '';
+  let instanceErrors = {};
+
+  async function createPracticePlanInstance() {
+    instanceErrors = {};
+
+    if (!newInstanceDate) {
+      instanceErrors.date = 'Date is required';
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/practice-plan-instances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          team_id: team.id,
+          practice_plan_id: selectedPracticePlanId, // You might need a select input for this
+          date: newInstanceDate,
+          location: newInstanceLocation,
+          custom_notes: newInstanceNotes
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.push('Practice plan instance created successfully!', { theme: 'success' });
+        // Refresh or update the local state as needed
+      } else {
+        instanceErrors.general = result.error || 'Failed to create practice plan instance';
+        toast.push(`Error: ${instanceErrors.general}`, { theme: 'error' });
+      }
+    } catch (error) {
+      console.error('Error creating practice plan instance:', error);
+      instanceErrors.general = 'An unexpected error occurred';
+      toast.push(`Error: ${instanceErrors.general}`, { theme: 'error' });
+    }
+  }
+</script>
+
+<Breadcrumb customSegments={[
+  { name: 'Teams', url: '/teams' },
+  { name: team.name }
+]} />
+
+<div class="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg">
+  <h1 class="text-3xl font-bold mb-4">{team.name}</h1>
+  {#if team.description}
+    <p class="text-gray-600 mb-6">{team.description}</p>
+  {/if}
+
+  <h2 class="text-2xl font-semibold mb-4">Practice Plan Instances</h2>
+
+  <div class="mb-6">
+    <h3 class="text-xl font-semibold mb-2">Create a New Practice Plan Instance</h3>
+
+    {#if instanceErrors.general}
+      <div class="mb-4 text-red-500">
+        {instanceErrors.general}
+      </div>
+    {/if}
+
+    <form on:submit|preventDefault={createPracticePlanInstance} class="space-y-4">
+      <div>
+        <label for="practicePlan" class="block text-sm font-medium text-gray-700">Practice Plan</label>
+        <select id="practicePlan" bind:value={selectedPracticePlanId} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+          <option value="" disabled selected>Select a Practice Plan</option>
+          {#each team.practice_plan_instances as instance}
+            <option value={instance.practice_plan_id}>{instance.practice_plan_name} - {instance.practice_plan_description}</option>
+          {/each}
+          <!-- You might want to fetch all practice plans as templates separately -->
+        </select>
+      </div>
+
+      <div>
+        <label for="date" class="block text-sm font-medium text-gray-700">Date</label>
+        <input
+          id="date"
+          type="date"
+          bind:value={newInstanceDate}
+          class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+        />
+        {#if instanceErrors.date}
+          <p class="text-red-500 text-sm mt-1">{instanceErrors.date}</p>
+        {/if}
+      </div>
+
+      <div>
+        <label for="location" class="block text-sm font-medium text-gray-700">Location</label>
+        <input
+          id="location"
+          type="text"
+          bind:value={newInstanceLocation}
+          class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+          placeholder="Enter location (optional)"
+        />
+      </div>
+
+      <div>
+        <label for="customNotes" class="block text-sm font-medium text-gray-700">Custom Notes</label>
+        <textarea
+          id="customNotes"
+          bind:value={newInstanceNotes}
+          class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+          rows="3"
+          placeholder="Add any custom notes (optional)"
+        ></textarea>
+      </div>
+
+      <button
+        type="submit"
+        class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+      >
+        Create Instance
+      </button>
+    </form>
+  </div>
+
+  <div>
+    {#if team.practice_plan_instances.length === 0}
+      <p class="text-gray-600">No practice plan instances found for this team.</p>
+    {:else}
+      <table class="min-w-full bg-white">
+        <thead>
+          <tr>
+            <th class="py-2 px-4 border-b">Practice Plan</th>
+            <th class="py-2 px-4 border-b">Date</th>
+            

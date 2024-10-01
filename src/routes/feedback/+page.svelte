@@ -3,14 +3,39 @@
     import { onMount } from 'svelte';
 
     let feedbackEntries = [];
+    let filterType = 'all';
+    let sortBy = 'date';
 
     async function fetchFeedback() {
         const response = await fetch('/api/feedback');
         if (response.ok) {
             feedbackEntries = await response.json();
         } else {
-            // Handle error
             alert('Failed to load feedback.');
+        }
+    }
+
+    $: filteredFeedback = feedbackEntries.filter(entry => 
+        filterType === 'all' || entry.feedback_type === filterType
+    );
+
+    $: sortedFeedback = [...filteredFeedback].sort((a, b) => {
+        if (sortBy === 'upvotes') {
+            return b.upvotes - a.upvotes;
+        } else {
+            return new Date(b.timestamp) - new Date(a.timestamp);
+        }
+    });
+
+    async function upvoteFeedback(id) {
+        const response = await fetch(`/api/feedback/${id}/upvote`, { method: 'POST' });
+        if (response.ok) {
+            const updatedFeedback = await response.json();
+            feedbackEntries = feedbackEntries.map(entry => 
+                entry.id === updatedFeedback.id ? { ...entry, upvotes: updatedFeedback.upvotes } : entry
+            );
+        } else {
+            alert('Failed to upvote feedback.');
         }
     }
 
@@ -19,16 +44,18 @@
     });
 
     let newFeedback = '';
-    let newName = '';
-    let newEmail = '';
+    let newFeedbackType = 'general';
+    let name = '';
+    let email = '';
 
     async function submitDetailedFeedback() {
         const payload = {
             feedback: newFeedback,
             deviceInfo: navigator.userAgent,
             page: window.location.pathname,
-            name: newName || null,
-            email: newEmail || null
+            feedbackType: newFeedbackType,
+            name: name,
+            email: email
         };
 
         const response = await fetch('/api/feedback', {
@@ -39,8 +66,9 @@
 
         if (response.ok) {
             newFeedback = '';
-            newName = '';
-            newEmail = '';
+            newFeedbackType = 'general';
+            name = '';
+            email = '';
             fetchFeedback();
             alert('Feedback submitted successfully.');
         } else {
@@ -59,6 +87,15 @@
 
     <section class="mb-8">
         <h2 class="text-xl font-semibold mb-2">Submit Your Feedback</h2>
+        <select
+            bind:value={newFeedbackType}
+            class="w-full border rounded p-2 mb-2"
+        >
+            <option value="bug">Bug</option>
+            <option value="general">General Comment</option>
+            <option value="feature">Feature Request</option>
+            <option value="other">Other</option>
+        </select>
         <textarea
             bind:value={newFeedback}
             rows="4"
@@ -66,14 +103,14 @@
             placeholder="Your feedback..."
         ></textarea>
         <input
+            bind:value={name}
             type="text"
-            bind:value={newName}
             class="w-full border rounded p-2 mb-2"
             placeholder="Your name (optional)"
         />
         <input
+            bind:value={email}
             type="email"
-            bind:value={newEmail}
             class="w-full border rounded p-2 mb-2"
             placeholder="Your email (optional)"
         />
@@ -87,23 +124,36 @@
 
     <section>
         <h2 class="text-xl font-semibold mb-2">Existing Feedback</h2>
-        {#if feedbackEntries.length > 0}
+        <div class="mb-4">
+            <label class="mr-2">Filter by:</label>
+            <select bind:value={filterType} class="border rounded p-1">
+                <option value="all">All</option>
+                <option value="bug">Bug</option>
+                <option value="general">General Comment</option>
+                <option value="feature">Feature Request</option>
+                <option value="other">Other</option>
+            </select>
+            <label class="ml-4 mr-2">Sort by:</label>
+            <select bind:value={sortBy} class="border rounded p-1">
+                <option value="date">Date</option>
+                <option value="upvotes">Upvotes</option>
+            </select>
+        </div>
+        {#if sortedFeedback.length > 0}
             <ul class="space-y-4">
-                {#each feedbackEntries as entry}
+                {#each sortedFeedback as entry}
                     <li class="p-4 border rounded shadow">
                         <p>{entry.feedback}</p>
                         <div class="mt-2 text-sm text-gray-600">
-                            <span>Page: {entry.page_url}</span>
-                            {#if entry.device_info}
-                                <span> | Device: {entry.device_info}</span>
-                            {/if}
-                            {#if entry.name}
-                                <span> | Name: {entry.name}</span>
-                            {/if}
-                            {#if entry.email}
-                                <span> | Email: {entry.email}</span>
-                            {/if}
+                            <span>Type: {entry.feedback_type}</span>
                             <span> | Submitted on: {new Date(entry.timestamp).toLocaleString()}</span>
+                            <span> | Upvotes: {entry.upvotes}</span>
+                            <button
+                                on:click={() => upvoteFeedback(entry.id)}
+                                class="ml-2 px-2 py-1 bg-green-500 text-white rounded text-xs"
+                            >
+                                Upvote
+                            </button>
                         </div>
                     </li>
                 {/each}

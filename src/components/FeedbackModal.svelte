@@ -6,6 +6,7 @@
     import { onMount } from 'svelte';
 
     let feedbackText = '';
+    let feedbackType = 'general';
     let name = '';
     let email = '';
 
@@ -17,8 +18,7 @@
             feedback: feedbackText,
             deviceInfo,
             page: currentPage,
-            name: name || null,
-            email: email || null
+            feedbackType
         };
 
         const response = await fetch('/api/feedback', {
@@ -29,6 +29,7 @@
 
         if (response.ok) {
             feedbackText = '';
+            feedbackType = 'general';
             name = '';
             email = '';
             feedbackModalVisible.set(false);
@@ -66,6 +67,15 @@
     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
         <div class="bg-white p-6 rounded shadow-lg max-w-md w-full">
             <h2 class="text-xl font-semibold mb-4">Quick Feedback</h2>
+            <select
+                bind:value={feedbackType}
+                class="w-full border rounded p-2 mb-2"
+            >
+                <option value="bug">Bug</option>
+                <option value="general">General Comment</option>
+                <option value="feature">Feature Request</option>
+                <option value="other">Other</option>
+            </select>
             <textarea
                 bind:value={feedbackText}
                 rows="4"

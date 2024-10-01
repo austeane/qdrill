@@ -30,6 +30,8 @@
   let renderAttempts = 0;
   const maxRenderAttempts = 5;
 
+  let resizingEnabled = false;
+
   function updateLastAddedPosition() {
     lastAddedPosition.x += 50;
     if (lastAddedPosition.x > fabricCanvas.width - 50) {
@@ -123,6 +125,11 @@
         obj.selectable = false;
         obj.evented = false;
       });
+    } else {
+      // Set hasControls to false initially for all objects
+      fabricCanvas.getObjects().forEach(obj => {
+        obj.hasControls = false;
+      });
     }
     fabricCanvas.renderAll();
     resizeCanvas();
@@ -146,7 +153,8 @@
     const player = createStickFigure(teamColor, headColor);
     player.set({
       left: lastAddedPosition.x * scalingFactor,
-      top: lastAddedPosition.y * scalingFactor
+      top: lastAddedPosition.y * scalingFactor,
+      hasControls: resizingEnabled
     });
     fabricCanvas.add(player);
     updateLastAddedPosition();
@@ -159,7 +167,7 @@
       stroke: 'black',
       strokeWidth: 2,
       selectable: true,
-      hasControls: true
+      hasControls: resizingEnabled
     });
     const arrowHead = new fabric.Triangle({
       width: 10,
@@ -173,7 +181,7 @@
       left: lastAddedPosition.x * scalingFactor,
       top: lastAddedPosition.y * scalingFactor,
       selectable: true,
-      hasControls: true
+      hasControls: resizingEnabled
     });
     fabricCanvas.add(group);
     updateLastAddedPosition();
@@ -184,7 +192,8 @@
     const hoopGroup = addStandardShapes();
     hoopGroup.set({
       left: lastAddedPosition.x * scalingFactor,
-      top: lastAddedPosition.y * scalingFactor
+      top: lastAddedPosition.y * scalingFactor,
+      hasControls: resizingEnabled
     });
     updateLastAddedPosition();
     fabricCanvas.renderAll();
@@ -196,7 +205,8 @@
       top: lastAddedPosition.y * scalingFactor,
       width: 150,
       fontSize: 20,
-      fill: 'black'
+      fill: 'black',
+      hasControls: resizingEnabled
     });
     fabricCanvas.add(text);
     updateLastAddedPosition();
@@ -213,7 +223,7 @@
         left: ballStartX * scalingFactor,
         top: ballY * scalingFactor,
         selectable: true,
-        hasControls: true,
+        hasControls: resizingEnabled,
         originX: 'center',
         originY: 'center',
         src: quaffleUrl // Use relative URL directly
@@ -240,7 +250,7 @@
         left: ballStartX * scalingFactor,
         top: ballY * scalingFactor,
         selectable: true,
-        hasControls: true,
+        hasControls: resizingEnabled,
         originX: 'center',
         originY: 'center',
         src: bludgerUrl // Use relative URL directly
@@ -409,6 +419,14 @@
   function preventSubmit(event) {
     event.preventDefault();
   }
+
+  function toggleResizing() {
+    resizingEnabled = !resizingEnabled;
+    fabricCanvas.getObjects().forEach(obj => {
+      obj.hasControls = resizingEnabled;
+    });
+    fabricCanvas.renderAll();
+  }
 </script>
 
 <div bind:this={canvasWrapper} class="diagram-wrapper">
@@ -453,5 +471,8 @@
     <button on:click|preventDefault={deleteSelectedObjects} class="m-1">Delete Selected</button>
     <button on:click|preventDefault={moveUp} class="m-1">Move Up</button>
     <button on:click|preventDefault={moveDown} class="m-1">Move Down</button>
+    <button on:click|preventDefault={toggleResizing} class="m-1">
+      {resizingEnabled ? 'Disable' : 'Enable'} Resizing
+    </button>
   </div>
 {/if}

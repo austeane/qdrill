@@ -353,6 +353,12 @@
       });
     }
   }
+
+  function adjustTextareaHeight(event) {
+    const textarea = event.target;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 300)}px`;
+  }
 </script>
 
 <svelte:head>
@@ -386,8 +392,14 @@
 
           <div class="flex flex-col">
             <label for="detailed_description" class="mb-1 text-sm font-medium text-gray-700">Detailed Description:</label>
-            <p class="text-xs text-gray-500 mb-1">As much detail as would be needed for a new coach to teach this drill</p>
-            <textarea id="detailed_description" bind:value={$detailed_description} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            <p class="text-xs text-gray-500 mb-1">As much detail as would be needed for a new coach to teach this drill, including setup and any focus areas.</p>
+            <textarea 
+              id="detailed_description" 
+              bind:value={$detailed_description} 
+              on:input={adjustTextareaHeight}
+              class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows="3"
+            ></textarea>
           </div>
 
           <div class="flex flex-col">
@@ -672,5 +684,12 @@
   /* Optional: Add some styling for drag and drop */
   :global(.dndzone.dropzone) {
     background-color: rgba(59, 130, 246, 0.1); /* Light blue background when dragging over */
+  }
+
+  textarea {
+    min-height: 60px;
+    resize: vertical;
+    max-height: 300px;
+    transition: height 0.1s ease-out;
   }
 </style>

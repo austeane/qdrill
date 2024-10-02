@@ -29,8 +29,8 @@
   let skill_level = writable(drill.skill_level ?? []);
   let complexity = writable(drill.complexity ?? '');
   let suggested_length = writable(drill.suggested_length ?? '');
-  let number_of_people_min = writable(drill.number_of_people?.min ?? '');
-  let number_of_people_max = writable(drill.number_of_people?.max ?? '');
+  let number_of_people_min = writable(drill.number_of_people?.min || '');
+  let number_of_people_max = writable(drill.number_of_people?.max || '');
   let skills_focused_on = writable(drill.skills_focused_on ?? []);
   let selectedSkills = writable(drill.skills_focused_on ?? []);
   let newSkill = writable('');
@@ -263,9 +263,9 @@
       complexity: $complexity,
       suggested_length: $suggested_length,
       number_of_people: {
-        min: $number_of_people_min,
-        max: $number_of_people_max
-      },
+        min: $number_of_people_min || null,
+        max: $number_of_people_max || null
+      }, 
       skills_focused_on: $selectedSkills,
       positions_focused_on: $positions_focused_on,
       video_link: $video_link,
@@ -404,6 +404,8 @@
 
           <div class="flex flex-col">
             <label for="skill_level" class="mb-1 text-sm font-medium text-gray-700">Appropriate for Skill Level:</label>
+            <p class="text-xs text-gray-500 mb-1">When done correctly, what levels of player would benefit from this drill.</p>
+
             <div class="flex flex-wrap gap-2">
               <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'new to sport')}>New to Sport</button>
               <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'beginner')}>Beginner</button>
@@ -418,6 +420,7 @@
 
           <div class="flex flex-col">
             <label for="complexity" class="mb-1 text-sm font-medium text-gray-700">Complexity:</label>
+            <p class="text-xs text-gray-500 mb-1">How difficult is it to get a team to do this drill correctly for the first time.</p>
             <select id="complexity" bind:value={$complexity} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="">Select Complexity</option>
               <option value="Low">Low</option>

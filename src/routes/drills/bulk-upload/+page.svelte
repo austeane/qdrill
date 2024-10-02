@@ -309,6 +309,7 @@ Example Drill,A brief description,A more detailed description,"1,2,3",2,10,15,4,
 <h1 class="text-3xl font-bold mb-6">Bulk Drill Upload</h1>
 
 <div class="mb-6">
+  <p class="mb-2">Download a csv that has an example drill in the proper format. If you have issues opening or using the CSV, contact Austin.</p>
   <button on:click={downloadTemplate} class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">
     Download CSV Template
   </button>

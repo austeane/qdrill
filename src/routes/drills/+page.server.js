@@ -74,7 +74,7 @@ export async function load({ fetch }) {
       console.error('Error fetching drills:', error);
       return {
         status: 500,
-        error: new Error('Internal Server Error')
+        error: 'Failed to fetch drills. Please try again later.'
       };
     }
-  }
+}

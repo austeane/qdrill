@@ -247,12 +247,9 @@
     });
 
     if (!validateForm()) return;
-    console.log('Diagram data before sending:', $diagrams);
 
     const method = drill.id ? 'PUT' : 'POST';
     const url = drill.id ? `/api/drills/${drill.id}` : '/api/drills';
-
-    console.log(`${method} request to ${url}`);
 
     const drillData = {
       ...drill,
@@ -273,8 +270,6 @@
       diagrams: $diagrams
     };
 
-    console.log('Drill data being sent:', JSON.stringify(drillData));
-
     const response = await fetch(url, {
       method,
       headers: {
@@ -285,13 +280,10 @@
 
     if (response.ok) {
       const data = await response.json();
-      console.log('Response status:', response.status);
-      console.log('Response body:', data);
       goto(`/drills/${data.id}`);
     } else {
-      console.log('Response status:', response.status);
       const errorText = await response.text();
-      console.log('Response body:', errorText);
+      console.error('Error submitting drill:', errorText);
     }
   }
 

@@ -75,6 +75,9 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
     devDependencies:
+      '@auth/pg-adapter':
+        specifier: ^1.5.3
+        version: 1.5.3(pg@8.12.0)
       '@fontsource/fira-mono':
         specifier: ^5.1.0
         version: 5.1.0
@@ -165,6 +168,25 @@ packages:
         optional: true
       nodemailer:
         optional: true
+
+  '@auth/core@0.35.3':
+    resolution: {integrity: sha512-g6qfiqU4OtyvIEZ8J7UoIwAxEnNnLJV0/f/DW41U+4G5nhBlaCrnKhawJIJpU0D3uavXLeDT3B0BkjtiimvMDA==}
+    peerDependencies:
+      '@simplewebauthn/browser': ^9.0.1
+      '@simplewebauthn/server': ^9.0.2
+      nodemailer: ^6.8.0
+    peerDependenciesMeta:
+      '@simplewebauthn/browser':
+        optional: true
+      '@simplewebauthn/server':
+        optional: true
+      nodemailer:
+        optional: true
+
+  '@auth/pg-adapter@1.5.3':
+    resolution: {integrity: sha512-5lEnY2kX1mIh+OdyyPeycO14ATKcrTsU63DE8240Z0LHBwHK1S7t5+9Y1nAq2MHSXX8krMcskWpUkcP7h2SOdA==}
+    peerDependencies:
+      pg: ^8
 
   '@auth/sveltekit@1.5.0':
     resolution: {integrity: sha512-eCqCtxnwc+GVeHJJrbpNPEF9T80aD0vTfYvyfar9eNksgao2qNnZvFy6Cwv7I55MCPLGdAjkcJ5RkUQRjgwtQA==}
@@ -2819,6 +2841,25 @@ snapshots:
       oauth4webapi: 2.16.0
       preact: 10.11.3
       preact-render-to-string: 5.2.3(preact@10.11.3)
+
+  '@auth/core@0.35.3':
+    dependencies:
+      '@panva/hkdf': 1.2.1
+      '@types/cookie': 0.6.0
+      cookie: 0.6.0
+      jose: 5.9.2
+      oauth4webapi: 2.16.0
+      preact: 10.11.3
+      preact-render-to-string: 5.2.3(preact@10.11.3)
+
+  '@auth/pg-adapter@1.5.3(pg@8.12.0)':
+    dependencies:
+      '@auth/core': 0.35.3
+      pg: 8.12.0
+    transitivePeerDependencies:
+      - '@simplewebauthn/browser'
+      - '@simplewebauthn/server'
+      - nodemailer
 
   '@auth/sveltekit@1.5.0(@sveltejs/kit@2.5.26(@sveltejs/vite-plugin-svelte@3.1.2(svelte@4.2.19)(vite@5.4.4(@types/node@22.5.4)))(svelte@4.2.19)(vite@5.4.4(@types/node@22.5.4)))(svelte@4.2.19)':
     dependencies:

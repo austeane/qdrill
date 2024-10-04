@@ -16,6 +16,7 @@
 		"tailwind:watch": "tailwindcss build src/routes/styles.css -o public/build/tailwind.css --watch"
 	},
 	"devDependencies": {
+		"@auth/pg-adapter": "^1.5.3",
 		"@fontsource/fira-mono": "^5.1.0",
 		"@neoconfetti/svelte": "^2.2.1",
 		"@playwright/test": "^1.47.0",

@@ -58,9 +58,7 @@
   onMount(async () => {
     if (!browser) return;
 
-    await tick(); // Ensure DOM is ready
-
-    console.log('onMount: Starting to initialize canvas');
+    await tick();
 
     fabricCanvas = new fabric.Canvas(canvas, {
       width: contentWidth,
@@ -69,28 +67,16 @@
       selection: !readonly
     });
 
-    console.log('onMount: Canvas initialized');
-
     if (data && Object.keys(data).length > 0) {
-      console.log('onMount: Data exists, preparing to load');
-      console.log('Original data:', JSON.stringify(data));
-
       const plainData = typeof data === 'function' ? data() : data;
 
       fabricCanvas.loadFromJSON(plainData, () => {
-        console.log('Canvas loaded from JSON');
         attemptRender();
-      }, (o, object) => {
-        console.log('Loading object:', object);
-        if (object.type === 'image') {
-          console.log('Image object src:', object.src);
-        }
       });
     } else {
-      console.log('onMount: No existing data, adding standard elements');
       addStandardShapes();
       addPlayers();
-      await addInitialBalls(); // Wait for images to load
+      await addInitialBalls();
       attemptRender();
     }
 
@@ -100,14 +86,10 @@
   });
 
   function attemptRender() {
-    console.log(`Attempt ${renderAttempts + 1} to render canvas`);
     setTimeout(() => {
       fabricCanvas.renderAll();
-      console.log(`Canvas rendered on attempt ${renderAttempts + 1}`);
       
-      // Check if all objects are visible
       const allObjectsVisible = fabricCanvas.getObjects().every(obj => obj.visible !== false);
-      console.log(`All objects visible: ${allObjectsVisible}`);
 
       if (!allObjectsVisible && renderAttempts < maxRenderAttempts) {
         renderAttempts++;
@@ -115,25 +97,22 @@
       } else {
         finalizeInitialization();
       }
-    }, 100 * (renderAttempts + 1)); // Increasing delay with each attempt
+    }, 100 * (renderAttempts + 1));
   }
 
   function finalizeInitialization() {
-    console.log('Finalizing initialization');
     if (readonly) {
       fabricCanvas.getObjects().forEach(obj => {
         obj.selectable = false;
         obj.evented = false;
       });
     } else {
-      // Set hasControls to false initially for all objects
       fabricCanvas.getObjects().forEach(obj => {
         obj.hasControls = false;
       });
     }
     fabricCanvas.renderAll();
     resizeCanvas();
-    console.log('Initialization complete');
   }
 
   onDestroy(() => {
@@ -402,7 +381,6 @@
 
   export function saveDiagram() {
     const diagramData = fabricCanvas.toJSON();
-    console.log('DiagramDrawer: Dispatching save event with data:', diagramData);
     dispatch('save', diagramData);
   }
 

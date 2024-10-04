@@ -6,7 +6,6 @@ await client.connect();
 
 export async function GET({ params }) {
     const { id } = params;
-    console.log(`Fetching drill with ID: ${id}`);
     const drillId = parseInt(id, 10);
     try {
         const result = await client.query('SELECT * FROM drills WHERE id = $1', [drillId]);
@@ -36,7 +35,6 @@ export async function PUT({ params, request }) {
     const { id } = params;
     const drill = await request.json();
     
-    console.log('Received drill data:', JSON.stringify(drill));
 
     try {
         // Ensure diagrams is an array of strings
@@ -44,7 +42,6 @@ export async function PUT({ params, request }) {
           ? drill.diagrams.map(diagram => JSON.stringify(diagram))
           : drill.diagrams ? [JSON.stringify(drill.diagrams)] : [];
         
-        console.log('Processed diagrams:', diagrams);
 
         // Update the drill in the database
         const result = await client.query(
@@ -62,7 +59,6 @@ export async function PUT({ params, request }) {
              drill.video_link, drill.images, diagrams, id]
         );
         
-        console.log('Updated drill:', result.rows[0]);
         return json(result.rows[0]);
     } catch (error) {
         console.error('Error updating drill:', error);

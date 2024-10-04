@@ -100,9 +100,14 @@
 <div class="max-w-7xl mx-auto p-4">
   <div class="flex justify-between items-center mb-4">
     <h1 class="text-3xl font-bold">Drills</h1>
-    <a href="/practice-plan" class="bg-blue-500 text-white px-4 py-2 rounded">
-      Create Practice Plan with {$cart.length} Drill{ $cart.length !== 1 ? 's' : ''}
-    </a>
+    <div class="flex space-x-4">
+      <a href="/drills/create" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors duration-300">
+        Create Drill
+      </a>
+      <a href="/practice-plan" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-300">
+        Create Practice Plan with {$cart.length} Drill{ $cart.length !== 1 ? 's' : ''}
+      </a>
+    </div>
   </div>
 
   <!-- Filter Panel -->

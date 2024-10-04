@@ -92,7 +92,6 @@ export async function GET() {
       GROUP BY pp.id
       ORDER BY pp.created_at DESC
     `);
-    console.log(`Retrieved ${result.rows.length} practice plans`);
     return json(result.rows);
   } catch (error) {
     console.error('Error occurred while fetching practice plans:', error);

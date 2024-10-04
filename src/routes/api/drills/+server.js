@@ -24,7 +24,6 @@ async function updateSkills(skills, drillId) {
 
 export async function POST({ request }) {
     const drill = await request.json();
-    console.log('API - Received drill data:', JSON.stringify(drill));
     let { name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images, diagrams } = drill;
 
     if (!Array.isArray(diagrams)) {
@@ -33,7 +32,6 @@ export async function POST({ request }) {
 
     diagrams = diagrams.map(diagram => JSON.stringify(diagram));
 
-    console.log('API - Processed diagrams:', JSON.stringify(diagrams));
 
     if (typeof skill_level === 'string') {
         skill_level = [skill_level];

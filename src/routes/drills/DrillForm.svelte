@@ -60,7 +60,7 @@
   $: filteredSkills = $allSkills.filter(skill => 
     typeof skill === 'string' && skill.toLowerCase().includes($skillSearchTerm.toLowerCase()) && 
     !$selectedSkills.includes(skill)
-);
+  );
 
 
   let diagramRefs = [];
@@ -146,7 +146,7 @@
     const input = $newSkill.toLowerCase();
     if (input.length > 0) {
       skillSuggestions.set($allSkills.filter(skill => 
-        typeof skill === 'string' && skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill)
+        typeof skill.skill === 'string' && skill.skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill.skill)
       ));
     } else {
       skillSuggestions.set([]);
@@ -164,11 +164,11 @@
   function addSkill() {
     if ($newSkill && !$selectedSkills.includes($newSkill)) {
       selectedSkills.update(skills => [...skills, $newSkill]);
-      if (!$allSkills.includes($newSkill)) {
+      if (!$allSkills.some(skill => skill.skill === $newSkill)) {
         addNewSkill($newSkill);
       }
       newSkill.set('');
-      skillSuggestions.set([]); // Ensure to use set here
+      skillSuggestions.set([]);
     }
   }
 
@@ -177,21 +177,23 @@
   }
 
   function selectSkill(skill) {
-    if (!$selectedSkills.includes(skill)) {
-      selectedSkills.update(skills => [...skills, skill]);
+    if (!$selectedSkills.includes(skill.skill)) {
+      selectedSkills.update(skills => [...skills, skill.skill]);
     }
     newSkill.set('');
-    skillSuggestions.set([]); // Corrected: Clear suggestions after selection
+    skillSuggestions.set([]);
   }
 
   function handleModalSkillInput() {
     const input = $modalSkillSearchTerm.toLowerCase();
     if (input.length > 0) {
       modalSkillSuggestions.set($allSkills.filter(skill => 
-        typeof skill === 'string' && skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill)
+        typeof skill.skill === 'string' && skill.skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill.skill)
       ));
     } else {
-      modalSkillSuggestions.set($allSkills.filter(skill => typeof skill === 'string' && !$selectedSkills.includes(skill)));
+      modalSkillSuggestions.set($allSkills.filter(skill => 
+        typeof skill.skill === 'string' && !$selectedSkills.includes(skill.skill)
+      ));
     }
   }
 
@@ -525,7 +527,7 @@
               />
               {#if $skillSuggestions.length > 0}
                 <ul class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto">
-                  {#each $sortedSkills as suggestion}
+                  {#each $skillSuggestions as suggestion}
                     <li>
                       <button
                         type="button"
@@ -535,7 +537,7 @@
                         {suggestion.skill} {suggestion.isPredefined ? '(Predefined)' : ''}
                       </button>
                     </li>
-                  {/each}
+                {/each}
                 </ul>
               {/if}
             </div>
@@ -682,7 +684,7 @@
                 class="w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer"
                 on:click={() => selectSkillFromModal(skill)}
               >
-                {skill}
+                {skill.skill} {skill.isPredefined ? '(Predefined)' : ''}
               </button>
             {/each}
             {#if $modalSkillSuggestions.length === 0}

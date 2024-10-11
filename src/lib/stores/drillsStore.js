@@ -179,6 +179,7 @@ export const allSkills = writable([]);
 
 export const sortedSkills = derived(allSkills, $allSkills => 
   $allSkills
+    .filter(skill => skill && typeof skill.skill === 'string') // Add this line
     .sort((a, b) => {
       // 1. Sort by usage_count descending
       if (b.usage_count !== a.usage_count) {

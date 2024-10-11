@@ -143,24 +143,13 @@ function parseDrill(record) {
     ),
     positions_focused_on: parseArray(record['Positions Focused On (Chaser; Beater; Keeper; Seeker)']),
     video_link: record['Video Link'],
-    diagrams: parseDiagrams(record['Diagrams']),
     drill_type: parseArray(record['Drill Type']).filter(type => drillTypeOptions.includes(type)),
-    errors: []
+    errors: [],
+    diagrams: [] // Initialize with an empty array
   };
 
   validateDrill(drill);
   return drill;
-}
-
-function parseDiagrams(diagramsString) {
-  if (!diagramsString) return [];
-  try {
-    const diagrams = JSON.parse(diagramsString);
-    return Array.isArray(diagrams) ? diagrams : [diagrams];
-  } catch (error) {
-    console.error('Error parsing diagrams:', error);
-    return [];
-  }
 }
 
 function parseArray(value = '') {

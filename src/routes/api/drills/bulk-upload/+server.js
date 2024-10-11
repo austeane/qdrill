@@ -18,6 +18,18 @@ const complexityMap = {
   '3': 'High'
 };
 
+// Add drillTypeOptions
+const drillTypeOptions = [
+  'Competitive', 
+  'Skill-focus', 
+  'Tactic-focus', 
+  'Warmup', 
+  'Conditioning', 
+  'Cooldown', 
+  'Contact', 
+  'Match-like situation'
+];
+
 // Define your Yup schemas
 const drillSchema = Yup.object().shape({
   name: Yup.string().required('Name is required'),
@@ -64,6 +76,10 @@ const drillSchema = Yup.object().shape({
     .url('Video link must be a valid URL')
     .nullable(),
   diagrams: Yup.array().of(Yup.string()).notRequired(),
+  drill_type: Yup.array()
+    .of(Yup.string().oneOf(drillTypeOptions, 'Invalid drill type'))
+    .min(1, 'At least one drill type is required')
+    .required('Drill type is required'),
 });
 
 export async function POST({ request }) {
@@ -128,6 +144,7 @@ function parseDrill(record) {
     positions_focused_on: parseArray(record['Positions Focused On (Chaser; Beater; Keeper; Seeker)']),
     video_link: record['Video Link'],
     diagrams: parseDiagrams(record['Diagrams']),
+    drill_type: parseArray(record['Drill Type']).filter(type => drillTypeOptions.includes(type)),
     errors: []
   };
 

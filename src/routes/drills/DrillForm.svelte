@@ -15,12 +15,14 @@
     skill_level: [],
     complexity: '',
     suggested_length: '',
-    number_of_people: { min: '', max: '' },
+    number_of_people_min: '',
+    number_of_people_max: '',
     skills_focused_on: [],
     positions_focused_on: [],
     video_link: '',
     images: [],
-    diagrams: []
+    diagrams: [],
+    drill_type: []
   };
 
   let name = writable(drill.name ?? '');
@@ -29,8 +31,8 @@
   let skill_level = writable(drill.skill_level ?? []);
   let complexity = writable(drill.complexity ?? '');
   let suggested_length = writable(drill.suggested_length ?? '');
-  let number_of_people_min = writable(drill.number_of_people?.min || '');
-  let number_of_people_max = writable(drill.number_of_people?.max || '');
+  let number_of_people_min = writable(drill.number_of_people_min ?? '');
+  let number_of_people_max = writable(drill.number_of_people_max ?? '');
   let skills_focused_on = writable(drill.skills_focused_on ?? []);
   let selectedSkills = writable(drill.skills_focused_on ?? []);
   let newSkill = writable('');
@@ -44,6 +46,7 @@
     file: image
   })) ?? []);
   let diagrams = writable(drill.diagrams?.length > 0 ? drill.diagrams : [null]);
+  let drill_type = writable(drill.drill_type ?? []);
 
   let errors = writable({});
   let numberWarnings = writable({});
@@ -60,6 +63,18 @@
   );
 
   let diagramRefs = [];
+
+  // List of available drill types
+  const drillTypeOptions = [
+    'Competitive', 
+    'Skill-focus', 
+    'Tactic-focus', 
+    'Warmup', 
+    'Conditioning', 
+    'Cooldown', 
+    'Contact', 
+    'Match-like situation'
+  ];
 
   function addDiagram() {
     // Save the current diagram if it exists
@@ -225,6 +240,7 @@
     if (!$suggested_length) newErrors.suggested_length = 'Suggested length of time is required';
     if ($selectedSkills.length === 0) newErrors.skills_focused_on = 'Skills focused on are required';
     if ($positions_focused_on.length === 0) newErrors.positions_focused_on = 'Positions focused on are required';
+    if ($drill_type.length === 0) newErrors.drill_type = 'At least one drill type is required';
     
     // Add validation for number fields
     if ($number_of_people_min && !Number.isInteger(Number($number_of_people_min))) {
@@ -259,15 +275,14 @@
       skill_level: $skill_level,
       complexity: $complexity,
       suggested_length: $suggested_length,
-      number_of_people: {
-        min: $number_of_people_min || null,
-        max: $number_of_people_max || null
-      }, 
+      number_of_people_min: $number_of_people_min || null,
+      number_of_people_max: $number_of_people_max || null,
       skills_focused_on: $selectedSkills,
       positions_focused_on: $positions_focused_on,
       video_link: $video_link,
       images: $images.map(img => img.file),
-      diagrams: $diagrams
+      diagrams: $diagrams,
+      drill_type: $drill_type
     };
 
     const response = await fetch(url, {
@@ -394,6 +409,27 @@
             ></textarea>
           </div>
 
+          <!-- Moved Drill Type Field -->
+          <div class="flex flex-col">
+            <label class="mb-1 text-sm font-medium text-gray-700">Drill Type:</label>
+            <p class="text-xs text-gray-500 mb-1">Select one or more drill types.</p>
+            <div class="flex flex-wrap gap-2">
+              {#each drillTypeOptions as type}
+                <button
+                  type="button"
+                  class="px-3 py-1 rounded-full border border-gray-300"
+                  class:selected={$drill_type.includes(type)}
+                  on:click={() => toggleSelection(drill_type, type)}
+                >
+                  {type}
+                </button>
+              {/each}
+            </div>
+            {#if $errors.drill_type}
+              <p class="text-red-500 text-sm mt-1">{$errors.drill_type}</p>
+            {/if}
+          </div>
+
           <div class="flex flex-col">
             <label for="skill_level" class="mb-1 text-sm font-medium text-gray-700">Appropriate for Skill Level:</label>
             <p class="text-xs text-gray-500 mb-1">When done correctly, what levels of player would benefit from this drill.</p>
@@ -453,6 +489,7 @@
 
           <div class="flex flex-col">
             <label for="number_of_people_max" class="mb-1 text-sm font-medium text-gray-700">Max Number of People:</label>
+            <p class="text-xs text-gray-500 mb-1">Leave empty or enter 0 for "Any"</p>
             <input 
               id="number_of_people_max" 
               bind:value={$number_of_people_max} 

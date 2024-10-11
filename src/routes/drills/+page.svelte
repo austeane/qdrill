@@ -43,7 +43,8 @@
     skillsFocusedOn,
     positionsFocusedOn,
     numberOfPeopleOptions,
-    suggestedLengths
+    suggestedLengths,
+    drillTypes
   } = data.filterOptions || {};
 
   // Object to hold temporary button states ('added', 'removed', or null)
@@ -120,6 +121,7 @@
     {positionsFocusedOn}
     {numberOfPeopleOptions}
     {suggestedLengths}
+    {drillTypes}
   />
 
   <!-- Search Input -->

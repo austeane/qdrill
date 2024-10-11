@@ -39,8 +39,8 @@ export async function PUT({ params, request }) {
     try {
         // Ensure diagrams is an array of strings
         const diagrams = Array.isArray(drill.diagrams) 
-          ? drill.diagrams.map(diagram => JSON.stringify(diagram))
-          : drill.diagrams ? [JSON.stringify(drill.diagrams)] : [];
+            ? drill.diagrams.map(diagram => JSON.stringify(diagram))
+            : drill.diagrams ? [JSON.stringify(drill.diagrams)] : [];
         
 
         // Update the drill in the database
@@ -50,13 +50,25 @@ export async function PUT({ params, request }) {
             skill_level = $4, complexity = $5, suggested_length = $6, 
             number_of_people_min = $7, number_of_people_max = $8, 
             skills_focused_on = $9, positions_focused_on = $10, 
-            video_link = $11, images = $12, diagrams = $13
-            WHERE id = $14 RETURNING *`,
-            [drill.name, drill.brief_description, drill.detailed_description, 
-             drill.skill_level, drill.complexity, drill.suggested_length, 
-             drill.number_of_people.min, drill.number_of_people.max, 
-             drill.skills_focused_on, drill.positions_focused_on, 
-             drill.video_link, drill.images, diagrams, id]
+            video_link = $11, images = $12, diagrams = $13, drill_type = $14
+            WHERE id = $15 RETURNING *`,
+            [
+                drill.name,
+                drill.brief_description,
+                drill.detailed_description,
+                drill.skill_level,
+                drill.complexity,
+                drill.suggested_length,
+                drill.number_of_people_min,
+                drill.number_of_people_max,
+                drill.skills_focused_on,
+                drill.positions_focused_on,
+                drill.video_link,
+                drill.images,
+                diagrams,
+                drill.drill_type,
+                id
+            ]
         );
         
         return json(result.rows[0]);

@@ -15,6 +15,7 @@ export async function load({ fetch }) {
       let maxNumberOfPeople = -Infinity;
       let minSuggestedLength = Infinity;
       let maxSuggestedLength = -Infinity;
+      const drillTypeSet = new Set();
   
       drills.forEach(drill => {
         // Skill Levels
@@ -51,6 +52,11 @@ export async function load({ fetch }) {
             maxSuggestedLength = length;
           }
         }
+  
+        // Drill Types
+        if (Array.isArray(drill.drill_type)) {
+          drill.drill_type.forEach(type => drillTypeSet.add(type));
+        }
       });
   
       return {
@@ -67,7 +73,8 @@ export async function load({ fetch }) {
           suggestedLengths: {
             min: minSuggestedLength !== Infinity ? minSuggestedLength : null,
             max: maxSuggestedLength !== -Infinity ? maxSuggestedLength : null
-          }
+          },
+          drillTypes: Array.from(drillTypeSet),
         }
       };
     } catch (error) {

@@ -57,6 +57,10 @@
   let modalSkillSearchTerm = writable('');
   let modalSkillSuggestions = writable([]);
 
+  $: filteredSkills = $allSkills.filter(skill => 
+    typeof skill === 'string' && skill.toLowerCase().includes($skillSearchTerm.toLowerCase()) && 
+    !$selectedSkills.includes(skill)
+);
 
 
   let diagramRefs = [];

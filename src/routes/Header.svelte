@@ -4,6 +4,7 @@
   import { page } from '$app/stores';
   import { cart } from '$lib/stores/cartStore';
   import { onMount } from 'svelte';
+  import { signIn, signOut } from '@auth/sveltekit/client';
   
   let isMobileMenuOpen = false;
   let isCartOpen = false;
@@ -40,6 +41,8 @@
       document.removeEventListener('click', handleClickOutside);
     };
   });
+
+  $: user = $page.data.session?.user;
 </script>
 
 <header class="w-full bg-white shadow-md z-50">
@@ -147,6 +150,23 @@
             </div>
           {/if}
         </div>
+
+        {#if user}
+          <div class="relative">
+            <button class="flex items-center focus:outline-none">
+              <img src={user.image} alt={user.name} class="w-8 h-8 rounded-full" />
+              <span class="ml-2">{user.name}</span>
+            </button>
+            <!-- You can add a dropdown menu here if needed -->
+          </div>
+          <button on:click={() => signOut()} class="text-gray-700 hover:text-gray-900 font-semibold">
+            Sign out
+          </button>
+        {:else}
+          <button on:click={() => signIn('google')} class="text-gray-700 hover:text-gray-900 font-semibold">
+            Sign in with Google
+          </button>
+        {/if}
       </div>
 
       <!-- Mobile menu button -->

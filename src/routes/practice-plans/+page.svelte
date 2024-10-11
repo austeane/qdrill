@@ -1,9 +1,11 @@
 <script>
     import FilterPanel from '$components/FilterPanel.svelte';
-    import { onDestroy } from 'svelte';
+    import { onDestroy, onMount } from 'svelte';
     import { tick } from 'svelte';
     import { cart } from '$lib/stores/cartStore';
     import { goto } from '$app/navigation';
+    import { page } from '$app/stores';
+    import debounce from 'lodash/debounce';
 
     export let data;
 
@@ -19,11 +21,69 @@
 
     // Selected Filters
     let selectedPhaseOfSeason = [];
-    let selectedEstimatedParticipants = { min: null, max: null };
+    let selectedEstimatedParticipantsMin = null;
+    let selectedEstimatedParticipantsMax = null;
     let selectedPracticeGoals = [];
 
     // Search Query
     let searchQuery = '';
+
+    // Selected drills for 'Contains drill' filter
+    let selectedDrills = []; // Array of { id: number, name: string }
+
+    // Initial selected drill IDs from server (URL params)
+    let initialSelectedDrillIds = data.selectedDrillIds || [];
+
+    // Fetch drill details for initial selected drill IDs
+    onMount(async () => {
+        if (initialSelectedDrillIds.length > 0) {
+            for (let drillId of initialSelectedDrillIds) {
+                await fetchDrillById(drillId);
+            }
+        }
+    });
+
+    // Function to fetch a drill by ID and add it to selected drills
+    async function fetchDrillById(drillId) {
+        try {
+            const res = await fetch(`/api/drills/${drillId}`);
+            if (!res.ok) {
+                throw new Error(`Failed to fetch drill with ID ${drillId}`);
+            }
+            const drill = await res.json();
+            // Avoid duplicate entries
+            if (!selectedDrills.find(d => d.id === drill.id)) {
+                selectedDrills = [...selectedDrills, { id: drill.id, name: drill.name }];
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    function handleDrillSelect(drill) {
+        if (!selectedDrills.find(d => d.id === drill.id)) {
+            selectedDrills = [...selectedDrills, drill];
+            updateUrlWithSelectedDrills();
+        }
+    }
+
+    function handleDrillRemove(drillId) {
+        selectedDrills = selectedDrills.filter(d => d.id !== drillId);
+        updateUrlWithSelectedDrills();
+    }
+
+    // Function to update the URL with selected drill IDs
+    function updateUrlWithSelectedDrills() {
+        const url = new URL(window.location);
+        url.searchParams.delete('drillId');
+        selectedDrills.forEach(drill => {
+            url.searchParams.append('drillId', drill.id);
+        });
+        history.replaceState({}, '', url);
+        // Optionally, you can avoid using location.reload() to prevent full page reload
+        // Instead, update the filteredPlans reactively
+        // location.reload();
+    }
 
     // Filtering logic
     $: filteredPlans = practicePlans.filter(plan => {
@@ -43,17 +103,24 @@
         }
 
         // Estimated Number of Participants
-        if (selectedEstimatedParticipants.min !== null) {
-            matches = matches && plan.estimated_number_of_participants >= selectedEstimatedParticipants.min;
+        if (selectedEstimatedParticipantsMin !== null) {
+            matches = matches && plan.estimated_number_of_participants >= selectedEstimatedParticipantsMin;
         }
-        if (selectedEstimatedParticipants.max !== null) {
-            matches = matches && plan.estimated_number_of_participants <= selectedEstimatedParticipants.max;
+        if (selectedEstimatedParticipantsMax !== null) {
+            matches = matches && plan.estimated_number_of_participants <= selectedEstimatedParticipantsMax;
         }
 
         // Practice Goals
         if (selectedPracticeGoals.length > 0) {
             const planGoals = plan.practice_goals ? plan.practice_goals.split(',').map(g => g.trim()) : [];
             matches = matches && selectedPracticeGoals.every(goal => planGoals.includes(goal));
+        }
+
+        // Contains Drills
+        if (selectedDrills.length > 0) {
+            const planDrillIds = plan.drills || [];
+            const selectedDrillIds = selectedDrills.map(d => d.id);
+            matches = matches && selectedDrillIds.every(id => planDrillIds.includes(id));
         }
 
         return matches;
@@ -124,11 +191,16 @@
 
     <!-- Filter Panel -->
     <FilterPanel
+        filterType="practice-plans"
         phaseOfSeasonOptions={phaseOfSeason}
         practiceGoalsOptions={practiceGoals}
-        selectedPhaseOfSeason={selectedPhaseOfSeason}
-        selectedPracticeGoals={selectedPracticeGoals}
-        selectedEstimatedParticipants={selectedEstimatedParticipants}
+        bind:selectedPhaseOfSeason
+        bind:selectedPracticeGoals
+        bind:selectedEstimatedParticipantsMin
+        bind:selectedEstimatedParticipantsMax
+        {selectedDrills}
+        onDrillSelect={handleDrillSelect}
+        onDrillRemove={handleDrillRemove}
     />
 
     <!-- Search input -->

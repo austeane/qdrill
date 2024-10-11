@@ -5,12 +5,14 @@
   import { cart } from '$lib/stores/cartStore';
   import DiagramDrawer from '../../../components/DiagramDrawer.svelte';
   import Breadcrumb from '../../../components/Breadcrumb.svelte';
+  import { goto } from '$app/navigation';
 
   let drill = writable({});
   let comments = writable([]);
   let newComment = writable('');
   let upvotes = writable(0);
   let editableDiagram = writable(null);
+
 
   onMount(async () => {
     try {
@@ -95,7 +97,20 @@
 <Breadcrumb customSegments={[{ name: 'Drills', url: '/drills' }, { name: $drill.name }]} />
 
 <section class="max-w-4xl mx-auto px-4 py-8">
-  <h1 class="text-3xl font-bold text-center mb-6">{$drill.name}</h1>
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold">{$drill.name}</h1>
+    <div class="flex space-x-4">
+      <a href="/drills/create" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+        Create New Drill
+      </a>
+      <button
+        on:click={addDrillToPlan}
+        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+      >
+        Add Drill to Plan
+      </button>
+    </div>
+  </div>
   
   <div class="bg-white shadow-md rounded-lg p-6 mb-8">
     <p class="text-xl mb-4">{$drill.brief_description}</p>
@@ -104,12 +119,12 @@
       <a href="/drills/{$page.params.id}/edit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
         Edit Drill
       </a>
-      <button
-        on:click={addDrillToPlan}
-        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+      <a
+        href={`/practice-plans?drillId=${$drill.id}`}
+        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
       >
-        Add Drill to Plan
-      </button>
+        Show Practice Plans that Include This Drill
+      </a>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

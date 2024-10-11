@@ -92,8 +92,8 @@
   }
 
   function downloadTemplate() {
-    const template = `Name,Brief Description,Detailed Description,Drill Type,Skill Level (1:New to Sport; 2:Beginner; 3:Intermediate; 4:Advanced; 5:Expert),Complexity (1:Low; 2:Medium; 3:High),Suggested Length Min,Suggested Length Max,Number of People Min,Number of People Max,Skills Focused On,Positions Focused On (Chaser; Beater; Keeper; Seeker),Video Link,Diagrams
-Example Drill,A brief description,A more detailed description,"Competitive,Skill-focus,Tactic-focus,Warmup,Conditioning,Cooldown,Contact,Match-like situation","1,2,3",2,10,15,4,8,"Passing,Catching","Chaser,Beater",https://example.com/video,[]`;
+    const template = `Name,Brief Description,Detailed Description,Drill Type,Skill Level (1:New to Sport; 2:Beginner; 3:Intermediate; 4:Advanced; 5:Expert),Complexity (1:Low; 2:Medium; 3:High),Suggested Length Min,Suggested Length Max,Number of People Min,Number of People Max,Skills Focused On,Positions Focused On (Chaser; Beater; Keeper; Seeker),Video Link
+Example Drill,A brief description,A more detailed description,"Competitive,Skill-focus,Tactic-focus,Warmup,Conditioning,Cooldown,Contact,Match-like situation","1,2,3",2,10,15,4,8,"Passing,Catching","Chaser,Beater",https://example.com/video`;
 
     const blob = new Blob([template], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -178,17 +178,17 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
       drill.errors.push('Suggested length max must be greater than or equal to min');
     }
 
-    // 6. Number of People: Optional, positive integers, max >= min
+    // 6. Number of People: Optional, positive integers, max >= min or empty (for "any")
     const minPeople = drill.number_of_people.min;
     const maxPeople = drill.number_of_people.max;
     if (minPeople != null || maxPeople != null) {
       if (minPeople !== null && (!Number.isInteger(Number(minPeople)) || Number(minPeople) <= 0)) {
         drill.errors.push('Number of people min must be a positive integer');
       }
-      if (maxPeople !== null && (!Number.isInteger(Number(maxPeople)) || Number(maxPeople) <= 0)) {
-        drill.errors.push('Number of people max must be a positive integer');
+      if (maxPeople !== null && maxPeople !== '' && (!Number.isInteger(Number(maxPeople)) || Number(maxPeople) <= 0)) {
+        drill.errors.push('Number of people max must be a positive integer or empty for "any"');
       }
-      if (Number(maxPeople) < Number(minPeople)) {
+      if (maxPeople !== null && maxPeople !== '' && Number(maxPeople) < Number(minPeople)) {
         drill.errors.push('Number of people max must be greater than or equal to min');
       }
     }
@@ -341,8 +341,25 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 <div class="container mx-auto p-6">
 <h1 class="text-3xl font-bold mb-6">Bulk Drill Upload</h1>
 
+<!-- Add this new section for instructions -->
+<div class="mb-6 p-4 bg-gray-100 rounded">
+  <h2 class="text-2xl font-semibold mb-2">Instructions</h2>
+  <p class="mb-2">Please note the following when preparing your CSV file:</p>
+  <ul class="list-disc list-inside mb-4">
+    <li>Skill Level: Use numbers 1-5 (1: New to Sport, 2: Beginner, 3: Intermediate, 4: Advanced, 5: Expert)</li>
+    <li>Complexity: Use numbers 1-3 (1: Low, 2: Medium, 3: High)</li>
+    <li>Drill Type: Use any combination of the following, separated by commas: Competitive, Skill-focus, Tactic-focus, Warmup, Conditioning, Cooldown, Contact, Match-like situation</li>
+    <li>Positions: Use any combination of the following, separated by commas: Chaser, Beater, Keeper, Seeker</li>
+    <li>Number of People: Leave the max empty to indicate that there is no upper limit.</li>
+    <li>Skills Focused On: Provide as a comma-separated list</li>
+    <li>Video Link: Provide a valid URL if available</li>
+    <li>Diagrams and Images: These can be added after uploading the CSV, during the review process.</li>
+  </ul>
+  <p>After upload, you'll be able to review and edit each drill, add diagrams and images, before final import.</p>
+</div>
+
 <div class="mb-6">
-  <p class="mb-2">Download a csv that has an example drill in the proper format. If you have issues opening or using the CSV, contact Austin.</p>
+  <p class="mb-2">Download a CSV template with an example drill in the proper format. If you have issues opening or using the CSV, contact Austin.</p>
   <button on:click={downloadTemplate} class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">
     Download CSV Template
   </button>
@@ -419,6 +436,26 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
               />
               {#if drill.errors.includes('Brief description is required')}
                 <p class="text-red-500 text-sm mt-1">Brief description is required</p>
+              {/if}
+            </div>
+
+            <!-- Drill Type Field (moved to the top) -->
+            <div class="mb-4">
+              <label class="block text-gray-700 font-medium mb-1">Drill Type</label>
+              <div class="flex flex-wrap gap-2">
+                {#each drillTypeOptions as type}
+                  <button
+                    type="button"
+                    class="px-3 py-1 rounded-full border border-gray-300"
+                    class:selected={drill.drill_type.includes(type)}
+                    on:click={() => toggleSelection(drill.drill_type, type)}
+                  >
+                    {type}
+                  </button>
+                {/each}
+              </div>
+              {#if drill.errors.includes('At least one drill type is required')}
+                <p class="text-red-500 text-sm mt-1">At least one drill type is required</p>
               {/if}
             </div>
 
@@ -520,13 +557,13 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
                 <input
                   type="number"
                   bind:value={drill.number_of_people.max}
-                  placeholder="Max"
-                  class={`w-full px-3 py-2 border ${drill.errors.includes('Number of people max must be a positive integer') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
+                  placeholder="Max (or leave empty for 'any')"
+                  class={`w-full px-3 py-2 border ${drill.errors.includes('Number of people max must be a positive integer or empty for "any"') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
                   on:input={() => validateDrill(drill)}
                   min="1"
                 />
-                {#if drill.errors.includes('Number of people max must be a positive integer')}
-                  <p class="text-red-500 text-sm mt-1">Must be a positive integer</p>
+                {#if drill.errors.includes('Number of people max must be a positive integer or empty for "any"')}
+                  <p class="text-red-500 text-sm mt-1">Must be a positive integer or empty for "any"</p>
                 {/if}
               </div>
             </div>
@@ -587,26 +624,6 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
               {/if}
             </div>
 
-            <!-- Drill Type Field -->
-            <div class="mb-4">
-              <label class="block text-gray-700 font-medium mb-1">Drill Type</label>
-              <div class="flex flex-wrap gap-2">
-                {#each drillTypeOptions as type}
-                  <button
-                    type="button"
-                    class="px-3 py-1 rounded-full border border-gray-300"
-                    class:selected={drill.drill_type.includes(type)}
-                    on:click={() => toggleSelection(drill.drill_type, type)}
-                  >
-                    {type}
-                  </button>
-                {/each}
-              </div>
-              {#if drill.errors.includes('At least one drill type is required')}
-                <p class="text-red-500 text-sm mt-1">At least one drill type is required</p>
-              {/if}
-            </div>
-
             <!-- Diagrams Section -->
             <div class="mb-4">
               <h4 class="text-lg font-semibold mb-2">Diagrams:</h4>
@@ -642,18 +659,21 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
             <!-- Display Fields (Always Visible) -->
             <h3 class="text-xl font-semibold mb-2">{drill.name}</h3>
             <p class="text-gray-700 mb-2">{drill.brief_description}</p>
+            <p class="text-gray-600 mb-1"><strong>Drill Type:</strong> {drill.drill_type.join(', ')}</p>
             <p class="text-gray-600 mb-1"><strong>Skill Level(s):</strong> {drill.skill_level.join(', ')}</p>
             {#if drill.complexity}
               <p class="text-gray-600 mb-1"><strong>Complexity:</strong> {drill.complexity}</p>
             {/if}
             <p class="text-gray-600 mb-1"><strong>Suggested Length:</strong> {drill.suggested_length.min} - {drill.suggested_length.max} minutes</p>
-            <p class="text-gray-600 mb-1"><strong>Number of People:</strong> {drill.number_of_people.min} - {drill.number_of_people.max}</p>
+            <p class="text-gray-600 mb-1">
+              <strong>Number of People:</strong> 
+              {drill.number_of_people.min} - {drill.number_of_people.max ? drill.number_of_people.max : 'any'}
+            </p>
             <p class="text-gray-600 mb-1"><strong>Skills Focused On:</strong> {drill.skills_focused_on.join(', ')}</p>
             <p class="text-gray-600 mb-1"><strong>Positions Focused On:</strong> {drill.positions_focused_on.join(', ')}</p>
             {#if drill.video_link}
               <p class="text-gray-600 mb-2"><strong>Video Link:</strong> <a href={drill.video_link} class="text-blue-500 underline" target="_blank">{drill.video_link}</a></p>
             {/if}
-            <p class="text-gray-600 mb-1"><strong>Drill Type:</strong> {drill.drill_type.join(', ')}</p>
 
             {#if drill.errors.length > 0}
               <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-2" role="alert">

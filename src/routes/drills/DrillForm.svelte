@@ -145,12 +145,12 @@
     const input = $newSkill.toLowerCase();
     if (input.length > 0) {
       skillSuggestions.set($allSkills.filter(skill => 
-        skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill)
+        typeof skill === 'string' && skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill)
       ));
     } else {
       skillSuggestions.set([]);
     }
-    skillSearchTerm.set(input);  // Update skillSearchTerm
+    skillSearchTerm.set(input);
   }
 
   function handleSkillKeydown(event) {
@@ -187,10 +187,10 @@
     const input = $modalSkillSearchTerm.toLowerCase();
     if (input.length > 0) {
       modalSkillSuggestions.set($allSkills.filter(skill => 
-        skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill)
+        typeof skill === 'string' && skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill)
       ));
     } else {
-      modalSkillSuggestions.set($allSkills.filter(skill => !$selectedSkills.includes(skill)));
+      modalSkillSuggestions.set($allSkills.filter(skill => typeof skill === 'string' && !$selectedSkills.includes(skill)));
     }
   }
 

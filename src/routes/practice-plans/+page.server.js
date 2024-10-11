@@ -1,53 +1,49 @@
 import { createClient } from '@vercel/postgres';
 
-export async function load() {
-  const client = createClient();
-  await client.connect();
+/**
+ * Parses the URL query parameters to extract drill IDs.
+ * Supports multiple drillIds, e.g., ?drillId=61&drillId=62
+ * @param {URLSearchParams} searchParams 
+ * @returns {number[]} Array of drill IDs
+ */
+function getSelectedDrillIds(searchParams) {
+  const drillIds = searchParams.getAll('drillId');
+  // Convert to numbers and filter out invalid entries
+  return drillIds
+    .map(id => parseInt(id, 10))
+    .filter(id => !isNaN(id));
+}
 
-  try {
-    const practicePlansResult = await client.query('SELECT * FROM practice_plans');
-    const practicePlans = practicePlansResult.rows;
+export async function load({ fetch, url }) {
+  // Fetch practice plans from your API
+  const practicePlansResponse = await fetch('/api/practice-plans');
+  const practicePlans = await practicePlansResponse.json();
 
-    // Extract unique filter options
-    const phaseOfSeasonSet = new Set();
-    let minEstimatedParticipants = Infinity;
-    let maxEstimatedParticipants = -Infinity;
-    const practiceGoalsSet = new Set();
+  // Define filter options directly in the server-side code
+  const filterOptions = {
+    phaseOfSeason: [
+      'Offseason',
+      'Early season, new players',
+      'Mid season, skill building',
+      'Tournament tuneup',
+      'End of season, peaking'
+    ],
+    estimatedParticipants: { min: 1, max: 100 },
+    practiceGoals: [
+      'Conditioning',
+      'Skill development',
+      'Team strategy',
+      'Game preparation',
+      'Recovery'
+    ]
+  };
 
-    practicePlans.forEach(plan => {
-      if (plan.phase_of_season) {
-        phaseOfSeasonSet.add(plan.phase_of_season);
-      }
+  // Extract selectedDrillIds from URL query parameters
+  const selectedDrillIds = getSelectedDrillIds(url.searchParams);
 
-      if (plan.estimated_number_of_participants) {
-        minEstimatedParticipants = Math.min(minEstimatedParticipants, plan.estimated_number_of_participants);
-        maxEstimatedParticipants = Math.max(maxEstimatedParticipants, plan.estimated_number_of_participants);
-      }
-
-      if (plan.practice_goals) {
-        if (Array.isArray(plan.practice_goals)) {
-          plan.practice_goals.forEach(goal => practiceGoalsSet.add(goal));
-        } else if (typeof plan.practice_goals === 'string') {
-          plan.practice_goals.split(',').forEach(goal => practiceGoalsSet.add(goal.trim()));
-        }
-      }
-    });
-
-    return {
-      practicePlans,
-      filterOptions: {
-        phaseOfSeason: Array.from(phaseOfSeasonSet),
-        estimatedParticipants: {
-          min: minEstimatedParticipants !== Infinity ? minEstimatedParticipants : null,
-          max: maxEstimatedParticipants !== -Infinity ? maxEstimatedParticipants : null
-        },
-        practiceGoals: Array.from(practiceGoalsSet)
-      }
-    };
-  } catch (error) {
-    console.error('Error fetching practice plans:', error);
-    return { error: 'Failed to fetch practice plans' };
-  } finally {
-    await client.end();
-  }
+  return {
+    practicePlans,
+    filterOptions,
+    selectedDrillIds
+  };
 }

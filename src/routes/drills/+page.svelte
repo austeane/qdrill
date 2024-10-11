@@ -113,6 +113,7 @@
   <!-- Filter Panel -->
   <FilterPanel
     customClass="mb-6"
+    filterType="drills"
     {skillLevels}
     {complexities}
     {skillsFocusedOn}

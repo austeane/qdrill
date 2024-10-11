@@ -1,0 +1,67 @@
+Certainly. Here's the list with more context for each item:
+
+1. Participants slider issues:
+   - Double slider in practice plans should match the drills one
+   - In FilterPanel, when setting minimum participants, the maximum doesn't update correctly
+   - The number slider should go to "any" at both low and high ends
+   Files affected:
+   - src/components/FilterPanel.svelte
+   - src/routes/practice-plans/create/+page.svelte
+
+2. Reset filters button placement and styling:
+   - Currently sits in the middle of other filters
+   - Should have a different shape or color
+   - Should be positioned above or below other filters
+   Files affected:
+   - src/components/FilterPanel.svelte
+
+3. Skills dropdown and browsing improvements:
+   - Ensure all skills are included in both dropdown and browse skills
+   - Consider ordering skills by frequency of use in drills
+   - Possibly show number of drills each skill appears in
+   Files affected:
+   - src/routes/drills/DrillForm.svelte
+   - src/lib/constants/skills.js
+   - src/routes/api/skills/+server.js
+
+4. Drill types and skill categories:
+   - Implement drill types: Competitive, skill-focus, tactic-focus, warmup, conditioning, cooldown, contact, match-like situation
+   - Consider implementing rough vs fine filtering for skills
+   Files affected:
+   - src/routes/drills/DrillForm.svelte
+   - src/components/FilterPanel.svelte
+   - src/lib/constants/drillTypes.js (new file)
+
+5. Time interval adjustments:
+   - Change time selection in drill creation to match filter (minute by minute)
+   - Consider using 5-minute intervals for both
+   Files affected:
+   - src/routes/drills/DrillForm.svelte
+   - src/components/FilterPanel.svelte
+
+6. Max number of participants adjustment:
+   - Allow "unlimited" or "any" as an option for max participants
+   - Add a hint that entering nothing or 0 means unlimited
+   Files affected:
+   - src/routes/drills/DrillForm.svelte
+
+7. "All" filter for positions:
+   - Add an "All" option for the "position focused on" filter
+   Files affected:
+   - src/components/FilterPanel.svelte
+
+8. Adding halfcourt and fullcourt options to diagram creator:
+   - Add buttons for "Add halfcourt", "Add fullcourt", and "Add blank"
+   Files affected:
+   - src/components/DiagramDrawer.svelte
+
+9. Dropdowns for player and line additions in diagram creator:
+   - Implement dropdowns for adding players (e.g., select Chaser, then color)
+   - Add dropdown for lines: line, arrow, freeform
+   Files affected:
+   - src/components/DiagramDrawer.svelte
+
+10. Fix for move up and down functionality in diagram creator:
+    - The move up and down buttons for diagrams are not working
+    Files affected:
+    - src/components/DiagramDrawer.svelte

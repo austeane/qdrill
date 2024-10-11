@@ -92,8 +92,8 @@
   }
 
   function downloadTemplate() {
-    const template = `Name,Brief Description,Detailed Description,Skill Level (1:New to Sport; 2:Beginner; 3:Intermediate; 4:Advanced; 5:Expert),Complexity (1:Low; 2:Medium; 3:High),Suggested Length Min,Suggested Length Max,Number of People Min,Number of People Max,Skills Focused On,Positions Focused On (Chaser; Beater; Keeper; Seeker),Video Link,Diagrams
-Example Drill,A brief description,A more detailed description,"1,2,3",2,10,15,4,8,"Passing,Catching","Chaser,Beater",https://example.com/video,[]`;
+    const template = `Name,Brief Description,Detailed Description,Drill Type,Skill Level (1:New to Sport; 2:Beginner; 3:Intermediate; 4:Advanced; 5:Expert),Complexity (1:Low; 2:Medium; 3:High),Suggested Length Min,Suggested Length Max,Number of People Min,Number of People Max,Skills Focused On,Positions Focused On (Chaser; Beater; Keeper; Seeker),Video Link,Diagrams
+Example Drill,A brief description,A more detailed description,"Competitive,Skill-focus,Tactic-focus,Warmup,Conditioning,Cooldown,Contact,Match-like situation","1,2,3",2,10,15,4,8,"Passing,Catching","Chaser,Beater",https://example.com/video,[]`;
 
     const blob = new Blob([template], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -225,6 +225,18 @@ Example Drill,A brief description,A more detailed description,"1,2,3",2,10,15,4,
     // Initialize diagrams as an empty array if not present
     if (!Array.isArray(drill.diagrams)) {
       drill.diagrams = [];
+    }
+
+    // Drill Type validation
+    if (!Array.isArray(drill.drill_type) || drill.drill_type.length === 0) {
+      drill.errors.push('At least one drill type is required');
+    } else {
+      const invalidTypes = drill.drill_type.filter(
+        (type) => !drillTypeOptions.includes(type)
+      );
+      if (invalidTypes.length > 0) {
+        drill.errors.push(`Invalid drill types: ${invalidTypes.join(', ')}`);
+      }
     }
   }
 
@@ -590,14 +602,9 @@ Example Drill,A brief description,A more detailed description,"1,2,3",2,10,15,4,
                   </button>
                 {/each}
               </div>
-              {#if drill.errors.includes('Drill type is required and must be an array')}
+              {#if drill.errors.includes('At least one drill type is required')}
                 <p class="text-red-500 text-sm mt-1">At least one drill type is required</p>
               {/if}
-              {#each drill.errors as error}
-                {#if error.startsWith('Invalid drill type')}
-                  <p class="text-red-500 text-sm mt-1">{error}</p>
-                {/if}
-              {/each}
             </div>
 
             <!-- Diagrams Section -->
@@ -646,6 +653,7 @@ Example Drill,A brief description,A more detailed description,"1,2,3",2,10,15,4,
             {#if drill.video_link}
               <p class="text-gray-600 mb-2"><strong>Video Link:</strong> <a href={drill.video_link} class="text-blue-500 underline" target="_blank">{drill.video_link}</a></p>
             {/if}
+            <p class="text-gray-600 mb-1"><strong>Drill Type:</strong> {drill.drill_type.join(', ')}</p>
 
             {#if drill.errors.length > 0}
               <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-2" role="alert">

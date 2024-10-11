@@ -6,6 +6,7 @@
   // Define relative URLs for images
   const quaffleUrl = '/images/quaffle.webp';
   const bludgerUrl = '/images/bludger.webp';
+  const coneUrl = '/images/cone.webp';
 
   export let data = null;
   export let id = '';
@@ -129,6 +130,7 @@
   }
 
   function addNewPlayer(teamColor, headColor) {
+    saveState();
     const player = createStickFigure(teamColor, headColor);
     player.set({
       left: lastAddedPosition.x * scalingFactor,
@@ -141,6 +143,7 @@
   }
 
   function addArrow() {
+    saveState();
     const arrowLength = 100;
     const arrow = new fabric.Line([0, 0, arrowLength, 0], {
       stroke: 'black',
@@ -405,6 +408,78 @@
     });
     fabricCanvas.renderAll();
   }
+
+  // Add these new functions
+  function addLine() {
+    const line = new fabric.Line([0, 0, 100, 0], {
+      stroke: 'black',
+      strokeWidth: 2,
+      left: lastAddedPosition.x * scalingFactor,
+      top: lastAddedPosition.y * scalingFactor,
+      selectable: true,
+      hasControls: resizingEnabled
+    });
+    fabricCanvas.add(line);
+    updateLastAddedPosition();
+    fabricCanvas.renderAll();
+  }
+
+  function addFreeform() {
+    fabricCanvas.isDrawingMode = true;
+    fabricCanvas.freeDrawingBrush.width = 2;
+    fabricCanvas.freeDrawingBrush.color = 'black';
+  }
+
+  function addCone() {
+    console.log('Adding cone, URL:', coneUrl);
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = function() {
+      console.log('Cone image loaded successfully');
+      const coneSize = ballSize / 1.5; // Half the size of a ball
+      const fabricImage = new fabric.Image(img, {
+        left: lastAddedPosition.x * scalingFactor,
+        top: lastAddedPosition.y * scalingFactor,
+        selectable: true,
+        hasControls: resizingEnabled,
+        originX: 'center',
+        originY: 'center',
+        src: coneUrl
+      });
+      fabricImage.scale(coneSize / Math.max(img.width, img.height));
+      fabricCanvas.add(fabricImage);
+      updateLastAddedPosition();
+      fabricCanvas.renderAll();
+    };
+    img.onerror = function(e) {
+      console.error('Failed to load cone image:', e, 'URL:', img.src);
+    };
+    img.src = coneUrl;
+  }
+
+  let undoStack = [];
+  let redoStack = [];
+
+  function saveState() {
+    undoStack.push(JSON.stringify(fabricCanvas));
+    redoStack = [];
+  }
+
+  function undo() {
+    if (undoStack.length > 0) {
+      redoStack.push(JSON.stringify(fabricCanvas));
+      const previousState = undoStack.pop();
+      fabricCanvas.loadFromJSON(previousState, fabricCanvas.renderAll.bind(fabricCanvas));
+    }
+  }
+
+  function redo() {
+    if (redoStack.length > 0) {
+      undoStack.push(JSON.stringify(fabricCanvas));
+      const nextState = redoStack.pop();
+      fabricCanvas.loadFromJSON(nextState, fabricCanvas.renderAll.bind(fabricCanvas));
+    }
+  }
 </script>
 
 <div bind:this={canvasWrapper} class="diagram-wrapper">
@@ -422,35 +497,67 @@
     width: 100% !important;
     height: auto !important;
   }
+
+  .button-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .section-title {
+    width: 100%;
+    font-weight: bold;
+    margin-top: 0.5rem;
+  }
 </style>
 
 {#if !readonly}
-  <div>
+  <div class="button-container">
     {#if showSaveButton}
       <button on:click|preventDefault={saveDiagram} class="m-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
         Save Diagram
       </button>
     {/if}
-    <button on:click|preventDefault={() => addNewPlayer('red', 'white')} class="m-1">Add Red Chaser</button>
-    <button on:click|preventDefault={() => addNewPlayer('red', 'green')} class="m-1">Add Red Keeper</button>
-    <button on:click|preventDefault={() => addNewPlayer('red', 'black')} class="m-1">Add Red Beater</button>
-    <button on:click|preventDefault={() => addNewPlayer('red', 'yellow')} class="m-1">Add Red Seeker</button>
     
-    <button on:click|preventDefault={() => addNewPlayer('blue', 'white')} class="m-1">Add Blue Chaser</button>
-    <button on:click|preventDefault={() => addNewPlayer('blue', 'green')} class="m-1">Add Blue Keeper</button>
-    <button on:click|preventDefault={() => addNewPlayer('blue', 'black')} class="m-1">Add Blue Beater</button>
-    <button on:click|preventDefault={() => addNewPlayer('blue', 'yellow')} class="m-1">Add Blue Seeker</button>
+    <div class="button-section">
+      <span class="section-title">Add Players:</span>
+      <button on:click|preventDefault={() => addNewPlayer('red', 'white')}>Red Chaser</button>
+      <button on:click|preventDefault={() => addNewPlayer('red', 'green')}>Red Keeper</button>
+      <button on:click|preventDefault={() => addNewPlayer('red', 'black')}>Red Beater</button>
+      <button on:click|preventDefault={() => addNewPlayer('red', 'yellow')}>Red Seeker</button>
+      <button on:click|preventDefault={() => addNewPlayer('blue', 'white')}>Blue Chaser</button>
+      <button on:click|preventDefault={() => addNewPlayer('blue', 'green')}>Blue Keeper</button>
+      <button on:click|preventDefault={() => addNewPlayer('blue', 'black')}>Blue Beater</button>
+      <button on:click|preventDefault={() => addNewPlayer('blue', 'yellow')}>Blue Seeker</button>
+    </div>
     
-    <button on:click|preventDefault={addArrow} class="m-1">Add Arrow</button>
-    <button on:click|preventDefault={addHoopGroup} class="m-1">Add Hoop Group</button>
-    <button on:click|preventDefault={addTextBox} class="m-1">Add Text Box</button>
-    <button on:click|preventDefault={addBludger} class="m-1">Add Bludger</button>
-    <button on:click|preventDefault={addQuaffle} class="m-1">Add Quaffle</button>
-    <button on:click|preventDefault={deleteSelectedObjects} class="m-1">Delete Selected</button>
-    <button on:click|preventDefault={moveUp} class="m-1">Move Up</button>
-    <button on:click|preventDefault={moveDown} class="m-1">Move Down</button>
-    <button on:click|preventDefault={toggleResizing} class="m-1">
-      {resizingEnabled ? 'Disable' : 'Enable'} Resizing
-    </button>
+    <div class="button-section">
+      <span class="section-title">Add Elements:</span>
+      <button on:click|preventDefault={addArrow}>Arrow</button>
+      <button on:click|preventDefault={addLine}>Line</button>
+      <button on:click|preventDefault={addFreeform}>Freeform</button>
+      <button on:click|preventDefault={addCone}>Cone</button>
+      <button on:click|preventDefault={addHoopGroup}>Hoop Group</button>
+      <button on:click|preventDefault={addTextBox}>Text Box</button>
+      <button on:click|preventDefault={addBludger}>Bludger</button>
+      <button on:click|preventDefault={addQuaffle}>Quaffle</button>
+    </div>
+    
+    <div class="button-section">
+      <span class="section-title">Edit:</span>
+      <button on:click|preventDefault={deleteSelectedObjects}>Delete Selected</button>
+      <button on:click|preventDefault={toggleResizing}>
+        {resizingEnabled ? 'Disable' : 'Enable'} Resizing
+      </button>
+      <button on:click|preventDefault={undo}>Undo</button>
+      <button on:click|preventDefault={redo}>Redo</button>
+    </div>
+    
+    <div class="button-section">
+      <span class="section-title">Move:</span>
+      <button on:click|preventDefault={moveUp}>Move Up</button>
+      <button on:click|preventDefault={moveDown}>Move Down</button>
+    </div>
   </div>
 {/if}

@@ -217,6 +217,20 @@
     function removeDrillFromSelected(drillId) {
       onDrillRemove(drillId);
     }
+  
+    export let drillTypes = [];
+  
+    import { selectedDrillTypes } from '$lib/stores/drillsStore';
+  
+    function toggleSelection(store, value) {
+      store.update(selected => {
+        if (selected.includes(value)) {
+          return selected.filter(item => item !== value);
+        } else {
+          return [...selected, value];
+        }
+      });
+    }
 </script>
 
 <!-- Filter Buttons -->
@@ -425,40 +439,39 @@
         >
             Suggested Lengths
             <span class="ml-2 text-sm font-semibold">
-                {$selectedSuggestedLengthsMin === suggestedLengths.min ? 'Any' : $selectedSuggestedLengthsMin} - {$selectedSuggestedLengthsMax === suggestedLengths.max ? 'Any' : $selectedSuggestedLengthsMax} mins
+            {$selectedSuggestedLengthsMin === suggestedLengths.min ? 'Any' : $selectedSuggestedLengthsMin} - {$selectedSuggestedLengthsMax === suggestedLengths.max ? 'Any' : $selectedSuggestedLengthsMax} mins
             </span>
         </button>
         
         {#if showSuggestedLengths}
             <div 
-                id="suggestedLengths-content"
-                class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
-                on:click|stopPropagation
-                role="menu"
-                tabindex="0"
+            id="suggestedLengths-content"
+            class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
+            on:click|stopPropagation
+            role="menu"
+            tabindex="0"
             >
-                <label class="block text-sm font-medium text-gray-700 mb-2">Length Range (mins)</label>
-                <RangeSlider
-                    bind:values={suggestedLengthsRange}
-                    min={suggestedLengths.min}
-                    max={suggestedLengths.max}
-                    step={1}
-                    float
-                    pips
-                    all="label"
-                    first="label"
-                    last="label"
-                    rest="pip"
-                    pipstep={15}
-                    on:change={() => {
-                        selectedSuggestedLengthsMin.set(suggestedLengthsRange[0]);
-                        selectedSuggestedLengthsMax.set(suggestedLengthsRange[1]);
-                    }}
-                />
-            </div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Length Range (mins)</label>
+            <RangeSlider
+                bind:values={suggestedLengthsRange}
+                min={suggestedLengths.min}
+                max={suggestedLengths.max}
+                step={5} 
+                float
+                pips
+                all="label"
+                first="label"
+                last="label"
+                rest="pip"
+                pipstep={15} 
+                on:change={() => {
+                selectedSuggestedLengthsMin.set(suggestedLengthsRange[0]);
+                selectedSuggestedLengthsMax.set(suggestedLengthsRange[1]);
+                }}
+            />
+         </div>
         {/if}
     </div>
-
     <!-- Has Video Filter -->
     <div class="relative">
         <button 
@@ -694,4 +707,32 @@
         on:click={closeAllFilters} 
         aria-label="Close filters"
     ></div>
-{/if}</div>
+{/if}
+
+<!-- Drill Types Filter -->
+{#if drillTypes && drillTypes.length > 0}
+  <div class="mb-4">
+    <h3 class="text-md font-medium mb-2">Drill Types</h3>
+    <div class="flex flex-wrap gap-2">
+      {#each drillTypes as type}
+        <button
+          type="button"
+          class="px-3 py-1 rounded-full border border-gray-300"
+          class:selected={$selectedDrillTypes.includes(type)}
+          on:click={() => toggleSelection(selectedDrillTypes, type)}
+        >
+          {type}
+        </button>
+      {/each}
+    </div>
+  </div>
+{/if}
+</div>
+
+<style>
+  /* ... existing styles ... */
+  .selected {
+    background-color: #3b82f6; /* Tailwind's blue-500 */
+    color: white;
+  }
+</style>

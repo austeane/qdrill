@@ -24,7 +24,7 @@ async function updateSkills(skills, drillId) {
 
 export async function POST({ request }) {
     const drill = await request.json();
-    let { name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images, diagrams } = drill;
+    let { name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams, drill_type } = drill;
 
     if (!Array.isArray(diagrams)) {
         diagrams = diagrams ? [diagrams] : [];
@@ -49,11 +49,37 @@ export async function POST({ request }) {
         images = [];
     }
 
+    if (typeof drill_type === 'string') {
+        drill_type = [drill_type];
+    }
+
     try {
         const result = await client.query(
-            `INSERT INTO drills (name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
-            [name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people.min, number_of_people.max, skills_focused_on, positions_focused_on, video_link, images, diagrams]
+            `INSERT INTO drills (
+                name, brief_description, detailed_description, skill_level, complexity,
+                suggested_length, number_of_people_min, number_of_people_max, skills_focused_on,
+                positions_focused_on, video_link, images, diagrams, drill_type
+            ) VALUES (
+                $1, $2, $3, $4, $5,
+                $6, $7, $8, $9,
+                $10, $11, $12, $13, $14
+            ) RETURNING id`,
+            [
+                name,
+                brief_description,
+                detailed_description,
+                skill_level,
+                complexity,
+                suggested_length,
+                number_of_people_min,
+                number_of_people_max,
+                skills_focused_on,
+                positions_focused_on,
+                video_link,
+                images,
+                diagrams,
+                drill_type,
+            ]
         );
         
         const drillId = result.rows[0].id;
@@ -83,7 +109,7 @@ export async function GET() {
 }
 export async function PUT({ request }) {
   const drill = await request.json();
-  let { id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people, skills_focused_on, positions_focused_on, video_link, images, diagrams } = drill;
+  let { id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams, drill_type } = drill;
 
   try {
     // First, get the existing skills for this drill
@@ -95,15 +121,19 @@ export async function PUT({ request }) {
     }
     diagrams = diagrams.map(diagram => JSON.stringify(diagram));
 
+    if (typeof drill_type === 'string') {
+        drill_type = [drill_type];
+    }
+
     // Update the drill
     const result = await client.query(
       `UPDATE drills SET 
        name = $2, brief_description = $3, detailed_description = $4, skill_level = $5, 
        complexity = $6, suggested_length = $7, number_of_people_min = $8, number_of_people_max = $9, 
-       skills_focused_on = $10, positions_focused_on = $11, video_link = $12, images = $13, diagrams = $14
+       skills_focused_on = $10, positions_focused_on = $11, video_link = $12, images = $13, diagrams = $14, drill_type = $15
        WHERE id = $1 RETURNING *`,
       [id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, 
-       number_of_people.min, number_of_people.max, skills_focused_on, positions_focused_on, video_link, images, diagrams]
+       number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams, drill_type]
     );
 
     // Update skills

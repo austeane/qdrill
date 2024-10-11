@@ -133,12 +133,15 @@
         <p><strong>Skill Levels:</strong> {$drill.skill_level}</p>
         <p><strong>Complexity:</strong> {$drill.complexity}</p>
         <p><strong>Suggested Length:</strong> {$drill.suggested_length} minutes</p>
-        <p><strong>Number of People:</strong> {$drill.number_of_people_min} - {$drill.number_of_people_max}</p>
-      </div>
+        <p><strong>Number of People:</strong> {$drill.number_of_people_min} - {($drill.number_of_people_max && $drill.number_of_people_max !== '0') ? $drill.number_of_people_max : 'Any'}</p>      </div>
       <div>
         <h2 class="text-lg font-semibold mb-2">Focus Areas</h2>
         <p><strong>Skills:</strong> {Array.isArray($drill.skills_focused_on) ? $drill.skills_focused_on.join(', ') : (typeof $drill.skills_focused_on === 'string' ? $drill.skills_focused_on.split(', ').join(', ') : '')}</p>
         <p><strong>Positions:</strong> {Array.isArray($drill.positions_focused_on) ? $drill.positions_focused_on.join(', ') : (typeof $drill.positions_focused_on === 'string' ? $drill.positions_focused_on.split(', ').join(', ') : '')}</p>
+      </div>
+      <div>
+        <h2 class="text-lg font-semibold mb-2">Drill Types</h2>
+        <p>{Array.isArray($drill.drill_type) ? $drill.drill_type.join(', ') : 'N/A'}</p>
       </div>
     </div>
 

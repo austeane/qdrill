@@ -16,6 +16,7 @@ export const selectedHasVideo = writable(false);
 export const selectedHasDiagrams = writable(false);
 export const selectedHasImages = writable(false);
 export const searchQuery = writable('');
+export const selectedDrillTypes = writable([]);
 
 // Derived Store for Filtered Drills
 export const filteredDrills = derived(
@@ -32,7 +33,8 @@ export const filteredDrills = derived(
     selectedHasVideo,
     selectedHasDiagrams,
     selectedHasImages,
-    searchQuery
+    searchQuery,
+    selectedDrillTypes
   ],
   ([
     $drills,
@@ -47,7 +49,8 @@ export const filteredDrills = derived(
     $selectedHasVideo,
     $selectedHasDiagrams,
     $selectedHasImages,
-    $searchQuery
+    $searchQuery,
+    $selectedDrillTypes
   ]) => {
     return $drills.filter(drill => {
       let matches = true;
@@ -120,6 +123,11 @@ export const filteredDrills = derived(
 
       // Has Images
       if ($selectedHasImages && (!drill.images || drill.images.length === 0)) {
+        matches = false;
+      }
+
+      // Filter by Drill Types
+      if ($selectedDrillTypes.length > 0 && (!drill.drill_type || !drill.drill_type.some(type => $selectedDrillTypes.includes(type)))) {
         matches = false;
       }
 

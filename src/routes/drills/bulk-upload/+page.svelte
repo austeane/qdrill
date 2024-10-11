@@ -34,6 +34,18 @@
 
   const positionOptions = ['Chaser', 'Beater', 'Keeper', 'Seeker'];
 
+  // Add drillTypeOptions
+  const drillTypeOptions = [
+    'Competitive', 
+    'Skill-focus', 
+    'Tactic-focus', 
+    'Warmup', 
+    'Conditioning', 
+    'Cooldown', 
+    'Contact', 
+    'Match-like situation'
+  ];
+
   function handleFileChange(event) {
     const file = event.target.files[0];
     if (file && file.type === 'text/csv') {
@@ -299,6 +311,15 @@ Example Drill,A brief description,A more detailed description,"1,2,3",2,10,15,4,
   }
 
   $: validDrillsCount = $parsedDrills.filter(drill => drill.errors.length === 0).length;
+
+  function toggleSelection(array, value) {
+    if (array.includes(value)) {
+      const index = array.indexOf(value);
+      array.splice(index, 1);
+    } else {
+      array.push(value);
+    }
+  }
 </script>
 
 <svelte:head>
@@ -554,6 +575,31 @@ Example Drill,A brief description,A more detailed description,"1,2,3",2,10,15,4,
               {/if}
             </div>
 
+            <!-- Drill Type Field -->
+            <div class="mb-4">
+              <label class="block text-gray-700 font-medium mb-1">Drill Type</label>
+              <div class="flex flex-wrap gap-2">
+                {#each drillTypeOptions as type}
+                  <button
+                    type="button"
+                    class="px-3 py-1 rounded-full border border-gray-300"
+                    class:selected={drill.drill_type.includes(type)}
+                    on:click={() => toggleSelection(drill.drill_type, type)}
+                  >
+                    {type}
+                  </button>
+                {/each}
+              </div>
+              {#if drill.errors.includes('Drill type is required and must be an array')}
+                <p class="text-red-500 text-sm mt-1">At least one drill type is required</p>
+              {/if}
+              {#each drill.errors as error}
+                {#if error.startsWith('Invalid drill type')}
+                  <p class="text-red-500 text-sm mt-1">{error}</p>
+                {/if}
+              {/each}
+            </div>
+
             <!-- Diagrams Section -->
             <div class="mb-4">
               <h4 class="text-lg font-semibold mb-2">Diagrams:</h4>
@@ -659,3 +705,10 @@ Example Drill,A brief description,A more detailed description,"1,2,3",2,10,15,4,
   </button>
 </div>
 </div>
+
+<style>
+  .selected {
+    background-color: #3b82f6;
+    color: white;
+  }
+</style>

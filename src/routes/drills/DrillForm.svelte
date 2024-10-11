@@ -5,6 +5,7 @@
   import DiagramDrawer from '../../components/DiagramDrawer.svelte';
   import { dndzone } from 'svelte-dnd-action';
   import { PREDEFINED_SKILLS } from '$lib/constants/skills';
+  import { allSkills, sortedSkills } from '$lib/stores/drillsStore';
 
   // Initialize stores
   export let drill = {
@@ -37,7 +38,6 @@
   let selectedSkills = writable(drill.skills_focused_on ?? []);
   let newSkill = writable('');
   let skillSuggestions = writable([]);
-  let allSkills = writable([]);
   let skillSearchTerm = writable('');  // Add this line
   let positions_focused_on = writable(drill.positions_focused_on ?? []);
   let video_link = writable(drill.video_link ?? '');
@@ -87,6 +87,7 @@
 
     diagrams.update(d => [...d, {}]);
     diagramKey++;
+    console.log('Diagram added. New diagrams:', $diagrams); // Add this line for debugging
   }
 
   function deleteDiagram(index) {
@@ -131,6 +132,13 @@
     const data = await response.json();
     allSkills.set([...PREDEFINED_SKILLS, ...data.filter(skill => !PREDEFINED_SKILLS.includes(skill))]);
     mounted = true;
+
+    // Fetch skills with usage count
+    const skillsResponse = await fetch('/api/skills');
+    if (skillsResponse.ok) {
+      const skillsData = await skillsResponse.json();
+      allSkills.set(skillsData);
+    }
   });
 
   function handleSkillInput() {
@@ -505,7 +513,31 @@
           {/if}
 
           <div class="flex flex-col">
-            <label for="skills" class="mb-1 text-sm font-medium text-gray-700">Skills:</label>
+            <label for="skills_focused_on" class="mb-1 text-sm font-medium text-gray-700">Skills Focused On:</label>
+            <div class="relative">
+              <input
+                id="skills_focused_on"
+                bind:value={$newSkill}
+                on:input={handleSkillInput}
+                class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Type to search or add new skills"
+              />
+              {#if $skillSuggestions.length > 0}
+                <ul class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto">
+                  {#each $sortedSkills as suggestion}
+                    <li>
+                      <button
+                        type="button"
+                        on:click={() => selectSkill(suggestion)}
+                        class="w-full text-left px-3 py-2 hover:bg-gray-100"
+                      >
+                        {suggestion.skill} {suggestion.isPredefined ? '(Predefined)' : ''}
+                      </button>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            </div>
             <div class="flex flex-wrap gap-2 mb-2">
               {#each $selectedSkills as skill}
                 <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
@@ -514,13 +546,6 @@
                 </span>
               {/each}
             </div>
-            <input
-              id="skills"
-              bind:value={$newSkill}
-              on:input={handleSkillInput}
-              placeholder="Add a skill"
-              class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
             <button
               type="button"
               on:click={openSkillsModal}
@@ -528,21 +553,6 @@
             >
               Browse Skills
             </button>
-            {#if $skillSuggestions.length > 0}
-              <ul class="mt-1 bg-white border border-gray-300 rounded-md shadow-sm">
-                {#each $skillSuggestions as suggestion}
-                  <li>
-                    <button
-                      type="button"
-                      on:click={() => selectSkill(suggestion)}
-                      class="w-full text-left px-3 py-2 hover:bg-gray-100"
-                    >
-                      {suggestion}
-                    </button>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
           </div>
           {#if $errors.skills_focused_on}
             <p class="text-red-500 text-sm mt-1">{$errors.skills_focused_on}</p>

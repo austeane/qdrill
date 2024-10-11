@@ -1,4 +1,5 @@
 import { writable, derived } from 'svelte/store';
+import { PREDEFINED_SKILLS } from '$lib/constants/skills';
 
 // Data Store
 export const drills = writable([]);
@@ -172,3 +173,22 @@ filteredDrills.subscribe(() => {
 
 // Make sure you have a suggestedLengths store
 export const suggestedLengths = writable({ min: 0, max: 120 });
+
+// All Skills Store with sorting
+export const allSkills = writable([]);
+
+export const sortedSkills = derived(allSkills, $allSkills => 
+  $allSkills
+    .sort((a, b) => {
+      // 1. Sort by usage_count descending
+      if (b.usage_count !== a.usage_count) {
+        return b.usage_count - a.usage_count;
+      }
+      // 2. Predefined skills first
+      if (a.isPredefined !== b.isPredefined) {
+        return a.isPredefined ? -1 : 1;
+      }
+      // 3. Alphabetical order
+      return a.skill.localeCompare(b.skill);
+    })
+);

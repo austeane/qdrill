@@ -24,21 +24,18 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
   trustHost: true,
   callbacks: {
     async signIn({ user, account, profile }) {
+      // Custom logic to handle user sign-in
       console.log('Sign in callback', { user, account, profile });
       return true;
     },
     async session({ session, user }) {
-      console.log('Session callback', { session, user });
-      session.user.id = user.id;
+      // Include user ID in the session
+      if (session.user) {
+        session.user.id = user.id;
+      }
       return session;
     },
-    async jwt({ token, user }) {
-      console.log('JWT callback', { token, user });
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
-    },
+    // You can remove the jwt callback if not using JWTs
   },
   debug: true, // Enable debug mode for more detailed logs
 })

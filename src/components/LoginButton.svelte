@@ -1,10 +1,12 @@
 <script>
     import { signIn, signOut } from '@auth/sveltekit/client'
     import { page } from '$app/stores'
-  </script>
-  
-  {#if $page.data.session}
+    console.log('Session Data:', $page.data.session);
+
+</script>
+
+{#if $page.data.session}
     <button on:click={() => signOut()}>Sign out</button>
-  {:else}
+{:else}
     <button on:click={() => signIn('google')}>Sign in with Google</button>
-  {/if}
+{/if}

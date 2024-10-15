@@ -1,140 +1,286 @@
-# Auth Implementation Plan
+<< this plan was created by ai, my comments are in angle brackets>>
 
-## 1. Implement Google OAuth Authentication
 
-### Install and Configure Dependencies
-- Install `@auth/core` and `@auth/sveltekit` packages.
-- Update `package.json` to include these new dependencies.
+<<The main point of the next bit is that logging in will let you modify your own drills. When you create a drill/plan, if you aren't logged in, it will be editable by anyone, but deletable by nobody. If you are logged in, it will be editable and deletable by you, and you can choose whether to allow others to edit it. 
+You can also choose the visibility of drills/plans when logged in, either private to anyone with the link, or publicly findable. 
 
-### Configure Google OAuth
-- Create a new project in the Google Developers Console.
-- Set up OAuth 2.0 credentials for the application.
-- Store client ID and client secret securely in environment variables.
+Also, logged in users can comment on drills and plans. 
 
-### Implementation Details
-- Create a new file: `src/lib/server/auth.ts`
-  - Set up SvelteKit Auth with Google provider.
-  - Configure session handling and callbacks.
+Also, logged in users will be able to upvote/downvote once on each drill/plan.
 
-- Update `src/hooks.server.ts`:
-  - Implement SvelteKit Auth handle function.
+Also, logged in users will be able to filter by upvoted or non-downvoted plans and drills.
 
-- Create login and logout API routes:
-  - `src/routes/api/auth/[...auth]/+server.ts`
-    - Handle authentication requests.
 
-- Update `src/routes/+layout.svelte`:
-  - Add login/logout buttons in the navigation.
-  - Display user information when logged in.
 
-## 2. Set Up User Account Management
+Creating google oauth and the tables required has already been done. 
+Log in with google will be the only option. We are not doing local accounts to start. So no password issues or creating new local users.
+When you press login with google, if you don't have an account it will register you automatically.
+>>
 
-### Database Setup
-- Create a new migration file: `migrations/[timestamp]_create_users_table.sql`
-  - Define the `users` table schema.
+## 3. Implement Content Ownership and Permissions
+
+### Database Schema Updates
+
+- **Drills and Practice Plans Tables**:
+  - Add a `created_by` field to track the owner (`user_id` foreign key).
+  - Add a `is_editable_by_others` boolean field.
+  - Add a `visibility` field (`'private'`, `'unlisted'`, `'public'`).
 
 ### Implementation Details
-- Update `src/lib/server/auth.ts`:
-  - Implement callbacks to handle user creation/update in the database.
 
-- Create `src/lib/server/db/users.ts`:
-  - Implement functions for user CRUD operations.
+- **Content Creation**:
+  - When a logged-in user creates a drill or practice plan, set the `created_by` field to their `user_id`.
+  - Allow the user to set `is_editable_by_others` and `visibility` during creation and editing.
 
-## 3. Allow Anonymous Creation with Login Prompt on Submit
+- **Content Editing**:
+  - **Anonymous Users**:
+    - Drills and plans created by anonymous users are editable by anyone.
+    - Deletion is disabled for anonymous content.
+  - **Logged-In Users**:
+    - Only the owner can edit or delete their drills and plans.
+    - If `is_editable_by_others` is `true`, allow other logged-in users to edit.
+
+- **Routes Protection**:
+  - Update the API routes for drills and practice plans (`+server.js` files) to enforce permissions.
+  - Use the `authGuard` middleware to protect routes where necessary.
+
+
+
+## 4. Implement Visibility Settings
 
 ### Implementation Details
-- Update drill and practice plan creation components:
-  - `src/routes/drills/DrillForm.svelte`
-  - `src/routes/practice-plans/create/+page.svelte`
-  - Add a check before submission to verify if the user is logged in.
-  - If not logged in, show a modal prompting the user to log in.
-  - Store form data in local storage before redirecting to login.
 
-- Create a new component: `src/lib/components/LoginPromptModal.svelte`
-  - Implement a modal component for login prompts.
+- **Private Content**:
+  - Content with `visibility` set to `'private'` is only accessible to the owner.
+  - Return `403 Forbidden` for other users attempting to access.
 
-## 4. Restrict Editing and Private Access to Logged-In Users
+- **Unlisted Content**:
+  - Content with `visibility` set to `'unlisted'` is accessible via direct link but does not appear in public listings or search results.
 
-### Implementation Details
-- Update API routes for drills and practice plans:
-  - `src/routes/api/drills/[id]/+server.ts`
-  - `src/routes/api/practice-plans/[id]/+server.ts`
-  - Add authentication checks and ownership verification for edit operations.
+- **Public Content**:
+  - Content with `visibility` set to `'public'` is accessible to everyone and appears in listings and search results.
 
-- Update drill and practice plan detail pages:
-  - `src/routes/drills/[id]/+page.svelte`
-  - `src/routes/practice-plans/[id]/+page.svelte`
-  - Show edit buttons only for logged-in users who own the content.
+### Frontend and API Adjustments
+
+- Modify data fetching functions to respect visibility settings.
+- Update filters and search functionality to exclude `unlisted` and `private` content where appropriate.
 
 ## 5. Enable Commenting for Logged-In Users
 
 ### Database Setup
-- Create a new migration file: `migrations/[timestamp]_create_comments_table.sql`
-  - Define the `comments` table schema.
+
+- **Comments Table**:
+  - Fields: `id`, `user_id` (foreign key), `content`, `drill_id` or `plan_id` (foreign keys), `created_at`, `updated_at`.
+  - Create migrations to add the comments table.
 
 ### Implementation Details
-- Create new API routes for comments:
-  - `src/routes/api/comments/+server.ts`
-  - Implement CRUD operations for comments.
 
-- Update drill and practice plan detail pages:
-  - `src/routes/drills/[id]/+page.svelte`
-  - `src/routes/practice-plans/[id]/+page.svelte`
-  - Add a comment section with a form for logged-in users.
-  - Display existing comments with user information.
+- **API Routes**:
+  - Create routes for handling comments:
 
-## 6. Implement Favorites Functionality
+    ```javascript:src/routes/api/comments/+server.js
+    import { json } from '@sveltejs/kit';
+    import { authGuard } from '$lib/server/authGuard';
+    import { query } from '$lib/server/db';
+
+    export const GET = async ({ locals }) => {
+      // Fetch comments logic
+    };
+
+    export const POST = authGuard(async ({ request, locals }) => {
+      const session = await locals.getSession();
+      const data = await request.json();
+      // Create comment logic
+    });
+
+    // Similarly implement PUT and DELETE methods with authGuard
+    ```
+
+- **Frontend Components**:
+  - **Comments Section**:
+    - Create a `Comments.svelte` component to display comments and a form to add new comments.
+    - Ensure only logged-in users can add comments.
+  - **Integrate Comments Section**:
+    - Include the `Comments` component in drills and practice plans detail pages.
+
+## 6. Implement Voting System
 
 ### Database Setup
-- Create a new migration file: `migrations/[timestamp]_create_favorites_table.sql`
-  - Define the `favorites` table schema.
+
+- **Votes Table**:
+  - Fields: `id`, `user_id` (foreign key), `drill_id` or `plan_id` (foreign keys), `vote` (`1` for upvote, `-1` for downvote), `created_at`, `updated_at`.
+  - Create migrations to add the votes table.
+  - Enforce a unique constraint on `(user_id, drill_id)` and `(user_id, plan_id)` to prevent multiple votes by the same user on the same item.
 
 ### Implementation Details
-- Create new API routes for favorites:
-  - `src/routes/api/favorites/+server.ts`
-  - Implement adding and removing favorites.
 
-- Update drill and practice plan list and detail pages:
-  - `src/routes/drills/+page.svelte`
-  - `src/routes/practice-plans/+page.svelte`
-  - `src/routes/drills/[id]/+page.svelte`
-  - `src/routes/practice-plans/[id]/+page.svelte`
-  - Add favorite buttons and indicators.
-  - Implement filtering based on user favorites.
+- **API Routes**:
+  - Create routes for voting:
 
-## 7. Update the User Interface
+    ```javascript:src/routes/api/votes/+server.js
+    import { json } from '@sveltejs/kit';
+    import { authGuard } from '$lib/server/authGuard';
+    import { query } from '$lib/server/db';
+
+    export const POST = authGuard(async ({ request, locals }) => {
+      const session = await locals.getSession();
+      const data = await request.json();
+      // Vote logic (upvote/downvote)
+    });
+    ```
+
+- **Frontend Components**:
+  - **Voting Buttons**:
+    - Create an `UpvoteDownvote.svelte` component.
+
+      ```svelte:src/components/UpvoteDownvote.svelte
+      <script>
+        import { onMount } from 'svelte';
+        import { page } from '$app/stores';
+
+        export let itemId;
+        export let itemType; // 'drill' or 'plan'
+
+        let userVote = 0; // -1, 0, 1
+        let totalVotes = 0;
+
+        $: user = $page.data.session?.user;
+
+        async function fetchUserVote() {
+          // Fetch user's vote for this item
+        }
+
+        async function handleVote(voteValue) {
+          if (!user) {
+            // Prompt user to log in
+            return;
+          }
+          // Send vote to API
+        }
+
+        onMount(() => {
+          fetchUserVote();
+        });
+      </script>
+
+      <div class="flex items-center">
+        <button on:click={() => handleVote(1)} class:active={userVote === 1}>
+          Upvote
+        </button>
+        <span>{totalVotes}</span>
+        <button on:click={() => handleVote(-1)} class:active={userVote === -1}>
+          Downvote
+        </button>
+      </div>
+      ```
+
+  - **Integrate Voting Component**:
+    - Include the `UpvoteDownvote` component in drills and practice plans listings and detail pages.
+
+- **Data Aggregation**:
+  - Update queries to include vote counts where necessary.
+  - Consider caching vote totals for performance optimization.
+
+## 7. Implement Filtering Based on Votes
 
 ### Implementation Details
-- Update `src/routes/+layout.svelte`:
-  - Add login/logout buttons to the navigation bar.
-  - Display user avatar and name when logged in.
 
-- Create a new component: `src/lib/components/UserMenu.svelte`
-  - Implement a dropdown menu for logged-in users.
+- **Filter Panel Updates**:
+  - Add options to filter drills and practice plans based on voting status:
 
-- Update all relevant pages to include authentication-required action prompts:
-  - Use the `LoginPromptModal` component where necessary.
+    ```svelte:src/components/FilterPanel.svelte
+    <script>
+      export let showUpvoted = false;
+      export let hideDownvoted = false;
 
-## 8. Testing and Validation
+      // Add these to the binding context
+    </script>
+
+    <!-- Voting Filters -->
+    <div class="mt-4">
+      <label>
+        <input type="checkbox" bind:checked={showUpvoted} />
+        Show only upvoted items
+      </label>
+      <label>
+        <input type="checkbox" bind:checked={hideDownvoted} />
+        Hide downvoted items
+      </label>
+    </div>
+    ```
+
+- **Frontend Adjustments**:
+  - Update the `FilterPanel` component to include the new filtering options.
+  - Ensure that the filters are only available to logged-in users.
+
+- **Backend Adjustments**:
+  - Modify the data fetching functions to accept voting filters.
+  - Ensure the filters are applied correctly in queries.
+
+## 8. Update User Interface and Navigation
 
 ### Implementation Details
-- Create new test files:
-  - `tests/auth.test.js`
-  - `tests/user-management.test.js`
-  - `tests/comments.test.js`
-  - `tests/favorites.test.js`
 
-- Update existing test files to include authentication scenarios.
+- **User Profile and Settings**:
+  - Create a `UserProfile.svelte` component to display user information and manage settings.
+  - Provide options for users to view their content, comments, and votes.
 
-- Implement error handling and validation in all affected components and API routes.
+- **Header and Navigation**:
 
-- Update `src/hooks.server.ts` to include global error handling for authentication issues.
+  ```svelte:src/routes/Header.svelte
+  startLine: 4
+  endLine: 47
+  ```
 
-## Additional Considerations
+- **Content Cards**:
+  - Update drills and practice plans listings to display ownership, vote counts, and visibility status.
 
-- Ensure all sensitive operations are protected by server-side authentication checks.
-- Implement proper CSRF protection for all forms and API endpoints.
-- Use HTTPS in production to protect user data in transit.
-- Regularly update dependencies to patch any security vulnerabilities.
-- Implement rate limiting on authentication endpoints to prevent brute force attacks.
-- Consider implementing two-factor authentication for enhanced security.
+    ```svelte
+    <!-- src/routes/drills/+page.svelte -->
+    <!-- Existing code -->
+    <div class="flex items-center text-sm text-gray-500 mb-2">
+      <span>By {drill.created_by_name || 'Anonymous'}</span>
+      <span class="mx-2">•</span>
+      <span>{drill.visibility.charAt(0).toUpperCase() + drill.visibility.slice(1)}</span>
+    </div>
+    <!-- Include UpvoteDownvote component -->
+    <UpvoteDownvote itemId={drill.id} itemType="drill" />
+    ```
+
+## 9. Testing and Validation
+
+### Implementation Details
+
+- **Test Cases**:
+  - Update existing tests and add new ones to cover:
+    - Permission checks (edit/delete access).
+    - Visibility settings enforcement.
+    - Commenting functionality.
+    - Voting functionality and vote limits.
+    - Filtering based on votes.
+    - Anonymous vs. logged-in user behaviors.
+
+- **Error Handling**:
+  - Ensure proper error messages and statuses are returned for unauthorized actions.
+  - Validate user inputs on both client and server sides.
+
+- **Security Considerations**:
+  - Prevent SQL injection and other common vulnerabilities.
+  - Ensure that all authentication checks are performed server-side.
+
+## 10. Additional Considerations
+
+- **Privacy and Data Protection**:
+  - Comply with data protection regulations when handling user data.
+  - Allow users to delete their account and associated data.
+
+- **Performance Optimization**:
+  - Optimize database queries, especially for filtering and aggregating votes.
+  - Implement caching strategies where appropriate.
+
+- **Scalability**:
+  - Design the system to handle a growing number of users and content.
+
+- **User Experience**:
+  - Provide clear feedback to users when actions are successful or if errors occur.
+  - Ensure the interface is intuitive and accessible.

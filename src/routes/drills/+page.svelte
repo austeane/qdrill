@@ -105,7 +105,7 @@
       <a href="/drills/create" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors duration-300">
         Create Drill
       </a>
-      <a href="/practice-plan" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-300">
+      <a href="/practice-plans/create" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-300">
         Create Practice Plan with {$cart.length} Drill{ $cart.length !== 1 ? 's' : ''}
       </a>
     </div>

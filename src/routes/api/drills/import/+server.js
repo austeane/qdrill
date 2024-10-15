@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import pkg from 'pg';
 const { Pool } = pkg;
+import { v4 as uuidv4 } from 'uuid';
 
 // Initialize PostgreSQL pool using environment variables
 const pool = new Pool({
@@ -12,11 +13,14 @@ const pool = new Pool({
 
 export async function POST({ request }) {
   try {
-    const { drills } = await request.json();
+    const { drills, fileName } = await request.json();
 
     if (!Array.isArray(drills) || drills.length === 0) {
       return json({ error: 'No drills provided for import' }, { status: 400 });
     }
+
+    // Generate a unique upload_source ID
+    const uploadSource = `${fileName}_${Date.now()}_${uuidv4()}`;
 
     // Begin transaction
     const client = await pool.connect();
@@ -64,9 +68,10 @@ export async function POST({ request }) {
             positions_focused_on,
             video_link,
             images,
-            diagrams
+            diagrams,
+            upload_source
           ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
           )`,
           [
             name,
@@ -81,7 +86,8 @@ export async function POST({ request }) {
             positions_focused_on,
             video_link || null,
             images || [],
-            processedDiagrams
+            processedDiagrams,
+            uploadSource
           ]
         );
       });
@@ -89,7 +95,7 @@ export async function POST({ request }) {
       await Promise.all(insertPromises);
       await client.query('COMMIT');
 
-      return json({ importedCount: drills.length }, { status: 200 });
+      return json({ importedCount: drills.length, uploadSource }, { status: 200 });
     } catch (error) {
       await client.query('ROLLBACK');
       console.error('Error importing drills:', error);

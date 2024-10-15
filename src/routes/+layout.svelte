@@ -7,7 +7,7 @@
   import { SvelteToast } from '@zerodevx/svelte-toast';
   import FeedbackButton from '../components/FeedbackButton.svelte';
 
-  /** @type {import('./$types').LayoutServerData} */
+  /** @type {import('./$types').LayoutData} */
   export let data;
 
   // Remove the $: block that calls webVitals

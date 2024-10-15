@@ -63,6 +63,7 @@
 		"svelte-forms-lib": "^2.0.1",
 		"svelte-range-slider-pips": "^3.1.1",
 		"svelte-routing": "^2.13.0",
+		"uuid": "^10.0.0",
 		"yup": "^1.4.0"
 	},
 	"type": "module"

@@ -238,6 +238,11 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
         drill.errors.push(`Invalid drill types: ${invalidTypes.join(', ')}`);
       }
     }
+
+    // Add validation for detailed description if required
+    if (!drill.detailed_description || drill.detailed_description.trim() === '') {
+      drill.errors.push('Detailed description is required');
+    }
   }
 
   function removeDrill(index) {
@@ -260,7 +265,10 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
       const response = await fetch('/api/drills/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ drills: validDrills })
+        body: JSON.stringify({ 
+          drills: validDrills,
+          fileName: $uploadedFile ? $uploadedFile.name : 'manual_upload'
+        })
       });
 
       if (!response.ok) {
@@ -407,7 +415,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
   <div class="mb-6">
     <h2 class="text-2xl font-semibold mb-4">Parsed Drills</h2>
     <div class="space-y-6">
-      {#each filteredDrills as drill, index (drill.id)}
+      {#each filteredDrills as drill, index (index + '-' + drill.name)}
         <div class="border rounded-lg p-6 bg-white shadow-md {drill.errors.length > 0 ? 'border-yellow-500' : 'border-green-500'}">
           {#if drill.isEditing}
             <!-- Editable Fields -->
@@ -436,6 +444,21 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
               />
               {#if drill.errors.includes('Brief description is required')}
                 <p class="text-red-500 text-sm mt-1">Brief description is required</p>
+              {/if}
+            </div>
+
+            <div class="mb-4">
+              <label class="block text-gray-700 font-medium mb-1" for="detailed_description">Detailed Description</label>
+              <textarea
+                id="detailed_description"
+                bind:value={drill.detailed_description}
+                placeholder="Detailed Description"
+                class={`w-full px-3 py-2 border ${drill.errors.includes('Detailed description is required') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
+                on:input={() => validateDrill(drill)}
+                rows="4"
+              ></textarea>
+              {#if drill.errors.includes('Detailed description is required')}
+                <p class="text-red-500 text-sm mt-1">Detailed description is required</p>
               {/if}
             </div>
 
@@ -659,6 +682,9 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
             <!-- Display Fields (Always Visible) -->
             <h3 class="text-xl font-semibold mb-2">{drill.name}</h3>
             <p class="text-gray-700 mb-2">{drill.brief_description}</p>
+            {#if drill.detailed_description}
+              <p class="text-gray-600 mb-2"><strong>Detailed Description:</strong> {drill.detailed_description}</p>
+            {/if}
             <p class="text-gray-600 mb-1"><strong>Drill Type:</strong> {drill.drill_type.join(', ')}</p>
             <p class="text-gray-600 mb-1"><strong>Skill Level(s):</strong> {drill.skill_level.join(', ')}</p>
             {#if drill.complexity}

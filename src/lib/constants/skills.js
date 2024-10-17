@@ -23,7 +23,7 @@ export const PREDEFINED_SKILLS = [
     'Reaction time',
     'Strips',
     '2-2',
-    'Hoops/Bailor',
+    'Hoops/Baylor',
     'Interpositional',
     'Agility',
     'Speed',

@@ -1,5 +1,6 @@
 import { writable, derived } from 'svelte/store';
 import { PREDEFINED_SKILLS } from '$lib/constants/skills';
+import { selectedSortOption, selectedSortOrder } from './sortStore.js';
 
 // Data Store
 export const drills = writable([]);
@@ -147,11 +148,54 @@ export const totalPages = derived(
 );
 
 export const paginatedDrills = derived(
-  [filteredDrills, currentPage, drillsPerPage],
-  ([$filteredDrills, $currentPage, $drillsPerPage]) => {
+  [
+    filteredDrills,
+    currentPage,
+    drillsPerPage,
+    selectedSortOption,
+    selectedSortOrder
+  ],
+  (
+    [
+      $filteredDrills,
+      $currentPage,
+      $drillsPerPage,
+      $selectedSortOption,
+      $selectedSortOrder
+    ]
+  ) => {
+    // Sort the filtered drills
+    const sortedDrills = [...$filteredDrills].sort((a, b) => {
+      if (!$selectedSortOption) return 0;
+
+      let aValue = a[$selectedSortOption];
+      let bValue = b[$selectedSortOption];
+
+      // Handle nested properties if necessary
+      if ($selectedSortOption.includes('.')) {
+        const keys = $selectedSortOption.split('.');
+        aValue = keys.reduce((obj, key) => obj?.[key], a);
+        bValue = keys.reduce((obj, key) => obj?.[key], b);
+      }
+
+      // Special handling for created_at
+      if ($selectedSortOption === 'created_at') {
+        aValue = new Date(aValue);
+        bValue = new Date(bValue);
+      } else {
+        if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+        if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+      }
+
+      if (aValue < bValue) return $selectedSortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return $selectedSortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    // Paginate the sorted drills
     const start = ($currentPage - 1) * $drillsPerPage;
     const end = $currentPage * $drillsPerPage;
-    return $filteredDrills.slice(start, end);
+    return sortedDrills.slice(start, end);
   }
 );
 

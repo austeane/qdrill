@@ -4,8 +4,10 @@ import { createClient } from '@vercel/postgres';
 const client = createClient();
 await client.connect();
 
-export async function GET({ params }) {
+export async function GET({ params, locals }) {
   const id = params.id;
+  const session = await locals.getSession();
+  const userId = session?.user?.id;
 
   try {
     // Fetch the practice plan
@@ -19,6 +21,11 @@ export async function GET({ params }) {
     }
 
     const practicePlan = planResult.rows[0];
+
+    // Check visibility and ownership
+    if (practicePlan.visibility === 'private' && practicePlan.created_by !== userId) {
+      return json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     // Fetch items (drills and breaks) associated with this practice plan
     const itemsResult = await client.query(

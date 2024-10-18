@@ -3,6 +3,8 @@
     import { slide } from 'svelte/transition';
     import { ChevronDownIcon, ChevronUpIcon } from 'svelte-feather-icons';
     import Breadcrumb from '../../../components/Breadcrumb.svelte';
+    import Comments from '$components/Comments.svelte';
+    import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
   
     export let data;
     const { practicePlan } = data;
@@ -182,3 +184,9 @@
         </div>
     </section>
 </div>
+
+<!-- Add Voting Section -->
+<UpvoteDownvote practicePlanId={practicePlan.id} />
+
+<!-- Add Comments Section -->
+<Comments practicePlanId={practicePlan.id} />

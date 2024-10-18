@@ -5,6 +5,7 @@
   import { tick } from 'svelte';
   import { onMount } from 'svelte';
   import { SvelteToast, toast } from '@zerodevx/svelte-toast';
+  import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
 
   // Import stores
   import {
@@ -59,6 +60,15 @@
     return acc;
   }, {});
 
+  // Define sort options for drills
+  const sortOptions = [
+    { value: '', label: 'Default' },
+    { value: 'name', label: 'Name' },
+    { value: 'complexity', label: 'Complexity' },
+    { value: 'suggested_length', label: 'Suggested Length' },
+    { value: 'created_at', label: 'Date Created' }
+  ];
+
   // Functions to navigate pages
   function nextPage() {
     if ($currentPage < $totalPages) {
@@ -90,6 +100,38 @@
     setTimeout(() => {
       buttonStates = { ...buttonStates, [drill.id]: isInCart ? null : 'in-cart' };
     }, 500);
+  }
+
+  import { slide } from 'svelte/transition';
+
+  let showSortOptions = false;
+  let sortOptionsRef;
+
+  onMount(() => {
+    const handleClickOutside = (event) => {
+      if (sortOptionsRef && !sortOptionsRef.contains(event.target)) {
+        showSortOptions = false;
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  });
+
+  function toggleSortOptions(event) {
+    event.stopPropagation();
+    showSortOptions = !showSortOptions;
+  }
+
+  function handleSortChange(event) {
+    selectedSortOption.set(event.target.value);
+  }
+
+  function toggleSortOrder() {
+    selectedSortOrder.update(order => order === 'asc' ? 'desc' : 'asc');
   }
 </script>
 
@@ -124,14 +166,51 @@
     {drillTypes}
   />
 
-  <!-- Search Input -->
-  <input
-    type="text"
-    placeholder="Search drills..."
-    class="mb-6 w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-    bind:value={$searchQuery}
-    aria-label="Search drills"
-  />
+  <!-- Sorting Section and Search Input -->
+  <div class="mb-6 flex items-center space-x-4">
+    <div class="relative">
+      <button
+        class="px-4 py-2 bg-gray-100 rounded-lg shadow-sm hover:bg-gray-200 transition-colors duration-300 flex items-center"
+        on:click={toggleSortOptions}
+      >
+        <span class="font-semibold mr-2">Sort</span>
+        <span class="transform transition-transform duration-300" class:rotate-180={showSortOptions}>▼</span>
+      </button>
+      {#if showSortOptions}
+        <div 
+          bind:this={sortOptionsRef}
+          transition:slide="{{ duration: 300 }}" 
+          class="absolute left-0 mt-2 p-4 bg-white border border-gray-200 rounded-lg shadow-sm z-10"
+        >
+          <div class="flex flex-col space-y-2">
+            <select
+              class="p-2 border border-gray-300 rounded-md bg-white"
+              on:change={handleSortChange}
+              value={$selectedSortOption}
+            >
+              {#each sortOptions as option}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </select>
+            <button
+              class="px-4 py-2 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors duration-300"
+              on:click={toggleSortOrder}
+            >
+              {$selectedSortOrder === 'asc' ? '↑ Ascending' : '↓ Descending'}
+            </button>
+          </div>
+        </div>
+      {/if}
+    </div>
+
+    <input
+      type="text"
+      placeholder="Search drills..."
+      class="flex-grow p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      bind:value={$searchQuery}
+      aria-label="Search drills"
+    />
+  </div>
 
   <!-- Loading and Empty States -->
   {#if $filteredDrills === undefined}
@@ -203,6 +282,5 @@
     {/if}
   {/if}
 </div>
-
 <!-- Toast Notifications -->
 <SvelteToast />

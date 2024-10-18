@@ -4,16 +4,35 @@ import { createClient } from '@vercel/postgres';
 const client = createClient();
 await client.connect();
 
-export async function GET({ params }) {
+export async function GET({ params, locals }) {
     const { id } = params;
-    const drillId = parseInt(id, 10);
+    const session = await locals.getSession();
+    const userId = session?.user?.id;
+
     try {
-        const result = await client.query('SELECT * FROM drills WHERE id = $1', [drillId]);
+        const result = await client.query(
+            'SELECT * FROM drills WHERE id = $1',
+            [id]
+        );
+
         if (result.rows.length > 0) {
-            const data = result.rows[0];
-            data.comments = Array.isArray(data.comments) ? data.comments : [];
-            data.images = Array.isArray(data.images) ? data.images : [];
-            data.diagrams = Array.isArray(data.diagrams) ? data.diagrams.map(diagram => {
+            const drill = result.rows[0];
+
+            // Check visibility and ownership
+            if (
+                drill.visibility === 'private' &&
+                drill.created_by !== userId
+            ) {
+                return json(
+                    { error: 'Unauthorized' },
+                    { status: 403 }
+                );
+            }
+
+            // Process drill data
+            drill.comments = Array.isArray(drill.comments) ? drill.comments : [];
+            drill.images = Array.isArray(drill.images) ? drill.images : [];
+            drill.diagrams = Array.isArray(drill.diagrams) ? drill.diagrams.map(diagram => {
                 try {
                     return typeof diagram === 'string' ? JSON.parse(diagram) : diagram;
                 } catch (e) {
@@ -21,12 +40,12 @@ export async function GET({ params }) {
                     return null;
                 }
             }).filter(diagram => diagram !== null) : [];
-            return json(data);
+            return json(drill);
         } else {
-            return json({ error: `Drill with ID ${drillId} not found` }, { status: 404 });
+            return json({ error: `Drill with ID ${id} not found` }, { status: 404 });
         }
     } catch (error) {
-        console.error(`Error occurred while fetching drill with ID ${drillId}:`, error);
+        console.error(`Error occurred while fetching drill with ID ${id}:`, error);
         return json({ error: 'An error occurred while fetching the drill', details: error.toString() }, { status: 500 });
     }
 }

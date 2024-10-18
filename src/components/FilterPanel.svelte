@@ -15,6 +15,7 @@
     } from '$lib/stores/drillsStore';
     import { debounce } from 'lodash-es';
     import { onMount, onDestroy } from 'svelte';
+    import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
   
     export let customClass = '';
     export let filterType = 'drills'; // New prop to determine filter context
@@ -230,6 +231,16 @@
           return [...selected, value];
         }
       });
+    }
+  
+    export let sortOptions = [];
+  
+    function handleSortChange(event) {
+      selectedSortOption.set(event.target.value);
+    }
+  
+    function toggleSortOrder() {
+      selectedSortOrder.update(order => order === 'asc' ? 'desc' : 'asc');
     }
 </script>
 
@@ -696,6 +707,30 @@
         </div>
       {/if}
     </div>
+{/if}
+
+<!-- Sort By Control -->
+{#if sortOptions.length > 0}
+  <div class="relative">
+    <select
+      class="appearance-none bg-gray-100 border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
+      on:change={handleSortChange}
+    >
+      <option value="">Sort by...</option>
+      {#each sortOptions as option}
+        <option value={option.value}>{option.label}</option>
+      {/each}
+    </select>
+    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+      <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+    </div>
+  </div>
+  <button
+    class="inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 bg-gray-100 text-gray-700 hover:bg-gray-200"
+    on:click={toggleSortOrder}
+  >
+    {$selectedSortOrder === 'asc' ? 'Ascending' : 'Descending'}
+  </button>
 {/if}
 
 <!-- Overlay to close dropdown when clicking outside -->

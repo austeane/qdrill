@@ -1,12 +1,25 @@
 import { json } from '@sveltejs/kit';
 import { createClient } from '@vercel/postgres';
+import { authGuard } from '$lib/server/authGuard';
 
 const client = createClient();
 await client.connect();
 
-export async function POST({ request }) {
+export const POST = authGuard(async ({ request, locals }) => {
   const practicePlan = await request.json();
-  const { name, description, drills, practice_goals, phase_of_season, estimated_number_of_participants } = practicePlan;
+  const session = await locals.getSession();
+  const userId = session.user.id;
+
+  const {
+    name,
+    description,
+    drills,
+    practice_goals,
+    phase_of_season,
+    estimated_number_of_participants,
+    is_editable_by_others = false,
+    visibility = 'public'
+  } = practicePlan;
   
   if (!name || !drills || !Array.isArray(drills) || drills.length === 0) {
     return json(
@@ -33,9 +46,18 @@ export async function POST({ request }) {
     await client.query('BEGIN');
 
     const planResult = await client.query(
-      `INSERT INTO practice_plans (name, description, practice_goals, phase_of_season, estimated_number_of_participants) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [name, description, practice_goals, phase_of_season, estimated_number_of_participants]
+      `INSERT INTO practice_plans (name, description, practice_goals, phase_of_season, estimated_number_of_participants, created_by, is_editable_by_others, visibility) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [
+        name,
+        description,
+        practice_goals,
+        phase_of_season,
+        estimated_number_of_participants,
+        userId,
+        is_editable_by_others,
+        visibility
+      ]
     );
 
     const planId = planResult.rows[0].id;
@@ -76,9 +98,12 @@ export async function POST({ request }) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function GET() {
+export const GET = authGuard(async ({ locals }) => {
+  const session = await locals.getSession();
+  const userId = session?.user?.id;
+
   try {
     const result = await client.query(`
       SELECT pp.*, 
@@ -92,7 +117,19 @@ export async function GET() {
       GROUP BY pp.id
       ORDER BY pp.created_at DESC
     `);
-    return json(result.rows);
+    
+    const filteredPlans = result.rows.filter(plan => {
+      if (plan.visibility === 'public') {
+        return true;
+      } else if (plan.visibility === 'unlisted') {
+        return true; // Include unlisted plans
+      } else if (plan.visibility === 'private') {
+        return plan.created_by === userId;
+      }
+      return false;
+    });
+
+    return json(filteredPlans);
   } catch (error) {
     console.error('Error occurred while fetching practice plans:', error);
     return json(
@@ -100,4 +137,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});

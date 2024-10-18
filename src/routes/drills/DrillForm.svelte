@@ -23,7 +23,9 @@
     video_link: '',
     images: [],
     diagrams: [],
-    drill_type: []
+    drill_type: [],
+    is_editable_by_others: false,
+    visibility: 'public'
   };
 
   let name = writable(drill.name ?? '');
@@ -47,6 +49,8 @@
   })) ?? []);
   let diagrams = writable(drill.diagrams?.length > 0 ? drill.diagrams : [null]);
   let drill_type = writable(drill.drill_type ?? []);
+  let is_editable_by_others = writable(drill.is_editable_by_others ?? false);
+  let visibility = writable(drill.visibility ?? 'public');
 
   let errors = writable({});
   let numberWarnings = writable({});
@@ -191,9 +195,7 @@
         typeof skill.skill === 'string' && skill.skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill.skill)
       ));
     } else {
-      modalSkillSuggestions.set($allSkills.filter(skill => 
-        typeof skill.skill === 'string' && !$selectedSkills.includes(skill.skill)
-      ));
+      modalSkillSuggestions.set($allSkills.filter(skill => !$selectedSkills.includes(skill)));
     }
   }
 
@@ -293,7 +295,9 @@
       video_link: $video_link,
       images: $images.map(img => img.file),
       diagrams: $diagrams,
-      drill_type: $drill_type
+      drill_type: $drill_type,
+      is_editable_by_others: $is_editable_by_others,
+      visibility: $visibility
     };
 
     const response = await fetch(url, {
@@ -577,6 +581,32 @@
           <div class="flex flex-col">
             <label for="video_link" class="mb-1 text-sm font-medium text-gray-700">Video Link:</label>
             <input id="video_link" bind:value={$video_link} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+
+          <!-- Visibility Field -->
+          <div class="flex flex-col">
+            <label class="mb-1 text-sm font-medium text-gray-700">Visibility:</label>
+            <select bind:value={$visibility} class="p-2 border rounded-md">
+              <option value="public">Public</option>
+              <option value="unlisted">Unlisted</option>
+              <option value="private">Private</option>
+            </select>
+          </div>
+
+          <!-- Is Editable by Others Field -->
+          <div class="flex items-center">
+            <input
+              id="editable_by_others"
+              type="checkbox"
+              bind:checked={$is_editable_by_others}
+              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label
+              for="editable_by_others"
+              class="ml-2 block text-sm text-gray-700"
+            >
+              Allow others to edit this drill
+            </label>
           </div>
 
           <button

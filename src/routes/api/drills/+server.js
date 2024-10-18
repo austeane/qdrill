@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { createClient } from '@vercel/postgres';
+import { authGuard } from '$lib/server/authGuard';
 
 const client = createClient();
 await client.connect();
@@ -22,16 +23,34 @@ async function updateSkills(skills, drillId) {
   }
 }
 
-export async function POST({ request }) {
-    const drill = await request.json();
-    let { name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams, drill_type } = drill;
+export const POST = authGuard(async (event) => {
+    const drill = await event.request.json();
+    const session = await event.locals.getSession();
+    const userId = session.user.id;
+    let {
+        name,
+        brief_description,
+        detailed_description,
+        skill_level,
+        complexity,
+        suggested_length,
+        number_of_people_min,
+        number_of_people_max,
+        skills_focused_on,
+        positions_focused_on,
+        video_link,
+        images,
+        diagrams,
+        drill_type,
+        is_editable_by_others = false,
+        visibility = 'public'
+    } = drill;
 
     if (!Array.isArray(diagrams)) {
         diagrams = diagrams ? [diagrams] : [];
     }
 
     diagrams = diagrams.map(diagram => JSON.stringify(diagram));
-
 
     if (typeof skill_level === 'string') {
         skill_level = [skill_level];
@@ -58,11 +77,13 @@ export async function POST({ request }) {
             `INSERT INTO drills (
                 name, brief_description, detailed_description, skill_level, complexity,
                 suggested_length, number_of_people_min, number_of_people_max, skills_focused_on,
-                positions_focused_on, video_link, images, diagrams, drill_type
+                positions_focused_on, video_link, images, diagrams, drill_type,
+                created_by, is_editable_by_others, visibility
             ) VALUES (
                 $1, $2, $3, $4, $5,
                 $6, $7, $8, $9,
-                $10, $11, $12, $13, $14
+                $10, $11, $12, $13, $14,
+                $15, $16, $17
             ) RETURNING id`,
             [
                 name,
@@ -79,6 +100,9 @@ export async function POST({ request }) {
                 images,
                 diagrams,
                 drill_type,
+                userId,
+                is_editable_by_others,
+                visibility
             ]
         );
         
@@ -90,11 +114,24 @@ export async function POST({ request }) {
         console.error('Error occurred while inserting drill:', error);
         return json({ error: 'An error occurred while creating the drill', details: error.toString() }, { status: 500 });
     }
-}
-export async function GET() {
+});
+
+export const GET = authGuard(async (event) => {
+    const session = await event.locals.getSession();
+    const userId = session?.user?.id;
+
     try {
         const result = await client.query('SELECT * FROM drills');
-        const drills = result.rows.map(drill => ({
+        const drills = result.rows.filter(drill => {
+            if (drill.visibility === 'public') {
+                return true;
+            } else if (drill.visibility === 'unlisted') {
+                return true; // Include unlisted drills
+            } else if (drill.visibility === 'private') {
+                return drill.created_by === userId;
+            }
+            return false;
+        }).map(drill => ({
             ...drill,
             diagrams: drill.diagrams || [], // Ensure diagrams are included
             min_duration: drill.min_duration || 5, // Default min_duration
@@ -106,15 +143,45 @@ export async function GET() {
         console.error('Error fetching drills:', error);
         return json({ error: 'Failed to fetch drills' }, { status: 500 });
     }
-}
-export async function PUT({ request }) {
-  const drill = await request.json();
-  let { id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams, drill_type } = drill;
+});
 
-  try {
-    // First, get the existing skills for this drill
-    const existingSkillsResult = await client.query('SELECT skills_focused_on FROM drills WHERE id = $1', [id]);
-    const existingSkills = existingSkillsResult.rows[0].skills_focused_on;
+export const PUT = authGuard(async ({ request, locals }) => {
+    const drill = await request.json();
+    const session = await locals.getSession();
+    const userId = session.user.id;
+
+    const { id } = drill;
+
+    // Check if the user is the owner or if the drill is editable by others
+    const { rows } = await client.query(
+        `SELECT created_by, is_editable_by_others FROM drills WHERE id = $1`,
+        [id]
+    );
+
+    const drillData = rows[0];
+
+    if (drillData.created_by !== userId && !drillData.is_editable_by_others) {
+        return json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    let {
+        name,
+        brief_description,
+        detailed_description,
+        skill_level,
+        complexity,
+        suggested_length,
+        number_of_people_min,
+        number_of_people_max,
+        skills_focused_on,
+        positions_focused_on,
+        video_link,
+        images,
+        diagrams,
+        drill_type,
+        is_editable_by_others,
+        visibility
+    } = drill;
 
     if (!Array.isArray(diagrams)) {
         diagrams = diagrams ? [diagrams] : [];
@@ -125,37 +192,44 @@ export async function PUT({ request }) {
         drill_type = [drill_type];
     }
 
-    // Update the drill
-    const result = await client.query(
-      `UPDATE drills SET 
-       name = $2, brief_description = $3, detailed_description = $4, skill_level = $5, 
-       complexity = $6, suggested_length = $7, number_of_people_min = $8, number_of_people_max = $9, 
-       skills_focused_on = $10, positions_focused_on = $11, video_link = $12, images = $13, diagrams = $14, drill_type = $15
-       WHERE id = $1 RETURNING *`,
-      [id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, 
-       number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams, drill_type]
-    );
+    try {
+        // First, get the existing skills for this drill
+        const existingSkillsResult = await client.query('SELECT skills_focused_on FROM drills WHERE id = $1', [id]);
+        const existingSkills = existingSkillsResult.rows[0].skills_focused_on;
 
-    // Update skills
-    const skillsToRemove = existingSkills.filter(skill => !skills_focused_on.includes(skill));
-    const skillsToAdd = skills_focused_on.filter(skill => !existingSkills.includes(skill));
+        // Update the drill
+        const result = await client.query(
+          `UPDATE drills SET 
+           name = $2, brief_description = $3, detailed_description = $4, skill_level = $5, 
+           complexity = $6, suggested_length = $7, number_of_people_min = $8, number_of_people_max = $9, 
+           skills_focused_on = $10, positions_focused_on = $11, video_link = $12, images = $13, diagrams = $14, drill_type = $15,
+           is_editable_by_others = $16, visibility = $17
+           WHERE id = $1 RETURNING *`,
+          [id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, 
+           number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams, drill_type,
+           is_editable_by_others, visibility]
+        );
 
-    // Remove skills no longer used in this drill
-    for (const skill of skillsToRemove) {
-      await client.query(
-        `UPDATE skills SET 
-         drills_used_in = drills_used_in - 1
-         WHERE skill = $1`,
-        [skill]
-      );
+        // Update skills
+        const skillsToRemove = existingSkills.filter(skill => !skills_focused_on.includes(skill));
+        const skillsToAdd = skills_focused_on.filter(skill => !existingSkills.includes(skill));
+
+        // Remove skills no longer used in this drill
+        for (const skill of skillsToRemove) {
+          await client.query(
+            `UPDATE skills SET 
+             drills_used_in = drills_used_in - 1
+             WHERE skill = $1`,
+            [skill]
+          );
+        }
+
+        // Add new skills used in this drill
+        await updateSkills(skillsToAdd, id);
+
+        return json(result.rows[0]);
+    } catch (error) {
+        console.error('Error occurred while updating drill:', error);
+        return json({ error: 'An error occurred while updating the drill', details: error.toString() }, { status: 500 });
     }
-
-    // Add new skills used in this drill
-    await updateSkills(skillsToAdd, id);
-
-    return json(result.rows[0]);
-  } catch (error) {
-    console.error('Error occurred while updating drill:', error);
-    return json({ error: 'An error occurred while updating the drill', details: error.toString() }, { status: 500 });
-  }
-}
+});

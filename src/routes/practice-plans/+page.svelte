@@ -6,6 +6,7 @@
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
     import debounce from 'lodash/debounce';
+    import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
 
     export let data;
 
@@ -144,6 +145,28 @@
         showEmptyCartModal = false;
         goto('/drills');
     }
+
+    // Define sort options for practice plans
+    const sortOptions = [
+      { value: 'name', label: 'Name' },
+      { value: 'created_at', label: 'Date Created' },
+      { value: 'estimated_number_of_participants', label: 'Estimated Participants' }
+    ];
+
+    // Reactive sorting
+    $: sortedPlans = [...filteredPlans].sort((a, b) => {
+      if (!$selectedSortOption) return 0;
+      
+      let aValue = a[$selectedSortOption];
+      let bValue = b[$selectedSortOption];
+      
+      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+      
+      if (aValue < bValue) return $selectedSortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return $selectedSortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
 </script>
 
 <!-- Add this modal at the beginning of your template -->
@@ -201,6 +224,7 @@
         {selectedDrills}
         onDrillSelect={handleDrillSelect}
         onDrillRemove={handleDrillRemove}
+        {sortOptions}
     />
 
     <!-- Search input -->
@@ -213,7 +237,7 @@
 
     <!-- Practice Plans Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {#each filteredPlans as plan}
+        {#each sortedPlans as plan}
             <div
                 class="border border-gray-200 p-6 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 cursor-pointer"
             >

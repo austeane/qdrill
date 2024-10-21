@@ -178,8 +178,8 @@ export const paginatedDrills = derived(
         bValue = keys.reduce((obj, key) => obj?.[key], b);
       }
 
-      // Special handling for created_at
-      if ($selectedSortOption === 'created_at') {
+      // Special handling for dateCreated
+      if ($selectedSortOption === 'dateCreated') {
         aValue = new Date(aValue);
         bValue = new Date(bValue);
       } else {

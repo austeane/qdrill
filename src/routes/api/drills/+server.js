@@ -116,34 +116,36 @@ export const POST = authGuard(async (event) => {
     }
 });
 
-export const GET = authGuard(async (event) => {
-    const session = await event.locals.getSession();
-    const userId = session?.user?.id;
+export const GET = async (event) => {
+  // Get session if available
+  const session = await event.locals.getSession();
+  const userId = session?.user?.id;
 
-    try {
-        const result = await client.query('SELECT * FROM drills');
-        const drills = result.rows.filter(drill => {
-            if (drill.visibility === 'public') {
-                return true;
-            } else if (drill.visibility === 'unlisted') {
-                return true; // Include unlisted drills
-            } else if (drill.visibility === 'private') {
-                return drill.created_by === userId;
-            }
-            return false;
-        }).map(drill => ({
-            ...drill,
-            diagrams: drill.diagrams || [], // Ensure diagrams are included
-            min_duration: drill.min_duration || 5, // Default min_duration
-            max_duration: drill.max_duration || 15, // Default max_duration
-            suggested_length: drill.suggested_length || Math.floor((drill.min_duration + drill.max_duration) / 2)
-        }));
-        return json(drills);
-    } catch (error) {
-        console.error('Error fetching drills:', error);
-        return json({ error: 'Failed to fetch drills' }, { status: 500 });
-    }
-});
+  try {
+    const result = await client.query('SELECT * FROM drills');
+    const drills = result.rows.filter(drill => {
+      if (drill.visibility === 'public') {
+        return true;
+      } else if (drill.visibility === 'unlisted') {
+        return true; // Include unlisted drills
+      } else if (drill.visibility === 'private') {
+        return drill.created_by === userId;
+      }
+      return false;
+    }).map(drill => ({
+      ...drill,
+      dateCreated: drill.date_created, // Add this line
+      diagrams: drill.diagrams || [],
+      min_duration: drill.min_duration || 5,
+      max_duration: drill.max_duration || 15,
+      suggested_length: drill.suggested_length || Math.floor((drill.min_duration + drill.max_duration) / 2)
+    }));
+    return json(drills);
+  } catch (error) {
+    console.error('Error fetching drills:', error);
+    return json({ error: 'Failed to fetch drills' }, { status: 500 });
+  }
+};
 
 export const PUT = authGuard(async ({ request, locals }) => {
     const drill = await request.json();

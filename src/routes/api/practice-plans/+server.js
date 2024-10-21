@@ -100,11 +100,13 @@ export const POST = authGuard(async ({ request, locals }) => {
   }
 });
 
-export const GET = authGuard(async ({ locals }) => {
+export const GET = async ({ locals }) => {
+  // Get session if available
   const session = await locals.getSession();
   const userId = session?.user?.id;
 
   try {
+    // Fetch practice plans from the database
     const result = await client.query(`
       SELECT pp.*, 
              pp.practice_goals,
@@ -117,7 +119,8 @@ export const GET = authGuard(async ({ locals }) => {
       GROUP BY pp.id
       ORDER BY pp.created_at DESC
     `);
-    
+
+    // Filter practice plans based on visibility and ownership
     const filteredPlans = result.rows.filter(plan => {
       if (plan.visibility === 'public') {
         return true;
@@ -137,4 +140,4 @@ export const GET = authGuard(async ({ locals }) => {
       { status: 500 }
     );
   }
-});
+};

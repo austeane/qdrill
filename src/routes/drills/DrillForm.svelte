@@ -6,7 +6,9 @@
   import { dndzone } from 'svelte-dnd-action';
   import { PREDEFINED_SKILLS } from '$lib/constants/skills';
   import { allSkills, sortedSkills } from '$lib/stores/drillsStore';
-
+  import { page } from '$app/stores';
+  import { signIn } from '@auth/sveltekit/client';
+  import { toast } from '@zerodevx/svelte-toast'
   // Initialize stores
   export let drill = {
     id: null,
@@ -62,8 +64,8 @@
   let modalSkillSuggestions = writable([]);
 
   $: filteredSkills = $allSkills.filter(skill => 
-    typeof skill === 'string' && skill.toLowerCase().includes($skillSearchTerm.toLowerCase()) && 
-    !$selectedSkills.includes(skill)
+    typeof skill.skill === 'string' && skill.skill.toLowerCase().includes($skillSearchTerm.toLowerCase()) && 
+    !$selectedSkills.includes(skill.skill)
   );
 
 
@@ -150,7 +152,8 @@
     const input = $newSkill.toLowerCase();
     if (input.length > 0) {
       skillSuggestions.set($allSkills.filter(skill => 
-        typeof skill.skill === 'string' && skill.skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill.skill)
+        typeof skill.skill === 'string' && skill.skill.toLowerCase().includes(input) && 
+        !$selectedSkills.includes(skill.skill)
       ));
     } else {
       skillSuggestions.set([]);
@@ -192,10 +195,11 @@
     const input = $modalSkillSearchTerm.toLowerCase();
     if (input.length > 0) {
       modalSkillSuggestions.set($allSkills.filter(skill => 
-        typeof skill.skill === 'string' && skill.skill.toLowerCase().includes(input) && !$selectedSkills.includes(skill.skill)
+        typeof skill.skill === 'string' && skill.skill.toLowerCase().includes(input) && 
+        !$selectedSkills.includes(skill.skill)
       ));
     } else {
-      modalSkillSuggestions.set($allSkills.filter(skill => !$selectedSkills.includes(skill)));
+      modalSkillSuggestions.set($allSkills.filter(skill => !$selectedSkills.includes(skill.skill)));
     }
   }
 
@@ -214,8 +218,8 @@
   }
 
   function selectSkillFromModal(skill) {
-    if (!$selectedSkills.includes(skill)) {
-      selectedSkills.update(skills => [...skills, skill]);
+    if (!$selectedSkills.includes(skill.skill)) {
+      selectedSkills.update(skills => [...skills, skill.skill]);
     }
   }
 
@@ -277,45 +281,133 @@
 
     if (!validateForm()) return;
 
-    const method = drill.id ? 'PUT' : 'POST';
-    const url = drill.id ? `/api/drills/${drill.id}` : '/api/drills';
+    // If not logged in and trying to create private/unlisted drill
+    if (!$page.data.session && $visibility !== 'public') {
+      const confirmed = confirm(
+        `Log in to create a ${$visibility} drill.\n\n` +
+        'Click OK to log in with Google\n' +
+        'Click Cancel to create as public instead'
+      );
+      
+      if (confirmed) {
+        // Store form data in sessionStorage
+        const formData = {
+          name: $name,
+          brief_description: $brief_description,
+          detailed_description: $detailed_description,
+          skill_level: $skill_level,
+          complexity: $complexity,
+          suggested_length: $suggested_length,
+          number_of_people_min: $number_of_people_min,
+          number_of_people_max: $number_of_people_max,
+          skills_focused_on: $selectedSkills,
+          positions_focused_on: $positions_focused_on,
+          video_link: $video_link,
+          diagrams: $diagrams,
+          drill_type: $drill_type,
+          visibility: $visibility,
+          is_editable_by_others: $is_editable_by_others
+        };
+        sessionStorage.setItem('pendingDrillData', JSON.stringify(formData));
+        await signIn('google');
+        return;
+      } else {
+        $visibility = 'public';
+      }
+    }
 
-    const drillData = {
-      ...drill,
-      name: $name,
-      brief_description: $brief_description,
-      detailed_description: $detailed_description,
-      skill_level: $skill_level,
-      complexity: $complexity,
-      suggested_length: $suggested_length,
-      number_of_people_min: $number_of_people_min || null,
-      number_of_people_max: $number_of_people_max || null,
-      skills_focused_on: $selectedSkills,
-      positions_focused_on: $positions_focused_on,
-      video_link: $video_link,
-      images: $images.map(img => img.file),
-      diagrams: $diagrams,
-      drill_type: $drill_type,
-      is_editable_by_others: $is_editable_by_others,
-      visibility: $visibility
-    };
+    // If not logged in, force is_editable_by_others to true
+    if (!$page.data.session) {
+      $is_editable_by_others = true;
+    }
 
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(drillData)
-    });
+    try {
+      const method = drill.id ? 'PUT' : 'POST';
+      const url = drill.id ? `/api/drills/${drill.id}` : '/api/drills';
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: $name,
+          brief_description: $brief_description,
+          detailed_description: $detailed_description,
+          skill_level: $skill_level,
+          complexity: $complexity,
+          suggested_length: $suggested_length,
+          number_of_people_min: $number_of_people_min,
+          number_of_people_max: $number_of_people_max,
+          skills_focused_on: $selectedSkills,
+          positions_focused_on: $positions_focused_on,
+          video_link: $video_link,
+          diagrams: $diagrams,
+          drill_type: $drill_type,
+          is_editable_by_others: $is_editable_by_others,
+          visibility: $visibility
+        })
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      goto(`/drills/${data.id}`);
-    } else {
-      const errorText = await response.text();
-      console.error('Error submitting drill:', errorText);
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const result = await response.json();
+
+      // After successful submission for non-logged in users
+      if (!$page.data.session) {
+        const confirmed = confirm(
+          'Would you like to log in so that you can own this drill?\n\n' +
+          'Click OK to log in with Google\n' +
+          'Click Cancel to continue without logging in'
+        );
+
+        if (confirmed) {
+          sessionStorage.setItem('drillToAssociate', result.id);
+          await signIn('google');
+          return;
+        }
+      }
+
+      toast.push('Drill saved successfully!');
+      goto(`/drills/${result.id}`);
+    } catch (error) {
+      console.error('Error submitting drill:', error);
+      toast.push('Error saving drill. Please try again.', {
+        theme: {
+          '--toastBackground': '#F56565',
+          '--toastColor': 'white',
+        }
+      });
     }
   }
+
+  // Add this to restore form data after login
+  onMount(() => {
+    const pendingData = sessionStorage.getItem('pendingDrillData');
+    if (pendingData) {
+      const data = JSON.parse(pendingData);
+      // Restore all the form values
+      name.set(data.name);
+      brief_description.set(data.brief_description);
+      detailed_description.set(data.detailed_description);
+      skill_level.set(data.skill_level);
+      complexity.set(data.complexity);
+      suggested_length.set(data.suggested_length);
+      number_of_people_min.set(data.number_of_people_min);
+      number_of_people_max.set(data.number_of_people_max);
+      selectedSkills.set(data.skills_focused_on);
+      positions_focused_on.set(data.positions_focused_on);
+      video_link.set(data.video_link);
+      images.set(data.images);
+      diagrams.set(data.diagrams);
+      drill_type.set(data.drill_type);
+      is_editable_by_others.set(data.is_editable_by_others);
+      visibility.set(data.visibility);
+
+      // Clear the stored data
+      sessionStorage.removeItem('pendingDrillData');
+    }
+  });
 
   function toggleSelection(store, value) {
     store.update(selected => {
@@ -586,11 +678,19 @@
           <!-- Visibility Field -->
           <div class="flex flex-col">
             <label class="mb-1 text-sm font-medium text-gray-700">Visibility:</label>
-            <select bind:value={$visibility} class="p-2 border rounded-md">
+            <select 
+              bind:value={$visibility} 
+              class="p-2 border rounded-md" 
+              disabled={!$page.data.session}
+              title={!$page.data.session ? 'Log in to create private or unlisted drills' : ''}
+            >
               <option value="public">Public</option>
               <option value="unlisted">Unlisted</option>
               <option value="private">Private</option>
             </select>
+            {#if !$page.data.session}
+              <p class="text-sm text-gray-500 mt-1">Log in to create private or unlisted drills</p>
+            {/if}
           </div>
 
           <!-- Is Editable by Others Field -->
@@ -599,6 +699,7 @@
               id="editable_by_others"
               type="checkbox"
               bind:checked={$is_editable_by_others}
+              disabled={!$page.data.session}
               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
             <label
@@ -606,6 +707,9 @@
               class="ml-2 block text-sm text-gray-700"
             >
               Allow others to edit this drill
+              {#if !$page.data.session}
+                <span class="text-gray-500">(required for anonymous submissions)</span>
+              {/if}
             </label>
           </div>
 
@@ -632,7 +736,7 @@
             on:moveDown={() => handleMoveDown(index)}
             id={`diagram-canvas-${index}`} 
             data={diagram} 
-            index={index}
+            index={index} 
             showSaveButton={true} 
           />
           <div class="mt-2 flex justify-between">
@@ -735,6 +839,8 @@
   </div>
 {/if}
 
+<div class="toastContainer" />
+
 <style>
   /* Optional: Customize scrollbar for better UX */
   ::-webkit-scrollbar {
@@ -766,5 +872,13 @@
     resize: vertical;
     max-height: 300px;
     transition: height 0.1s ease-out;
+  }
+
+  /* Add toast container styles */
+  :global(.toastContainer) {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 9999;
   }
 </style>

@@ -1,10 +1,12 @@
-import { redirect } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 
 export function authGuard(handler) {
   return async (event) => {
     const session = await event.locals.getSession();
     if (!session?.user) {
-      throw redirect(303, '/login');
+      throw error(401, {
+        message: 'Unauthorized - Please sign in with Google to continue'
+      });
     }
     return handler(event);
   };

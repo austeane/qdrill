@@ -91,3 +91,65 @@ export async function GET({ params, locals }) {
     );
   }
 }
+
+export const PUT = authGuard(async ({ params, request, locals }) => {
+    const { id } = params;
+    const plan = await request.json();
+    const session = await locals.getSession();
+    const userId = session.user.id;
+
+    try {
+        await client.query('BEGIN');
+
+        // Update practice plan
+        const result = await client.query(
+            `UPDATE practice_plans SET 
+             name = $1,
+             description = $2,
+             practice_goals = $3,
+             phase_of_season = $4,
+             estimated_number_of_participants = $5,
+             is_editable_by_others = $6,
+             visibility = $7
+             WHERE id = $8 AND (created_by = $9 OR is_editable_by_others = true)
+             RETURNING *`,
+            [
+                plan.name,
+                plan.description,
+                plan.practice_goals,
+                plan.phase_of_season,
+                plan.estimated_number_of_participants,
+                plan.is_editable_by_others,
+                plan.visibility,
+                id,
+                userId
+            ]
+        );
+
+        if (result.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return json(
+                { error: 'Practice plan not found or you do not have permission to edit it' },
+                { status: 403 }
+            );
+        }
+
+        // Update the name in votes table
+        await client.query(
+            `UPDATE votes 
+             SET item_name = $1 
+             WHERE practice_plan_id = $2`,
+            [plan.name, id]
+        );
+
+        await client.query('COMMIT');
+        return json(result.rows[0]);
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error updating practice plan:', error);
+        return json(
+            { error: 'Failed to update practice plan', details: error.toString() },
+            { status: 500 }
+        );
+    }
+});

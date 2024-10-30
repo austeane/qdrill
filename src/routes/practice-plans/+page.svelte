@@ -7,6 +7,7 @@
     import { page } from '$app/stores';
     import debounce from 'lodash/debounce';
     import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
+    import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
 
     export let data;
 
@@ -238,19 +239,24 @@
     <!-- Practice Plans Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {#each sortedPlans as plan}
-            <div
-                class="border border-gray-200 p-6 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 cursor-pointer"
-            >
-                <h2 class="text-xl font-bold text-gray-800 mb-2">
-                    <a
-                        href="/practice-plans/{plan.id}"
-                        class="underline text-blue-600 hover:text-blue-800"
-                        on:click|stopPropagation
-                    >
-                        {plan.name}
-                    </a>
-                </h2>
-                <p class="text-gray-600 mb-2">{plan.description}</p>
+            <div class="border border-gray-200 p-6 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 cursor-pointer">
+                <!-- Header section with title and voting -->
+                <div class="relative">
+                    <div class="absolute top-0 right-0">
+                        <UpvoteDownvote practicePlanId={plan.id} />
+                    </div>
+                    <div class="pr-16">
+                        <h2 class="text-xl font-bold">
+                            <a href="/practice-plans/{plan.id}" class="text-blue-600 hover:text-blue-800">
+                                {plan.name}
+                            </a>
+                        </h2>
+                    </div>
+                </div>
+
+                <p class="text-gray-600 mb-2 mt-2">{plan.description}</p>
+                
+                <!-- Rest of the card content -->
                 {#if plan.phase_of_season}
                     <p class="text-sm text-gray-500 mb-1">
                         <strong>Phase of Season:</strong> {plan.phase_of_season}
@@ -266,10 +272,7 @@
                         <strong>Practice Goals:</strong> {plan.practice_goals}
                     </p>
                 {/if}
-                <p class="text-sm text-gray-500 mb-1">
-                    <strong>Created At:</strong> {new Date(plan.created_at).toLocaleDateString()}
-                </p>
-
+                
                 <a href="/practice-plans/{plan.id}" class="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">
                     View Practice Plan
                 </a>

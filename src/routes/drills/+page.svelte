@@ -6,7 +6,8 @@
   import { onMount } from 'svelte';
   import { SvelteToast, toast } from '@zerodevx/svelte-toast';
   import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
-
+  import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
+  
   // Import stores
   import {
     drills,
@@ -221,41 +222,61 @@
     <!-- Drills Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {#each $paginatedDrills as drill}
-        <div
-          class="border border-gray-200 p-6 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 hover:shadow-lg relative cursor-pointer flex flex-col"
-          on:click={() => window.location.href = `/drills/${drill.id}`}
-        >
-          <div>
-            <h2 class="text-xl font-bold text-gray-800 mb-2">{drill.name}</h2>
-            <p class="text-gray-600 mb-4">{drill.brief_description}</p>
-            <p class="text-sm text-gray-500 mb-1"><strong>Skill Levels:</strong> {drill.skill_level.join(', ')}</p>
-            <p class="text-sm text-gray-500 mb-1"><strong>Complexity:</strong> {drill.complexity}</p>
-            <p class="text-sm text-gray-500 mb-1"><strong>Suggested Length:</strong> {drill.suggested_length} minutes</p>
-            <p class="text-sm text-gray-500 mb-4"><strong>Number of People:</strong> {drill.number_of_people_min} - {drill.number_of_people_max}</p>
-          </div>
+        <div class="border border-gray-200 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 hover:shadow-lg">
+          <div class="p-6 flex flex-col gap-4">
+            <!-- Changed from grid to flex layout -->
+            <div class="flex gap-4">
+              <!-- Title and description container -->
+              <div class="flex-grow">
+                <h2 class="text-xl font-bold text-gray-800">
+                  <a href="/drills/{drill.id}" class="hover:text-blue-600">
+                    {drill.name}
+                  </a>
+                </h2>
+                <p class="text-gray-600 mt-2">{drill.brief_description}</p>
+                {#if drill.skill_level}
+                  <p class="text-sm text-gray-500 mt-2">
+                    <span class="font-medium">Skill Level:</span> {drill.skill_level}
+                  </p>
+                {/if}
+                {#if drill.complexity}
+                  <p class="text-sm text-gray-500 mt-1">
+                    <span class="font-medium">Complexity:</span> {drill.complexity}
+                  </p>
+                {/if}
+                {#if drill.suggested_length}
+                  <p class="text-sm text-gray-500 mt-1">
+                    <span class="font-medium">Duration:</span> {drill.suggested_length} mins
+                  </p>
+                {/if}
+              </div>
+              <!-- Upvote/Downvote component -->
+              <div class="flex-shrink-0">
+                <UpvoteDownvote drillId={drill.id} />
+              </div>
+            </div>
 
-          <!-- Add to practice plan button -->
-          <button
-            class="mt-auto py-2 px-4 rounded-md font-semibold text-white transition-colors duration-300"
-            class:bg-green-500={buttonStates[drill.id] === 'added'}
-            class:hover:bg-green-600={buttonStates[drill.id] === 'added'}
-            class:bg-red-500={buttonStates[drill.id] === 'removed' || buttonStates[drill.id] === 'in-cart'}
-            class:hover:bg-red-600={buttonStates[drill.id] === 'removed' || buttonStates[drill.id] === 'in-cart'}
-            class:bg-blue-500={!drillsInCart.has(drill.id) && buttonStates[drill.id] === null}
-            class:hover:bg-blue-600={!drillsInCart.has(drill.id) && buttonStates[drill.id] === null}
-            on:click|stopPropagation={() => toggleDrillInCart(drill)}
-            aria-label={drillsInCart.has(drill.id) ? 'Remove from Practice Plan' : 'Add to Practice Plan'}
-          >
-            {#if buttonStates[drill.id] === 'added'}
-              Added
-            {:else if buttonStates[drill.id] === 'removed'}
-              Removed
-            {:else if buttonStates[drill.id] === 'in-cart'}
-              Remove from Practice Plan
-            {:else}
-              Add to Practice Plan
-            {/if}
-          </button>
+            <button
+              class="w-full py-2 px-4 rounded-md font-semibold text-white transition-colors duration-300 mt-auto"
+              class:bg-green-500={buttonStates[drill.id] === 'added'}
+              class:hover:bg-green-600={buttonStates[drill.id] === 'added'}
+              class:bg-red-500={buttonStates[drill.id] === 'removed' || buttonStates[drill.id] === 'in-cart'}
+              class:hover:bg-red-600={buttonStates[drill.id] === 'removed' || buttonStates[drill.id] === 'in-cart'}
+              class:bg-blue-500={!drillsInCart.has(drill.id) && buttonStates[drill.id] === null}
+              class:hover:bg-blue-600={!drillsInCart.has(drill.id) && buttonStates[drill.id] === null}
+              on:click|stopPropagation={() => toggleDrillInCart(drill)}
+            >
+              {#if buttonStates[drill.id] === 'added'}
+                Added
+              {:else if buttonStates[drill.id] === 'removed'}
+                Removed
+              {:else if buttonStates[drill.id] === 'in-cart'}
+                Remove from Practice Plan
+              {:else}
+                Add to Practice Plan
+              {/if}
+            </button>
+          </div>
         </div>
       {/each}
     </div>

@@ -9,42 +9,51 @@ await client.connect();
 export const POST = authGuard(async ({ request, locals }) => {
     const session = await locals.getSession();
     const userId = session.user.id;
-    const { drillId, practicePlanId, vote } = await request.json();
+    const body = await request.json();
+    
+    console.log('Vote API received:', {
+        userId,
+        body,
+        contentType: request.headers.get('content-type')
+    });
+
+    const { drillId, practicePlanId, vote } = body;
 
     if ((!drillId && !practicePlanId) || ![1, -1].includes(vote)) {
+        console.error('Invalid vote input:', { drillId, practicePlanId, vote });
         return json({ error: 'Invalid input' }, { status: 400 });
     }
 
     try {
         if (drillId) {
-            // Check if the drill exists
-            const drillResult = await client.query('SELECT id FROM drills WHERE id = $1', [drillId]);
+            // Get drill name and insert vote
+            const drillResult = await client.query('SELECT name FROM drills WHERE id = $1', [drillId]);
             if (drillResult.rows.length === 0) {
                 return json({ error: 'Drill not found' }, { status: 404 });
             }
+            const drillName = drillResult.rows[0].name;
 
-            // Insert or update the vote
             await client.query(
-                `INSERT INTO votes (user_id, drill_id, vote) 
-                 VALUES ($1, $2, $3) 
+                `INSERT INTO votes (user_id, drill_id, vote, item_name) 
+                 VALUES ($1, $2, $3, $4) 
                  ON CONFLICT (user_id, drill_id) 
                  DO UPDATE SET vote = EXCLUDED.vote, updated_at = CURRENT_TIMESTAMP`,
-                [userId, drillId, vote]
+                [userId, drillId, vote, drillName]
             );
         } else {
-            // Check if the practice plan exists
-            const planResult = await client.query('SELECT id FROM practice_plans WHERE id = $1', [practicePlanId]);
+            // Get practice plan name and insert vote
+            const planResult = await client.query('SELECT name FROM practice_plans WHERE id = $1', [practicePlanId]);
             if (planResult.rows.length === 0) {
                 return json({ error: 'Practice plan not found' }, { status: 404 });
             }
+            const planName = planResult.rows[0].name;
 
-            // Insert or update the vote
             await client.query(
-                `INSERT INTO votes (user_id, practice_plan_id, vote) 
-                 VALUES ($1, $2, $3) 
+                `INSERT INTO votes (user_id, practice_plan_id, vote, item_name) 
+                 VALUES ($1, $2, $3, $4) 
                  ON CONFLICT (user_id, practice_plan_id) 
                  DO UPDATE SET vote = EXCLUDED.vote, updated_at = CURRENT_TIMESTAMP`,
-                [userId, practicePlanId, vote]
+                [userId, practicePlanId, vote, planName]
             );
         }
 
@@ -57,11 +66,17 @@ export const POST = authGuard(async ({ request, locals }) => {
 
 // DELETE: Remove a vote
 export const DELETE = authGuard(async ({ url, locals }) => {
-    const userId = locals.getSession().user.id;
+    const session = await locals.getSession();
+    const userId = session?.user?.id;
+
+    if (!userId) {
+        return json({ error: 'User not authenticated' }, { status: 401 });
+    }
+
     const drillId = url.searchParams.get('drillId');
     const practicePlanId = url.searchParams.get('practicePlanId');
 
-    if ((!drillId && !practicePlanId)) {
+    if (!drillId && !practicePlanId) {
         return json({ error: 'Missing drillId or practicePlanId' }, { status: 400 });
     }
 
@@ -69,12 +84,12 @@ export const DELETE = authGuard(async ({ url, locals }) => {
         if (drillId) {
             await client.query(
                 'DELETE FROM votes WHERE user_id = $1 AND drill_id = $2',
-                [userId, drillId]
+                [userId, parseInt(drillId, 10)]
             );
         } else {
             await client.query(
                 'DELETE FROM votes WHERE user_id = $1 AND practice_plan_id = $2',
-                [userId, practicePlanId]
+                [userId, parseInt(practicePlanId, 10)]
             );
         }
 

@@ -24,15 +24,20 @@ export const GET = authGuard(async (event) => {
         );
         const practicePlans = practicePlansResult.rows;
 
-        // Fetch votes made by the user
+        // Simplified votes query - no more JOINs needed
         const votesResult = await client.query(
-            `SELECT v.*, 
-                    CASE 
-                        WHEN v.drill_id IS NOT NULL THEN 'drill' 
-                        WHEN v.practice_plan_id IS NOT NULL THEN 'practice_plan' 
-                    END AS type 
-             FROM votes v 
-             WHERE v.user_id = $1`,
+            `SELECT 
+                id,
+                drill_id,
+                practice_plan_id,
+                vote,
+                item_name,
+                CASE 
+                    WHEN drill_id IS NOT NULL THEN 'drill' 
+                    WHEN practice_plan_id IS NOT NULL THEN 'practice_plan' 
+                END AS type
+             FROM votes 
+             WHERE user_id = $1`,
             [userId]
         );
         const votes = votesResult.rows;

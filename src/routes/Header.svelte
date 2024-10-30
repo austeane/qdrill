@@ -9,6 +9,7 @@
   let isMobileMenuOpen = false;
   let isCartOpen = false;
   let isDrillsDropdownOpen = false;
+  let isProfileDropdownOpen = false;
 
   // Optional: Close mobile menu and dropdown on route change
   $: if ($page.url.pathname !== '/') {
@@ -152,16 +153,43 @@
         </div>
 
         {#if user}
-          <div class="relative">
-            <button class="flex items-center focus:outline-none">
+          <div 
+            class="relative group drills-dropdown"
+            on:mouseenter={() => isProfileDropdownOpen = true}
+            on:mouseleave={() => isProfileDropdownOpen = false}
+          >
+            <a 
+              href="/profile"
+              class="flex items-center text-gray-700 hover:text-gray-900 font-semibold focus:outline-none"
+              aria-haspopup="true"
+              aria-expanded={isProfileDropdownOpen}
+            >
               <img src={user.image} alt={user.name} class="w-8 h-8 rounded-full" />
               <span class="ml-2">{user.name}</span>
-            </button>
-            <!-- You can add a dropdown menu here if needed -->
+              <!-- Dropdown Arrow Icon -->
+              <svg class="ml-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </a>
+            <div
+              class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 transition-all duration-300 ease-in-out"
+              class:opacity-0={!isProfileDropdownOpen}
+              class:invisible={!isProfileDropdownOpen}
+              class:opacity-100={isProfileDropdownOpen}
+              class:visible={isProfileDropdownOpen}
+              role="menu"
+              aria-label="Profile options"
+            >
+              <a href="/profile" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Profile</a>
+              <button 
+                on:click={() => signOut()} 
+                class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                role="menuitem"
+              >
+                Sign out
+              </button>
+            </div>
           </div>
-          <button on:click={() => signOut()} class="text-gray-700 hover:text-gray-900 font-semibold">
-            Sign out
-          </button>
         {:else}
           <button on:click={() => signIn('google')} class="text-gray-700 hover:text-gray-900 font-semibold">
             Sign in with Google

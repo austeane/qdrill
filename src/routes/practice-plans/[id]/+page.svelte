@@ -22,11 +22,14 @@
 <Breadcrumb customSegments={[{ name: 'Practice Plans', url: '/practice-plans' }, { name: practicePlan.name }]} />
 
 <div class="container mx-auto p-4 sm:p-6 bg-white shadow-md rounded-lg">
-    <header class="mb-6">
-        <h1 class="text-3xl font-extrabold text-gray-800 text-center">{practicePlan.name}</h1>
+    <header class="relative mb-6">
+        <div class="absolute top-0 right-4">
+            <UpvoteDownvote practicePlanId={practicePlan.id} />
+        </div>
+        <h1 class="text-3xl font-extrabold text-gray-800 pr-24">{practicePlan.name}</h1>
         
         {#if practicePlan.description}
-            <p class="mt-2 text-gray-600 text-center">{practicePlan.description}</p>
+            <p class="mt-4 text-gray-600">{practicePlan.description}</p>
         {/if}
     </header>
     
@@ -184,9 +187,6 @@
         </div>
     </section>
 </div>
-
-<!-- Add Voting Section -->
-<UpvoteDownvote practicePlanId={practicePlan.id} />
 
 <!-- Add Comments Section -->
 <Comments practicePlanId={practicePlan.id} />

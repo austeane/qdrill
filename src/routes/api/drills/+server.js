@@ -23,10 +23,11 @@ async function updateSkills(skills, drillId) {
   }
 }
 
-export const POST = authGuard(async (event) => {
+export const POST = async (event) => {
     const drill = await event.request.json();
     const session = await event.locals.getSession();
-    const userId = session.user.id;
+    const userId = session?.user?.id || null;
+
     let {
         name,
         brief_description,
@@ -114,7 +115,7 @@ export const POST = authGuard(async (event) => {
         console.error('Error occurred while inserting drill:', error);
         return json({ error: 'An error occurred while creating the drill', details: error.toString() }, { status: 500 });
     }
-});
+};
 
 export const GET = async (event) => {
   // Get session if available

@@ -71,7 +71,9 @@
                         <ul class="space-y-4">
                             {#each getLikedDrills(userData.votes) as vote}
                                 <li class="p-4 border rounded-lg shadow-sm flex justify-between items-center">
-                                    <a href={`/drills/${vote.drill_id}`} class="text-blue-600 hover:underline">{vote.drill_name}</a>
+                                    <a href={`/drills/${vote.drill_id}`} class="text-blue-600 hover:underline">
+                                        {vote.item_name}
+                                    </a>
                                     <UpvoteDownvote drillId={vote.drill_id} />
                                 </li>
                             {/each}
@@ -87,7 +89,9 @@
                         <ul class="space-y-4">
                             {#each getLikedPracticePlans(userData.votes) as vote}
                                 <li class="p-4 border rounded-lg shadow-sm flex justify-between items-center">
-                                    <a href={`/practice-plans/${vote.practice_plan_id}`} class="text-blue-600 hover:underline">{vote.practice_plan_name}</a>
+                                    <a href={`/practice-plans/${vote.practice_plan_id}`} class="text-blue-600 hover:underline">
+                                        {vote.item_name}
+                                    </a>
                                     <UpvoteDownvote practicePlanId={vote.practice_plan_id} />
                                 </li>
                             {/each}

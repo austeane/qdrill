@@ -2,7 +2,9 @@
     import { onMount } from 'svelte';
     import { writable } from 'svelte/store';
     import { page } from '$app/stores';
-    import { get } from 'svelte/store';
+    import { signIn } from '@auth/sveltekit/client';
+    import { ChevronUpIcon, ChevronDownIcon } from 'svelte-feather-icons';
+    import { toast } from '@zerodevx/svelte-toast';
 
     export let drillId = null;
     export let practicePlanId = null;
@@ -10,139 +12,166 @@
     let upvotes = writable(0);
     let downvotes = writable(0);
     let userVote = writable(0); // 1 for upvote, -1 for downvote, 0 for no vote
-    let user = get(page).data.session?.user;
+    let user = $page.data.session?.user;
 
     onMount(async () => {
+        await loadVotes();
+    });
+
+    async function loadVotes() {
         if (!drillId && !practicePlanId) return;
 
-        // Fetch vote counts
-        let url = '/api/votes?';
-        if (drillId) {
-            url += `drillId=${drillId}`;
-        } else {
-            url += `practicePlanId=${practicePlanId}`;
-        }
-
-        const res = await fetch(url);
-        if (res.ok) {
-            const counts = await res.json();
-            upvotes.set(counts.upvotes || 0);
-            downvotes.set(counts.downvotes || 0);
-        } else {
-            console.error('Failed to load vote counts');
-        }
-
-        // Fetch user's vote
-        if (user) {
-            let voteUrl = '/api/votes?';
-            if (drillId) {
-                voteUrl += `drillId=${drillId}`;
-            } else {
-                voteUrl += `practicePlanId=${practicePlanId}`;
+        try {
+            // Fetch vote counts
+            const countsRes = await fetch(`/api/votes?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`);
+            if (countsRes.ok) {
+                const counts = await countsRes.json();
+                upvotes.set(counts.upvotes || 0);
+                downvotes.set(counts.downvotes || 0);
             }
 
-            const voteRes = await fetch(voteUrl);
-            if (voteRes.ok) {
-                const existingVotes = await voteRes.json();
-                if (drillId) {
-                    const vote = existingVotes.find(v => v.user_id === user.id && v.drill_id === drillId);
-                    if (vote) {
-                        userVote.set(vote.vote);
-                    }
-                } else {
-                    const vote = existingVotes.find(v => v.user_id === user.id && v.practice_plan_id === practicePlanId);
-                    if (vote) {
-                        userVote.set(vote.vote);
-                    }
+            // Fetch user's vote if logged in
+            if (user) {
+                const userVoteRes = await fetch(`/api/votes/user?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`);
+                if (userVoteRes.ok) {
+                    const vote = await userVoteRes.json();
+                    userVote.set(vote?.vote || 0);
                 }
-            } else {
-                console.error('Failed to load user vote');
             }
+        } catch (error) {
+            console.error('Error loading votes:', error);
+            toast.push('Failed to load votes', { theme: { '--toastBackground': '#F56565' } });
         }
-    });
+    }
 
     async function castVote(value) {
         if (!user) {
-            alert('You must be logged in to vote.');
+            const wantsToLogin = confirm('You need to be logged in to vote. Would you like to log in now?');
+            if (wantsToLogin) {
+                await signIn('google');
+            }
             return;
         }
 
-        if (get(userVote) === value) {
-            // If the user is clicking the same vote, remove it
-            let url = '';
-            let method = 'DELETE';
-            if (drillId) {
-                url = `/api/votes?drillId=${drillId}`;
-            } else {
-                url = `/api/votes?practicePlanId=${practicePlanId}`;
-            }
+        if (!drillId && !practicePlanId) {
+            console.error('No ID provided for voting');
+            toast.push('Error: Missing ID for voting', { theme: { '--toastBackground': '#F56565' } });
+            return;
+        }
 
-            const res = await fetch(url, { method });
-            if (res.ok) {
-                userVote.set(0);
-                if (value === 1) {
-                    upvotes.update(n => n - 1);
+        try {
+            if ($userVote === value) {
+                // Remove vote - Add the proper query parameter
+                const queryParam = drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`;
+                const res = await fetch(`/api/votes?${queryParam}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    // Add body with the ID to ensure server receives it
+                    body: JSON.stringify({
+                        drillId: drillId ? parseInt(drillId, 10) : undefined,
+                        practicePlanId: practicePlanId ? parseInt(practicePlanId, 10) : undefined
+                    })
+                });
+
+                if (res.ok) {
+                    userVote.set(0);
+                    if (value === 1) {
+                        upvotes.update(n => n - 1);
+                    } else {
+                        downvotes.update(n => n - 1);
+                    }
+                    toast.push('Vote removed');
                 } else {
-                    downvotes.update(n => n - 1);
+                    const errorText = await res.text();
+                    throw new Error(`Failed to remove vote: ${errorText}`);
                 }
             } else {
-                console.error('Failed to remove vote');
-            }
-        } else {
-            // Cast or update the vote
-            let url = '/api/votes';
-            let method = 'POST';
+                // Prepare the request body with proper ID parsing
+                const requestBody = {
+                    vote: value
+                };
 
-            const body = {
-                drillId,
-                practicePlanId,
-                vote: value
-            };
-
-            const res = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-
-            if (res.ok) {
-                if (get(userVote) === 1) {
-                    upvotes.update(n => n - 1);
-                } else if (get(userVote) === -1) {
-                    downvotes.update(n => n - 1);
+                if (drillId) {
+                    requestBody.drillId = parseInt(drillId, 10);
+                    if (isNaN(requestBody.drillId)) {
+                        throw new Error('Invalid drill ID');
+                    }
+                } else if (practicePlanId) {
+                    requestBody.practicePlanId = parseInt(practicePlanId, 10);
+                    if (isNaN(requestBody.practicePlanId)) {
+                        throw new Error('Invalid practice plan ID');
+                    }
                 }
 
+                const res = await fetch('/api/votes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!res.ok) {
+                    // Add error response logging
+                    const errorText = await res.text();
+                    console.error('Vote API error:', {
+                        status: res.status,
+                        statusText: res.statusText,
+                        response: errorText
+                    });
+                    throw new Error(`Vote API error: ${errorText}`);
+                }
+
+                // Update previous vote counts
+                if ($userVote === 1) upvotes.update(n => n - 1);
+                if ($userVote === -1) downvotes.update(n => n - 1);
+
+                // Update new vote count
                 if (value === 1) {
                     upvotes.update(n => n + 1);
+                    toast.push('Upvoted!');
                 } else {
                     downvotes.update(n => n + 1);
+                    toast.push('Downvoted!');
                 }
 
                 userVote.set(value);
-            } else {
-                console.error('Failed to cast vote');
             }
+        } catch (error) {
+            console.error('Error casting vote:', error);
+            toast.push('Failed to cast vote: ' + error.message, { theme: { '--toastBackground': '#F56565' } });
         }
     }
 </script>
 
-<div class="flex items-center space-x-4">
+<div class="flex flex-col items-center space-y-1 text-sm">
     <button
         on:click={() => castVote(1)}
-        class={`flex items-center space-x-1 ${$userVote === 1 ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}
+        class="p-1 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        class:text-blue-600={$userVote === 1}
+        class:bg-blue-100={$userVote === 1}
+        class:text-gray-400={$userVote !== 1}
+        class:hover:bg-blue-50={$userVote !== 1}
+        aria-label="Upvote"
     >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-        </svg>
-        <span>{$upvotes}</span>
+        <ChevronUpIcon size="24"/>
+        <span class="sr-only">Upvote</span>
     </button>
+    
+    <span class="font-medium" class:text-blue-600={$userVote === 1} class:text-red-600={$userVote === -1}>
+        {$upvotes - $downvotes}
+    </span>
+    
     <button
         on:click={() => castVote(-1)}
-        class={`flex items-center space-x-1 ${$userVote === -1 ? 'text-red-600' : 'text-gray-600 hover:text-red-600'}`}
+        class="p-1 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+        class:text-red-600={$userVote === -1}
+        class:bg-red-100={$userVote === -1}
+        class:text-gray-400={$userVote !== -1}
+        class:hover:bg-red-50={$userVote !== -1}
+        aria-label="Downvote"
     >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-        </svg>
-        <span>{$downvotes}</span>
+        <ChevronDownIcon size="24"/>
+        <span class="sr-only">Downvote</span>
     </button>
 </div>

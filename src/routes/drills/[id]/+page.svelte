@@ -7,6 +7,7 @@
   import Breadcrumb from '../../../components/Breadcrumb.svelte';
   import { goto } from '$app/navigation';
   import UpvoteDownvote from '../../../components/UpvoteDownvote.svelte';
+  import Comments from '../../../components/Comments.svelte';
 
   let drill = writable({});
   let comments = writable([]);
@@ -44,26 +45,6 @@
       return d;
     });
     editableDiagram.set(null); // Reset the editable diagram after saving
-  }
-
-  async function addComment() {
-    try {
-      const response = await fetch(`/api/drills/${$page.params.id}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ comment: $newComment })
-      });
-      if (!response.ok) {
-        throw new Error(`Error adding comment: ${response.statusText}`);
-      }
-      const data = await response.json();
-      comments.update(current => [...current, data]);
-      newComment.set('');
-    } catch (error) {
-      console.error(error);
-    }
   }
 
   function addDrillToPlan() {
@@ -158,17 +139,7 @@
 
       <div class="mb-6">
         <h2 class="text-lg font-semibold mb-2">Comments</h2>
-        <ul class="space-y-2">
-          {#each $comments as comment}
-            <li class="bg-gray-100 p-2 rounded">{comment}</li>
-          {/each}
-        </ul>
-        <div class="mt-4 flex space-x-2">
-          <input type="text" bind:value={$newComment} placeholder="Add a comment" class="flex-grow border rounded p-2" />
-          <button on:click={addComment} class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-            Submit
-          </button>
-        </div>
+        <Comments drillId={$page.params.id} />
       </div>
 
       {#if $drill.diagrams && $drill.diagrams.length > 0}

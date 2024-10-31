@@ -11,6 +11,7 @@
   let uploadSummary = writable(null);
   let parsedDrills = writable([]);
   let filterOption = writable('all');
+  let visibility = writable('public');
 
   $: filteredDrills = $parsedDrills.filter(drill => {
     if ($filterOption === 'all') return true;
@@ -65,6 +66,7 @@
     isUploading.set(true);
     const formData = new FormData();
     formData.append('file', $uploadedFile);
+    formData.append('visibility', $visibility);
 
     try {
       const response = await fetch('/api/drills/bulk-upload', {
@@ -267,7 +269,8 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           drills: validDrills,
-          fileName: $uploadedFile ? $uploadedFile.name : 'manual_upload'
+          fileName: $uploadedFile ? $uploadedFile.name : 'manual_upload',
+          visibility: $visibility
         })
       });
 
@@ -373,6 +376,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
   </button>
 </div>
 
+<!-- File upload section -->
 <div class="mb-6">
   <input
     type="file"
@@ -383,15 +387,30 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
   />
 </div>
 
-<div class="mb-6">
-  <button
-    on:click={uploadCSV}
-    disabled={$isUploading || !$uploadedFile}
-    class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded disabled:opacity-50"
-  >
-    {$isUploading ? 'Uploading...' : 'Upload'}
-  </button>
-</div>
+<!-- Show visibility selector and upload button only when a file is selected -->
+{#if $uploadedFile}
+  <div class="mb-6">
+    <label class="block text-gray-700 font-medium mb-1">Visibility</label>
+    <select
+      bind:value={$visibility}
+      class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring"
+    >
+      <option value="public">Public - Visible to everyone</option>
+      <option value="unlisted">Unlisted - Only accessible via direct link</option>
+      <option value="private">Private - Only visible to you</option>
+    </select>
+  </div>
+
+  <div class="mb-6">
+    <button
+      on:click={uploadCSV}
+      disabled={$isUploading}
+      class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded disabled:opacity-50"
+    >
+      {$isUploading ? 'Uploading...' : 'Upload'}
+    </button>
+  </div>
+{/if}
 
 {#if $uploadSummary}
   <div class="mb-6 p-4 bg-gray-100 rounded">

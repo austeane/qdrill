@@ -223,41 +223,61 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {#each $paginatedDrills as drill}
         <div class="border border-gray-200 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 hover:shadow-lg">
-          <div class="p-6 flex flex-col gap-4">
-            <!-- Changed from grid to flex layout -->
-            <div class="flex gap-4">
-              <!-- Title and description container -->
-              <div class="flex-grow">
-                <h2 class="text-xl font-bold text-gray-800">
-                  <a href="/drills/{drill.id}" class="hover:text-blue-600">
-                    {drill.name}
-                  </a>
-                </h2>
-                <p class="text-gray-600 mt-2">{drill.brief_description}</p>
-                {#if drill.skill_level}
-                  <p class="text-sm text-gray-500 mt-2">
-                    <span class="font-medium">Skill Level:</span> {drill.skill_level}
-                  </p>
-                {/if}
-                {#if drill.complexity}
-                  <p class="text-sm text-gray-500 mt-1">
-                    <span class="font-medium">Complexity:</span> {drill.complexity}
-                  </p>
-                {/if}
-                {#if drill.suggested_length}
-                  <p class="text-sm text-gray-500 mt-1">
-                    <span class="font-medium">Duration:</span> {drill.suggested_length} mins
-                  </p>
-                {/if}
+          <div class="p-6 flex flex-col h-full relative">
+            <!-- Variation badges -->
+            {#if drill.variation_count > 0}
+              <div class="absolute top-2 right-2">
+                <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                  {drill.variation_count} variation{drill.variation_count !== 1 ? 's' : ''}
+                </span>
               </div>
-              <!-- Upvote/Downvote component -->
-              <div class="flex-shrink-0">
-                <UpvoteDownvote drillId={drill.id} />
+            {:else if drill.parent_drill_id}
+              <div class="absolute top-2 right-2">
+                <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                  Variant
+                </span>
               </div>
+            {/if}
+
+            <!-- Main content area -->
+            <div class="flex-grow">
+              <!-- Title and description -->
+              <div class="flex justify-between items-start mb-4">
+                <div class="flex-grow">
+                  <h2 class="text-xl font-bold text-gray-800">
+                    <a href="/drills/{drill.id}" class="hover:text-blue-600">
+                      {drill.name}
+                    </a>
+                  </h2>
+                  <p class="text-gray-600 mt-2">{drill.brief_description}</p>
+                </div>
+                <!-- Move UpvoteDownvote here -->
+                <div class="flex-shrink-0 ml-4">
+                  <UpvoteDownvote drillId={drill.id} />
+                </div>
+              </div>
+
+              <!-- Drill details -->
+              {#if drill.skill_level}
+                <p class="text-sm text-gray-500 mt-2">
+                  <span class="font-medium">Skill Level:</span> {drill.skill_level}
+                </p>
+              {/if}
+              {#if drill.complexity}
+                <p class="text-sm text-gray-500 mt-1">
+                  <span class="font-medium">Complexity:</span> {drill.complexity}
+                </p>
+              {/if}
+              {#if drill.suggested_length}
+                <p class="text-sm text-gray-500 mt-1">
+                  <span class="font-medium">Duration:</span> {drill.suggested_length} mins
+                </p>
+              {/if}
             </div>
 
+            <!-- Add to Practice Plan button -->
             <button
-              class="w-full py-2 px-4 rounded-md font-semibold text-white transition-colors duration-300 mt-auto"
+              class="w-full py-2 px-4 rounded-md font-semibold text-white transition-colors duration-300 mt-4"
               class:bg-green-500={buttonStates[drill.id] === 'added'}
               class:hover:bg-green-600={buttonStates[drill.id] === 'added'}
               class:bg-red-500={buttonStates[drill.id] === 'removed' || buttonStates[drill.id] === 'in-cart'}

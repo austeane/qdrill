@@ -54,7 +54,25 @@ export const filteredDrills = derived(
     $searchQuery,
     $selectedDrillTypes
   ]) => {
-    return $drills.filter(drill => {
+    // Group drills by their parent_drill_id or their own id if they're a parent
+    const drillGroups = $drills.reduce((groups, drill) => {
+      const groupId = drill.parent_drill_id || drill.id;
+      if (!groups[groupId]) {
+        groups[groupId] = [];
+      }
+      groups[groupId].push(drill);
+      return groups;
+    }, {});
+
+    // For each group, only keep the highest upvoted variation
+    let filteredDrills = Object.values(drillGroups).map(group => {
+      return group.reduce((highest, current) => {
+        return (!highest || current.upvotes > highest.upvotes) ? current : highest;
+      });
+    });
+
+    // Apply existing filters
+    return filteredDrills.filter(drill => {
       let matches = true;
 
       // Search Query
@@ -237,3 +255,12 @@ export const sortedSkills = derived(allSkills, $allSkills =>
       return a.skill.localeCompare(b.skill);
     })
 );
+
+// Add a derived store for variation counts
+export const variationCounts = derived(drills, $drills => {
+  return $drills.reduce((counts, drill) => {
+    const groupId = drill.parent_drill_id || drill.id;
+    counts[groupId] = (counts[groupId] || 0) + 1;
+    return counts;
+  }, {});
+});

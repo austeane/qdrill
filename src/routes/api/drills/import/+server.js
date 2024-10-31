@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import pkg from 'pg';
 const { Pool } = pkg;
 import { v4 as uuidv4 } from 'uuid';
+import { authGuard } from '$lib/server/authGuard';
 
 // Initialize PostgreSQL pool using environment variables
 const pool = new Pool({
@@ -11,9 +12,12 @@ const pool = new Pool({
   }
 });
 
-export async function POST({ request }) {
+export const POST = authGuard(async ({ request, locals }) => {
+  const session = await locals.getSession();
+  const userId = session.user.id;
+
   try {
-    const { drills, fileName } = await request.json();
+    const { drills, fileName, visibility = 'public' } = await request.json();
 
     if (!Array.isArray(drills) || drills.length === 0) {
       return json({ error: 'No drills provided for import' }, { status: 400 });
@@ -69,9 +73,12 @@ export async function POST({ request }) {
             video_link,
             images,
             diagrams,
-            upload_source
+            upload_source,
+            created_by,
+            visibility,
+            is_editable_by_others
           ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
           )`,
           [
             name,
@@ -87,7 +94,10 @@ export async function POST({ request }) {
             video_link || null,
             images || [],
             processedDiagrams,
-            uploadSource
+            uploadSource,
+            userId,
+            visibility,
+            false
           ]
         );
       });
@@ -107,4 +117,4 @@ export async function POST({ request }) {
     console.error('Error processing import request:', error);
     return json({ error: 'Invalid request payload', details: error.toString() }, { status: 400 });
   }
-}
+});

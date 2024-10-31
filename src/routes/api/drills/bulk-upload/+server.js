@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { parse } from 'csv-parse/sync';
 import * as Yup from 'yup';
 import { PREDEFINED_SKILLS } from '$lib/constants/skills';
+import { authGuard } from '$lib/server/authGuard';
 
 // Constants mapping numbers to representations
 const skillLevelMap = {
@@ -82,10 +83,15 @@ const drillSchema = Yup.object().shape({
     .required('Drill type is required'),
 });
 
-export async function POST({ request }) {
+// Wrap the POST handler with authGuard
+export const POST = authGuard(async ({ request, locals }) => {
+  const session = await locals.getSession();
+  const userId = session.user.id;
+
   try {
     const formData = await request.formData();
     const file = formData.get('file');
+    const visibility = formData.get('visibility') || 'public'; // Get visibility setting
 
     if (!file) {
       return json({ error: 'No file uploaded' }, { status: 400 });
@@ -100,6 +106,10 @@ export async function POST({ request }) {
 
     for (const [index, record] of records.entries()) {
       const drill = parseDrill(record);
+      drill.created_by = userId;
+      drill.visibility = visibility;
+      drill.is_editable_by_others = false; // Default to false for bulk uploads
+
       if (drill.errors.length === 0) {
         validDrills++;
       } else {
@@ -121,7 +131,7 @@ export async function POST({ request }) {
     console.error('Error processing bulk upload:', error);
     return json({ error: 'Failed to process bulk upload', details: error.toString() }, { status: 500 });
   }
-}
+});
 
 function parseDrill(record) {
   const drill = {

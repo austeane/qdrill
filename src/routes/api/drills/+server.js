@@ -118,28 +118,33 @@ export const POST = async (event) => {
 };
 
 export const GET = async (event) => {
-  // Get session if available
   const session = await event.locals.getSession();
   const userId = session?.user?.id;
 
   try {
-    const result = await client.query('SELECT * FROM drills');
+    const result = await client.query(`
+      SELECT d.*,
+             (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
+      FROM drills d
+    `);
+
     const drills = result.rows.filter(drill => {
       if (drill.visibility === 'public') {
         return true;
       } else if (drill.visibility === 'unlisted') {
-        return true; // Include unlisted drills
+        return true;
       } else if (drill.visibility === 'private') {
         return drill.created_by === userId;
       }
       return false;
     }).map(drill => ({
       ...drill,
-      dateCreated: drill.date_created, // Add this line
+      dateCreated: drill.date_created,
       diagrams: drill.diagrams || [],
       min_duration: drill.min_duration || 5,
       max_duration: drill.max_duration || 15,
-      suggested_length: drill.suggested_length || Math.floor((drill.min_duration + drill.max_duration) / 2)
+      suggested_length: drill.suggested_length || Math.floor((drill.min_duration + drill.max_duration) / 2),
+      variation_count: parseInt(drill.variation_count) || 0
     }));
     return json(drills);
   } catch (error) {

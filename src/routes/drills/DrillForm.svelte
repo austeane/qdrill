@@ -63,6 +63,10 @@
   let modalSkillSearchTerm = writable('');
   let modalSkillSuggestions = writable([]);
 
+  let isVariation = writable(false);
+  let parentDrillId = writable(null);
+  let parentDrills = writable([]);
+
   $: filteredSkills = $allSkills.filter(skill => 
     typeof skill.skill === 'string' && skill.skill.toLowerCase().includes($skillSearchTerm.toLowerCase()) && 
     !$selectedSkills.includes(skill.skill)
@@ -145,6 +149,13 @@
     if (skillsResponse.ok) {
       const skillsData = await skillsResponse.json();
       allSkills.set(skillsData);
+    }
+
+    // Fetch potential parent drills
+    const drillsResponse = await fetch('/api/drills');
+    if (drillsResponse.ok) {
+      const drills = await drillsResponse.json();
+      parentDrills.set(drills.filter(d => !d.parent_drill_id)); // Only show non-variation drills
     }
   });
 
@@ -267,6 +278,10 @@
       newErrors.number_of_people_max = 'Max number of people must be a whole number';
     }
     
+    if ($isVariation && !$parentDrillId) {
+      newErrors.parentDrillId = 'Parent drill is required for variations';
+    }
+    
     errors.set(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -306,7 +321,8 @@
           diagrams: $diagrams,
           drill_type: $drill_type,
           visibility: $visibility,
-          is_editable_by_others: $is_editable_by_others
+          is_editable_by_others: $is_editable_by_others,
+          parent_drill_id: $isVariation ? $parentDrillId : null
         };
         sessionStorage.setItem('pendingDrillData', JSON.stringify(formData));
         await signIn('google');
@@ -712,6 +728,36 @@
               {/if}
             </label>
           </div>
+
+          <div class="mb-4">
+            <label class="flex items-center">
+              <input
+                type="checkbox"
+                bind:checked={$isVariation}
+                class="form-checkbox h-4 w-4 text-blue-600"
+              />
+              <span class="ml-2">This is a variation of another drill</span>
+            </label>
+          </div>
+
+          {#if $isVariation}
+            <div class="mb-4">
+              <label for="parentDrill" class="block text-sm font-medium text-gray-700">Parent Drill</label>
+              <select
+                id="parentDrill"
+                bind:value={$parentDrillId}
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+              >
+                <option value="">Select a parent drill</option>
+                {#each $parentDrills as drill}
+                  <option value={drill.id}>{drill.name}</option>
+                {/each}
+              </select>
+              {#if $errors.parentDrillId}
+                <p class="text-red-500 text-sm mt-1">{$errors.parentDrillId}</p>
+              {/if}
+            </div>
+          {/if}
 
           <button
             type="submit"

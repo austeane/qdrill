@@ -9,6 +9,7 @@
   import UpvoteDownvote from '../../../components/UpvoteDownvote.svelte';
   import Comments from '../../../components/Comments.svelte';
   import { toast } from '@zerodevx/svelte-toast';
+  import ExcalidrawWrapper from '../../../components/ExcalidrawWrapper.svelte';
 
   let drill = writable({});
   let allVariants = writable({}); // Store for all variant data
@@ -406,11 +407,12 @@
           <h2 class="text-lg font-semibold mb-2">Diagrams</h2>
           {#each $drill.diagrams as diagram, index}
             <div class="mb-4">
-              <DiagramDrawer 
+              <ExcalidrawWrapper 
                 data={diagram} 
                 on:save={(event) => handleDiagramSave(event, index)} 
                 showSaveButton={false} 
                 {index}
+                readonly={true}
               />
             </div>
           {/each}

@@ -20,20 +20,13 @@
 		  Browse List of Drills
 		</a>
 	  </div>
-	  <!-- Right Side: Placeholder Graphic -->
+	  <!-- Right Side: Image -->
 	  <div class="lg:w-1/2 flex justify-center">
-		<div class="w-full h-64 bg-gray-200 flex flex-col items-center justify-center">
-		  <!-- Placeholder shapes -->
-		  <div class="flex space-x-4 mb-4">
-			<div class="w-16 h-16 bg-gray-400"></div>
-			<div class="w-16 h-16 bg-gray-400 rounded-full"></div>
-			<div class="w-16 h-16 bg-gray-400 transform rotate-45"></div>
-		  </div>
-		  <!-- Added text -->
-		  <p class="text-sm text-gray-600 text-center px-4">
-			This is a placeholder! Please send Austin fun pictures of people doing quadball drills so he can replace me
-		  </p>
-		</div>
+		<img 
+		  src="/images/drill.png" 
+		  alt="Head Coach Chris Radojewski explaining a drill. Photo credit Quadball Canada." 
+		  class="w-full max-w-md h-auto object-contain"
+		/>
 	  </div>
 	</div>
   

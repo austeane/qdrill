@@ -406,7 +406,7 @@
         <div>
           <h2 class="text-lg font-semibold mb-2">Diagrams</h2>
           {#each $drill.diagrams as diagram, index}
-            <div class="mb-4">
+            <div class="mb-4 diagram-container">
               <ExcalidrawWrapper 
                 data={diagram} 
                 on:save={(event) => handleDiagramSave(event, index)} 
@@ -538,3 +538,21 @@
     </div>
   {/if}
 </section>
+
+<style>
+  .diagram-container {
+    /* Set a fixed aspect ratio matching the CANVAS dimensions (500x600) */
+    aspect-ratio: 5/6;
+    width: 100%;
+    max-width: 500px; /* Match CANVAS_WIDTH */
+    margin: 0 auto; /* Center the container */
+  }
+
+  /* Make the container responsive but maintain aspect ratio */
+  @media (max-width: 500px) {
+    .diagram-container {
+      width: 100%;
+      max-width: none;
+    }
+  }
+</style>

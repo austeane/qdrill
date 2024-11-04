@@ -882,7 +882,7 @@
 
 <!-- Skills Modal -->
 {#if showSkillsModal}
-  <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[1001]" on:click|self={closeSkillsModal}>
+  <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" on:click|self={closeSkillsModal}>
     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
       <div class="mt-3 text-center">
         <h3 class="text-lg leading-6 font-medium text-gray-900">Select Skills</h3>
@@ -961,15 +961,5 @@
     top: 1rem;
     right: 1rem;
     z-index: 9999;
-  }
-
-  /* Ensure modals are always on top */
-  :global(.modal-overlay) {
-    z-index: 1000;
-  }
-
-  /* Update z-index for skills modal */
-  :global([role="dialog"]) {
-    z-index: 1001;
   }
 </style>

@@ -172,6 +172,9 @@
       let playerX = CANVAS_WIDTH + 100; // Start players to the right of the red box
       positionColors.forEach((headColor, positionIndex) => {
         for (let i = 0; i < playerCounts[positionIndex]; i++) {
+          // Create a unique group ID for this stick figure
+          const playerGroupId = uuidv4();
+
           // Add stick figure body
           elements.push({
             type: 'line',
@@ -190,7 +193,7 @@
             width: 0,
             height: 20,
             angle: 0,
-            groupIds: [],
+            groupIds: [playerGroupId], // Add to group
             seed: Math.floor(Math.random() * 1000000),
             version: 1,
             versionNonce: Math.floor(Math.random() * 1000000),
@@ -213,7 +216,7 @@
             strokeStyle: 'solid',
             id: uuidv4(),
             angle: 0,
-            groupIds: [],
+            groupIds: [playerGroupId], // Add to group
             seed: Math.floor(Math.random() * 1000000),
             version: 1,
             versionNonce: Math.floor(Math.random() * 1000000),
@@ -238,14 +241,14 @@
             width: 20,
             height: 0,
             angle: 0,
-            groupIds: [],
+            groupIds: [playerGroupId], // Add to group
             seed: Math.floor(Math.random() * 1000000),
             version: 1,
             versionNonce: Math.floor(Math.random() * 1000000),
             isDeleted: false,
           });
 
-          // Add legs
+          // Add legs (both legs share the same group ID)
           elements.push({
             type: 'line',
             x: playerX,
@@ -263,7 +266,7 @@
             width: 10,
             height: 15,
             angle: 0,
-            groupIds: [],
+            groupIds: [playerGroupId], // Add to group
             seed: Math.floor(Math.random() * 1000000),
             version: 1,
             versionNonce: Math.floor(Math.random() * 1000000),
@@ -287,7 +290,7 @@
             width: 10,
             height: 15,
             angle: 0,
-            groupIds: [],
+            groupIds: [playerGroupId], // Add to group
             seed: Math.floor(Math.random() * 1000000),
             version: 1,
             versionNonce: Math.floor(Math.random() * 1000000),
@@ -301,9 +304,9 @@
 
     // Add the ball images
     const images = [
-      { url: quaffleUrl, x: CANVAS_WIDTH + 100, y: 100 },
-      { url: bludgerUrl, x: CANVAS_WIDTH + 200, y: 100 },
-      { url: coneUrl, x: CANVAS_WIDTH + 300, y: 100 }
+      { url: quaffleUrl, x: CANVAS_WIDTH + 90, y: 240, scale: 0.4 },  // Align with first figure
+      { url: bludgerUrl, x: CANVAS_WIDTH + 150, y: 240, scale: 0.4 },  // Align with second figure
+      { url: coneUrl, x: CANVAS_WIDTH + 210, y: 248, scale: 0.3 }      // Align with third figure
     ];
 
     for (const image of images) {
@@ -316,8 +319,8 @@
           type: 'image',
           x: image.x,
           y: image.y,
-          width: 50,
-          height: 50,
+          width: 50 * image.scale,
+          height: 50 * image.scale,
           angle: 0,
           strokeColor: 'transparent',
           backgroundColor: 'transparent',
@@ -466,7 +469,7 @@
         initialData: initialSceneData,
         viewModeEnabled: readonly,
         onChange: handleChange,
-        gridModeEnabled: true,
+        gridModeEnabled: false,
         theme: "light",
         name: `${id}-fullscreen`,
         UIOptions: {
@@ -599,7 +602,7 @@
             initialData: initialData,
             viewModeEnabled: readonly,
             onChange: handleChange,
-            gridModeEnabled: true,
+            gridModeEnabled: false,
             theme: "light",
             name: isFullscreenVersion ? `${id}-fullscreen` : id,
             UIOptions: {

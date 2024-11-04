@@ -7,7 +7,7 @@ export default defineConfig({
 		include: ['src/**/*.{test,spec}.{js,ts}']
 	},
 	optimizeDeps: {
-		include: ['@sveltejs/kit', '@sveltejs/adapter-vercel'],
+		include: ['@sveltejs/kit', '@sveltejs/adapter-vercel', '@excalidraw/excalidraw', 'react', 'react-dom'],
 		exclude: ['@mapbox/node-pre-gyp']
 	},
 	resolve: {

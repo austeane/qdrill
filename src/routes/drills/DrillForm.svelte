@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { writable } from 'svelte/store';
   import { goto } from '$app/navigation';
-  import DiagramDrawer from '../../components/DiagramDrawer.svelte';
+  import ExcalidrawWrapper from '../../components/ExcalidrawWrapper.svelte';
   import { dndzone } from 'svelte-dnd-action';
   import { PREDEFINED_SKILLS } from '$lib/constants/skills';
   import { allSkills, sortedSkills } from '$lib/stores/drillsStore';
@@ -122,12 +122,25 @@
   }
 
   function handleDiagramSave(event, index) {
-    const updatedDiagram = event.detail;
+    const diagramData = event.detail;
+    console.log('Saving diagram data:', diagramData);
+    
+    // Ensure proper structure when saving
+    const processedData = {
+      elements: diagramData.elements || [],
+      appState: {
+        ...(diagramData.appState || {}),
+        collaborators: Array.isArray(diagramData.appState?.collaborators) ? diagramData.appState.collaborators : []
+      },
+      files: diagramData.files || {}
+    };
+    
     diagrams.update(d => {
       const newDiagrams = [...d];
-      newDiagrams[index] = updatedDiagram;
+      newDiagrams[index] = processedData;
       return newDiagrams;
     });
+    console.log('Updated diagrams:', $diagrams);
   }
 
   function handleMoveUp(index) {
@@ -287,12 +300,18 @@
   }
 
   async function handleSubmit() {
-    // Automatically save all diagrams before submitting
-    diagramRefs.forEach(ref => {
-      if (ref && typeof ref.saveDiagram === 'function') {
-        ref.saveDiagram();
-      }
-    });
+    // Save all diagrams before submitting
+    const savedDiagrams = await Promise.all(
+      diagramRefs.map(ref => {
+        if (ref && typeof ref.saveDiagram === 'function') {
+          return ref.saveDiagram();
+        }
+        return null;
+      })
+    );
+
+    // Update diagrams store with latest data
+    diagrams.set(savedDiagrams.filter(d => d !== null));
 
     if (!validateForm()) return;
 
@@ -772,27 +791,42 @@
     <!-- Right Column: Diagrams and Images -->
     <div class="flex-1 min-w-0 p-4 border rounded-md transition-all duration-300 ease-in-out md:overflow-y-auto">
       <h2 class="text-xl font-semibold mb-4">Diagrams and Images</h2>
-      {#each $diagrams as diagram, index (index + '-' + diagramKey)}
-        <div class="mt-2 border p-4 rounded">
-          <label for={`diagram-canvas-${index}`} class="text-lg font-semibold mb-2">Diagram {index + 1}</label>
-          <DiagramDrawer 
-            bind:this={diagramRefs[index]}
-            on:save={(event) => handleDiagramSave(event, index)} 
-            on:moveUp={() => handleMoveUp(index)}
-            on:moveDown={() => handleMoveDown(index)}
-            id={`diagram-canvas-${index}`} 
-            data={diagram} 
-            index={index} 
-            showSaveButton={true} 
-          />
-          <div class="mt-2 flex justify-between">
-            <button type="button" on:click={() => deleteDiagram(index)} class="text-red-600 hover:text-red-800">Delete</button>
-          </div>
+      <div class="mt-6">
+        <h3 class="text-lg font-semibold mb-2">Diagrams</h3>
+        <div class="space-y-4">
+          {#each $diagrams as diagram, index (index + '-' + diagramKey)}
+            <div class="border p-4 rounded">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-lg font-semibold">Diagram {index + 1}</span>
+                <div class="flex gap-2">
+                  {#if index > 0}
+                    <button type="button" class="text-blue-600 hover:text-blue-800" on:click={() => handleMoveUp(index)}>↑</button>
+                  {/if}
+                  {#if index < $diagrams.length - 1}
+                    <button type="button" class="text-blue-600 hover:text-blue-800" on:click={() => handleMoveDown(index)}>↓</button>
+                  {/if}
+                  <button type="button" class="text-red-600 hover:text-red-800" on:click={() => deleteDiagram(index)}>Delete</button>
+                </div>
+              </div>
+              <ExcalidrawWrapper 
+                bind:this={diagramRefs[index]}
+                on:save={(event) => handleDiagramSave(event, index)} 
+                id={`diagram-canvas-${index}`} 
+                data={diagram} 
+                index={index} 
+                showSaveButton={true} 
+              />
+            </div>
+          {/each}
         </div>
-      {/each}
-      <button type="button" on:click={addDiagram} class="mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-        Add New Diagram
-      </button>
+        <button 
+          type="button" 
+          on:click={addDiagram} 
+          class="mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+        >
+          Add New Diagram
+        </button>
+      </div>
 
       <!-- Images Section -->
       <div class="mt-6">

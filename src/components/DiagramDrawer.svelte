@@ -480,6 +480,11 @@
       fabricCanvas.loadFromJSON(nextState, fabricCanvas.renderAll.bind(fabricCanvas));
     }
   }
+
+  // Add this export function to your DiagramDrawer component
+  export function getDiagramData() {
+    return fabricCanvas.toJSON();
+  }
 </script>
 
 <div bind:this={canvasWrapper} class="diagram-wrapper">

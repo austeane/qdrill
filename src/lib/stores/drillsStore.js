@@ -67,7 +67,16 @@ export const filteredDrills = derived(
     // For each group, only keep the highest upvoted variation
     let filteredDrills = Object.values(drillGroups).map(group => {
       return group.reduce((highest, current) => {
-        return (!highest || current.upvotes > highest.upvotes) ? current : highest;
+        // Handle cases where upvotes might be null/undefined
+        const currentUpvotes = current.upvotes || 0;
+        const highestUpvotes = (highest && highest.upvotes) || 0;
+        
+        // If upvotes are equal, prefer the parent drill
+        if (currentUpvotes === highestUpvotes) {
+          return !current.parent_drill_id ? current : highest || current;
+        }
+        
+        return currentUpvotes > highestUpvotes ? current : highest;
       });
     });
 

@@ -93,10 +93,217 @@
     const elements = [createGuideRectangle()];
     const files = {};
 
+    // Add hoops - positioned to the right of the guide box
+    const hoopSizes = [
+      { width: 40, height: 80 },
+      { width: 40, height: 120 },
+      { width: 40, height: 100 }
+    ];
+    const spacing = 20;
+    const startX = CANVAS_WIDTH + 100; // Position hoops to the right of the red box
+    const baseY = 200;
+
+    // Create a group ID for all hoops
+    const hoopGroupId = uuidv4();
+
+    hoopSizes.forEach((size, i) => {
+      // Calculate the Y position for the hoop circle by working backwards from the base
+      const poleHeight = size.height - size.width;
+      const hoopY = baseY - poleHeight - size.width; // Subtract pole height and hoop height from base
+
+      const hoopCircle = {
+        type: 'ellipse',
+        x: startX + i * (size.width + spacing) - size.width/2,
+        y: hoopY,
+        width: size.width,
+        height: size.width,
+        strokeColor: '#000000',
+        backgroundColor: 'transparent',
+        fillStyle: 'solid',
+        strokeWidth: 2,
+        roughness: 0,
+        opacity: 100,
+        strokeStyle: 'solid',
+        id: uuidv4(),
+        angle: 0,
+        groupIds: [hoopGroupId],
+        seed: Math.floor(Math.random() * 1000000),
+        version: 1,
+        versionNonce: Math.floor(Math.random() * 1000000),
+        isDeleted: false,
+      };
+
+      // Add vertical pole (starting from bottom of hoop)
+      const pole = {
+        type: 'line',
+        x: startX + i * (size.width + spacing),
+        y: hoopY + size.width, // Start from bottom of hoop
+        points: [
+          [0, 0],
+          [0, poleHeight] // Height is total height minus hoop height
+        ],
+        strokeColor: '#000000',
+        backgroundColor: 'transparent',
+        fillStyle: 'solid',
+        strokeWidth: 2,
+        roughness: 0,
+        opacity: 100,
+        strokeStyle: 'solid',
+        id: uuidv4(),
+        width: 0,
+        height: poleHeight,
+        angle: 0,
+        groupIds: [hoopGroupId],
+        seed: Math.floor(Math.random() * 1000000),
+        version: 1,
+        versionNonce: Math.floor(Math.random() * 1000000),
+        isDeleted: false,
+      };
+
+      elements.push(hoopCircle, pole);
+    });
+
+    // Add players
+    const teamColors = ['#ff0000', '#0000ff'];
+    const positionColors = ['#00ff00', '#000000', '#ffffff', '#ffff00'];
+    const playerCounts = [1, 2, 3, 1];
+
+    teamColors.forEach((teamColor, teamIndex) => {
+      let playerX = CANVAS_WIDTH + 100; // Start players to the right of the red box
+      positionColors.forEach((headColor, positionIndex) => {
+        for (let i = 0; i < playerCounts[positionIndex]; i++) {
+          // Add stick figure body
+          elements.push({
+            type: 'line',
+            x: playerX,
+            y: 300 + teamIndex * 60,
+            points: [
+              [0, 0],
+              [0, 20]
+            ],
+            strokeColor: teamColor,
+            strokeWidth: 2,
+            roughness: 0,
+            opacity: 100,
+            strokeStyle: 'solid',
+            id: uuidv4(),
+            width: 0,
+            height: 20,
+            angle: 0,
+            groupIds: [],
+            seed: Math.floor(Math.random() * 1000000),
+            version: 1,
+            versionNonce: Math.floor(Math.random() * 1000000),
+            isDeleted: false,
+          });
+
+          // Add head
+          elements.push({
+            type: 'ellipse',
+            x: playerX - 5,
+            y: 290 + teamIndex * 60,
+            width: 10,
+            height: 10,
+            strokeColor: '#000000',
+            backgroundColor: headColor,
+            fillStyle: 'solid',
+            strokeWidth: 1,
+            roughness: 0,
+            opacity: 100,
+            strokeStyle: 'solid',
+            id: uuidv4(),
+            angle: 0,
+            groupIds: [],
+            seed: Math.floor(Math.random() * 1000000),
+            version: 1,
+            versionNonce: Math.floor(Math.random() * 1000000),
+            isDeleted: false,
+          });
+
+          // Add arms
+          elements.push({
+            type: 'line',
+            x: playerX - 10,
+            y: 310 + teamIndex * 60,
+            points: [
+              [0, 0],
+              [20, 0]
+            ],
+            strokeColor: teamColor,
+            strokeWidth: 2,
+            roughness: 0,
+            opacity: 100,
+            strokeStyle: 'solid',
+            id: uuidv4(),
+            width: 20,
+            height: 0,
+            angle: 0,
+            groupIds: [],
+            seed: Math.floor(Math.random() * 1000000),
+            version: 1,
+            versionNonce: Math.floor(Math.random() * 1000000),
+            isDeleted: false,
+          });
+
+          // Add legs
+          elements.push({
+            type: 'line',
+            x: playerX,
+            y: 320 + teamIndex * 60,
+            points: [
+              [0, 0],
+              [-10, 15]
+            ],
+            strokeColor: teamColor,
+            strokeWidth: 2,
+            roughness: 0,
+            opacity: 100,
+            strokeStyle: 'solid',
+            id: uuidv4(),
+            width: 10,
+            height: 15,
+            angle: 0,
+            groupIds: [],
+            seed: Math.floor(Math.random() * 1000000),
+            version: 1,
+            versionNonce: Math.floor(Math.random() * 1000000),
+            isDeleted: false,
+          });
+
+          elements.push({
+            type: 'line',
+            x: playerX,
+            y: 320 + teamIndex * 60,
+            points: [
+              [0, 0],
+              [10, 15]
+            ],
+            strokeColor: teamColor,
+            strokeWidth: 2,
+            roughness: 0,
+            opacity: 100,
+            strokeStyle: 'solid',
+            id: uuidv4(),
+            width: 10,
+            height: 15,
+            angle: 0,
+            groupIds: [],
+            seed: Math.floor(Math.random() * 1000000),
+            version: 1,
+            versionNonce: Math.floor(Math.random() * 1000000),
+            isDeleted: false,
+          });
+
+          playerX += 60;
+        }
+      });
+    });
+
+    // Add the ball images
     const images = [
-      { url: quaffleUrl, x: 100, y: 100 },
-      { url: bludgerUrl, x: 250, y: 100 },
-      { url: coneUrl, x: 400, y: 100 }
+      { url: quaffleUrl, x: CANVAS_WIDTH + 100, y: 100 },
+      { url: bludgerUrl, x: CANVAS_WIDTH + 200, y: 100 },
+      { url: coneUrl, x: CANVAS_WIDTH + 300, y: 100 }
     ];
 
     for (const image of images) {
@@ -143,6 +350,77 @@
     return { elements, files };
   }
 
+  function zoomToIncludeAllElements(api) {
+    if (!api) return;
+    
+    const elements = api.getSceneElements();
+    if (!elements.length) return;
+
+    // Find the bounds of all elements
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    elements.forEach(el => {
+      // For lines, we need to consider their points
+      if (el.type === 'line' && el.points) {
+        el.points.forEach(point => {
+          const absoluteX = el.x + point[0];
+          const absoluteY = el.y + point[1];
+          minX = Math.min(minX, absoluteX);
+          minY = Math.min(minY, absoluteY);
+          maxX = Math.max(maxX, absoluteX);
+          maxY = Math.max(maxY, absoluteY);
+        });
+      } else {
+        // For other elements
+        const left = el.x;
+        const top = el.y;
+        const right = el.x + (el.width || 0);
+        const bottom = el.y + (el.height || 0);
+
+        minX = Math.min(minX, left);
+        minY = Math.min(minY, top);
+        maxX = Math.max(maxX, right);
+        maxY = Math.max(maxY, bottom);
+      }
+    });
+
+    // Add padding (40% for more space)
+    const padding = 0.4;
+    const width = maxX - minX;
+    const height = maxY - minY;
+    minX -= width * padding;
+    minY -= height * padding;
+    maxX += width * padding;
+    maxY += height * padding;
+
+    // Calculate center point
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    // Calculate zoom level
+    const containerWidth = fullscreenContainer?.offsetWidth || window.innerWidth;
+    const containerHeight = fullscreenContainer?.offsetHeight || window.innerHeight;
+    
+    const zoomX = containerWidth / (maxX - minX);
+    const zoomY = containerHeight / (maxY - minY);
+    const zoom = Math.min(zoomX, zoomY, 0.7); // Cap at 0.7 to ensure some padding
+
+    // Update the view
+    api.updateScene({
+      appState: {
+        ...api.getAppState(),
+        scrollX: containerWidth / 2 - centerX * zoom,
+        scrollY: containerHeight / 2 - centerY * zoom,
+        zoom: {
+          value: zoom
+        }
+      }
+    });
+  }
+
   function toggleFullscreen() {
     if (!excalidrawAPI) return;
 
@@ -160,6 +438,8 @@
         tick().then(() => {
           if (fullscreenExcalidrawAPI) {
             fullscreenExcalidrawAPI.updateScene(initialSceneData);
+            // Add slight delay to ensure scene is updated before zooming
+            setTimeout(() => zoomToIncludeAllElements(fullscreenExcalidrawAPI), 100);
           }
         });
       } catch (error) {
@@ -310,6 +590,10 @@
                 fullscreenExcalidrawAPI = api;
               } else {
                 excalidrawAPI = api;
+                // Center and zoom when the API is ready
+                if (!isFullscreen) {
+                  setTimeout(() => centerAndZoomToGuideRectangle(api), 100);
+                }
               }
             },
             initialData: initialData,
@@ -360,6 +644,23 @@
     }
   });
 
+  // Add resize observer to handle container size changes
+  onMount(() => {
+    if (browser && excalidrawWrapper) {
+      const resizeObserver = new ResizeObserver(() => {
+        if (excalidrawAPI && !isFullscreen) {
+          centerAndZoomToGuideRectangle(excalidrawAPI);
+        }
+      });
+      
+      resizeObserver.observe(excalidrawWrapper);
+      
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
+  });
+
   export function saveDiagram() {
     if (excalidrawAPI) {
       const elements = excalidrawAPI.getSceneElements();
@@ -375,7 +676,7 @@
 
 <div class="excalidraw-wrapper">
   {#if browser && ExcalidrawComponent}
-    <div class="excalidraw-container" style="height: 500px;">
+    <div class="excalidraw-container" style="height: 600px;">
       {#if import.meta.env.DEV}
         <div class="absolute top-0 left-0 bg-white/80 p-1 text-xs">
           API: {!!excalidrawAPI ? '✅' : '❌'}
@@ -436,7 +737,7 @@
   :global(.excalidraw) {
     width: 100% !important;
     height: 100% !important;
-    min-height: 500px !important;  /* Add minimum height */
+    min-height: 600px !important;  /* Update from 500px to 600px */
   }
 
   :global(.excalidraw-wrapper) {

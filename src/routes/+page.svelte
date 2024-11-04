@@ -18,6 +18,8 @@
 		  src="/images/qdrill-logo-colour.png" 
 		  alt="QDrill Logo" 
 		  class="mb-4 max-w-[150px] lg:max-w-[300px]"
+		  loading="eager"
+		  decoding="async"
 		/>
 		<p class="text-lg mb-6">Easily find, create, and share drills and practice plans. Focus on coaching, QDrill makes planning easy.</p>
 		<a href="/drills" class="inline-block bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded">

@@ -123,11 +123,24 @@
 
   function handleDiagramSave(event, index) {
     const diagramData = event.detail;
+    console.log('Saving diagram data:', diagramData);
+    
+    // Ensure proper structure when saving
+    const processedData = {
+      elements: diagramData.elements || [],
+      appState: {
+        ...(diagramData.appState || {}),
+        collaborators: Array.isArray(diagramData.appState?.collaborators) ? diagramData.appState.collaborators : []
+      },
+      files: diagramData.files || {}
+    };
+    
     diagrams.update(d => {
       const newDiagrams = [...d];
-      newDiagrams[index] = diagramData;
+      newDiagrams[index] = processedData;
       return newDiagrams;
     });
+    console.log('Updated diagrams:', $diagrams);
   }
 
   function handleMoveUp(index) {

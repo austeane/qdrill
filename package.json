@@ -43,6 +43,7 @@
 	"dependencies": {
 		"@auth/core": "^0.37.1",
 		"@auth/sveltekit": "^1.7.1",
+		"@excalidraw/excalidraw": "^0.17.6",
 		"@mapbox/node-pre-gyp": "^1.0.11",
 		"@sveltejs/vite-plugin-svelte": "^3.1.2",
 		"@sveltejs/vite-plugin-svelte-inspector": "^2.1.0",
@@ -58,6 +59,8 @@
 		"mock-aws-s3": "^4.0.2",
 		"nock": "^13.5.5",
 		"pg": "^8.13.0",
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1",
 		"svelte-dnd-action": "^0.9.51",
 		"svelte-feather-icons": "^4.1.0",
 		"svelte-forms-lib": "^2.0.1",

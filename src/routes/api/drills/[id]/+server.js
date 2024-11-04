@@ -123,3 +123,36 @@ export async function PUT({ params, request }) {
         return json({ error: 'Failed to update drill' }, { status: 500 });
     }
 }
+
+export async function DELETE({ params, locals }) {
+    const { id } = params;
+    const session = await locals.getSession();
+    const userId = session?.user?.id;
+    const isDevelopment = process.env.NODE_ENV === 'development';
+
+    try {
+        // Check if user owns the drill (skip in development)
+        if (!isDevelopment) {
+            const checkResult = await client.query(
+                'SELECT created_by FROM drills WHERE id = $1',
+                [id]
+            );
+
+            if (checkResult.rows.length === 0) {
+                return json({ error: 'Drill not found' }, { status: 404 });
+            }
+
+            if (checkResult.rows[0].created_by !== userId) {
+                return json({ error: 'Unauthorized' }, { status: 403 });
+            }
+        }
+
+        // Delete the drill
+        await client.query('DELETE FROM drills WHERE id = $1', [id]);
+        
+        return json({ success: true });
+    } catch (error) {
+        console.error('Error deleting drill:', error);
+        return json({ error: 'Failed to delete drill' }, { status: 500 });
+    }
+}

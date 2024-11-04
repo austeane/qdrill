@@ -10,6 +10,7 @@
   import Comments from '../../../components/Comments.svelte';
   import { toast } from '@zerodevx/svelte-toast';
   import ExcalidrawWrapper from '../../../components/ExcalidrawWrapper.svelte';
+  import { dev } from '$app/environment';
 
   let drill = writable({});
   let allVariants = writable({}); // Store for all variant data
@@ -269,6 +270,34 @@
       });
     }
   }
+
+  async function handleDelete() {
+    if (!confirm('Are you sure you want to delete this drill? This action cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/drills/${$drill.id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete drill');
+        }
+
+        toast.push('Drill deleted successfully', {
+            theme: { '--toastBackground': '#48bb78', '--toastColor': '#fff' }
+        });
+        
+        // Navigate back to drills page
+        goto('/drills');
+    } catch (error) {
+        console.error('Error deleting drill:', error);
+        toast.push('Failed to delete drill', {
+            theme: { '--toastBackground': '#f56565', '--toastColor': '#fff' }
+        });
+    }
+  }
 </script>
 
 <svelte:head>
@@ -295,6 +324,14 @@
         >
           Add Drill to Plan
         </button>
+        {#if dev || $drill.created_by === $page.data.session?.user?.id}
+            <button
+                on:click={handleDelete}
+                class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+            >
+                Delete Drill
+            </button>
+        {/if}
       </div>
     </div>
     

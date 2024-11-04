@@ -508,6 +508,34 @@
     textarea.style.height = 'auto';
     textarea.style.height = `${Math.min(textarea.scrollHeight, 300)}px`;
   }
+
+  function duplicateDiagram(index) {
+    if (diagramRefs[index]) {
+      // Save the current state of the diagram being duplicated
+      diagramRefs[index].saveDiagram();
+    }
+
+    diagrams.update(d => {
+      const diagramToDuplicate = d[index];
+      // Create a deep copy of the diagram, ensuring new IDs for elements
+      const duplicatedDiagram = {
+        elements: diagramToDuplicate.elements?.map(element => ({
+          ...element,
+          id: crypto.randomUUID(), // Generate new IDs for each element
+          groupIds: element.groupIds?.map(() => crypto.randomUUID()) // Generate new group IDs
+        })) || [],
+        appState: { ...diagramToDuplicate.appState },
+        files: { ...diagramToDuplicate.files }
+      };
+      
+      // Insert the duplicate after the original
+      const newDiagrams = [...d];
+      newDiagrams.splice(index + 1, 0, duplicatedDiagram);
+      return newDiagrams;
+    });
+    
+    diagramKey++; // Force re-render of diagrams
+  }
 </script>
 
 <svelte:head>
@@ -806,6 +834,13 @@
                   {#if index < $diagrams.length - 1}
                     <button type="button" class="text-blue-600 hover:text-blue-800" on:click={() => handleMoveDown(index)}>↓</button>
                   {/if}
+                  <button 
+                    type="button" 
+                    class="text-green-600 hover:text-green-800" 
+                    on:click={() => duplicateDiagram(index)}
+                  >
+                    Duplicate
+                  </button>
                   <button type="button" class="text-red-600 hover:text-red-800" on:click={() => deleteDiagram(index)}>Delete</button>
                 </div>
               </div>

@@ -175,51 +175,66 @@ export const totalPages = derived(
 );
 
 export const paginatedDrills = derived(
-  [
-    filteredDrills,
-    currentPage,
-    drillsPerPage,
-    selectedSortOption,
-    selectedSortOrder
-  ],
-  (
-    [
-      $filteredDrills,
-      $currentPage,
-      $drillsPerPage,
-      $selectedSortOption,
-      $selectedSortOrder
-    ]
-  ) => {
+  [filteredDrills, currentPage, drillsPerPage, selectedSortOption, selectedSortOrder],
+  ([$filteredDrills, $currentPage, $drillsPerPage, $selectedSortOption, $selectedSortOrder]) => {
+    console.log('Sort parameters:', {
+      option: $selectedSortOption,
+      order: $selectedSortOrder,
+      firstItem: $filteredDrills[0]?.date_created
+    });
+
     // Sort the filtered drills
     const sortedDrills = [...$filteredDrills].sort((a, b) => {
       if (!$selectedSortOption) return 0;
 
+      // Special handling for date_created
+      if ($selectedSortOption === 'date_created') {
+        // Convert to timestamps and ensure they're numbers
+        const aValue = new Date(a.date_created || 0).getTime();
+        const bValue = new Date(b.date_created || 0).getTime();
+        
+        console.log('Sorting dates:', {
+          a_date: a.date_created,
+          b_date: b.date_created,
+          a_timestamp: aValue,
+          b_timestamp: bValue,
+          order: $selectedSortOrder
+        });
+
+        // Direct comparison for dates
+        return $selectedSortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      // Handle other sorting cases...
       let aValue = a[$selectedSortOption];
       let bValue = b[$selectedSortOption];
 
-      // Handle nested properties if necessary
       if ($selectedSortOption.includes('.')) {
         const keys = $selectedSortOption.split('.');
         aValue = keys.reduce((obj, key) => obj?.[key], a);
         bValue = keys.reduce((obj, key) => obj?.[key], b);
       }
 
-      // Special handling for dateCreated
-      if ($selectedSortOption === 'dateCreated') {
-        aValue = new Date(aValue);
-        bValue = new Date(bValue);
-      } else {
-        if (typeof aValue === 'string') aValue = aValue.toLowerCase();
-        if (typeof bValue === 'string') bValue = bValue.toLowerCase();
-      }
+      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+
+      if (aValue == null) return 1;
+      if (bValue == null) return -1;
 
       if (aValue < bValue) return $selectedSortOrder === 'asc' ? -1 : 1;
       if (aValue > bValue) return $selectedSortOrder === 'asc' ? 1 : -1;
       return 0;
     });
 
-    // Paginate the sorted drills
+    // Log sorted results
+    console.log('Sorted drills:', 
+      sortedDrills.slice(0, 3).map(drill => ({
+        name: drill.name,
+        date: drill.date_created,
+        timestamp: new Date(drill.date_created).getTime()
+      }))
+    );
+
     const start = ($currentPage - 1) * $drillsPerPage;
     const end = $currentPage * $drillsPerPage;
     return sortedDrills.slice(start, end);

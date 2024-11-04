@@ -541,7 +541,6 @@
   }
 
   function handleChange(elements, appState, files) {
-    console.log('Handling change with:', { elements, appState, files });
     if (!readonly) {
       const sceneData = {
         elements,
@@ -553,6 +552,75 @@
       };
       dispatch('save', sceneData);
     }
+  }
+
+  function centerAndZoomToGuideRectangle(api) {
+    if (!api) {
+      console.log('No API available');
+      return;
+    }
+    
+    const elements = api.getSceneElements();
+    if (!elements.length) {
+      console.log('No elements found');
+      return;
+    }
+
+    // Find the guide rectangle
+    const guideRect = elements.find(el => 
+      el.type === 'rectangle' && 
+      el.strokeColor === '#ff0000' && 
+      el.strokeStyle === 'dashed'
+    );
+
+    if (!guideRect) {
+      console.log('No guide rectangle found');
+      return;
+    }
+
+    // Get the container dimensions
+    const container = excalidrawWrapper?.querySelector('.excalidraw-container');
+    if (!container) {
+      console.log('No container found');
+      return;
+    }
+    
+    const containerWidth = container.offsetWidth;
+    const containerHeight = container.offsetHeight;
+
+    console.log('Container dimensions:', { containerWidth, containerHeight });
+    console.log('Guide rectangle:', {
+      x: guideRect.x,
+      y: guideRect.y,
+      width: guideRect.width,
+      height: guideRect.height
+    });
+
+    // Calculate the zoom level needed to fit the guide rectangle
+    const zoomX = containerWidth / CANVAS_WIDTH;
+    const zoomY = containerHeight / CANVAS_HEIGHT;
+    const zoom = Math.min(zoomX, zoomY, 1); // Cap at 1 to prevent over-zooming
+
+    console.log('Zoom calculations:', { zoomX, zoomY, finalZoom: zoom });
+
+    // Calculate the scroll position to center the guide rectangle
+    // For a guide rectangle at (-250, -300), we need to scroll 250 right and 300 down
+    const scrollX = 250;
+    const scrollY = 300;
+
+    console.log('Scroll positions:', { scrollX, scrollY });
+
+    // Update the view
+    api.updateScene({
+      appState: {
+        ...api.getAppState(),
+        scrollX,
+        scrollY,
+        zoom: {
+          value: zoom
+        }
+      }
+    });
   }
 
   onMount(async () => {
@@ -677,7 +745,7 @@
   }
 </script>
 
-<div class="excalidraw-wrapper">
+<div class="excalidraw-wrapper" bind:this={excalidrawWrapper}>
   {#if browser && ExcalidrawComponent}
     <div class="excalidraw-container" style="height: 600px;">
       {#if import.meta.env.DEV}

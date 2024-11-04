@@ -49,7 +49,15 @@
     id: `image-${index}`,
     file: image
   })) ?? []);
-  let diagrams = writable(drill.diagrams?.length > 0 ? drill.diagrams : [null]);
+  let diagrams = writable(drill.diagrams?.length > 0 ? drill.diagrams : [{
+    elements: [],
+    appState: {
+      viewBackgroundColor: '#ffffff',
+      gridSize: 20,
+      collaborators: []
+    },
+    files: {}
+  }]);
   let drill_type = writable(drill.drill_type ?? []);
   let is_editable_by_others = writable(drill.is_editable_by_others ?? false);
   let visibility = writable(drill.visibility ?? 'public');
@@ -96,9 +104,16 @@
       }
     }
 
-    diagrams.update(d => [...d, {}]);
+    diagrams.update(d => [...d, {
+      elements: [],
+      appState: {
+        viewBackgroundColor: '#ffffff',
+        gridSize: 20,
+        collaborators: []
+      },
+      files: {}
+    }]);
     diagramKey++;
-    console.log('Diagram added. New diagrams:', $diagrams); // Add this line for debugging
   }
 
   function deleteDiagram(index) {
@@ -109,13 +124,11 @@
   }
 
   function moveDiagram(index, direction) {
-    console.log(`Moving diagram at index ${index} ${direction > 0 ? 'down' : 'up'}`);
     diagrams.update(d => {
       const newIndex = index + direction;
       if (newIndex < 0 || newIndex >= d.length) return d;
       const newDiagrams = [...d];
       [newDiagrams[index], newDiagrams[newIndex]] = [newDiagrams[newIndex], newDiagrams[index]];
-      console.log('Updated diagrams:', newDiagrams);
       return newDiagrams;
     });
     diagramKey++;
@@ -123,7 +136,6 @@
 
   function handleDiagramSave(event, index) {
     const diagramData = event.detail;
-    console.log('Saving diagram data:', diagramData);
     
     // Ensure proper structure when saving
     const processedData = {
@@ -140,7 +152,6 @@
       newDiagrams[index] = processedData;
       return newDiagrams;
     });
-    console.log('Updated diagrams:', $diagrams);
   }
 
   function handleMoveUp(index) {

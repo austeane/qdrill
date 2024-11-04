@@ -27,10 +27,10 @@
 
   let readOnlyExcalidrawAPI;
 
-  console.log('Component initialization - data:', data);
+  let fullscreenExcalidrawComponent;
+  let fullscreenContainer;
 
   function openEditor() {
-    console.log('Opening editor modal');
     showModal = true;
   }
 
@@ -142,29 +142,101 @@
   }
 
   function toggleFullscreen() {
-    if (!isFullscreen) {
-      initialSceneData = {
-        elements: excalidrawAPI.getSceneElements(),
-        appState: excalidrawAPI.getAppState(),
-        files: excalidrawAPI.getFiles(),
-      };
-    }
+    if (!excalidrawAPI) return;
+
     isFullscreen = !isFullscreen;
+    
+    if (isFullscreen) {
+      try {
+        initialSceneData = {
+          elements: excalidrawAPI.getSceneElements() || [],
+          appState: excalidrawAPI.getAppState() || {},
+          files: excalidrawAPI.getFiles() || {}
+        };
+        
+        fullscreenExcalidrawComponent = {
+          render: async (node) => {
+            try {
+              const React = await import('react');
+              const ReactDOM = await import('react-dom/client');
+              const { Excalidraw } = await import('@excalidraw/excalidraw');
+              
+              const root = ReactDOM.createRoot(node);
+              
+              root.render(
+                React.createElement(Excalidraw, {
+                  onReady: (api) => {
+                    excalidrawAPI = api;
+                    api.updateScene(initialSceneData);
+                  },
+                  initialData: initialSceneData,
+                  viewModeEnabled: readonly,
+                  onChange: handleChange,
+                  gridModeEnabled: true,
+                  theme: "light",
+                  name: `${id}-fullscreen`,
+                  UIOptions: {
+                    canvasActions: {
+                      export: false,
+                      loadScene: false,
+                      saveAsImage: false,
+                      theme: false,
+                    }
+                  }
+                })
+              );
+
+              return {
+                destroy: () => {
+                  root.unmount();
+                }
+              };
+            } catch (error) {
+              console.error('Error in fullscreen render:', error);
+              throw error;
+            }
+          }
+        };
+      } catch (error) {
+        console.error('Error initializing fullscreen mode:', error);
+        isFullscreen = false;
+      }
+    }
   }
 
   function handleSaveAndClose() {
+    if (!excalidrawAPI) return;
+
     const elements = excalidrawAPI.getSceneElements();
     const appState = excalidrawAPI.getAppState();
     const files = excalidrawAPI.getFiles();
+    
+    // Save the current state
     dispatch('save', { elements, appState, files });
-    closeEditor();
+    
+    // Update the initial scene data
+    initialSceneData = { elements, appState, files };
+    
+    // Close fullscreen mode
+    isFullscreen = false;
+
+    // Wait for the next tick and update the main component
+    tick().then(() => {
+      if (excalidrawAPI) {
+        excalidrawAPI.updateScene({
+          elements,
+          appState,
+          files
+        });
+      }
+    });
   }
 
   function handleCancel() {
-    if (initialSceneData) {
+    if (initialSceneData && excalidrawAPI) {
       excalidrawAPI.updateScene(initialSceneData);
     }
-    toggleFullscreen();
+    isFullscreen = false;
   }
 
   function handleChange(elements, appState, files) {
@@ -179,65 +251,69 @@
   }
 
   onMount(async () => {
-    console.log('onMount started');
     if (browser) {
-      console.log('Browser environment confirmed');
-      const React = await import('react');
-      const ReactDOM = await import('react-dom/client');
-      window.React = React;
+      try {
+        const React = await import('react');
+        const ReactDOM = await import('react-dom/client');
+        window.React = React.default;
+        const { Excalidraw } = await import('@excalidraw/excalidraw');
 
-      const { Excalidraw } = await import('@excalidraw/excalidraw');
-      
-      ExcalidrawComponent = {
-        render: (node) => {
-          const root = ReactDOM.createRoot(node);
-          
-          root.render(
-            React.createElement(Excalidraw, {
-              onReady: (api) => {
-                excalidrawAPI = api;
-                if (data) {
-                  api.updateScene({
-                    elements: data.elements || [],
-                    appState: data.appState || {
-                      viewBackgroundColor: '#ffffff',
-                      gridSize: 20
-                    }
-                  });
-                }
-              },
-              initialData: {
-                elements: data?.elements || [],
-                appState: {
-                  viewBackgroundColor: '#ffffff',
-                  gridSize: 20
-                }
-              },
-              viewModeEnabled: readonly,
-              onChange: handleChange,
-              gridModeEnabled: true,
-              theme: "light",
-              name: id,
-              UIOptions: {
-                canvasActions: {
-                  export: false,
-                  loadScene: false,
-                  saveAsImage: false,
-                  theme: false,
-                }
-              }
-            })
-          );
-
-          return {
-            destroy: () => {
-              root.unmount();
-            }
-          };
+        let initialData;
+        if (!data) {
+          initialData = await createInitialImageElements();
         }
-      };
+        
+        const excalidrawProps = {
+          excalidrawAPI: (api) => {
+            excalidrawAPI = api;
+          },
+          initialData: data || initialData || {
+            elements: [],
+            appState: {
+              viewBackgroundColor: '#ffffff',
+              gridSize: 20
+            }
+          },
+          viewModeEnabled: readonly,
+          onChange: handleChange,
+          gridModeEnabled: true,
+          theme: "light",
+          name: id,
+          UIOptions: {
+            canvasActions: {
+              export: false,
+              loadScene: false,
+              saveAsImage: false,
+              theme: false,
+            }
+          }
+        };
+        
+        ExcalidrawComponent = {
+          render: (node) => {
+            const root = ReactDOM.createRoot(node);
+            
+            const element = React.default.createElement(Excalidraw, excalidrawProps);
+            
+            root.render(element);
 
-      await tick();
+            return {
+              destroy: () => {
+                root.unmount();
+              }
+            };
+          }
+        };
+
+        await tick();
+      } catch (error) {
+        console.error('Error mounting Excalidraw:', error);
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+      }
     }
   });
 
@@ -252,34 +328,64 @@
     }
     return null;
   }
-
-  let componentMounted = false;
-
-  onMount(() => {
-    componentMounted = true;
-    console.log('Component mounted status:', componentMounted);
-  });
 </script>
 
 <div class="excalidraw-wrapper">
   {#if browser && ExcalidrawComponent}
     <div class="excalidraw-container" style="height: 500px;">
+      {#if import.meta.env.DEV}
+        <div class="absolute top-0 left-0 bg-white/80 p-1 text-xs">
+          API: {!!excalidrawAPI ? '✅' : '❌'}
+        </div>
+      {/if}
+      <button
+        type="button"
+        class="absolute top-2 right-2 z-10 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md flex items-center gap-1"
+        on:click={() => {
+          toggleFullscreen();
+        }}
+        disabled={!excalidrawAPI}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+        </svg>
+        <span class="text-sm">Fullscreen</span>
+      </button>
       <div use:ExcalidrawComponent.render></div>
     </div>
   {/if}
 
   <!-- Fullscreen Modal -->
   {#if isFullscreen}
+    {@const modalVisible = true}
     <div class="modal-overlay">
       <div class="modal-content">
-        <div class="editor-container">
-          {#if browser && fullscreenExcalidrawComponent}
+        <div class="modal-header">
+          <h2 class="text-xl font-bold">Edit Diagram</h2>
+          <div class="flex gap-2">
+            <button
+              class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              on:click={handleSaveAndClose}
+            >
+              Save & Close
+            </button>
+            <button
+              class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              on:click={handleCancel}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+        <div class="editor-container" bind:this={fullscreenContainer}>
+          {#if fullscreenExcalidrawComponent}
             <div use:fullscreenExcalidrawComponent.render></div>
           {/if}
         </div>
       </div>
     </div>
   {/if}
+  
 </div>
 
 <style>
@@ -316,17 +422,19 @@
   }
 
   .modal-content {
-    width: 100vw;
-    height: 100vh;
+    width: 95vw;
+    height: 95vh;
     background: white;
     display: flex;
     flex-direction: column;
+    border-radius: 0.5rem;
+    overflow: hidden;
   }
 
   .editor-container {
     flex: 1;
     position: relative;
-    min-height: 500px;
+    overflow: hidden;
   }
 
   /* Ensure the Excalidraw UI is visible in fullscreen */
@@ -356,8 +464,13 @@
     min-height: 500px;
     position: relative;
   }
-</style>
 
-{#if componentMounted}
-  <div class="debug-mount">Component Mounted Successfully</div>
-{/if}
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: white;
+    border-bottom: 1px solid #e5e7eb;
+  }
+</style>

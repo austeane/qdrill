@@ -11,6 +11,7 @@
 
   const dispatch = createEventDispatcher();
   let excalidrawAPI;
+  let fullscreenExcalidrawAPI;
   let ExcalidrawComponent;
   let isFullscreen = false;
   let initialSceneData = null;
@@ -88,6 +89,7 @@
   }
 
   async function createInitialImageElements() {
+    console.log('Creating initial image elements');
     const elements = [createGuideRectangle()];
     const files = {};
 
@@ -154,49 +156,12 @@
           files: excalidrawAPI.getFiles() || {}
         };
         
-        fullscreenExcalidrawComponent = {
-          render: async (node) => {
-            try {
-              const React = await import('react');
-              const ReactDOM = await import('react-dom/client');
-              const { Excalidraw } = await import('@excalidraw/excalidraw');
-              
-              const root = ReactDOM.createRoot(node);
-              
-              root.render(
-                React.createElement(Excalidraw, {
-                  onReady: (api) => {
-                    excalidrawAPI = api;
-                    api.updateScene(initialSceneData);
-                  },
-                  initialData: initialSceneData,
-                  viewModeEnabled: readonly,
-                  onChange: handleChange,
-                  gridModeEnabled: true,
-                  theme: "light",
-                  name: `${id}-fullscreen`,
-                  UIOptions: {
-                    canvasActions: {
-                      export: false,
-                      loadScene: false,
-                      saveAsImage: false,
-                      theme: false,
-                    }
-                  }
-                })
-              );
-
-              return {
-                destroy: () => {
-                  root.unmount();
-                }
-              };
-            } catch (error) {
-              console.error('Error in fullscreen render:', error);
-              throw error;
-            }
+        // Wait for next tick to ensure fullscreen component is ready
+        tick().then(() => {
+          if (fullscreenExcalidrawAPI) {
+            fullscreenExcalidrawAPI.updateScene(initialSceneData);
           }
-        };
+        });
       } catch (error) {
         console.error('Error initializing fullscreen mode:', error);
         isFullscreen = false;
@@ -204,46 +169,103 @@
     }
   }
 
+  async function createFullscreenComponent() {
+    try {
+      const React = await import('react');
+      const ReactDOM = await import('react-dom/client');
+      const { Excalidraw } = await import('@excalidraw/excalidraw');
+      
+      const excalidrawProps = {
+        onReady: (api) => {
+          console.log('Fullscreen Excalidraw ready');
+          fullscreenExcalidrawAPI = api;
+          if (initialSceneData) {
+            api.updateScene(initialSceneData);
+          }
+        },
+        initialData: initialSceneData,
+        viewModeEnabled: readonly,
+        onChange: handleChange,
+        gridModeEnabled: true,
+        theme: "light",
+        name: `${id}-fullscreen`,
+        UIOptions: {
+          canvasActions: {
+            export: false,
+            loadScene: false,
+            saveAsImage: false,
+            theme: false,
+          }
+        }
+      };
+      
+      fullscreenExcalidrawComponent = {
+        render: (node) => {
+          const root = ReactDOM.createRoot(node);
+          root.render(React.createElement(Excalidraw, excalidrawProps));
+          return {
+            destroy: () => root.unmount()
+          };
+        }
+      };
+    } catch (error) {
+      console.error('Error creating fullscreen component:', error);
+      isFullscreen = false;
+    }
+  }
+
   function handleSaveAndClose() {
-    if (!excalidrawAPI) return;
+    console.log('Save and close clicked, API available:', !!fullscreenExcalidrawAPI);
+    
+    if (!fullscreenExcalidrawAPI) {
+      console.warn('No fullscreen API available');
+      return;
+    }
 
-    const elements = excalidrawAPI.getSceneElements();
-    const appState = excalidrawAPI.getAppState();
-    const files = excalidrawAPI.getFiles();
-    
-    // Save the current state
-    dispatch('save', { elements, appState, files });
-    
-    // Update the initial scene data
-    initialSceneData = { elements, appState, files };
-    
-    // Close fullscreen mode
+    try {
+      const elements = fullscreenExcalidrawAPI.getSceneElements();
+      const appState = fullscreenExcalidrawAPI.getAppState();
+      const files = fullscreenExcalidrawAPI.getFiles();
+      
+      // Close fullscreen mode first
+      isFullscreen = false;
+
+      // Wait for the next tick to ensure the fullscreen modal is closed
+      tick().then(() => {
+        if (excalidrawAPI) {
+          excalidrawAPI.updateScene({
+            elements,
+            appState: { ...appState, viewBackgroundColor: appState.viewBackgroundColor },
+            files
+          });
+          dispatch('save', { elements, appState, files });
+        }
+      });
+    } catch (error) {
+      console.error('Error in handleSaveAndClose:', error);
+      isFullscreen = false;
+    }
+  }
+
+  function handleCancel() {
     isFullscreen = false;
-
-    // Wait for the next tick and update the main component
+    // Ensure the inline component returns to its previous state
     tick().then(() => {
-      if (excalidrawAPI) {
-        excalidrawAPI.updateScene({
-          elements,
-          appState,
-          files
-        });
+      if (excalidrawAPI && initialSceneData) {
+        excalidrawAPI.updateScene(initialSceneData);
       }
     });
   }
 
-  function handleCancel() {
-    if (initialSceneData && excalidrawAPI) {
-      excalidrawAPI.updateScene(initialSceneData);
-    }
-    isFullscreen = false;
-  }
-
   function handleChange(elements, appState, files) {
+    console.log('Handling change with:', { elements, appState, files });
     if (!readonly) {
       const sceneData = {
         elements,
-        appState,
+        appState: {
+          ...appState,
+          collaborators: [] // Ensure collaborators exists
+        },
         files
       };
       dispatch('save', sceneData);
@@ -253,6 +275,7 @@
   onMount(async () => {
     if (browser) {
       try {
+        console.log('Mounting Excalidraw with data:', data);
         const React = await import('react');
         const ReactDOM = await import('react-dom/client');
         window.React = React.default;
@@ -261,46 +284,71 @@
         let initialData;
         if (!data) {
           initialData = await createInitialImageElements();
-        }
-        
-        const excalidrawProps = {
-          excalidrawAPI: (api) => {
-            excalidrawAPI = api;
-          },
-          initialData: data || initialData || {
-            elements: [],
+        } else {
+          // Ensure data has the correct structure and collaborators is always an array
+          console.log('Raw data from props:', data);
+          initialData = {
+            elements: data.elements || [],
             appState: {
               viewBackgroundColor: '#ffffff',
-              gridSize: 20
+              gridSize: 20,
+              collaborators: [], // Ensure collaborators exists and is an array
+              ...(data.appState || {}),
+              collaborators: Array.isArray(data.appState?.collaborators) ? data.appState.collaborators : []
+            },
+            files: data.files || {}
+          };
+        }
+        
+        console.log('Initializing Excalidraw with processed data:', initialData);
+
+        // Create props for both components
+        const createExcalidrawProps = (isFullscreenVersion = false) => {
+          const props = {
+            excalidrawAPI: (api) => {
+              if (isFullscreenVersion) {
+                fullscreenExcalidrawAPI = api;
+              } else {
+                excalidrawAPI = api;
+              }
+            },
+            initialData: initialData,
+            viewModeEnabled: readonly,
+            onChange: handleChange,
+            gridModeEnabled: true,
+            theme: "light",
+            name: isFullscreenVersion ? `${id}-fullscreen` : id,
+            UIOptions: {
+              canvasActions: {
+                export: false,
+                loadScene: false,
+                saveAsImage: false,
+                theme: false,
+              }
             }
-          },
-          viewModeEnabled: readonly,
-          onChange: handleChange,
-          gridModeEnabled: true,
-          theme: "light",
-          name: id,
-          UIOptions: {
-            canvasActions: {
-              export: false,
-              loadScene: false,
-              saveAsImage: false,
-              theme: false,
-            }
-          }
+          };
+          console.log('Created Excalidraw props:', props);
+          return props;
         };
         
+        // Create main component
         ExcalidrawComponent = {
           render: (node) => {
             const root = ReactDOM.createRoot(node);
-            
-            const element = React.default.createElement(Excalidraw, excalidrawProps);
-            
-            root.render(element);
-
+            root.render(React.createElement(Excalidraw, createExcalidrawProps(false)));
             return {
-              destroy: () => {
-                root.unmount();
-              }
+              destroy: () => root.unmount()
+            };
+          }
+        };
+
+        // Create fullscreen component
+        fullscreenExcalidrawComponent = {
+          render: (node) => {
+            const root = ReactDOM.createRoot(node);
+            root.render(React.createElement(Excalidraw, createExcalidrawProps(true)));
+            return {
+              destroy: () => root.unmount()
             };
           }
         };
@@ -308,11 +356,6 @@
         await tick();
       } catch (error) {
         console.error('Error mounting Excalidraw:', error);
-        console.error('Error details:', {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
-        });
       }
     }
   });
@@ -448,15 +491,15 @@
 
   /* Fix for UI components */
   :global(.excalidraw .App-menu_top) {
-    z-index: 10 !important;
+    z-index: 2 !important;
   }
 
   :global(.excalidraw .App-menu_bottom) {
-    z-index: 10 !important;
+    z-index: 2 !important;
   }
 
   :global(.excalidraw .layer-ui__wrapper) {
-    z-index: 10 !important;
+    z-index: 2 !important;
   }
 
   /* Ensure proper sizing in the DrillForm context */

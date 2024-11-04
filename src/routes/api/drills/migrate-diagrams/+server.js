@@ -1,11 +1,14 @@
 import { json } from '@sveltejs/kit';
 import { fabricToExcalidraw } from '$lib/utils/diagramMigration';
-import { db } from '$lib/db';
+import { createClient } from '@vercel/postgres';
 
 export async function POST() {
+  const client = createClient();
+  await client.connect();
+
   try {
     // Get all drills with diagrams
-    const drills = await db.query(`
+    const drills = await client.query(`
       SELECT id, diagrams 
       FROM drills 
       WHERE diagrams IS NOT NULL AND diagrams != '[]'
@@ -26,7 +29,7 @@ export async function POST() {
 
       // Update the drill with migrated diagrams
       updates.push(
-        db.query(
+        client.query(
           'UPDATE drills SET diagrams = $1 WHERE id = $2',
           [JSON.stringify(migratedDiagrams), drill.id]
         )
@@ -45,5 +48,7 @@ export async function POST() {
       success: false, 
       error: error.message 
     }, { status: 500 });
+  } finally {
+    await client.end();
   }
 } 

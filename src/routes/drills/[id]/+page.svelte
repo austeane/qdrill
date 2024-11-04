@@ -397,11 +397,6 @@
         </div>
       {/if}
 
-      <div class="mb-6">
-        <h2 class="text-lg font-semibold mb-2">Comments</h2>
-        <Comments drillId={$page.params.id} />
-      </div>
-
       {#if $drill.diagrams && $drill.diagrams.length > 0}
         <div>
           <h2 class="text-lg font-semibold mb-2">Diagrams</h2>
@@ -418,6 +413,11 @@
           {/each}
         </div>
       {/if}
+
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold mb-2">Comments</h2>
+        <Comments drillId={$page.params.id} />
+      </div>
     </div>
   </div>
 

@@ -554,11 +554,11 @@
   <meta name="description" content={drill.id ? 'Edit an existing drill' : 'Create a new drill'} />
 </svelte:head>
 
-<section class="container mx-auto p-4 h-screen overflow-y-auto">
+<section class="container mx-auto md:p-4 h-screen overflow-y-auto">
   <div class="flex flex-col md:flex-row h-full gap-4 transition-all duration-300 ease-in-out">
     <!-- Left Column: Form -->
-    <div class="flex-1 min-w-0 p-4 border rounded-md transition-all duration-300 ease-in-out md:overflow-y-auto">
-      <div class="max-w-lg mx-auto">
+    <div class="flex-1 min-w-0 md:p-4 border rounded-md transition-all duration-300 ease-in-out">
+      <div class="max-w-lg mx-auto md:mx-auto p-4 md:p-0">
         <h1 class="text-2xl font-bold text-center mb-6">{drill.id ? 'Edit Drill' : 'Create Drill'}</h1>
         <form on:submit|preventDefault={handleSubmit} class="space-y-6">
           <div class="flex flex-col">
@@ -828,7 +828,7 @@
     </div>
 
     <!-- Right Column: Diagrams and Images -->
-    <div class="flex-1 min-w-0 p-4 border rounded-md transition-all duration-300 ease-in-out md:overflow-y-auto">
+    <div class="flex-1 min-w-0 md:p-4 p-4 border rounded-md transition-all duration-300 ease-in-out">
       <h2 class="text-xl font-semibold mb-4">Diagrams and Images</h2>
       <div class="mt-6">
         <h3 class="text-lg font-semibold mb-2">Diagrams</h3>

@@ -15,7 +15,7 @@
 	  <!-- Left Side: Title and Blurb -->
 	  <div class="lg:w-1/2 text-center lg:text-left mb-8 lg:mb-0">
 		<img 
-		  src="/images/qdrill-logo-colour.png" 
+		  src="/images/qdrill-pill.png" 
 		  alt="QDrill Logo" 
 		  class="mb-4 max-w-[150px] lg:max-w-[300px]"
 		  loading="eager"

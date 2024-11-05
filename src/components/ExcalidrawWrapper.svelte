@@ -8,6 +8,7 @@
   export let showSaveButton = false;
   export let index;
   export let readonly = false;
+  export let template = 'blank';
 
   const dispatch = createEventDispatcher();
   let excalidrawAPI;
@@ -83,10 +84,186 @@
   }
 
   async function createInitialImageElements() {
-    console.log('Creating initial elements');
     const elements = [createGuideRectangle()];
     const files = {};
 
+    // Add template-specific elements inside the guide rectangle
+    if (template === 'halfCourt') {
+      await addHalfCourtElements(elements, files);
+    } else if (template === 'fullCourt') {
+      await addFullCourtElements(elements, files);
+    }
+
+    // Always add the sidebar elements
+    await addSidebarElements(elements, files);
+
+    return { elements, files };
+  }
+
+  function createHoopSet(x, y) {
+    // Create a group ID for all hoops in this set
+    const hoopGroupId = uuidv4();
+    const hoopSizes = [
+      { width: 40, height: 80 },
+      { width: 40, height: 120 },
+      { width: 40, height: 100 }
+    ];
+    const spacing = 20;
+    const elements = [];
+
+    hoopSizes.forEach((size, i) => {
+      // Calculate the Y position for the hoop circle by working backwards from the base
+      const poleHeight = size.height - size.width;
+      const hoopY = y - poleHeight - size.width;
+
+      const hoopCircle = {
+        type: 'ellipse',
+        x: x + i * (size.width + spacing) - size.width/2,
+        y: hoopY,
+        width: size.width,
+        height: size.width,
+        strokeColor: '#000000',
+        backgroundColor: 'transparent',
+        fillStyle: 'solid',
+        strokeWidth: 2,
+        roughness: 0,
+        opacity: 100,
+        strokeStyle: 'solid',
+        id: uuidv4(),
+        angle: 0,
+        groupIds: [hoopGroupId],
+        seed: Math.floor(Math.random() * 1000000),
+        version: 1,
+        versionNonce: Math.floor(Math.random() * 1000000),
+        isDeleted: false,
+      };
+
+      const pole = {
+        type: 'line',
+        x: x + i * (size.width + spacing),
+        y: hoopY + size.width,
+        points: [
+          [0, 0],
+          [0, poleHeight]
+        ],
+        strokeColor: '#000000',
+        backgroundColor: 'transparent',
+        fillStyle: 'solid',
+        strokeWidth: 2,
+        roughness: 0,
+        opacity: 100,
+        strokeStyle: 'solid',
+        id: uuidv4(),
+        width: 0,
+        height: poleHeight,
+        angle: 0,
+        groupIds: [hoopGroupId],
+        seed: Math.floor(Math.random() * 1000000),
+        version: 1,
+        versionNonce: Math.floor(Math.random() * 1000000),
+        isDeleted: false,
+      };
+
+      elements.push(hoopCircle, pole);
+    });
+
+    return elements;
+  }
+
+  async function addHalfCourtElements(elements, files) {
+    // Move hoops down further
+    const hoopSet = createHoopSet(CANVAS_WIDTH/2 - 40, 180);  // Moved from 120 to 180
+    elements.push(...hoopSet);
+
+    // Adjust player positions relative to new hoop position
+    const playerPositions = [
+      { x: CANVAS_WIDTH/2, y: 200, type: 'k' },          // Keeper (right at hoops)
+      { x: CANVAS_WIDTH/2 - 60, y: 260, type: 'b1' },    // Left Beater - moved closer
+      { x: CANVAS_WIDTH/2 + 60, y: 260, type: 'b2' },    // Right Beater - moved closer
+      { x: CANVAS_WIDTH/2 - 100, y: 360, type: 'c1' },   // Left Chaser
+      { x: CANVAS_WIDTH/2, y: 360, type: 'c2' },         // Center Chaser
+      { x: CANVAS_WIDTH/2 + 100, y: 360, type: 'c3' }    // Right Chaser
+    ];
+
+    await addPlayersToField(elements, files, playerPositions);
+  }
+
+  async function addFullCourtElements(elements, files) {
+    // Add hoops at top and bottom, ensuring equal distance from boundaries
+    const topHoops = createHoopSet(CANVAS_WIDTH/2 - 40, 120);    // Moved up from 150
+    const bottomHoops = createHoopSet(CANVAS_WIDTH/2 - 40, CANVAS_HEIGHT - 120);  // Moved up from 150
+
+    elements.push(...topHoops, ...bottomHoops);
+
+    const playerPositions = [
+      // Team 1 (Blue team - top half)
+      { x: CANVAS_WIDTH/2, y: 140, type: 'k', team: 'blue' },          // Keeper closer to hoops
+      { x: CANVAS_WIDTH/2 - 50, y: 180, type: 'b1', team: 'blue' },    // Beaters closer together
+      { x: CANVAS_WIDTH/2 + 50, y: 180, type: 'b2', team: 'blue' },    
+      { x: CANVAS_WIDTH/2 - 80, y: 240, type: 'c1', team: 'blue' },    // Chasers in formation
+      { x: CANVAS_WIDTH/2, y: 240, type: 'c2', team: 'blue' },         
+      { x: CANVAS_WIDTH/2 + 80, y: 240, type: 'c3', team: 'blue' },   
+      
+      // Team 2 (Red team - bottom half)
+      { x: CANVAS_WIDTH/2, y: CANVAS_HEIGHT - 140, type: 'k', team: 'red' },          // Keeper closer to hoops
+      { x: CANVAS_WIDTH/2 - 50, y: CANVAS_HEIGHT - 180, type: 'b1', team: 'red' },    // Beaters closer together
+      { x: CANVAS_WIDTH/2 + 50, y: CANVAS_HEIGHT - 180, type: 'b2', team: 'red' },    
+      { x: CANVAS_WIDTH/2 - 80, y: CANVAS_HEIGHT - 240, type: 'c1', team: 'red' },    // Chasers in formation
+      { x: CANVAS_WIDTH/2, y: CANVAS_HEIGHT - 240, type: 'c2', team: 'red' },         
+      { x: CANVAS_WIDTH/2 + 80, y: CANVAS_HEIGHT - 240, type: 'c3', team: 'red' }     
+    ];
+
+    await addPlayersToField(elements, files, playerPositions);
+  }
+
+  async function addPlayersToField(elements, files, positions) {
+    for (const pos of positions) {
+      const imageId = uuidv4();
+      // Use the team property to determine the image path
+      const teamColor = pos.team || 'blue';  // Default to blue if team not specified
+      const imagePath = `/images/icons/${teamColor}-player-${pos.type}.png`;
+      const dataUrl = await loadImageAsDataUrl(imagePath);
+      
+      if (dataUrl) {
+        elements.push({
+          id: imageId,
+          type: 'image',
+          x: pos.x,
+          y: pos.y,
+          width: 40,
+          height: 40,
+          angle: 0,
+          strokeColor: 'transparent',
+          backgroundColor: 'transparent',
+          fillStyle: 'hachure',
+          strokeWidth: 1,
+          strokeStyle: 'solid',
+          roughness: 0,
+          opacity: 100,
+          groupIds: [],
+          strokeSharpness: 'sharp',
+          seed: Math.floor(Math.random() * 1000000),
+          version: 1,
+          versionNonce: Math.floor(Math.random() * 1000000),
+          isDeleted: false,
+          scale: [1, 1],
+          fileId: imageId,
+          status: 'idle',
+        });
+
+        files[imageId] = {
+          id: imageId,
+          dataURL: dataUrl,
+          mimeType: 'image/png',
+          created: Date.now(),
+          lastRetrieved: Date.now(),
+        };
+      }
+    }
+  }
+
+  async function addSidebarElements(elements, files) {
+    // This is where your existing createInitialImageElements code would go
     // Add hoops - positioned to the right of the guide box
     const hoopSizes = [
       { width: 40, height: 80 },
@@ -103,7 +280,7 @@
     hoopSizes.forEach((size, i) => {
       // Calculate the Y position for the hoop circle by working backwards from the base
       const poleHeight = size.height - size.width;
-      const hoopY = baseY - poleHeight - size.width; // Subtract pole height and hoop height from base
+      const hoopY = baseY - poleHeight - size.width;
 
       const hoopCircle = {
         type: 'ellipse',
@@ -127,14 +304,13 @@
         isDeleted: false,
       };
 
-      // Add vertical pole (starting from bottom of hoop)
       const pole = {
         type: 'line',
         x: startX + i * (size.width + spacing),
-        y: hoopY + size.width, // Start from bottom of hoop
+        y: hoopY + size.width,
         points: [
           [0, 0],
-          [0, poleHeight] // Height is total height minus hoop height
+          [0, poleHeight]
         ],
         strokeColor: '#000000',
         backgroundColor: 'transparent',
@@ -157,6 +333,7 @@
       elements.push(hoopCircle, pole);
     });
 
+    // Add your existing player icons grid code here
     // Define the icon sets and their positions
     const iconSets = [
       'b-and-w-player',
@@ -169,24 +346,22 @@
       'yellow-arrow-player'
     ];
 
-    // Updated positions array with specific suffixes for each position
     const positions = [
-      { type: 'k', x: 0 },           // Keeper
-      { type: 'c1', x: 60 },         // Chaser 1
-      { type: 'c2', x: 120 },        // Chaser 2
-      { type: 'c3', x: 180 },        // Chaser 3
-      { type: 'b1', x: 240 },        // Beater 1
-      { type: 'b2', x: 300 },        // Beater 2
-      { type: 's', x: 360 }          // Seeker
+      { type: 'k', x: 0 },
+      { type: 'c1', x: 60 },
+      { type: 'c2', x: 120 },
+      { type: 'c3', x: 180 },
+      { type: 'b1', x: 240 },
+      { type: 'b2', x: 300 },
+      { type: 's', x: 360 }
     ];
 
-    // Starting position for the first row
     let startY = 140;
     const iconSize = 40;
     const rowSpacing = 50;
     const baseX = CANVAS_WIDTH + 90;
-    
-    // Add player icons
+
+    // Add all the player icons
     for (let setIndex = 0; setIndex < iconSets.length; setIndex++) {
       const currentY = startY + (setIndex * rowSpacing);
       
@@ -233,13 +408,13 @@
       }
     }
 
-    // Update the ball positions to align with the first 4 players
+    // Add the balls and cone
     const balls = [
-      { url: '/images/icons/quaffle.png', x: CANVAS_WIDTH + 70 + 30, y: 115, size: { width: 16, height: 20 } },  // Changed y from 215 to 115
-      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 90, y: 115, size: { width: 16, height: 20 } },  // Changed y from 215 to 115
-      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 150, y: 115, size: { width: 16, height: 20 } }, // Changed y from 215 to 115
-      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 210, y: 115, size: { width: 16, height: 20 } },  // Changed y from 215 to 115
-      { url: '/images/cone.webp', x: CANVAS_WIDTH + 70 + 270, y: 115, size: { width: 20, height: 20 }, scale: [0.25, 0.25] }  // Changed y from 215 to 115
+      { url: '/images/icons/quaffle.png', x: CANVAS_WIDTH + 70 + 30, y: 115, size: { width: 16, height: 20 } },
+      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 90, y: 115, size: { width: 16, height: 20 } },
+      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 150, y: 115, size: { width: 16, height: 20 } },
+      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 210, y: 115, size: { width: 16, height: 20 } },
+      { url: '/images/cone.webp', x: CANVAS_WIDTH + 70 + 270, y: 115, size: { width: 20, height: 20 }, scale: [0.25, 0.25] }
     ];
 
     for (const ball of balls) {
@@ -268,7 +443,7 @@
           version: 1,
           versionNonce: Math.floor(Math.random() * 1000000),
           isDeleted: false,
-          scale: [1, 1],
+          scale: ball.scale || [1, 1],
           fileId: imageId,
           status: 'idle',
         });
@@ -282,8 +457,6 @@
         };
       }
     }
-
-    return { elements, files };
   }
 
   function zoomToIncludeAllElements(api) {
@@ -431,12 +604,7 @@
   }
 
   function handleSaveAndClose() {
-    console.log('Save and close clicked, API available:', !!fullscreenExcalidrawAPI);
-    
-    if (!fullscreenExcalidrawAPI) {
-      console.warn('No fullscreen API available');
-      return;
-    }
+    if (!fullscreenExcalidrawAPI) return;
 
     try {
       const elements = fullscreenExcalidrawAPI.getSceneElements();
@@ -559,68 +727,54 @@
   onMount(async () => {
     if (browser) {
       try {
-        console.log('Mounting Excalidraw with data:', data);
         const React = await import('react');
         const ReactDOM = await import('react-dom/client');
         window.React = React.default;
         const { Excalidraw } = await import('@excalidraw/excalidraw');
 
         let initialData;
-        console.log('Checking for creatings initial elements...');
-
         if (!data || (data.elements && data.elements.length === 0)) {
-          console.log('Creating initial elements...');
           initialData = await createInitialImageElements();
         } else {
-          // Ensure data has the correct structure and collaborators is always an array
-          console.log('Raw data from props:', data);
           initialData = {
             elements: data.elements || [],
             appState: {
               viewBackgroundColor: '#ffffff',
               gridSize: 20,
-              collaborators: [], // Ensure collaborators exists and is an array
-              ...(data.appState || {}),
-              collaborators: Array.isArray(data.appState?.collaborators) ? data.appState.collaborators : []
+              collaborators: [],
+              ...(data.appState || {})
             },
             files: data.files || {}
           };
         }
-        
-        console.log('Initializing Excalidraw with processed data:', initialData);
 
         // Create props for both components
-        const createExcalidrawProps = (isFullscreenVersion = false) => {
-          const props = {
-            excalidrawAPI: (api) => {
-              if (isFullscreenVersion) {
-                fullscreenExcalidrawAPI = api;
-              } else {
-                excalidrawAPI = api;
-                // Center and zoom when the API is ready
-                if (!isFullscreen) {
-                  setTimeout(() => centerAndZoomToGuideRectangle(api), 100);
-                }
-              }
-            },
-            initialData: initialData,
-            viewModeEnabled: readonly,
-            onChange: handleChange,
-            gridModeEnabled: false,
-            theme: "light",
-            name: isFullscreenVersion ? `${id}-fullscreen` : id,
-            UIOptions: {
-              canvasActions: {
-                export: false,
-                loadScene: false,
-                saveAsImage: false,
-                theme: false,
+        const createExcalidrawProps = (isFullscreenVersion = false) => ({
+          excalidrawAPI: (api) => {
+            if (isFullscreenVersion) {
+              fullscreenExcalidrawAPI = api;
+            } else {
+              excalidrawAPI = api;
+              if (!isFullscreen) {
+                setTimeout(() => centerAndZoomToGuideRectangle(api), 100);
               }
             }
-          };
-          console.log('Created Excalidraw props:', props);
-          return props;
-        };
+          },
+          initialData,
+          viewModeEnabled: readonly,
+          onChange: handleChange,
+          gridModeEnabled: false,
+          theme: "light",
+          name: isFullscreenVersion ? `${id}-fullscreen` : id,
+          UIOptions: {
+            canvasActions: {
+              export: false,
+              loadScene: false,
+              saveAsImage: false,
+              theme: false,
+            }
+          }
+        });
         
         // Create main component
         ExcalidrawComponent = {

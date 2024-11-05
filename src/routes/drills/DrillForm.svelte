@@ -95,6 +95,9 @@
     'Match-like situation'
   ];
 
+  let showAddDiagramModal = false;
+  let selectedTemplate = 'blank';
+
   function addDiagram() {
     // Save the current diagram if it exists
     if (diagramRefs.length > 0) {
@@ -105,6 +108,7 @@
     }
 
     diagrams.update(d => [...d, {
+      template: selectedTemplate,
       elements: [],
       appState: {
         viewBackgroundColor: '#ffffff',
@@ -114,6 +118,7 @@
       files: {}
     }]);
     diagramKey++;
+    showAddDiagramModal = false;
   }
 
   function deleteDiagram(index) {
@@ -857,14 +862,50 @@
                   id={`diagram-canvas-${index}`} 
                   data={diagram} 
                   index={index} 
-                  showSaveButton={true} 
+                  showSaveButton={true}
+                  template={diagram.template} 
                 />
               </div>
             {/each}
           </div>
+          {#if showAddDiagramModal}
+            <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+              <div class="bg-white rounded-lg p-6 w-96">
+                <h2 class="text-xl font-semibold mb-4">Choose a Template</h2>
+                <div class="flex flex-col space-y-2">
+                  <label class="flex items-center space-x-2">
+                    <input type="radio" bind:group={selectedTemplate} value="blank" />
+                    <span>Blank</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="radio" bind:group={selectedTemplate} value="halfCourt" />
+                    <span>Half Court</span>
+                  </label>
+                  <label class="flex items-center space-x-2">
+                    <input type="radio" bind:group={selectedTemplate} value="fullCourt" />
+                    <span>Full Court</span>
+                  </label>
+                </div>
+                <div class="mt-4 flex justify-end space-x-2">
+                  <button 
+                    on:click={() => showAddDiagramModal = false}
+                    class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    on:click={addDiagram}
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Add Diagram
+                  </button>
+                </div>
+              </div>
+            </div>
+          {/if}
           <button 
             type="button" 
-            on:click={addDiagram} 
+            on:click={() => showAddDiagramModal = true}
             class="mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
           >
             Add New Diagram

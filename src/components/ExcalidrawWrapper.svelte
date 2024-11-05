@@ -17,8 +17,6 @@
   let initialSceneData = null;
   let excalidrawWrapper;
 
-  const quaffleUrl = '/images/quaffle.webp';
-  const bludgerUrl = '/images/bludger.webp';
   const coneUrl = '/images/cone.webp';
 
   const CANVAS_WIDTH = 500;
@@ -89,7 +87,7 @@
   }
 
   async function createInitialImageElements() {
-    console.log('Creating initial image elements');
+    console.log('Creating initial elements');
     const elements = [createGuideRectangle()];
     const files = {};
 
@@ -100,8 +98,8 @@
       { width: 40, height: 100 }
     ];
     const spacing = 20;
-    const startX = CANVAS_WIDTH + 100; // Position hoops to the right of the red box
-    const baseY = 200;
+    const startX = CANVAS_WIDTH + 100;
+    const baseY = 100;
 
     // Create a group ID for all hoops
     const hoopGroupId = uuidv4();
@@ -163,164 +161,103 @@
       elements.push(hoopCircle, pole);
     });
 
-    // Add players
-    const teamColors = ['#ff0000', '#0000ff'];
-    const positionColors = ['#00ff00', '#000000', '#ffffff', '#ffff00'];
-    const playerCounts = [1, 2, 3, 1];
-
-    teamColors.forEach((teamColor, teamIndex) => {
-      let playerX = CANVAS_WIDTH + 100; // Start players to the right of the red box
-      positionColors.forEach((headColor, positionIndex) => {
-        for (let i = 0; i < playerCounts[positionIndex]; i++) {
-          // Create a unique group ID for this stick figure
-          const playerGroupId = uuidv4();
-
-          // Add stick figure body
-          elements.push({
-            type: 'line',
-            x: playerX,
-            y: 300 + teamIndex * 60,
-            points: [
-              [0, 0],
-              [0, 20]
-            ],
-            strokeColor: teamColor,
-            strokeWidth: 2,
-            roughness: 0,
-            opacity: 100,
-            strokeStyle: 'solid',
-            id: uuidv4(),
-            width: 0,
-            height: 20,
-            angle: 0,
-            groupIds: [playerGroupId], // Add to group
-            seed: Math.floor(Math.random() * 1000000),
-            version: 1,
-            versionNonce: Math.floor(Math.random() * 1000000),
-            isDeleted: false,
-          });
-
-          // Add head
-          elements.push({
-            type: 'ellipse',
-            x: playerX - 5,
-            y: 290 + teamIndex * 60,
-            width: 10,
-            height: 10,
-            strokeColor: '#000000',
-            backgroundColor: headColor,
-            fillStyle: 'solid',
-            strokeWidth: 1,
-            roughness: 0,
-            opacity: 100,
-            strokeStyle: 'solid',
-            id: uuidv4(),
-            angle: 0,
-            groupIds: [playerGroupId], // Add to group
-            seed: Math.floor(Math.random() * 1000000),
-            version: 1,
-            versionNonce: Math.floor(Math.random() * 1000000),
-            isDeleted: false,
-          });
-
-          // Add arms
-          elements.push({
-            type: 'line',
-            x: playerX - 10,
-            y: 310 + teamIndex * 60,
-            points: [
-              [0, 0],
-              [20, 0]
-            ],
-            strokeColor: teamColor,
-            strokeWidth: 2,
-            roughness: 0,
-            opacity: 100,
-            strokeStyle: 'solid',
-            id: uuidv4(),
-            width: 20,
-            height: 0,
-            angle: 0,
-            groupIds: [playerGroupId], // Add to group
-            seed: Math.floor(Math.random() * 1000000),
-            version: 1,
-            versionNonce: Math.floor(Math.random() * 1000000),
-            isDeleted: false,
-          });
-
-          // Add legs (both legs share the same group ID)
-          elements.push({
-            type: 'line',
-            x: playerX,
-            y: 320 + teamIndex * 60,
-            points: [
-              [0, 0],
-              [-10, 15]
-            ],
-            strokeColor: teamColor,
-            strokeWidth: 2,
-            roughness: 0,
-            opacity: 100,
-            strokeStyle: 'solid',
-            id: uuidv4(),
-            width: 10,
-            height: 15,
-            angle: 0,
-            groupIds: [playerGroupId], // Add to group
-            seed: Math.floor(Math.random() * 1000000),
-            version: 1,
-            versionNonce: Math.floor(Math.random() * 1000000),
-            isDeleted: false,
-          });
-
-          elements.push({
-            type: 'line',
-            x: playerX,
-            y: 320 + teamIndex * 60,
-            points: [
-              [0, 0],
-              [10, 15]
-            ],
-            strokeColor: teamColor,
-            strokeWidth: 2,
-            roughness: 0,
-            opacity: 100,
-            strokeStyle: 'solid',
-            id: uuidv4(),
-            width: 10,
-            height: 15,
-            angle: 0,
-            groupIds: [playerGroupId], // Add to group
-            seed: Math.floor(Math.random() * 1000000),
-            version: 1,
-            versionNonce: Math.floor(Math.random() * 1000000),
-            isDeleted: false,
-          });
-
-          playerX += 60;
-        }
-      });
-    });
-
-    // Add the ball images
-    const images = [
-      { url: quaffleUrl, x: CANVAS_WIDTH + 90, y: 240, scale: 0.4 },  // Align with first figure
-      { url: bludgerUrl, x: CANVAS_WIDTH + 150, y: 240, scale: 0.4 },  // Align with second figure
-      { url: coneUrl, x: CANVAS_WIDTH + 210, y: 248, scale: 0.3 }      // Align with third figure
+    // Define the icon sets and their positions
+    const iconSets = [
+      'b-and-w-player',
+      'blue-player',
+      'canada-player',
+      'red-black-player',
+      'red-player',
+      'ubc-player',
+      'y-and-b-player',
+      'yellow-arrow-player'
     ];
 
-    for (const image of images) {
+    // Updated positions array with specific suffixes for each position
+    const positions = [
+      { type: 'k', x: 0 },           // Keeper
+      { type: 'c1', x: 60 },         // Chaser 1
+      { type: 'c2', x: 120 },        // Chaser 2
+      { type: 'c3', x: 180 },        // Chaser 3
+      { type: 'b1', x: 240 },        // Beater 1
+      { type: 'b2', x: 300 },        // Beater 2
+      { type: 's', x: 360 }          // Seeker
+    ];
+
+    // Starting position for the first row
+    let startY = 140;
+    const iconSize = 40;
+    const rowSpacing = 50;
+    const baseX = CANVAS_WIDTH + 90;
+    
+    // Add player icons
+    for (let setIndex = 0; setIndex < iconSets.length; setIndex++) {
+      const currentY = startY + (setIndex * rowSpacing);
+      
+      for (const position of positions) {
+        const imageId = uuidv4();
+        const imagePath = `/images/icons/${iconSets[setIndex]}-${position.type}.png`;
+        const dataUrl = await loadImageAsDataUrl(imagePath);
+        
+        if (dataUrl) {
+          elements.push({
+            id: imageId,
+            type: 'image',
+            x: baseX + position.x,
+            y: currentY,
+            width: iconSize,
+            height: iconSize,
+            angle: 0,
+            strokeColor: 'transparent',
+            backgroundColor: 'transparent',
+            fillStyle: 'hachure',
+            strokeWidth: 1,
+            strokeStyle: 'solid',
+            roughness: 0,
+            opacity: 100,
+            groupIds: [],
+            strokeSharpness: 'sharp',
+            seed: Math.floor(Math.random() * 1000000),
+            version: 1,
+            versionNonce: Math.floor(Math.random() * 1000000),
+            isDeleted: false,
+            scale: [1, 1],
+            fileId: imageId,
+            status: 'idle',
+          });
+
+          files[imageId] = {
+            id: imageId,
+            dataURL: dataUrl,
+            mimeType: 'image/png',
+            created: Date.now(),
+            lastRetrieved: Date.now(),
+          };
+        }
+      }
+    }
+
+    // Update the ball positions to align with the first 4 players
+    const balls = [
+      { url: '/images/icons/quaffle.png', x: CANVAS_WIDTH + 70 + 30, y: 115, size: { width: 16, height: 20 } },  // Changed y from 215 to 115
+      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 90, y: 115, size: { width: 16, height: 20 } },  // Changed y from 215 to 115
+      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 150, y: 115, size: { width: 16, height: 20 } }, // Changed y from 215 to 115
+      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 210, y: 115, size: { width: 16, height: 20 } },  // Changed y from 215 to 115
+      { url: '/images/cone.webp', x: CANVAS_WIDTH + 70 + 270, y: 115, size: { width: 20, height: 20 }, scale: [0.25, 0.25] }  // Changed y from 215 to 115
+    ];
+
+    for (const ball of balls) {
       const imageId = uuidv4();
-      const dataUrl = await loadImageAsDataUrl(image.url);
+      const dataUrl = await loadImageAsDataUrl(ball.url);
       
       if (dataUrl) {
         elements.push({
           id: imageId,
           type: 'image',
-          x: image.x,
-          y: image.y,
-          width: 50 * image.scale,
-          height: 50 * image.scale,
+          x: ball.x,
+          y: ball.y,
+          width: ball.size.width,
+          height: ball.size.height,
           angle: 0,
           strokeColor: 'transparent',
           backgroundColor: 'transparent',
@@ -343,7 +280,7 @@
         files[imageId] = {
           id: imageId,
           dataURL: dataUrl,
-          mimeType: 'image/webp',
+          mimeType: 'image/png',
           created: Date.now(),
           lastRetrieved: Date.now(),
         };
@@ -633,7 +570,10 @@
         const { Excalidraw } = await import('@excalidraw/excalidraw');
 
         let initialData;
-        if (!data) {
+        console.log('Checking for creatings initial elements...');
+
+        if (!data || (data.elements && data.elements.length === 0)) {
+          console.log('Creating initial elements...');
           initialData = await createInitialImageElements();
         } else {
           // Ensure data has the correct structure and collaborators is always an array

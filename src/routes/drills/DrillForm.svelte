@@ -555,373 +555,381 @@
 </svelte:head>
 
 <section class="container mx-auto md:p-4 h-screen overflow-y-auto">
-  <div class="flex flex-col md:flex-row h-full gap-4 transition-all duration-300 ease-in-out">
-    <!-- Left Column: Form -->
-    <div class="flex-1 min-w-0 md:p-4 border rounded-md transition-all duration-300 ease-in-out">
-      <div class="max-w-lg mx-auto md:mx-auto p-4 md:p-0">
-        <h1 class="text-2xl font-bold text-center mb-6">{drill.id ? 'Edit Drill' : 'Create Drill'}</h1>
-        <form on:submit|preventDefault={handleSubmit} class="space-y-6">
-          <div class="flex flex-col">
-            <label for="name" class="mb-1 text-sm font-medium text-gray-700">Drill Name:</label>
-            <input id="name" bind:value={$name} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          {#if $errors.name}
-            <p class="text-red-500 text-sm mt-1">{$errors.name}</p>
-          {/if}
-
-          <div class="flex flex-col">
-            <label for="brief_description" class="mb-1 text-sm font-medium text-gray-700">Brief Description:</label>
-            <p class="text-xs text-gray-500 mb-1">For display on the drill listings page</p>
-            <input id="brief_description" bind:value={$brief_description} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          {#if $errors.brief_description}
-            <p class="text-red-500 text-sm mt-1">{$errors.brief_description}</p>
-          {/if}
-
-          <div class="flex flex-col">
-            <label for="detailed_description" class="mb-1 text-sm font-medium text-gray-700">Detailed Description:</label>
-            <p class="text-xs text-gray-500 mb-1">As much detail as would be needed for a new coach to teach this drill, including setup and any focus areas.</p>
-            <textarea 
-              id="detailed_description" 
-              bind:value={$detailed_description} 
-              on:input={adjustTextareaHeight}
-              class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows="3"
-            ></textarea>
-          </div>
-
-          <!-- Moved Drill Type Field -->
-          <div class="flex flex-col">
-            <label class="mb-1 text-sm font-medium text-gray-700">Drill Type:</label>
-            <p class="text-xs text-gray-500 mb-1">Select one or more drill types.</p>
-            <div class="flex flex-wrap gap-2">
-              {#each drillTypeOptions as type}
-                <button
-                  type="button"
-                  class="px-3 py-1 rounded-full border border-gray-300"
-                  class:selected={$drill_type.includes(type)}
-                  on:click={() => toggleSelection(drill_type, type)}
-                >
-                  {type}
-                </button>
-              {/each}
+  <!-- Wrap everything in a flex column for mobile -->
+  <div class="flex flex-col h-full">
+    <!-- Two column container -->
+    <div class="flex flex-col md:flex-row flex-grow gap-4 transition-all duration-300 ease-in-out">
+      <!-- Left Column: Form (without submit button) -->
+      <div class="flex-1 min-w-0 md:p-4 border rounded-md transition-all duration-300 ease-in-out">
+        <div class="max-w-lg mx-auto md:mx-auto p-4 md:p-0">
+          <h1 class="text-2xl font-bold text-center mb-6">{drill.id ? 'Edit Drill' : 'Create Drill'}</h1>
+          <form on:submit|preventDefault={handleSubmit} class="space-y-6">
+            <div class="flex flex-col">
+              <label for="name" class="mb-1 text-sm font-medium text-gray-700">Drill Name:</label>
+              <input id="name" bind:value={$name} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
-            {#if $errors.drill_type}
-              <p class="text-red-500 text-sm mt-1">{$errors.drill_type}</p>
+            {#if $errors.name}
+              <p class="text-red-500 text-sm mt-1">{$errors.name}</p>
             {/if}
-          </div>
 
-          <div class="flex flex-col">
-            <label for="skill_level" class="mb-1 text-sm font-medium text-gray-700">Appropriate for Skill Level:</label>
-            <p class="text-xs text-gray-500 mb-1">When done correctly, what levels of player would benefit from this drill.</p>
-
-            <div class="flex flex-wrap gap-2">
-              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'new to sport')}>New to Sport</button>
-              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'beginner')}>Beginner</button>
-              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'intermediate')}>Intermediate</button>
-              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'advanced')}>Advanced</button>
-              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'elite')}>Elite</button>
+            <div class="flex flex-col">
+              <label for="brief_description" class="mb-1 text-sm font-medium text-gray-700">Brief Description:</label>
+              <p class="text-xs text-gray-500 mb-1">For display on the drill listings page</p>
+              <input id="brief_description" bind:value={$brief_description} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
-          </div>
-          {#if $errors.skill_level}
-            <p class="text-red-500 text-sm mt-1">{$errors.skill_level}</p>
-          {/if}
+            {#if $errors.brief_description}
+              <p class="text-red-500 text-sm mt-1">{$errors.brief_description}</p>
+            {/if}
 
-          <div class="flex flex-col">
-            <label for="complexity" class="mb-1 text-sm font-medium text-gray-700">Complexity:</label>
-            <p class="text-xs text-gray-500 mb-1">How difficult is it to get a team to do this drill correctly for the first time.</p>
-            <select id="complexity" bind:value={$complexity} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">Select Complexity</option>
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-            </select>
-          </div>
+            <div class="flex flex-col">
+              <label for="detailed_description" class="mb-1 text-sm font-medium text-gray-700">Detailed Description:</label>
+              <p class="text-xs text-gray-500 mb-1">As much detail as would be needed for a new coach to teach this drill, including setup and any focus areas.</p>
+              <textarea 
+                id="detailed_description" 
+                bind:value={$detailed_description} 
+                on:input={adjustTextareaHeight}
+                class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows="3"
+              ></textarea>
+            </div>
 
-          <div class="flex flex-col">
-            <label for="suggested_length" class="mb-1 text-sm font-medium text-gray-700">Suggested Length of Time:</label>
-            <select id="suggested_length" bind:value={$suggested_length} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">Select Length of Time</option>
-              <option value="0-5 minutes">0-5 minutes</option>
-              <option value="5-15 minutes">5-15 minutes</option>
-              <option value="15-30 minutes">15-30 minutes</option>
-              <option value="30-60 minutes">30-60 minutes</option>
-            </select>
-          </div>
-          {#if $errors.suggested_length}
-            <p class="text-red-500 text-sm mt-1">{$errors.suggested_length}</p>
-          {/if}
-
-          <div class="flex flex-col">
-            <label for="number_of_people_min" class="mb-1 text-sm font-medium text-gray-700">Min Number of People:</label>
-            <input 
-              id="number_of_people_min" 
-              bind:value={$number_of_people_min} 
-              on:input={() => validateNumber($number_of_people_min, 'number_of_people_min')}
-              class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
-            />
-          </div>
-          {#if numberWarnings.number_of_people_min}
-            <p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_min}</p>
-          {/if}
-          {#if $errors.number_of_people_min}
-            <p class="text-red-500 text-sm mt-1">{$errors.number_of_people_min}</p>
-          {/if}
-
-          <div class="flex flex-col">
-            <label for="number_of_people_max" class="mb-1 text-sm font-medium text-gray-700">Max Number of People:</label>
-            <p class="text-xs text-gray-500 mb-1">Leave empty or enter 0 for "Any"</p>
-            <input 
-              id="number_of_people_max" 
-              bind:value={$number_of_people_max} 
-              on:input={() => validateNumber($number_of_people_max, 'number_of_people_max')}
-              class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
-            />
-          </div>
-          {#if numberWarnings.number_of_people_max}
-            <p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_max}</p>
-          {/if}
-          {#if $errors.number_of_people_max}
-            <p class="text-red-500 text-sm mt-1">{$errors.number_of_people_max}</p>
-          {/if}
-
-          <div class="flex flex-col">
-            <label for="skills_focused_on" class="mb-1 text-sm font-medium text-gray-700">Skills Focused On:</label>
-            <div class="relative">
-              <input
-                id="skills_focused_on"
-                bind:value={$newSkill}
-                on:input={handleSkillInput}
-                class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Type to search or add new skills"
-              />
-              {#if $skillSuggestions.length > 0}
-                <ul class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto">
-                  {#each $skillSuggestions as suggestion}
-                    <li>
-                      <button
-                        type="button"
-                        on:click={() => selectSkill(suggestion)}
-                        class="w-full text-left px-3 py-2 hover:bg-gray-100"
-                      >
-                        {suggestion.skill} {suggestion.isPredefined ? '(Predefined)' : ''}
-                      </button>
-                    </li>
+            <!-- Moved Drill Type Field -->
+            <div class="flex flex-col">
+              <label class="mb-1 text-sm font-medium text-gray-700">Drill Type:</label>
+              <p class="text-xs text-gray-500 mb-1">Select one or more drill types.</p>
+              <div class="flex flex-wrap gap-2">
+                {#each drillTypeOptions as type}
+                  <button
+                    type="button"
+                    class="px-3 py-1 rounded-full border border-gray-300"
+                    class:selected={$drill_type.includes(type)}
+                    on:click={() => toggleSelection(drill_type, type)}
+                  >
+                    {type}
+                  </button>
                 {/each}
-                </ul>
+              </div>
+              {#if $errors.drill_type}
+                <p class="text-red-500 text-sm mt-1">{$errors.drill_type}</p>
               {/if}
             </div>
-            <div class="flex flex-wrap gap-2 mb-2">
-              {#each $selectedSkills as skill}
-                <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-                  {skill}
-                  <button on:click={() => removeSkill(skill)} class="ml-1 text-blue-600 hover:text-blue-800">×</button>
-                </span>
-              {/each}
+
+            <div class="flex flex-col">
+              <label for="skill_level" class="mb-1 text-sm font-medium text-gray-700">Appropriate for Skill Level:</label>
+              <p class="text-xs text-gray-500 mb-1">When done correctly, what levels of player would benefit from this drill.</p>
+
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'new to sport')}>New to Sport</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'beginner')}>Beginner</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'intermediate')}>Intermediate</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'advanced')}>Advanced</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'elite')}>Elite</button>
+              </div>
             </div>
+            {#if $errors.skill_level}
+              <p class="text-red-500 text-sm mt-1">{$errors.skill_level}</p>
+            {/if}
+
+            <div class="flex flex-col">
+              <label for="complexity" class="mb-1 text-sm font-medium text-gray-700">Complexity:</label>
+              <p class="text-xs text-gray-500 mb-1">How difficult is it to get a team to do this drill correctly for the first time.</p>
+              <select id="complexity" bind:value={$complexity} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Select Complexity</option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+
+            <div class="flex flex-col">
+              <label for="suggested_length" class="mb-1 text-sm font-medium text-gray-700">Suggested Length of Time:</label>
+              <select id="suggested_length" bind:value={$suggested_length} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Select Length of Time</option>
+                <option value="0-5 minutes">0-5 minutes</option>
+                <option value="5-15 minutes">5-15 minutes</option>
+                <option value="15-30 minutes">15-30 minutes</option>
+                <option value="30-60 minutes">30-60 minutes</option>
+              </select>
+            </div>
+            {#if $errors.suggested_length}
+              <p class="text-red-500 text-sm mt-1">{$errors.suggested_length}</p>
+            {/if}
+
+            <div class="flex flex-col">
+              <label for="number_of_people_min" class="mb-1 text-sm font-medium text-gray-700">Min Number of People:</label>
+              <input 
+                id="number_of_people_min" 
+                bind:value={$number_of_people_min} 
+                on:input={() => validateNumber($number_of_people_min, 'number_of_people_min')}
+                class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              />
+            </div>
+            {#if numberWarnings.number_of_people_min}
+              <p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_min}</p>
+            {/if}
+            {#if $errors.number_of_people_min}
+              <p class="text-red-500 text-sm mt-1">{$errors.number_of_people_min}</p>
+            {/if}
+
+            <div class="flex flex-col">
+              <label for="number_of_people_max" class="mb-1 text-sm font-medium text-gray-700">Max Number of People:</label>
+              <p class="text-xs text-gray-500 mb-1">Leave empty or enter 0 for "Any"</p>
+              <input 
+                id="number_of_people_max" 
+                bind:value={$number_of_people_max} 
+                on:input={() => validateNumber($number_of_people_max, 'number_of_people_max')}
+                class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              />
+            </div>
+            {#if numberWarnings.number_of_people_max}
+              <p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_max}</p>
+            {/if}
+            {#if $errors.number_of_people_max}
+              <p class="text-red-500 text-sm mt-1">{$errors.number_of_people_max}</p>
+            {/if}
+
+            <div class="flex flex-col">
+              <label for="skills_focused_on" class="mb-1 text-sm font-medium text-gray-700">Skills Focused On:</label>
+              <div class="relative">
+                <input
+                  id="skills_focused_on"
+                  bind:value={$newSkill}
+                  on:input={handleSkillInput}
+                  class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Type to search or add new skills"
+                />
+                {#if $skillSuggestions.length > 0}
+                  <ul class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto">
+                    {#each $skillSuggestions as suggestion}
+                      <li>
+                        <button
+                          type="button"
+                          on:click={() => selectSkill(suggestion)}
+                          class="w-full text-left px-3 py-2 hover:bg-gray-100"
+                        >
+                          {suggestion.skill} {suggestion.isPredefined ? '(Predefined)' : ''}
+                        </button>
+                      </li>
+                  {/each}
+                  </ul>
+                {/if}
+              </div>
+              <div class="flex flex-wrap gap-2 mb-2">
+                {#each $selectedSkills as skill}
+                  <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
+                    {skill}
+                    <button on:click={() => removeSkill(skill)} class="ml-1 text-blue-600 hover:text-blue-800">×</button>
+                  </span>
+                {/each}
+              </div>
+              <button
+                type="button"
+                on:click={openSkillsModal}
+                class="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Browse Skills
+              </button>
+            </div>
+            {#if $errors.skills_focused_on}
+              <p class="text-red-500 text-sm mt-1">{$errors.skills_focused_on}</p>
+            {/if}
+
+            <div class="flex flex-col">
+              <label for="positions_focused_on" class="mb-1 text-sm font-medium text-gray-700">Positions Focused On:</label>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Beater')}>Beater</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Chaser')}>Chaser</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Keeper')}>Keeper</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Seeker')}>Seeker</button>
+              </div>
+            </div>
+            {#if $errors.positions_focused_on}
+              <p class="text-red-500 text-sm mt-1">{$errors.positions_focused_on}</p>
+            {/if}
+
+            <div class="flex flex-col">
+              <label for="video_link" class="mb-1 text-sm font-medium text-gray-700">Video Link:</label>
+              <input id="video_link" bind:value={$video_link} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+
+            <!-- Visibility Field -->
+            <div class="flex flex-col">
+              <label class="mb-1 text-sm font-medium text-gray-700">Visibility:</label>
+              <select 
+                bind:value={$visibility} 
+                class="p-2 border rounded-md" 
+                disabled={!$page.data.session}
+                title={!$page.data.session ? 'Log in to create private or unlisted drills' : ''}
+              >
+                <option value="public">Public</option>
+                <option value="unlisted">Unlisted</option>
+                <option value="private">Private</option>
+              </select>
+              {#if !$page.data.session}
+                <p class="text-sm text-gray-500 mt-1">Log in to create private or unlisted drills</p>
+              {/if}
+            </div>
+
+            <!-- Is Editable by Others Field -->
+            <div class="flex items-center">
+              <input
+                id="editable_by_others"
+                type="checkbox"
+                bind:checked={$is_editable_by_others}
+                disabled={!$page.data.session}
+                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label
+                for="editable_by_others"
+                class="ml-2 block text-sm text-gray-700"
+              >
+                Allow others to edit this drill
+                {#if !$page.data.session}
+                  <span class="text-gray-500">(required for anonymous submissions)</span>
+                {/if}
+              </label>
+            </div>
+
+            <div class="mb-4">
+              <label class="flex items-center">
+                <input
+                  type="checkbox"
+                  bind:checked={$isVariation}
+                  class="form-checkbox h-4 w-4 text-blue-600"
+                />
+                <span class="ml-2">This is a variation of another drill</span>
+              </label>
+            </div>
+
+            {#if $isVariation}
+              <div class="mb-4">
+                <label for="parentDrill" class="block text-sm font-medium text-gray-700">Parent Drill</label>
+                <select
+                  id="parentDrill"
+                  bind:value={$parentDrillId}
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                >
+                  <option value="">Select a parent drill</option>
+                  {#each $parentDrills as drill}
+                    <option value={drill.id}>{drill.name}</option>
+                  {/each}
+                </select>
+                {#if $errors.parentDrillId}
+                  <p class="text-red-500 text-sm mt-1">{$errors.parentDrillId}</p>
+                {/if}
+              </div>
+            {/if}
+          </form>
+        </div>
+      </div>
+
+      <!-- Right Column: Diagrams and Images -->
+      <div class="flex-1 min-w-0 md:p-4 p-4 border rounded-md transition-all duration-300 ease-in-out">
+        <h2 class="text-xl font-semibold mb-4">Diagrams and Images</h2>
+        <div class="mt-6">
+          <h3 class="text-lg font-semibold mb-2">Diagrams</h3>
+          <p class="text-sm text-gray-600 mb-4">💡 Tip: Click the "Fullscreen" button in the top-right corner of each diagram for the best editing experience.</p>
+          <div class="space-y-4">
+            {#each $diagrams as diagram, index (index + '-' + diagramKey)}
+              <div class="border p-4 rounded">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-lg font-semibold">Diagram {index + 1}</span>
+                  <div class="flex gap-2">
+                    {#if index > 0}
+                      <button type="button" class="text-blue-600 hover:text-blue-800" on:click={() => handleMoveUp(index)}>↑</button>
+                    {/if}
+                    {#if index < $diagrams.length - 1}
+                      <button type="button" class="text-blue-600 hover:text-blue-800" on:click={() => handleMoveDown(index)}>↓</button>
+                    {/if}
+                    <button 
+                      type="button" 
+                      class="text-green-600 hover:text-green-800" 
+                      on:click={() => duplicateDiagram(index)}
+                    >
+                      Duplicate
+                    </button>
+                    <button type="button" class="text-red-600 hover:text-red-800" on:click={() => deleteDiagram(index)}>Delete</button>
+                  </div>
+                </div>
+                <ExcalidrawWrapper 
+                  bind:this={diagramRefs[index]}
+                  on:save={(event) => handleDiagramSave(event, index)} 
+                  id={`diagram-canvas-${index}`} 
+                  data={diagram} 
+                  index={index} 
+                  showSaveButton={true} 
+                />
+              </div>
+            {/each}
+          </div>
+          <button 
+            type="button" 
+            on:click={addDiagram} 
+            class="mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+            Add New Diagram
+          </button>
+        </div>
+
+        <!-- Images Section -->
+        <div class="mt-6">
+          <h3 class="text-lg font-semibold mb-2">Images</h3>
+          
+          <!-- Drag and drop zone for images -->
+          <div use:dndzone={{items: $images}} on:consider={handleDndConsider} on:finalize={handleDndFinalize}
+               class="grid grid-cols-2 md:grid-cols-3 gap-4 min-h-[100px] p-4 border-2 border-dashed border-gray-300 rounded-md">
+            {#each $images as image (image.id)}
+              <div class="relative group bg-white border rounded-md overflow-hidden">
+                <img src={URL.createObjectURL(image.file)} alt={`Image ${image.id}`} 
+                     class="w-full h-32 object-cover" />
+                <div class="absolute top-0 left-0 right-0 flex justify-between items-center p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span class="text-sm cursor-move">Drag to reorder</span>
+                  <button
+                    type="button"
+                    on:click={() => removeImage(image.id)}
+                    class="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            {:else}
+              <p class="text-gray-600 col-span-full text-center">No images uploaded. Drag and drop images here or use the button below to add.</p>
+            {/each}
+          </div>
+
+          <!-- Image upload button and hidden file input -->
+          <div class="mt-4 flex items-center">
             <button
               type="button"
-              on:click={openSkillsModal}
-              class="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              on:click={triggerFileInput}
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              Browse Skills
+              Add Images
             </button>
-          </div>
-          {#if $errors.skills_focused_on}
-            <p class="text-red-500 text-sm mt-1">{$errors.skills_focused_on}</p>
-          {/if}
-
-          <div class="flex flex-col">
-            <label for="positions_focused_on" class="mb-1 text-sm font-medium text-gray-700">Positions Focused On:</label>
-            <div class="flex flex-wrap gap-2">
-              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Beater')}>Beater</button>
-              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Chaser')}>Chaser</button>
-              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Keeper')}>Keeper</button>
-              <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Seeker')}>Seeker</button>
-            </div>
-          </div>
-          {#if $errors.positions_focused_on}
-            <p class="text-red-500 text-sm mt-1">{$errors.positions_focused_on}</p>
-          {/if}
-
-          <div class="flex flex-col">
-            <label for="video_link" class="mb-1 text-sm font-medium text-gray-700">Video Link:</label>
-            <input id="video_link" bind:value={$video_link} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-
-          <!-- Visibility Field -->
-          <div class="flex flex-col">
-            <label class="mb-1 text-sm font-medium text-gray-700">Visibility:</label>
-            <select 
-              bind:value={$visibility} 
-              class="p-2 border rounded-md" 
-              disabled={!$page.data.session}
-              title={!$page.data.session ? 'Log in to create private or unlisted drills' : ''}
-            >
-              <option value="public">Public</option>
-              <option value="unlisted">Unlisted</option>
-              <option value="private">Private</option>
-            </select>
-            {#if !$page.data.session}
-              <p class="text-sm text-gray-500 mt-1">Log in to create private or unlisted drills</p>
-            {/if}
-          </div>
-
-          <!-- Is Editable by Others Field -->
-          <div class="flex items-center">
             <input
-              id="editable_by_others"
-              type="checkbox"
-              bind:checked={$is_editable_by_others}
-              disabled={!$page.data.session}
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              bind:this={fileInput}
+              type="file"
+              multiple
+              accept="image/*"
+              on:change={handleFileSelect}
+              class="hidden"
             />
-            <label
-              for="editable_by_others"
-              class="ml-2 block text-sm text-gray-700"
-            >
-              Allow others to edit this drill
-              {#if !$page.data.session}
-                <span class="text-gray-500">(required for anonymous submissions)</span>
-              {/if}
-            </label>
+            <span class="ml-4 text-sm text-gray-600">or drag and drop images above</span>
           </div>
-
-          <div class="mb-4">
-            <label class="flex items-center">
-              <input
-                type="checkbox"
-                bind:checked={$isVariation}
-                class="form-checkbox h-4 w-4 text-blue-600"
-              />
-              <span class="ml-2">This is a variation of another drill</span>
-            </label>
-          </div>
-
-          {#if $isVariation}
-            <div class="mb-4">
-              <label for="parentDrill" class="block text-sm font-medium text-gray-700">Parent Drill</label>
-              <select
-                id="parentDrill"
-                bind:value={$parentDrillId}
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              >
-                <option value="">Select a parent drill</option>
-                {#each $parentDrills as drill}
-                  <option value={drill.id}>{drill.name}</option>
-                {/each}
-              </select>
-              {#if $errors.parentDrillId}
-                <p class="text-red-500 text-sm mt-1">{$errors.parentDrillId}</p>
-              {/if}
-            </div>
-          {/if}
-
-          <button
-            type="submit"
-            class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            {drill.id ? 'Update Drill' : 'Create Drill'}
-          </button>
-        </form>
+        </div>
       </div>
     </div>
 
-    <!-- Right Column: Diagrams and Images -->
-    <div class="flex-1 min-w-0 md:p-4 p-4 border rounded-md transition-all duration-300 ease-in-out">
-      <h2 class="text-xl font-semibold mb-4">Diagrams and Images</h2>
-      <div class="mt-6">
-        <h3 class="text-lg font-semibold mb-2">Diagrams</h3>
-        <p class="text-sm text-gray-600 mb-4">💡 Tip: Click the "Fullscreen" button in the top-right corner of each diagram for the best editing experience.</p>
-        <div class="space-y-4">
-          {#each $diagrams as diagram, index (index + '-' + diagramKey)}
-            <div class="border p-4 rounded">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-lg font-semibold">Diagram {index + 1}</span>
-                <div class="flex gap-2">
-                  {#if index > 0}
-                    <button type="button" class="text-blue-600 hover:text-blue-800" on:click={() => handleMoveUp(index)}>↑</button>
-                  {/if}
-                  {#if index < $diagrams.length - 1}
-                    <button type="button" class="text-blue-600 hover:text-blue-800" on:click={() => handleMoveDown(index)}>↓</button>
-                  {/if}
-                  <button 
-                    type="button" 
-                    class="text-green-600 hover:text-green-800" 
-                    on:click={() => duplicateDiagram(index)}
-                  >
-                    Duplicate
-                  </button>
-                  <button type="button" class="text-red-600 hover:text-red-800" on:click={() => deleteDiagram(index)}>Delete</button>
-                </div>
-              </div>
-              <ExcalidrawWrapper 
-                bind:this={diagramRefs[index]}
-                on:save={(event) => handleDiagramSave(event, index)} 
-                id={`diagram-canvas-${index}`} 
-                data={diagram} 
-                index={index} 
-                showSaveButton={true} 
-              />
-            </div>
-          {/each}
-        </div>
-        <button 
-          type="button" 
-          on:click={addDiagram} 
-          class="mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-        >
-          Add New Diagram
-        </button>
-      </div>
-
-      <!-- Images Section -->
-      <div class="mt-6">
-        <h3 class="text-lg font-semibold mb-2">Images</h3>
-        
-        <!-- Drag and drop zone for images -->
-        <div use:dndzone={{items: $images}} on:consider={handleDndConsider} on:finalize={handleDndFinalize}
-             class="grid grid-cols-2 md:grid-cols-3 gap-4 min-h-[100px] p-4 border-2 border-dashed border-gray-300 rounded-md">
-          {#each $images as image (image.id)}
-            <div class="relative group bg-white border rounded-md overflow-hidden">
-              <img src={URL.createObjectURL(image.file)} alt={`Image ${image.id}`} 
-                   class="w-full h-32 object-cover" />
-              <div class="absolute top-0 left-0 right-0 flex justify-between items-center p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                <span class="text-sm cursor-move">Drag to reorder</span>
-                <button
-                  type="button"
-                  on:click={() => removeImage(image.id)}
-                  class="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-          {:else}
-            <p class="text-gray-600 col-span-full text-center">No images uploaded. Drag and drop images here or use the button below to add.</p>
-          {/each}
-        </div>
-
-        <!-- Image upload button and hidden file input -->
-        <div class="mt-4 flex items-center">
-          <button
-            type="button"
-            on:click={triggerFileInput}
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Add Images
-          </button>
-          <input
-            bind:this={fileInput}
-            type="file"
-            multiple
-            accept="image/*"
-            on:change={handleFileSelect}
-            class="hidden"
-          />
-          <span class="ml-4 text-sm text-gray-600">or drag and drop images above</span>
-        </div>
-      </div>
+    <!-- Submit button container - always at bottom -->
+    <div class="mt-6 px-4 md:px-0">
+      <button
+        type="submit"
+        on:click={handleSubmit}
+        class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      >
+        {drill.id ? 'Update Drill' : 'Create Drill'}
+      </button>
     </div>
   </div>
 </section>

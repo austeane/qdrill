@@ -22,10 +22,6 @@
   const CANVAS_WIDTH = 500;
   const CANVAS_HEIGHT = 600;
 
-  let showModal = false;
-
-  let readOnlyExcalidrawAPI;
-
   let fullscreenExcalidrawComponent;
   let fullscreenContainer;
 
@@ -422,7 +418,7 @@
       fullscreenExcalidrawComponent = {
         render: (node) => {
           const root = ReactDOM.createRoot(node);
-          root.render(React.createElement(Excalidraw, excalidrawProps));
+          root.render(React.createElement(Excalidraw, { ...excalidrawProps, portalContainer: node }));
           return {
             destroy: () => root.unmount()
           };
@@ -712,7 +708,6 @@
 
   <!-- Fullscreen Modal -->
   {#if isFullscreen}
-    {@const modalVisible = true}
     <div class="modal-overlay">
       <div class="modal-content">
         <div class="modal-header">
@@ -734,7 +729,7 @@
         </div>
         <div class="editor-container" bind:this={fullscreenContainer}>
           {#if fullscreenExcalidrawComponent}
-            <div use:fullscreenExcalidrawComponent.render></div>
+            <div class="excalidraw-fullscreen-wrapper" use:fullscreenExcalidrawComponent.render></div>
           {/if}
         </div>
       </div>
@@ -757,9 +752,8 @@
     position: relative !important;
   }
 
-  :global(.layer-ui__wrapper) {
-    width: 100% !important;
-    height: 100% !important;
+  :global(.excalidraw .layer-ui__wrapper) {
+    position: absolute !important;
   }
 
   /* Fix for fullscreen modal */
@@ -773,7 +767,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 9999;
   }
 
   .modal-content {
@@ -786,46 +780,36 @@
     overflow: hidden;
   }
 
+  .modal-header {
+    padding: 1rem;
+    background-color: white;
+    border-bottom: 1px solid #e5e7eb;
+    z-index: 1;
+  }
+
   .editor-container {
     flex: 1;
     position: relative;
     overflow: hidden;
   }
 
-  /* Ensure the Excalidraw UI is visible in fullscreen */
-  :global(.editor-container .excalidraw) {
+  .excalidraw-fullscreen-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+  }
+
+  /* Update Excalidraw specific styles */
+  :global(.excalidraw-fullscreen-wrapper .excalidraw) {
     width: 100% !important;
     height: 100% !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
   }
 
-  /* Fix for UI components */
-  :global(.excalidraw .App-menu_top) {
-    z-index: 2 !important;
-  }
-
-  :global(.excalidraw .App-menu_bottom) {
-    z-index: 2 !important;
-  }
-
-  :global(.excalidraw .layer-ui__wrapper) {
-    z-index: 2 !important;
-  }
-
-  /* Ensure proper sizing in the DrillForm context */
-  :global(.border.p-4.rounded .excalidraw-wrapper) {
-    min-height: 500px;
-    position: relative;
-  }
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background-color: white;
-    border-bottom: 1px solid #e5e7eb;
+  :global(.excalidraw-fullscreen-wrapper .excalidraw-container) {
+    width: 100% !important;
+    height: 100% !important;
   }
 </style>

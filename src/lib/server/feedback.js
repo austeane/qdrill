@@ -30,3 +30,13 @@ export async function upvoteFeedback(id) {
     const res = await query(text, [id]);
     return res.rows[0];
 }
+
+export async function deleteFeedback(id) {
+    const text = `
+        DELETE FROM feedback
+        WHERE id = $1
+        RETURNING id
+    `;
+    const res = await query(text, [id]);
+    return res.rows[0];
+}

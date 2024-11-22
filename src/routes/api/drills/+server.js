@@ -177,85 +177,110 @@ export const PUT = authGuard(async ({ request, locals }) => {
     const userId = session.user.id;
 
     const { id } = drill;
-
-    // Check if the user is the owner or if the drill is editable by others
-    const { rows } = await client.query(
-        `SELECT created_by, is_editable_by_others FROM drills WHERE id = $1`,
-        [id]
-    );
-
-    const drillData = rows[0];
-
-    if (drillData.created_by !== userId && !drillData.is_editable_by_others) {
-        return json({ error: 'Unauthorized' }, { status: 403 });
-    }
-
-    let {
-        name,
-        brief_description,
-        detailed_description,
-        skill_level,
-        complexity,
-        suggested_length,
-        number_of_people_min,
-        number_of_people_max,
-        skills_focused_on,
-        positions_focused_on,
-        video_link,
-        images,
-        diagrams,
-        drill_type,
-        is_editable_by_others,
-        visibility
-    } = drill;
-
-    if (!Array.isArray(diagrams)) {
-        diagrams = diagrams ? [diagrams] : [];
-    }
-    diagrams = diagrams.map(diagram => JSON.stringify(diagram));
-
-    if (typeof drill_type === 'string') {
-        drill_type = [drill_type];
-    }
+    
 
     try {
-        // First, get the existing skills for this drill
-        const existingSkillsResult = await client.query('SELECT skills_focused_on FROM drills WHERE id = $1', [id]);
-        const existingSkills = existingSkillsResult.rows[0].skills_focused_on;
-
-        // Update the drill
-        const result = await client.query(
-          `UPDATE drills SET 
-           name = $2, brief_description = $3, detailed_description = $4, skill_level = $5, 
-           complexity = $6, suggested_length = $7, number_of_people_min = $8, number_of_people_max = $9, 
-           skills_focused_on = $10, positions_focused_on = $11, video_link = $12, images = $13, diagrams = $14, drill_type = $15,
-           is_editable_by_others = $16, visibility = $17
-           WHERE id = $1 RETURNING *`,
-          [id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, 
-           number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams, drill_type,
-           is_editable_by_others, visibility]
+        // Check if the drill exists first
+        const { rows } = await client.query(
+            `SELECT created_by, is_editable_by_others FROM drills WHERE id = $1`,
+            [id]
         );
 
-        // Update skills
-        const skillsToRemove = existingSkills.filter(skill => !skills_focused_on.includes(skill));
-        const skillsToAdd = skills_focused_on.filter(skill => !existingSkills.includes(skill));
-
-        // Remove skills no longer used in this drill
-        for (const skill of skillsToRemove) {
-          await client.query(
-            `UPDATE skills SET 
-             drills_used_in = drills_used_in - 1
-             WHERE skill = $1`,
-            [skill]
-          );
+        if (!rows || rows.length === 0) {
+            console.error('Drill not found:', id);
+            return json({ error: 'Drill not found' }, { status: 404 });
         }
 
-        // Add new skills used in this drill
-        await updateSkills(skillsToAdd, id);
+        const drillData = rows[0];
 
-        return json(result.rows[0]);
+        // Modified authorization check:
+        // Allow edit if:
+        // 1. User created the drill (created_by matches userId)
+        // 2. Drill is editable by others (is_editable_by_others is true)
+        // 3. Drill has no creator (created_by is null) - this allows claiming ownership
+        if (drillData.created_by !== userId && !drillData.is_editable_by_others && drillData.created_by !== null) {
+            return json({ error: 'Unauthorized' }, { status: 403 });
+        }
+
+        // If drill has no creator, assign it to the current user
+        let created_by = drillData.created_by;
+        if (created_by === null) {
+            created_by = userId;
+        }
+
+        let {
+            name,
+            brief_description,
+            detailed_description,
+            skill_level,
+            complexity,
+            suggested_length,
+            number_of_people_min,
+            number_of_people_max,
+            skills_focused_on,
+            positions_focused_on,
+            video_link,
+            images,
+            diagrams,
+            drill_type,
+            is_editable_by_others,
+            visibility
+        } = drill;
+
+        if (!Array.isArray(diagrams)) {
+            diagrams = diagrams ? [diagrams] : [];
+        }
+        diagrams = diagrams.map(diagram => JSON.stringify(diagram));
+
+        if (typeof drill_type === 'string') {
+            drill_type = [drill_type];
+        }
+
+        // Only convert empty string to null for number_of_people_max
+        number_of_people_max = number_of_people_max === '' ? null : parseInt(number_of_people_max) || null;
+
+        try {
+            // First, get the existing skills for this drill
+            const existingSkillsResult = await client.query('SELECT skills_focused_on FROM drills WHERE id = $1', [id]);
+            const existingSkills = existingSkillsResult.rows[0].skills_focused_on;
+
+            // Update the drill
+            const result = await client.query(
+              `UPDATE drills SET 
+               name = $2, brief_description = $3, detailed_description = $4, skill_level = $5, 
+               complexity = $6, suggested_length = $7, number_of_people_min = $8, number_of_people_max = $9, 
+               skills_focused_on = $10, positions_focused_on = $11, video_link = $12, images = $13, diagrams = $14, drill_type = $15,
+               is_editable_by_others = $16, visibility = $17, created_by = $18
+               WHERE id = $1 RETURNING *`,
+              [id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, 
+               number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams, drill_type,
+               is_editable_by_others, visibility, created_by]
+            );
+
+            // Update skills
+            const skillsToRemove = existingSkills.filter(skill => !skills_focused_on.includes(skill));
+            const skillsToAdd = skills_focused_on.filter(skill => !existingSkills.includes(skill));
+
+            // Remove skills no longer used in this drill
+            for (const skill of skillsToRemove) {
+              await client.query(
+                `UPDATE skills SET 
+                 drills_used_in = drills_used_in - 1
+                 WHERE skill = $1`,
+                [skill]
+              );
+            }
+
+            // Add new skills used in this drill
+            await updateSkills(skillsToAdd, id);
+
+            return json(result.rows[0]);
+        } catch (error) {
+            console.error('Error occurred while updating drill:', error);
+            return json({ error: 'An error occurred while updating the drill', details: error.toString() }, { status: 500 });
+        }
     } catch (error) {
-        console.error('Error occurred while updating drill:', error);
-        return json({ error: 'An error occurred while updating the drill', details: error.toString() }, { status: 500 });
+        console.error('Error checking drill ownership:', error);
+        return json({ error: 'An error occurred while checking drill ownership', details: error.toString() }, { status: 500 });
     }
 });

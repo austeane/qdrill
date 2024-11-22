@@ -17,18 +17,18 @@ function errorResponse(message, status = 500) {
     return json({ error: message }, { status });
 }
 
-export async function GET({ params, locals }) {
+export async function GET({ params, locals, url }) {
     const { id } = params;
+    const includeVariants = url.searchParams.get('includeVariants') === 'true';
     
     if (!id || isNaN(parseInt(id))) {
         return errorResponse(ERROR_MESSAGES.INVALID_INPUT, 400);
     }
 
     try {
+        // First fetch the main drill
         const drillResult = await client.query(
-            `SELECT d.*, 
-                    (SELECT COUNT(*) FROM drills WHERE parent_drill_id = d.id) as variation_count,
-                    (SELECT name FROM drills WHERE id = d.parent_drill_id) as parent_drill_name
+            `SELECT d.* 
              FROM drills d 
              WHERE d.id = $1`,
             [id]
@@ -45,34 +45,29 @@ export async function GET({ params, locals }) {
             return json({ error: 'Unauthorized' }, { status: 403 });
         }
 
-        // Fetch variations if this is a parent drill
-        if (!drill.parent_drill_id) {
-            const variationsResult = await client.query(
-                `SELECT d.*, u.name as creator_name
-                 FROM drills d
-                 LEFT JOIN users u ON d.created_by = u.id
-                 WHERE d.parent_drill_id = $1
-                 ORDER BY d.upvotes DESC`,
-                [id]
-            );
-            drill.variations = variationsResult.rows;
-        } else {
-            // If this is a variation, fetch the parent and sibling variations
-            const relatedResult = await client.query(
-                `SELECT d.*, u.name as creator_name,
-                        CASE WHEN d.id = $1 THEN 'current'
-                             WHEN d.id = $2 THEN 'parent'
-                             ELSE 'sibling'
-                        END as relationship
-                 FROM drills d
-                 LEFT JOIN users u ON d.created_by = u.id
-                 WHERE d.id = $2 
-                    OR d.id = $1
-                    OR (d.parent_drill_id = $2 AND d.id != $1)
-                 ORDER BY d.upvotes DESC`,
-                [id, drill.parent_drill_id]
-            );
-            drill.related_variations = relatedResult.rows;
+        // Only fetch variants if requested
+        if (includeVariants) {
+            // Add variations data separately
+            if (!drill.parent_drill_id) {
+                // This is a parent drill - get its variations
+                const variationsResult = await client.query(
+                    `SELECT d.*, u.name as creator_name
+                     FROM drills d
+                     LEFT JOIN users u ON d.created_by = u.id
+                     WHERE d.parent_drill_id = $1
+                     ORDER BY d.upvotes DESC`,
+                    [id]
+                );
+                drill.variations = variationsResult.rows;
+                drill.variation_count = variationsResult.rows.length;
+            } else {
+                // This is a variation - get parent name and siblings
+                const parentResult = await client.query(
+                    `SELECT name FROM drills WHERE id = $1`,
+                    [drill.parent_drill_id]
+                );
+                drill.parent_drill_name = parentResult.rows[0]?.name;
+            }
         }
 
         return json(drill);

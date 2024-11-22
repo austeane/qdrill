@@ -380,6 +380,7 @@
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: drill.id,
           name: $name,
           brief_description: $brief_description,
           detailed_description: $detailed_description,
@@ -552,6 +553,42 @@
     
     diagramKey++; // Force re-render of diagrams
   }
+
+  $: {
+    if (drill?.id) {
+      name.set(drill.name ?? '');
+      brief_description.set(drill.brief_description ?? '');
+      detailed_description.set(drill.detailed_description ?? '');
+      skill_level.set(drill.skill_level ?? []);
+      complexity.set(drill.complexity ?? '');
+      suggested_length.set(drill.suggested_length ?? '');
+      number_of_people_min.set(drill.number_of_people_min ?? '');
+      number_of_people_max.set(drill.number_of_people_max ?? '');
+      skills_focused_on.set(drill.skills_focused_on ?? []);
+      selectedSkills.set(drill.skills_focused_on ?? []);
+      positions_focused_on.set(drill.positions_focused_on ?? []);
+      video_link.set(drill.video_link ?? '');
+      images.set(drill.images?.map((image, index) => ({
+        id: `image-${index}`,
+        file: image
+      })) ?? []);
+      diagrams.set(drill.diagrams ?? [{
+        elements: [],
+        appState: {
+          viewBackgroundColor: '#ffffff',
+          gridSize: 20,
+          collaborators: []
+        },
+        files: {}
+      }]);
+      drill_type.set(drill.drill_type ?? []);
+      is_editable_by_others.set(drill.is_editable_by_others ?? false);
+      visibility.set(drill.visibility ?? 'public');
+    }
+  }
+
+  onMount(() => {
+  });
 </script>
 
 <svelte:head>

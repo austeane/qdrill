@@ -625,7 +625,7 @@
 
             <div class="flex flex-col">
               <label for="detailed_description" class="mb-1 text-sm font-medium text-gray-700">Detailed Description:</label>
-              <p class="text-xs text-gray-500 mb-1">As much detail as would be needed for a new coach to teach this drill, including setup and any focus areas.</p>
+              <p class="text-xs text-gray-500 mb-1">As much detail as would be needed for a new coach to teach this drill. May include, setup, focus areas, adaptations, or credit for the creator of the drill. </p>
               <textarea 
                 id="detailed_description" 
                 bind:value={$detailed_description} 

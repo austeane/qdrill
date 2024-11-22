@@ -39,6 +39,17 @@
         }
     }
 
+    async function deleteFeedback(id) {
+        if (!confirm('Are you sure you want to delete this feedback?')) return;
+        
+        const response = await fetch(`/api/feedback/${id}/delete`, { method: 'DELETE' });
+        if (response.ok) {
+            feedbackEntries = feedbackEntries.filter(entry => entry.id !== id);
+        } else {
+            alert('Failed to delete feedback.');
+        }
+    }
+
     onMount(() => {
         fetchFeedback();
     });
@@ -154,6 +165,14 @@
                             >
                                 Upvote
                             </button>
+                            {#if window.location.hostname === 'localhost'}
+                                <button
+                                    on:click={() => deleteFeedback(entry.id)}
+                                    class="ml-2 px-2 py-1 bg-red-500 text-white rounded text-xs"
+                                >
+                                    Delete
+                                </button>
+                            {/if}
                         </div>
                     </li>
                 {/each}

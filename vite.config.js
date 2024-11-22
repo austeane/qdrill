@@ -15,5 +15,8 @@ export default defineConfig({
 			$components: '/src/components',
 			$lib: '/src/lib'
 		}
-	}
+	},
+	server: {
+		port: process.env.PORT
+	  },
 });

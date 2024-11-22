@@ -23,6 +23,14 @@ async function updateSkills(skills, drillId) {
   }
 }
 
+function normalizeString(str) {
+    return str?.toLowerCase().trim() || '';
+}
+
+function normalizeArray(arr) {
+    return arr?.map(item => normalizeString(item)) || [];
+}
+
 export const POST = async (event) => {
     const drill = await event.request.json();
     const session = await event.locals.getSession();
@@ -73,6 +81,16 @@ export const POST = async (event) => {
         drill_type = [drill_type];
     }
 
+    // Normalize the input data
+    const normalizedDrill = {
+        ...drill,
+        skill_level: normalizeArray(drill.skill_level),
+        complexity: normalizeString(drill.complexity),
+        skills_focused_on: normalizeArray(drill.skills_focused_on),
+        positions_focused_on: normalizeArray(drill.positions_focused_on),
+        // ... other fields remain the same
+    };
+
     try {
         const result = await client.query(
             `INSERT INTO drills (
@@ -90,13 +108,13 @@ export const POST = async (event) => {
                 name,
                 brief_description,
                 detailed_description,
-                skill_level,
-                complexity,
+                normalizedDrill.skill_level,
+                normalizedDrill.complexity,
                 suggested_length,
                 number_of_people_min,
                 number_of_people_max,
-                skills_focused_on,
-                positions_focused_on,
+                normalizedDrill.skills_focused_on,
+                normalizedDrill.positions_focused_on,
                 video_link,
                 images,
                 diagrams,
@@ -108,7 +126,7 @@ export const POST = async (event) => {
         );
         
         const drillId = result.rows[0].id;
-        await updateSkills(skills_focused_on, drillId);
+        await updateSkills(normalizedDrill.skills_focused_on, drillId);
         
         return json(result.rows[0]);
     } catch (error) {

@@ -16,6 +16,16 @@
     import { debounce } from 'lodash-es';
     import { onMount, onDestroy } from 'svelte';
     import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
+    import { writable } from 'svelte/store';
+    import ThreeStateCheckbox from './ThreeStateCheckbox.svelte';
+    import { FILTER_STATES } from '$lib/constants';
+  
+    import {
+        selectedPhaseOfSeason,
+        selectedPracticeGoals,
+        selectedEstimatedParticipantsMin,
+        selectedEstimatedParticipantsMax
+    } from '$lib/stores/practicePlanStore';
   
     export let customClass = '';
     export let filterType = 'drills'; // New prop to determine filter context
@@ -34,10 +44,6 @@
     // Practice Plans Filters
     export let phaseOfSeasonOptions = [];
     export let practiceGoalsOptions = [];
-    export let selectedPhaseOfSeason = [];
-    export let selectedPracticeGoals = [];
-    export let selectedEstimatedParticipantsMin = null;
-    export let selectedEstimatedParticipantsMax = null;
   
     // Toggle states for drill filters
     let showSkillLevels = false;
@@ -47,6 +53,7 @@
     let showNumberOfPeople = false;
     let showSuggestedLengths = false;
     let showHasImages = false;
+    let showDrillTypes = false;
   
     // Toggle states for practice plans filters
     let showPhaseOfSeason = false;
@@ -83,13 +90,14 @@
       selectedHasDiagrams.set(false);
       selectedHasImages.set(false);
       if (filterType === 'practice-plans') {
-        selectedPhaseOfSeason = [];
-        selectedPracticeGoals = [];
-        selectedEstimatedParticipantsMin = null;
-        selectedEstimatedParticipantsMax = null;
+        selectedPhaseOfSeason.set({});
+        selectedPracticeGoals.set({});
+        selectedEstimatedParticipantsMin.set(1);
+        selectedEstimatedParticipantsMax.set(100);
         selectedDrills = [];
       }
       closeAllFilters();
+      selectedDrillTypes.set({});
     }
   
     // Function to handle toggling filters
@@ -116,6 +124,9 @@
           break;
         case 'hasImages':
           showHasImages = true;
+          break;
+        case 'drillTypes':
+          showDrillTypes = true;
           break;
         case 'phaseOfSeason':
           if (filterType === 'practice-plans') {
@@ -151,6 +162,7 @@
       showNumberOfPeople = false;
       showSuggestedLengths = false;
       showHasImages = false;
+      showDrillTypes = false;
   
       // Close Practice Plans Filters
       showPhaseOfSeason = false;
@@ -223,13 +235,16 @@
   
     import { selectedDrillTypes } from '$lib/stores/drillsStore';
   
-    function toggleSelection(store, value) {
-      store.update(selected => {
-        if (selected.includes(value)) {
-          return selected.filter(item => item !== value);
-        } else {
-          return [...selected, value];
-        }
+    function toggleDrillTypeState(type) {
+      selectedDrillTypes.update(selected => {
+        const currentState = selected[type] || FILTER_STATES.NEUTRAL;
+        const newState = currentState === FILTER_STATES.NEUTRAL 
+          ? FILTER_STATES.REQUIRED 
+          : currentState === FILTER_STATES.REQUIRED 
+            ? FILTER_STATES.EXCLUDED 
+            : FILTER_STATES.NEUTRAL;
+        
+        return { ...selected, [type]: newState };
       });
     }
   
@@ -241,6 +256,35 @@
   
     function toggleSortOrder() {
       selectedSortOrder.update(order => order === 'asc' ? 'desc' : 'asc');
+    }
+  
+    // Helper function for updating filter states
+    function updateFilterState(store) {
+        return (value, newState) => {
+            store.update(current => {
+                const updated = { ...current };
+                if (newState === FILTER_STATES.NEUTRAL) {
+                    delete updated[value];
+                } else {
+                    updated[value] = newState;
+                }
+                return updated;
+            });
+        };
+    }
+  
+    // Create update handlers for each filter type
+    const updateSkillLevel = updateFilterState(selectedSkillLevels);
+    const updateComplexity = updateFilterState(selectedComplexities);
+    const updateSkillsFocused = updateFilterState(selectedSkillsFocusedOn);
+    const updatePositionsFocused = updateFilterState(selectedPositionsFocusedOn);
+    const updatePhaseOfSeason = updateFilterState(selectedPhaseOfSeason);
+    const updatePracticeGoals = updateFilterState(selectedPracticeGoals);
+
+    // Add handlers for estimated participants changes
+    function handleEstimatedParticipantsChange(event) {
+        selectedEstimatedParticipantsMin.set(estimatedParticipantsRange[0]);
+        selectedEstimatedParticipantsMax.set(estimatedParticipantsRange[1]);
     }
 </script>
 
@@ -278,10 +322,12 @@
                     tabindex="0"
                 >
                     {#each skillLevels as level}
-                        <label class="flex items-center mt-2 text-gray-700 hover:bg-gray-100 p-1 rounded">
-                            <input type="checkbox" bind:group={$selectedSkillLevels} value={level} class="mr-2" on:click={handleCheckboxClick} />
-                            <span>{level}</span>
-                        </label>
+                        <ThreeStateCheckbox
+                            value={level}
+                            state={$selectedSkillLevels[level] || FILTER_STATES.NEUTRAL}
+                            label={level}
+                            onChange={updateSkillLevel}
+                        />
                     {/each}
                 </div>
             {/if}
@@ -314,10 +360,12 @@
                     tabindex="0"
                 >
                     {#each complexities as complexity}
-                        <label class="flex items-center mt-2 text-gray-700 hover:bg-gray-100 p-1 rounded">
-                            <input type="checkbox" bind:group={$selectedComplexities} value={complexity} class="mr-2" on:click={handleCheckboxClick} />
-                            <span>{complexity}</span>
-                        </label>
+                        <ThreeStateCheckbox
+                            value={complexity}
+                            state={$selectedComplexities[complexity] || FILTER_STATES.NEUTRAL}
+                            label={complexity}
+                            onChange={updateComplexity}
+                        />
                     {/each}
                 </div>
             {/if}
@@ -350,10 +398,12 @@
                     tabindex="0"
                 >
                     {#each skillsFocusedOn as skill}
-                        <label class="flex items-center mt-2 text-gray-700 hover:bg-gray-100 p-1 rounded">
-                            <input type="checkbox" bind:group={$selectedSkillsFocusedOn} value={skill} class="mr-2" on:click={handleCheckboxClick} />
-                            <span>{skill}</span>
-                        </label>
+                        <ThreeStateCheckbox
+                            value={skill}
+                            state={$selectedSkillsFocusedOn[skill] || FILTER_STATES.NEUTRAL}
+                            label={skill}
+                            onChange={updateSkillsFocused}
+                        />
                     {/each}
                 </div>
             {/if}
@@ -386,10 +436,12 @@
                     tabindex="0"
                 >
                     {#each positionsFocusedOn as position}
-                        <label class="flex items-center mt-2 text-gray-700 hover:bg-gray-100 p-1 rounded">
-                            <input type="checkbox" bind:group={$selectedPositionsFocusedOn} value={position} class="mr-2" on:click={handleCheckboxClick} />
-                            <span>{position}</span>
-                        </label>
+                        <ThreeStateCheckbox
+                            value={position}
+                            state={$selectedPositionsFocusedOn[position] || FILTER_STATES.NEUTRAL}
+                            label={position}
+                            onChange={updatePositionsFocused}
+                        />
                     {/each}
                 </div>
             {/if}
@@ -516,6 +568,44 @@
         </button>
     </div>
 
+    <!-- Drill Types Filter -->
+    {#if drillTypes && drillTypes.length > 0}
+        <div class="relative">
+            <button 
+                class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${showDrillTypes ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                on:click={() => toggleFilter('drillTypes')}
+                aria-expanded={showDrillTypes}
+                aria-controls="drillTypes-content"
+            >
+                Drill Types
+                {#if $selectedDrillTypes.length > 0}
+                    <span class="absolute top-0 right-0 bg-blue-500 text-white text-xs rounded-full px-1 transform translate-x-1/2 -translate-y-1/2">
+                        ({$selectedDrillTypes.length})
+                    </span>
+                {/if}
+            </button>
+
+            {#if showDrillTypes}
+                <div 
+                    id="drillTypes-content"
+                    class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 w-64"
+                    on:click|stopPropagation
+                    role="menu"
+                    tabindex="0"
+                >
+                    {#each drillTypes as type}
+                        <ThreeStateCheckbox
+                            value={type}
+                            state={$selectedDrillTypes[type] || FILTER_STATES.NEUTRAL}
+                            label={type}
+                            onChange={toggleDrillTypeState}
+                        />
+                    {/each}
+                </div>
+            {/if}
+        </div>
+    {/if}
+
     <!-- Reset Filters Button (Always visible) -->
     <button 
         class="inline-flex items-center bg-red-500 text-white border border-red-600 rounded-full px-4 py-2 cursor-pointer hover:bg-red-600 transition-colors duration-300"
@@ -537,9 +627,9 @@
                 aria-controls="phaseOfSeason-content"
             >
                 Phase of Season
-                {#if selectedPhaseOfSeason.length > 0}
+                {#if Object.keys($selectedPhaseOfSeason).length > 0}
                     <span class="absolute top-0 right-0 bg-blue-500 text-white text-xs rounded-full px-1 transform translate-x-1/2 -translate-y-1/2">
-                        ({selectedPhaseOfSeason.length})
+                        ({Object.keys($selectedPhaseOfSeason).length})
                     </span>
                 {/if}
             </button>
@@ -553,10 +643,12 @@
                     tabindex="0"
                 >
                     {#each phaseOfSeasonOptions as phase}
-                        <label class="flex items-center mt-2 text-gray-700 hover:bg-gray-100 p-1 rounded">
-                            <input type="checkbox" bind:group={selectedPhaseOfSeason} value={phase} class="mr-2" on:click={handleCheckboxClick} />
-                            <span>{phase}</span>
-                        </label>
+                        <ThreeStateCheckbox
+                            value={phase}
+                            state={$selectedPhaseOfSeason[phase] || FILTER_STATES.NEUTRAL}
+                            label={phase}
+                            onChange={updatePhaseOfSeason}
+                        />
                     {/each}
                 </div>
             {/if}
@@ -589,10 +681,12 @@
                     tabindex="0"
                 >
                     {#each practiceGoalsOptions as goal}
-                        <label class="flex items-center mt-2 text-gray-700 hover:bg-gray-100 p-1 rounded">
-                            <input type="checkbox" bind:group={selectedPracticeGoals} value={goal} class="mr-2" on:click={handleCheckboxClick} />
-                            <span>{goal}</span>
-                        </label>
+                        <ThreeStateCheckbox
+                            value={goal}
+                            state={$selectedPracticeGoals[goal] || FILTER_STATES.NEUTRAL}
+                            label={goal}
+                            onChange={updatePracticeGoals}
+                        />
                     {/each}
                 </div>
             {/if}
@@ -618,8 +712,6 @@
                 id="estimatedParticipants-content"
                 class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
                 on:click|stopPropagation
-                role="menu"
-                tabindex="0"
             >
                 <RangeSlider
                     bind:values={estimatedParticipantsRange}
@@ -633,10 +725,7 @@
                     last="label"
                     rest="pip"
                     pipstep={10}
-                    on:change={() => {
-                        selectedEstimatedParticipantsMin = estimatedParticipantsRange[0];
-                        selectedEstimatedParticipantsMax = estimatedParticipantsRange[1];
-                    }}
+                    on:change={handleEstimatedParticipantsChange}
                 />
             </div>
         {/if}
@@ -735,7 +824,7 @@
 
 <!-- Overlay to close dropdown when clicking outside -->
 {#if (filterType === 'drills' && (showSkillLevels || showDrillComplexity || showSkillsFocusedOn || showPositionsFocusedOn || 
-          showNumberOfPeople || showSuggestedLengths || showHasImages)) || 
+          showNumberOfPeople || showSuggestedLengths || showHasImages || showDrillTypes)) || 
       (filterType === 'practice-plans' && (showPhaseOfSeason || showPracticeGoals || showEstimatedParticipants || showContainsDrill))}
     <div 
         class="fixed inset-0 bg-transparent z-0" 
@@ -743,31 +832,8 @@
         aria-label="Close filters"
     ></div>
 {/if}
-
-<!-- Drill Types Filter -->
-{#if drillTypes && drillTypes.length > 0}
-  <div class="mb-4">
-    <h3 class="text-md font-medium mb-2">Drill Types</h3>
-    <div class="flex flex-wrap gap-2">
-      {#each drillTypes as type}
-        <button
-          type="button"
-          class="px-3 py-1 rounded-full border border-gray-300"
-          class:selected={$selectedDrillTypes.includes(type)}
-          on:click={() => toggleSelection(selectedDrillTypes, type)}
-        >
-          {type}
-        </button>
-      {/each}
-    </div>
-  </div>
-{/if}
 </div>
 
 <style>
   /* ... existing styles ... */
-  .selected {
-    background-color: #3b82f6; /* Tailwind's blue-500 */
-    color: white;
-  }
 </style>

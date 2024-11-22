@@ -1,15 +1,16 @@
 import { writable, derived } from 'svelte/store';
 import { PREDEFINED_SKILLS } from '$lib/constants/skills';
 import { selectedSortOption, selectedSortOrder } from './sortStore.js';
+import { FILTER_STATES } from '$lib/constants';
 
 // Data Store
 export const drills = writable([]);
 
-// Filter Option Stores
-export const selectedSkillLevels = writable([]);
-export const selectedComplexities = writable([]);
-export const selectedSkillsFocusedOn = writable([]);
-export const selectedPositionsFocusedOn = writable([]);
+// Filter Option Stores - Changed to objects for three-state filtering
+export const selectedSkillLevels = writable({});
+export const selectedComplexities = writable({});
+export const selectedSkillsFocusedOn = writable({});
+export const selectedPositionsFocusedOn = writable({});
 export const selectedNumberOfPeopleMin = writable(0);
 export const selectedNumberOfPeopleMax = writable(100);
 export const selectedSuggestedLengthsMin = writable(0);
@@ -18,151 +19,191 @@ export const selectedHasVideo = writable(false);
 export const selectedHasDiagrams = writable(false);
 export const selectedHasImages = writable(false);
 export const searchQuery = writable('');
-export const selectedDrillTypes = writable([]);
+export const selectedDrillTypes = writable({});
 
-// Derived Store for Filtered Drills
+// Helper function for three-state filtering
+function filterByThreeState(itemValue, filterState, allPossibleValues) {
+    if (!filterState || Object.keys(filterState).length === 0) return true;
+
+    // Normalize the item value to lowercase for comparison
+    const normalizedItemValue = itemValue?.toLowerCase?.();
+
+    const requiredValues = [];
+    const excludedValues = [];
+
+    for (const [value, state] of Object.entries(filterState)) {
+        // Normalize the filter value to lowercase
+        const normalizedValue = value.toLowerCase();
+        if (state === FILTER_STATES.REQUIRED) {
+            requiredValues.push(normalizedValue);
+        } else if (state === FILTER_STATES.EXCLUDED) {
+            excludedValues.push(normalizedValue);
+        }
+    }
+
+    // 1. First check if all values are excluded
+    const totalPossibleValues = allPossibleValues || [];
+    const excludedAll = totalPossibleValues.length > 0 && 
+                       excludedValues.length === totalPossibleValues.length;
+    if (excludedAll) {
+        return false;
+    }
+
+    // 2. If the item has no value, and there are required values, exclude it
+    if (!normalizedItemValue && requiredValues.length > 0) {
+        return false;
+    }
+
+    // 3. If there are required values, item must match one
+    if (requiredValues.length > 0) {
+        return requiredValues.includes(normalizedItemValue);
+    }
+
+    // 4. If the item has a value and it's in excluded values, exclude it
+    if (normalizedItemValue && excludedValues.includes(normalizedItemValue)) {
+        return false;
+    }
+
+    return true;
+}
+
+// Helper function for array-based three-state filtering
+function filterByThreeStateArray(itemValues, filterState) {
+    if (!filterState || Object.keys(filterState).length === 0) return true;
+
+    const requiredValues = [];
+    const excludedValues = [];
+
+    for (const [value, state] of Object.entries(filterState)) {
+        if (state === FILTER_STATES.REQUIRED) {
+            requiredValues.push(value);
+        } else if (state === FILTER_STATES.EXCLUDED) {
+            excludedValues.push(value);
+        }
+    }
+
+    // Ensure itemValues is an array
+    const valuesArray = Array.isArray(itemValues) ? itemValues : [];
+
+    // 1. First check if all values are excluded
+    if (excludedValues.length > 0 && excludedValues.length === Object.keys(filterState).length) {
+        return false;
+    }
+
+    // 2. If the item has no values and there are required values, exclude it
+    if ((!valuesArray || valuesArray.length === 0) && requiredValues.length > 0) {
+        return false;
+    }
+
+    // 3. If there are required values, item must have all of them
+    if (requiredValues.length > 0) {
+        return requiredValues.every(value => valuesArray.includes(value));
+    }
+
+    // 4. If any of the item's values are in excluded values, exclude it
+    if (valuesArray.some(value => excludedValues.includes(value))) {
+        return false;
+    }
+
+    return true;
+}
+
+// Update the filteredDrills derived store to include all dependencies
 export const filteredDrills = derived(
-  [
-    drills,
-    selectedSkillLevels,
-    selectedComplexities,
-    selectedSkillsFocusedOn,
-    selectedPositionsFocusedOn,
-    selectedNumberOfPeopleMin,
-    selectedNumberOfPeopleMax,
-    selectedSuggestedLengthsMin,
-    selectedSuggestedLengthsMax,
-    selectedHasVideo,
-    selectedHasDiagrams,
-    selectedHasImages,
-    searchQuery,
-    selectedDrillTypes
-  ],
-  ([
-    $drills,
-    $selectedSkillLevels,
-    $selectedComplexities,
-    $selectedSkillsFocusedOn,
-    $selectedPositionsFocusedOn,
-    $selectedNumberOfPeopleMin,
-    $selectedNumberOfPeopleMax,
-    $selectedSuggestedLengthsMin,
-    $selectedSuggestedLengthsMax,
-    $selectedHasVideo,
-    $selectedHasDiagrams,
-    $selectedHasImages,
-    $searchQuery,
-    $selectedDrillTypes
-  ]) => {
-    // Group drills by their parent_drill_id or their own id if they're a parent
-    const drillGroups = $drills.reduce((groups, drill) => {
-      const groupId = drill.parent_drill_id || drill.id;
-      if (!groups[groupId]) {
-        groups[groupId] = [];
-      }
-      groups[groupId].push(drill);
-      return groups;
-    }, {});
+    [
+        drills,
+        selectedSkillLevels,
+        selectedComplexities,
+        selectedSkillsFocusedOn,
+        selectedPositionsFocusedOn,
+        selectedNumberOfPeopleMin,
+        selectedNumberOfPeopleMax,
+        selectedSuggestedLengthsMin,
+        selectedSuggestedLengthsMax,
+        selectedHasVideo,
+        selectedHasDiagrams,
+        selectedHasImages,
+        searchQuery,
+        selectedDrillTypes
+    ],
+    ([
+        $drills,
+        $selectedSkillLevels,
+        $selectedComplexities,
+        $selectedSkillsFocusedOn,
+        $selectedPositionsFocusedOn,
+        $selectedNumberOfPeopleMin,
+        $selectedNumberOfPeopleMax,
+        $selectedSuggestedLengthsMin,
+        $selectedSuggestedLengthsMax,
+        $selectedHasVideo,
+        $selectedHasDiagrams,
+        $selectedHasImages,
+        $searchQuery,
+        $selectedDrillTypes
+    ]) => {
+        // Group drills logic remains the same...
+        const drillGroups = $drills.reduce((groups, drill) => {
+            const groupId = drill.parent_drill_id || drill.id;
+            if (!groups[groupId]) {
+                groups[groupId] = [];
+            }
+            groups[groupId].push(drill);
+            return groups;
+        }, {});
 
-    // For each group, only keep the highest upvoted variation
-    let filteredDrills = Object.values(drillGroups).map(group => {
-      return group.reduce((highest, current) => {
-        // Handle cases where upvotes might be null/undefined
-        const currentUpvotes = current.upvotes || 0;
-        const highestUpvotes = (highest && highest.upvotes) || 0;
-        
-        // If upvotes are equal, prefer the parent drill
-        if (currentUpvotes === highestUpvotes) {
-          return !current.parent_drill_id ? current : highest || current;
-        }
-        
-        return currentUpvotes > highestUpvotes ? current : highest;
-      });
-    });
+        let filteredDrills = Object.values(drillGroups).map(group => {
+            return group.reduce((highest, current) => {
+                const currentUpvotes = current.upvotes || 0;
+                const highestUpvotes = (highest && highest.upvotes) || 0;
+                
+                if (currentUpvotes === highestUpvotes) {
+                    return !current.parent_drill_id ? current : highest || current;
+                }
+                
+                return currentUpvotes > highestUpvotes ? current : highest;
+            });
+        });
 
-    // Apply existing filters
-    return filteredDrills.filter(drill => {
-      let matches = true;
+        return filteredDrills.filter(drill => {
+            let matches = true;
 
-      // Search Query
-      if ($searchQuery.trim() !== '') {
-        const query = $searchQuery.trim().toLowerCase();
-        if (
-          !drill.name.toLowerCase().includes(query) &&
-          !drill.brief_description.toLowerCase().includes(query) &&
-          !drill.detailed_description.toLowerCase().includes(query)
-        ) {
-          matches = false;
-        }
-      }
+            // Search Query filtering
+            if ($searchQuery.trim() !== '') {
+                const query = $searchQuery.trim().toLowerCase();
+                if (!drill.name.toLowerCase().includes(query) &&
+                    !drill.brief_description.toLowerCase().includes(query) &&
+                    !drill.detailed_description.toLowerCase().includes(query)) {
+                    matches = false;
+                }
+            }
 
-      // Skill Levels
-      if ($selectedSkillLevels.length > 0) {
-        if (!drill.skill_level.some(level => $selectedSkillLevels.includes(level))) {
-          matches = false;
-        }
-      }
+            // Updated filtering using three-state functions
+            matches = matches && filterByThreeStateArray(drill.skill_level || [], $selectedSkillLevels);
+            matches = matches && filterByThreeState(drill.complexity, $selectedComplexities);
+            matches = matches && filterByThreeStateArray(drill.skills_focused_on || [], $selectedSkillsFocusedOn);
+            matches = matches && filterByThreeStateArray(drill.positions_focused_on || [], $selectedPositionsFocusedOn);
+            matches = matches && filterByThreeStateArray(drill.drill_type || [], $selectedDrillTypes);
 
-      // Complexities
-      if ($selectedComplexities.length > 0) {
-        if (!$selectedComplexities.includes(drill.complexity)) {
-          matches = false;
-        }
-      }
+            // Number range filters
+            if (drill.number_of_people_min > $selectedNumberOfPeopleMax ||
+                drill.number_of_people_max < $selectedNumberOfPeopleMin) {
+                matches = false;
+            }
 
-      // Skills Focused On
-      if ($selectedSkillsFocusedOn.length > 0) {
-        if (!drill.skills_focused_on.some(skill => $selectedSkillsFocusedOn.includes(skill))) {
-          matches = false;
-        }
-      }
+            if (drill.suggested_length > $selectedSuggestedLengthsMax ||
+                drill.suggested_length < $selectedSuggestedLengthsMin) {
+                matches = false;
+            }
 
-      // Positions Focused On
-      if ($selectedPositionsFocusedOn.length > 0) {
-        if (!drill.positions_focused_on.some(pos => $selectedPositionsFocusedOn.includes(pos))) {
-          matches = false;
-        }
-      }
+            // Boolean filters
+            if ($selectedHasVideo && !drill.video_link) matches = false;
+            if ($selectedHasDiagrams && (!drill.diagrams || drill.diagrams.length === 0)) matches = false;
+            if ($selectedHasImages && (!drill.images || drill.images.length === 0)) matches = false;
 
-      // Number of People: Check for any overlap
-      if (
-        drill.number_of_people_min > $selectedNumberOfPeopleMax ||
-        drill.number_of_people_max < $selectedNumberOfPeopleMin
-      ) {
-        matches = false;
-      }
-
-      // Suggested Lengths: Check for any overlap
-      if (
-        drill.suggested_length > $selectedSuggestedLengthsMax ||
-        drill.suggested_length < $selectedSuggestedLengthsMin
-      ) {
-        matches = false;
-      }
-
-      // Has Video
-      if ($selectedHasVideo && !drill.video_link) {
-        matches = false;
-      }
-
-      // Has Diagrams
-      if ($selectedHasDiagrams && (!drill.diagrams || drill.diagrams.length === 0)) {
-        matches = false;
-      }
-
-      // Has Images
-      if ($selectedHasImages && (!drill.images || drill.images.length === 0)) {
-        matches = false;
-      }
-
-      // Filter by Drill Types
-      if ($selectedDrillTypes.length > 0 && (!drill.drill_type || !drill.drill_type.some(type => $selectedDrillTypes.includes(type)))) {
-        matches = false;
-      }
-
-      return matches;
-    });
-  }
+            return matches;
+        });
+    }
 );
 
 // Pagination Store

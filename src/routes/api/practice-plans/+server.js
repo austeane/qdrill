@@ -13,6 +13,10 @@ class PracticePlanError extends Error {
   }
 }
 
+function normalizeString(str) {
+  return str?.toLowerCase().trim() || '';
+}
+
 export const POST = authGuard(async ({ request, locals }) => {
   try {
     const practicePlan = await request.json().catch(() => {

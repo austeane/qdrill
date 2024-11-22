@@ -1,12 +1,9 @@
 export async function load({ fetch }) {
     try {
       const response = await fetch('/api/drills');
-      if (!response.ok) {
-        throw new Error('Failed to fetch drills');
-      }
       const drills = await response.json();
   
-      // Extract unique filter options
+      // Create Sets with normalized values
       const skillLevelSet = new Set();
       const complexitySet = new Set();
       const skillsFocusedSet = new Set();
@@ -18,21 +15,25 @@ export async function load({ fetch }) {
       const drillTypeSet = new Set();
   
       drills.forEach(drill => {
-        // Skill Levels
-        drill.skill_level.forEach(level => skillLevelSet.add(level));
+        // Normalize and add skill levels
+        drill.skill_level?.forEach(level => {
+          skillLevelSet.add(normalizeString(level));
+        });
   
-        // Complexities
-        if (drill.complexity) complexitySet.add(drill.complexity);
-  
-        // Skills Focused On
-        if (Array.isArray(drill.skills_focused_on)) {
-          drill.skills_focused_on.forEach(skill => skillsFocusedSet.add(skill));
+        // Normalize and add complexity
+        if (drill.complexity) {
+          complexitySet.add(normalizeString(drill.complexity));
         }
   
-        // Positions Focused On
-        if (Array.isArray(drill.positions_focused_on)) {
-          drill.positions_focused_on.forEach(pos => positionsFocusedSet.add(pos));
-        }
+        // Normalize and add skills
+        drill.skills_focused_on?.forEach(skill => {
+          skillsFocusedSet.add(normalizeString(skill));
+        });
+  
+        // Normalize and add positions
+        drill.positions_focused_on?.forEach(pos => {
+          positionsFocusedSet.add(normalizeString(pos));
+        });
   
         // Number of People
         if (drill.number_of_people_min < minNumberOfPeople) {
@@ -62,10 +63,10 @@ export async function load({ fetch }) {
       return {
         drills,
         filterOptions: {
-          skillLevels: Array.from(skillLevelSet),
-          complexities: Array.from(complexitySet),
-          skillsFocusedOn: Array.from(skillsFocusedSet),
-          positionsFocusedOn: Array.from(positionsFocusedSet),
+          skillLevels: Array.from(skillLevelSet).sort(),
+          complexities: Array.from(complexitySet).sort(),
+          skillsFocusedOn: Array.from(skillsFocusedSet).sort(),
+          positionsFocusedOn: Array.from(positionsFocusedSet).sort(),
           numberOfPeopleOptions: {
             min: minNumberOfPeople !== Infinity ? minNumberOfPeople : null,
             max: maxNumberOfPeople !== -Infinity ? maxNumberOfPeople : null
@@ -81,7 +82,11 @@ export async function load({ fetch }) {
       console.error('Error fetching drills:', error);
       return {
         status: 500,
-        error: 'Failed to fetch drills. Please try again later.'
+        error: 'Failed to fetch drills'
       };
     }
+}
+
+function normalizeString(str) {
+  return str?.toLowerCase().trim() || '';
 }

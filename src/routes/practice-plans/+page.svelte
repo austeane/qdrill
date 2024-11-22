@@ -8,6 +8,13 @@
     import debounce from 'lodash/debounce';
     import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
     import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
+    import { FILTER_STATES } from '$lib/constants';
+    import {
+        selectedPhaseOfSeason,
+        selectedPracticeGoals,
+        selectedEstimatedParticipantsMin,
+        selectedEstimatedParticipantsMax
+    } from '$lib/stores/practicePlanStore';
 
     export let data;
 
@@ -20,12 +27,6 @@
         estimatedParticipants,
         practiceGoals
     } = data.filterOptions || {};
-
-    // Selected Filters
-    let selectedPhaseOfSeason = [];
-    let selectedEstimatedParticipantsMin = null;
-    let selectedEstimatedParticipantsMax = null;
-    let selectedPracticeGoals = [];
 
     // Search Query
     let searchQuery = '';
@@ -87,6 +88,100 @@
         // location.reload();
     }
 
+    // Helper functions for normalization
+    function normalizeString(str) {
+        return str?.toLowerCase().trim() || '';
+    }
+
+    function normalizeArray(arr) {
+        return arr?.map(item => normalizeString(item)) || [];
+    }
+
+    // Add these helper functions before the filteredPlans reactive statement
+    function filterByThreeState(planValue, filterState, allPossibleValues) {
+        if (!filterState || Object.keys(filterState).length === 0) return true;
+
+        const requiredValues = [];
+        const excludedValues = [];
+
+        for (const [value, state] of Object.entries(filterState)) {
+            if (state === FILTER_STATES.REQUIRED) {
+                requiredValues.push(value);
+            } else if (state === FILTER_STATES.EXCLUDED) {
+                excludedValues.push(value);
+            }
+        }
+
+        // 1. First check if all values are excluded
+        const totalPossibleValues = allPossibleValues || [];
+        const excludedAll = totalPossibleValues.length > 0 && 
+                           excludedValues.length === totalPossibleValues.length;
+        if (excludedAll) {
+            return false;
+        }
+
+        // 2. If the item has no value, and there are required values, exclude it
+        if (!planValue && requiredValues.length > 0) {
+            return false;
+        }
+
+        // 3. If there are required values, item must match one
+        if (requiredValues.length > 0) {
+            return requiredValues.includes(planValue);
+        }
+
+        // 4. If the item has a value and it's in excluded values, exclude it
+        if (planValue && excludedValues.includes(planValue)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    // Helper function for array-based filters
+    function filterByThreeStateArray(planValues, filterState, allPossibleValues) {
+        if (!filterState || Object.keys(filterState).length === 0) return true;
+
+        const requiredValues = [];
+        const excludedValues = [];
+
+        for (const [value, state] of Object.entries(filterState)) {
+            if (state === FILTER_STATES.REQUIRED) {
+                requiredValues.push(value);
+            } else if (state === FILTER_STATES.EXCLUDED) {
+                excludedValues.push(value);
+            }
+        }
+
+        // Ensure planValues is an array
+        const valuesArray = Array.isArray(planValues) ? planValues : [];
+
+        // 1. First check if all values are excluded
+        const totalPossibleValues = allPossibleValues || [];
+        const excludedAll = totalPossibleValues.length > 0 && 
+                           excludedValues.length === totalPossibleValues.length;
+        if (excludedAll) {
+            return false;
+        }
+
+        // 2. If the item has no values and there are required values, exclude it
+        if ((!valuesArray || valuesArray.length === 0) && requiredValues.length > 0) {
+            return false;
+        }
+
+        // 3. If there are required values, item must have all of them
+        if (requiredValues.length > 0) {
+            return requiredValues.every(value => valuesArray.includes(value));
+        }
+
+        // 4. If any of the item's values are in excluded values, exclude it
+        if (valuesArray.some(value => excludedValues.includes(value))) {
+            return false;
+        }
+
+        return true;
+    }
+
     // Filtering logic
     $: filteredPlans = practicePlans.filter(plan => {
         let matches = true;
@@ -99,23 +194,29 @@
             matches = matches && (nameMatch || descriptionMatch);
         }
 
-        // Phase of Season
-        if (selectedPhaseOfSeason.length > 0) {
-            matches = matches && selectedPhaseOfSeason.includes(plan.phase_of_season);
-        }
+        // Phase of Season filtering
+        matches = matches && filterByThreeState(
+            plan.phase_of_season,
+            $selectedPhaseOfSeason,
+            data.filterOptions.phaseOfSeason
+        );
 
-        // Estimated Number of Participants
-        if (selectedEstimatedParticipantsMin !== null) {
-            matches = matches && plan.estimated_number_of_participants >= selectedEstimatedParticipantsMin;
-        }
-        if (selectedEstimatedParticipantsMax !== null) {
-            matches = matches && plan.estimated_number_of_participants <= selectedEstimatedParticipantsMax;
-        }
+        // Practice Goals filtering (using array-based filter)
+        matches = matches && filterByThreeStateArray(
+            plan.practice_goals,
+            $selectedPracticeGoals,
+            data.filterOptions.practiceGoals
+        );
 
-        // Practice Goals
-        if (selectedPracticeGoals.length > 0) {
-            const planGoals = plan.practice_goals ? plan.practice_goals.split(',').map(g => g.trim()) : [];
-            matches = matches && selectedPracticeGoals.every(goal => planGoals.includes(goal));
+        // Estimated Participants
+        if ($selectedEstimatedParticipantsMin !== null || $selectedEstimatedParticipantsMax !== null) {
+            const participants = plan.estimated_number_of_participants;
+            if ($selectedEstimatedParticipantsMin !== null) {
+                matches = matches && participants >= $selectedEstimatedParticipantsMin;
+            }
+            if ($selectedEstimatedParticipantsMax !== null) {
+                matches = matches && participants <= $selectedEstimatedParticipantsMax;
+            }
         }
 
         // Contains Drills
@@ -218,10 +319,6 @@
         filterType="practice-plans"
         phaseOfSeasonOptions={phaseOfSeason}
         practiceGoalsOptions={practiceGoals}
-        bind:selectedPhaseOfSeason
-        bind:selectedPracticeGoals
-        bind:selectedEstimatedParticipantsMin
-        bind:selectedEstimatedParticipantsMax
         {selectedDrills}
         onDrillSelect={handleDrillSelect}
         onDrillRemove={handleDrillRemove}

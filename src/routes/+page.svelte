@@ -38,27 +38,27 @@
   
 	<!-- Action Cards Section -->
 	<div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-	  <!-- Practice Plans Card -->
+	  <!-- Drills Card -->
 	  <div class="bg-white shadow-md rounded-lg p-6 text-center flex flex-col h-full">
 		<div class="flex-grow">
-		  <h2 class="text-2xl font-semibold mb-4">Practice Plans</h2>
-		  <p class="mb-6">Plan your practice sessions efficiently.</p>
-		</div>
-		<div class="mt-auto">
-		  <a href="/practice-plans" class="inline-block bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-			View Plans
-		  </a>
-		</div>
-	  </div>
-	  <!-- Create New Drill Card -->
-	  <div class="bg-white shadow-md rounded-lg p-6 text-center flex flex-col h-full">
-		<div class="flex-grow">
-		  <h2 class="text-2xl font-semibold mb-4">Create New Drill</h2>
+		  <h2 class="text-2xl font-semibold mb-4">Drills</h2>
 		  <p class="mb-6">Design and share your own drills.</p>
 		</div>
 		<div class="mt-auto">
 		  <a href="/drills/create" class="inline-block bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
 			Create Drill
+		  </a>
+		</div>
+	  </div>
+	  <!-- Practice Plans Card -->
+	  <div class="bg-white shadow-md rounded-lg p-6 text-center flex flex-col h-full">
+		<div class="flex-grow">
+		  <h2 class="text-2xl font-semibold mb-4">Practice Plans</h2>
+		  <p class="mb-6">Combine drills into a practice plan to share with your team.</p>
+		</div>
+		<div class="mt-auto">
+		  <a href="/practice-plans" class="inline-block bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+			View or Create Plans
 		  </a>
 		</div>
 	  </div>

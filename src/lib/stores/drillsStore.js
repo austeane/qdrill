@@ -321,7 +321,7 @@ export const sortedSkills = derived(allSkills, $allSkills =>
     })
 );
 
-// Add a derived store for variation counts
+// Add a derived store for n counts
 export const variationCounts = derived(drills, $drills => {
   return $drills.reduce((counts, drill) => {
     const groupId = drill.parent_drill_id || drill.id;

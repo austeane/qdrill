@@ -6,20 +6,51 @@ await client.connect();
 
 export async function GET({ params }) {
   const { id } = params;
+  console.log('[Variations API] Fetching variations for drill:', id);
 
   try {
-    const result = await client.query(
-      `SELECT * FROM drills 
-       WHERE parent_drill_id = $1 
-       OR id = $1 
-       OR parent_drill_id = (SELECT parent_drill_id FROM drills WHERE id = $1)
-       ORDER BY upvotes DESC`,
+    // First check if this is a parent drill
+    const parentCheck = await client.query(
+      `SELECT * FROM drills WHERE id = $1 AND parent_drill_id IS NULL`,
       [id]
     );
+    console.log('[Variations API] Parent check results:', parentCheck.rows);
 
-    return json(result.rows);
+    if (parentCheck.rows.length > 0) {
+      // This is a parent drill, get its variations
+      const result = await client.query(
+        `SELECT * FROM drills WHERE parent_drill_id = $1 ORDER BY upvotes DESC`,
+        [id]
+      );
+      console.log('[Variations API] Parent drill variations:', result.rows);
+      return json([parentCheck.rows[0], ...result.rows]);
+    }
+
+    // Check if this is a child drill
+    const childCheck = await client.query(
+      `SELECT parent_drill_id FROM drills WHERE id = $1 AND parent_drill_id IS NOT NULL`,
+      [id]
+    );
+    console.log('[Variations API] Child check results:', childCheck.rows);
+
+    if (childCheck.rows.length > 0) {
+      const parentId = childCheck.rows[0].parent_drill_id;
+      console.log('[Variations API] Found parent ID:', parentId);
+      
+      const result = await client.query(
+        `SELECT * FROM drills 
+         WHERE id = $1 OR parent_drill_id = $1 
+         ORDER BY CASE WHEN id = $2 THEN 0 ELSE 1 END, upvotes DESC`,
+        [parentId, id]
+      );
+      console.log('[Variations API] Child drill variations:', result.rows);
+      return json(result.rows);
+    }
+
+    console.log('[Variations API] No variations found');
+    return json([]);
   } catch (error) {
-    console.error('Error fetching variations:', error);
+    console.error('[Variations API] Error:', error);
     return json({ error: 'Failed to fetch variations' }, { status: 500 });
   }
 }

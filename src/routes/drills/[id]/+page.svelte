@@ -12,9 +12,30 @@
   import ExcalidrawWrapper from '../../../components/ExcalidrawWrapper.svelte';
   import { dev } from '$app/environment';
 
-  let drill = writable({});
-  let allVariants = writable({}); // Store for all variant data
+  export let data;
+  console.log('[Page Component] Initial data:', data);
+  
+  let drill = writable(data.drill);
+  let allVariants = writable({});
+
+  $: if (data.drill) {
+    drill.set(data.drill);
+  }
+
+  $: if ($drill && $drill.variations) {
+    const drillMap = {};
+    drillMap[$drill.id] = {
+      ...$drill,
+      variations: $drill.variations
+    };
+    allVariants.set(drillMap);
+  }
+
+  console.log('[Page Component] Initial drill store value:', $drill);
+  
   let currentDrillId = $page.params.id;
+  console.log('[Page Component] Current drill ID:', currentDrillId);
+  
   let showVariantModal = false;
   let searchQuery = '';
   let selectedDrill = null;
@@ -26,75 +47,21 @@
   let editableDiagram = writable(null);
 
   onMount(async () => {
-    try {
-      // Load the current drill first for quick display
-      const response = await fetch(`/api/drills/${currentDrillId}`);
-      if (!response.ok) {
-        throw new Error(`Error fetching drill details: ${response.statusText}`);
-      }
-      const data = await response.json();
-      drill.set(data);
-      
-      // Then load all variants data in the background
-      loadAllVariantData(data);
-    } catch (error) {
-      console.error(error);
-    }
+    console.log('[Page Component] Component mounted');
   });
 
-  async function loadAllVariantData(currentDrill) {
+  async function switchVariant(variantId) {
     try {
-      // Determine the parent drill ID
-      const parentId = currentDrill.parent_drill_id || currentDrill.id;
-      
-      const response = await fetch(`/api/drills/${parentId}/all-variants`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch variant data');
-      }
-      const variantData = await response.json();
-      
-      // Store all drill data indexed by ID for quick access
-      const drillMap = {};
-      drillMap[parentId] = {
-        ...variantData.parent,
-        variations: variantData.variants // Store the ordered variations array with the parent
-      };
-      variantData.variants.forEach(variant => {
-        drillMap[variant.id] = variant;
+      currentDrillId = variantId;
+      await goto(`/drills/${variantId}`, { 
+        invalidateAll: true,
+        keepFocus: true 
       });
-      
-      allVariants.set(drillMap);
-
-      // Update the current drill with complete variant information
-      drill.update(d => ({
-        ...d,
-        variations: variantData.variants,
-        parent_drill_id: d.id === parentId ? null : parentId,
-        parent_drill_name: d.id === parentId ? null : variantData.parent.name
-      }));
     } catch (error) {
-      console.error('Error loading variant data:', error);
-    }
-  }
-
-  // Function to switch between variants without page reload
-  function switchVariant(variantId) {
-    currentDrillId = variantId;
-    const variantData = $allVariants[variantId];
-    if (variantData) {
-      const parentId = variantData.parent_drill_id || variantId;
-      const parentDrill = $allVariants[parentId];
-      
-      // Set the drill with complete variant information
-      drill.set({
-        ...variantData,
-        variations: parentDrill.variations || [], // Use the parent's ordered variations array
-        parent_drill_id: variantId === parentId ? null : parentId,
-        parent_drill_name: variantId === parentId ? null : parentDrill.name
+      console.error('Error switching variant:', error);
+      toast.push('Failed to switch variant', { 
+        theme: { '--toastBackground': '#f56565', '--toastColor': '#fff' }
       });
-
-      // Update URL without page reload
-      goto(`/drills/${variantId}`, { replaceState: true, noScroll: true });
     }
   }
 
@@ -299,7 +266,6 @@
     }
   }
 </script>
-
 <svelte:head>
   <title>{$drill.name}</title>
   <meta name="description" content="Details of the selected drill" />
@@ -368,27 +334,46 @@
         {/if}
       </div>
 
-      {#if ($drill.variations?.length > 0 || $drill.parent_drill_id) && $allVariants[$drill.parent_drill_id || $drill.id]}
+      {#if ($drill.variations?.length > 0 || $drill.parent_drill_id) && ($allVariants[$drill.parent_drill_id || $drill.id] || $drill.related_variations)}
         <div class="mb-8 bg-gray-50 rounded-lg p-4">
           <h3 class="text-lg font-semibold mb-3">Drill Variations</h3>
           <div class="flex flex-wrap gap-2">
-            <!-- Show parent drill first -->
-            <button
-              on:click={() => switchVariant($drill.parent_drill_id || $drill.id)}
-              class="px-4 py-2 rounded-full {currentDrillId === ($drill.parent_drill_id || $drill.id) ? 'bg-blue-500 text-white' : 'bg-white border hover:bg-gray-50'}"
-            >
-              {$drill.parent_drill_name || $drill.name} (Parent)
-            </button>
-
-            <!-- Show all variants -->
-            {#each $allVariants[$drill.parent_drill_id || $drill.id].variations || [] as variation}
+            {#if $drill.parent_drill_id && $drill.related_variations}
+              <!-- Show variations when viewing a child drill -->
+              {#each $drill.related_variations as variation}
+                <button
+                  on:click={() => switchVariant(variation.id)}
+                  class="px-4 py-2 rounded-full {currentDrillId === variation.id ? 'bg-blue-500 text-white' : 'bg-white border hover:bg-gray-50'}"
+                >
+                  {variation.name} 
+                  {#if variation.relationship === 'parent'}
+                    (Parent)
+                  {:else if variation.relationship === 'current'}
+                    (Current)
+                  {:else}
+                    (Variant)
+                  {/if}
+                </button>
+              {/each}
+            {:else}
+              <!-- Show parent drill first -->
               <button
-                on:click={() => switchVariant(variation.id)}
-                class="px-4 py-2 rounded-full {currentDrillId === variation.id ? 'bg-blue-500 text-white' : 'bg-white border hover:bg-gray-50'}"
+                on:click={() => switchVariant($drill.parent_drill_id || $drill.id)}
+                class="px-4 py-2 rounded-full {currentDrillId === ($drill.parent_drill_id || $drill.id) ? 'bg-blue-500 text-white' : 'bg-white border hover:bg-gray-50'}"
               >
-                {variation.name} (Variant)
+                {$drill.parent_drill_name || $drill.name} (Parent)
               </button>
-            {/each}
+
+              <!-- Show all variants -->
+              {#each $allVariants[$drill.parent_drill_id || $drill.id].variations || [] as variation}
+                <button
+                  on:click={() => switchVariant(variation.id)}
+                  class="px-4 py-2 rounded-full {currentDrillId === variation.id ? 'bg-blue-500 text-white' : 'bg-white border hover:bg-gray-50'}"
+                >
+                  {variation.name} (Variant)
+                </button>
+              {/each}
+            {/if}
           </div>
         </div>
       {/if}

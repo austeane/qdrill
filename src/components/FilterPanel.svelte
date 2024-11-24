@@ -458,7 +458,7 @@
         >
             Number of Participants
             <span class="ml-2 text-sm font-semibold">
-                {$selectedNumberOfPeopleMin === 0 ? 'Any' : $selectedNumberOfPeopleMin} - {$selectedNumberOfPeopleMax === 30 ? 'Any' : $selectedNumberOfPeopleMax}
+                {$selectedNumberOfPeopleMin === numberOfPeopleOptions.min ? 'Any' : $selectedNumberOfPeopleMin} - {$selectedNumberOfPeopleMax === numberOfPeopleOptions.max ? 'Any' : $selectedNumberOfPeopleMax}
             </span>
         </button>
         
@@ -478,16 +478,14 @@
                     step={1}
                     float
                     pips
-                    all="label"
                     first="label"
                     last="label"
-                    rest="pip"
-                    pipstep={5}
-                    on:change={() => {
-                        selectedNumberOfPeopleMin.set(numberOfPeopleRange[0]);
-                        selectedNumberOfPeopleMax.set(numberOfPeopleRange[1]);
-                    }}
+                    rest={false}
+                    hoverable
                 />
+                <div class="text-center mt-2 text-sm font-medium text-gray-700">
+                    Current: {numberOfPeopleRange[0]} - {numberOfPeopleRange[1]}
+                </div>
             </div>
         {/if}
     </div>

@@ -870,7 +870,7 @@
         <h2 class="text-xl font-semibold mb-4">Diagrams and Images</h2>
         <div class="mt-6">
           <h3 class="text-lg font-semibold mb-2">Diagrams</h3>
-          <p class="text-sm text-gray-600 mb-4">💡 Tip: Click the "Fullscreen" button in the top-right corner of each diagram for the best editing experience.</p>
+          <p class="text-sm text-gray-600 mb-4">💡 Tip: Click the "Fullscreen" button in the top-right corner of each diagram for the best editing experience. If user interface elements are getting in your way, you can scroll the whole diagram canvas.</p>
           <div class="space-y-4">
             {#each $diagrams as diagram, index (index + '-' + diagramKey)}
               <div class="border p-4 rounded">

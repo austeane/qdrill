@@ -179,13 +179,6 @@
       const skillsData = await skillsResponse.json();
       allSkills.set(skillsData);
     }
-
-    // Fetch potential parent drills
-    const drillsResponse = await fetch('/api/drills');
-    if (drillsResponse.ok) {
-      const drills = await drillsResponse.json();
-      parentDrills.set(drills.filter(d => !d.parent_drill_id)); // Only show non-variation drills
-    }
   });
 
   function handleSkillInput() {
@@ -589,6 +582,20 @@
 
   onMount(() => {
   });
+
+  // Add new function to fetch parent drills when needed
+  async function fetchParentDrills() {
+    const response = await fetch('/api/drills/names');  // New endpoint we'll create
+    if (response.ok) {
+      const drills = await response.json();
+      parentDrills.set(drills.filter(d => !d.parent_drill_id));
+    }
+  }
+
+  // Modify the isVariation store subscription
+  $: if ($isVariation) {
+    fetchParentDrills();
+  }
 </script>
 
 <svelte:head>

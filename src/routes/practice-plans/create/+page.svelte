@@ -7,6 +7,7 @@
   import { goto } from '$app/navigation';
   import { toast } from '@zerodevx/svelte-toast';
   import { onMount } from 'svelte';
+  import { page } from '$app/stores';
 
   // Receive drills data from the server-side load function
   export let data;
@@ -32,6 +33,9 @@
   let practiceGoals = writable(['']);
 
   let showEmptyCartModal = false;
+
+  let visibility = 'public';
+  let isEditableByOthers = false;
 
   onMount(() => {
     if ($cart.length === 0) {
@@ -119,7 +123,9 @@
       phase_of_season: phaseOfSeason || null,
       estimated_number_of_participants: estimatedNumberOfParticipants ? parseInt(estimatedNumberOfParticipants) : null,
       practice_goals: $practiceGoals.filter(goal => goal.trim() !== ''),
-      drills: drillsData
+      drills: drillsData,
+      visibility: visibility,
+      is_editable_by_others: isEditableByOthers
     };
 
     try {
@@ -416,6 +422,41 @@
   {#if $errors.general}
     <p class="text-red-500 text-sm mb-2">{$errors.general}</p>
   {/if}
+
+  <!-- Add this before the submit button -->
+  <div class="mb-6">
+    <label class="block text-gray-700 font-medium mb-1">Visibility</label>
+    <select
+      bind:value={visibility}
+      class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring"
+      disabled={!$page.data.session}
+      title={!$page.data.session ? 'Log in to create private or unlisted practice plans' : ''}
+    >
+      <option value="public">Public - Visible to everyone</option>
+      <option value="unlisted">Unlisted - Only accessible via direct link</option>
+      <option value="private">Private - Only visible to you</option>
+    </select>
+    {#if !$page.data.session}
+      <p class="text-sm text-gray-500 mt-1">Log in to create private or unlisted practice plans</p>
+    {/if}
+  </div>
+
+  <div class="mb-6">
+    <label class="flex items-center">
+      <input
+        type="checkbox"
+        bind:checked={isEditableByOthers}
+        disabled={!$page.data.session}
+        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+      />
+      <span class="ml-2 text-gray-700">
+        Allow others to edit this practice plan
+        {#if !$page.data.session}
+          <span class="text-gray-500">(required for anonymous submissions)</span>
+        {/if}
+      </span>
+    </label>
+  </div>
 
   <button 
     on:click={submitPlan} 

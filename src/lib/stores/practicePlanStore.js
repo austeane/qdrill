@@ -5,6 +5,8 @@ export const selectedPhaseOfSeason = writable({});
 export const selectedPracticeGoals = writable({});
 export const selectedEstimatedParticipantsMin = writable(null);
 export const selectedEstimatedParticipantsMax = writable(null);
+export const selectedVisibility = writable('public');
+export const selectedEditability = writable(false);
 
 export function updateFilterState(store, value, newState) {
     store.update(current => {

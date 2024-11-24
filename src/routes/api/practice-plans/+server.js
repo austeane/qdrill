@@ -19,14 +19,21 @@ function normalizeString(str) {
 
 export const POST = authGuard(async ({ request, locals }) => {
   try {
-    const practicePlan = await request.json().catch(() => {
-      throw new PracticePlanError('Invalid JSON payload', 400);
-    });
-
+    const practicePlan = await request.json();
     const session = await locals.getSession();
+    
+    // If user is not logged in, force public visibility and editable by others
     if (!session?.user?.id) {
-      throw new PracticePlanError('Unauthorized', 401);
+      practicePlan.visibility = 'public';
+      practicePlan.is_editable_by_others = true;
     }
+
+    // Validate visibility
+    const validVisibilities = ['public', 'unlisted', 'private'];
+    if (!validVisibilities.includes(practicePlan.visibility)) {
+      throw new PracticePlanError('Invalid visibility setting', 400);
+    }
+
     const userId = session.user.id;
 
     const {
@@ -65,8 +72,12 @@ export const POST = authGuard(async ({ request, locals }) => {
 
     try {
       const planResult = await client.query(
-        `INSERT INTO practice_plans (name, description, practice_goals, phase_of_season, estimated_number_of_participants, created_by, is_editable_by_others, visibility) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        `INSERT INTO practice_plans (
+          name, description, practice_goals, phase_of_season, 
+          estimated_number_of_participants, created_by, 
+          visibility, is_editable_by_others
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+        RETURNING id`,
         [
           name,
           description,
@@ -74,8 +85,8 @@ export const POST = authGuard(async ({ request, locals }) => {
           phase_of_season,
           estimated_number_of_participants,
           userId,
-          is_editable_by_others,
-          visibility
+          practicePlan.visibility,
+          practicePlan.is_editable_by_others
         ]
       );
 
@@ -142,28 +153,19 @@ export const GET = async ({ locals }) => {
 
     const result = await client.query(`
       SELECT pp.*, 
-             pp.practice_goals,
-             pp.phase_of_season,
-             pp.estimated_number_of_participants,
              array_agg(ppd.drill_id ORDER BY ppd.order_in_plan) as drills,
              array_agg(ppd.duration ORDER BY ppd.order_in_plan) as drill_durations
       FROM practice_plans pp
       LEFT JOIN practice_plan_drills ppd ON pp.id = ppd.practice_plan_id
+      WHERE 
+        pp.visibility = 'public' 
+        OR (pp.visibility = 'unlisted')
+        OR (pp.visibility = 'private' AND pp.created_by = $1)
       GROUP BY pp.id
       ORDER BY pp.created_at DESC
-    `);
+    `, [userId || '']);
 
-    if (!result?.rows) {
-      throw new PracticePlanError('No practice plans found', 404);
-    }
-
-    const filteredPlans = result.rows.filter(plan => {
-      return plan.visibility === 'public' || 
-             plan.visibility === 'unlisted' || 
-             (plan.visibility === 'private' && plan.created_by === userId);
-    });
-
-    return json(filteredPlans);
+    return json(result.rows);
   } catch (error) {
     console.error('Error occurred while fetching practice plans:', error);
     return json(

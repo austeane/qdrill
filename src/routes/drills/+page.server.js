@@ -54,6 +54,20 @@ export async function load({ fetch }) {
           }
         }
   
+        // If the drill has a range format (e.g., "5-15")
+        const lengthRange = drill.suggested_length?.split('-');
+        if (lengthRange?.length === 2) {
+          const start = parseInt(lengthRange[0], 10);
+          const end = parseInt(lengthRange[1], 10);
+          
+          if (!isNaN(start) && start < minSuggestedLength) {
+            minSuggestedLength = start;
+          }
+          if (!isNaN(end) && end > maxSuggestedLength) {
+            maxSuggestedLength = end;
+          }
+        }
+  
         // Drill Types
         if (Array.isArray(drill.drill_type)) {
           drill.drill_type.forEach(type => drillTypeSet.add(type));

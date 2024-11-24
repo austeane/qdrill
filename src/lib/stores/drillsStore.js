@@ -191,9 +191,23 @@ export const filteredDrills = derived(
                 matches = false;
             }
 
-            if (drill.suggested_length > $selectedSuggestedLengthsMax ||
-                drill.suggested_length < $selectedSuggestedLengthsMin) {
-                matches = false;
+            // Updated Suggested Length filtering
+            if (drill.suggested_length) {
+                const range = drill.suggested_length.toString().split('-');
+                if (range.length === 2) {
+                    // If it's a range format (e.g., "5-15")
+                    const [start, end] = range.map(n => parseInt(n, 10));
+                    // Only filter out if the entire range is outside the selected range
+                    if (end < $selectedSuggestedLengthsMin || start > $selectedSuggestedLengthsMax) {
+                        matches = false;
+                    }
+                } else {
+                    // If it's a single number
+                    const length = parseInt(drill.suggested_length, 10);
+                    if (!isNaN(length) && (length < $selectedSuggestedLengthsMin || length > $selectedSuggestedLengthsMax)) {
+                        matches = false;
+                    }
+                }
             }
 
             // Boolean filters

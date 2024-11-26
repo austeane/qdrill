@@ -138,13 +138,27 @@ export const PUT = authGuard(async ({ params, request, locals }) => {
             );
         }
 
-        // Update the name in votes table
+        // Delete existing drills for this practice plan
         await client.query(
-            `UPDATE votes 
-             SET item_name = $1 
-             WHERE practice_plan_id = $2`,
-            [plan.name, id]
+            `DELETE FROM practice_plan_drills WHERE practice_plan_id = $1`,
+            [id]
         );
+
+        // Insert updated drills
+        if (plan.drills && plan.drills.length > 0) {
+            const drillValues = plan.drills.map((drill, index) => ({
+                practice_plan_id: id,
+                drill_id: drill.type === 'drill' ? drill.id : null,
+                order_in_plan: index,
+                duration: drill.duration || drill.selected_duration,
+                type: drill.type,
+            }));
+
+            await client.query(
+                `INSERT INTO practice_plan_drills (practice_plan_id, drill_id, order_in_plan, duration, type) VALUES ($1, $2, $3, $4, $5)`,
+                drillValues
+            );
+        }
 
         await client.query('COMMIT');
         return json(result.rows[0]);

@@ -1,7 +1,6 @@
 <script>
   import { writable } from 'svelte/store';
   import { cart } from '$lib/stores/cartStore';
-  import { ChevronDownIcon, ChevronUpIcon, ChevronLeftIcon, ChevronRightIcon } from 'svelte-feather-icons';
   import { goto } from '$app/navigation';
   import { toast } from '@zerodevx/svelte-toast';
   import { onMount } from 'svelte';
@@ -13,7 +12,7 @@
   export let practicePlan = null;
   console.log('[PracticePlanForm] Received practicePlan:', practicePlan);
 
-  // Initialize stores
+  // Initialize stores more efficiently
   let planName = writable('');
   let planDescription = writable('');
   let phaseOfSeason = writable('');
@@ -22,7 +21,6 @@
   let visibility = writable('public');
   let isEditableByOthers = writable(false);
   let selectedItems = writable([]);
-  console.log('[PracticePlanForm] Initial selectedItems:', $selectedItems);
 
   // Initialize drills from data
   $: availableDrills = data?.drills || [];
@@ -39,7 +37,6 @@
       practiceGoals.set(practicePlan.practice_goals || ['']);
       visibility.set(practicePlan.visibility || 'public');
       isEditableByOthers.set(practicePlan.is_editable_by_others || false);
-
       selectedItems.set(practicePlan.items?.map(item => ({
         ...item,
         id: item.drill?.id || `${item.type}-${Date.now()}-${Math.random()}`,
@@ -50,7 +47,6 @@
         selected_duration: item.duration,
         parallel_group_id: item.parallel_group_id
       })) || []);
-      console.log('[PracticePlanForm] Set selectedItems from practicePlan:', $selectedItems);
     } else {
       console.log('[PracticePlanForm] Initializing empty form');
       planName.set('');
@@ -60,7 +56,6 @@
       practiceGoals.set(['']);
       visibility.set('public');
       isEditableByOthers.set(false);
-      // Don't reset selectedItems here anymore since we're handling it in onMount
     }
   }
 
@@ -100,22 +95,17 @@
       showEmptyCartModal = true;
     }
     if (!practicePlan) {
-      // Convert cart items to the format needed for selectedItems
       const cartItems = $cart.map(drill => ({
         id: drill.id,
         type: 'drill',
         name: drill.name,
         drill: drill,
         expanded: false,
-        selected_duration: 15, // default duration
+        selected_duration: 15,
         diagram_data: null,
         parallel_group_id: null
       }));
-      console.log('[PracticePlanForm] Initializing from cart:', cartItems);
       selectedItems.set(cartItems);
-      
-      // Clear the cart after initializing the form
-      cart.clear();
     }
   });
 
@@ -137,13 +127,26 @@
       errors.update(e => ({ ...e, selectedItems: 'At least one drill or break is required' }));
       return;
     }
-    if (phaseOfSeason && !phaseOfSeasonOptions.includes(phaseOfSeason)) {
+    if ($phaseOfSeason && !phaseOfSeasonOptions.includes($phaseOfSeason)) {
       errors.update(e => ({ ...e, phaseOfSeason: 'Invalid phase of season selected' }));
       return;
     }
-    if (estimatedNumberOfParticipants && (!Number.isInteger(+estimatedNumberOfParticipants) || +estimatedNumberOfParticipants <= 0)) {
-      errors.update(e => ({ ...e, estimatedNumberOfParticipants: 'Estimated number of participants must be a positive integer' }));
-      return;
+
+    // Add logging for participants validation
+    console.log('Validating participants:', {
+      value: $estimatedNumberOfParticipants,
+      parsed: parseInt($estimatedNumberOfParticipants, 10),
+      isNaN: isNaN(parseInt($estimatedNumberOfParticipants, 10)),
+      isPositive: parseInt($estimatedNumberOfParticipants, 10) > 0,
+      isInteger: Number.isInteger(parseFloat($estimatedNumberOfParticipants))
+    });
+
+    if ($estimatedNumberOfParticipants !== '') {  // Only validate if a value is provided
+      const numParticipants = parseInt($estimatedNumberOfParticipants, 10);
+      if (isNaN(numParticipants) || numParticipants <= 0 || !Number.isInteger(parseFloat($estimatedNumberOfParticipants))) {
+        errors.update(e => ({ ...e, estimatedNumberOfParticipants: 'Estimated number of participants must be a positive integer' }));
+        return;
+      }
     }
 
     isSubmitting.set(true);
@@ -178,7 +181,7 @@
       if (response.ok) {
         const data = await response.json();
         if (!practicePlan) {
-          cart.clear(); // Only clear cart for new plans
+          cart.clear(); // Only clear cart here, after successful submission
         }
         toast.push(`Practice plan ${practicePlan ? 'updated' : 'created'} successfully`);
         goto(`/practice-plans/${data.id}`);
@@ -518,14 +521,15 @@
     if (draggedItem === null || draggedItem === targetIndex) return;
 
     const isGrouping = dragOverPosition === 'middle';
-    let newIndex = targetIndex;
-    if (dragOverPosition === 'bottom') {
-      newIndex++;
-    }
 
-    selectedItems.update(items => 
-      handleDrillMove(draggedItem, newIndex, items, isGrouping)
-    );
+    // Use update function to modify only the selectedItems store
+    selectedItems.update(items => {
+        let newIndex = targetIndex;
+        if (dragOverPosition === 'bottom') {
+            newIndex++;
+        }
+        return handleDrillMove(draggedItem, newIndex, items, isGrouping);
+    });
 
     // Reset drag state
     draggedItem = null;
@@ -535,31 +539,32 @@
 
   // Add this function before the existing removeFromGroup function
   function handleUngroup(itemId) {
+    // Use update function to modify only the selectedItems store
     selectedItems.update(items => {
-      const groupId = items.find(item => item.id === itemId)?.parallel_group_id;
-      if (!groupId) return items;
-      
-      const groupSize = items.filter(item => item.parallel_group_id === groupId).length;
-      
-      if (groupSize <= 2) {
-        // Remove group from all items if only 2 items in group
-        return items.map(item => {
-          if (item.parallel_group_id === groupId) {
-            const { parallel_group_id, ...rest } = item;
-            return rest;
-          }
-          return item;
-        });
-      } else {
-        // Just remove from the one item
-        return items.map(item => {
-          if (item.id === itemId) {
-            const { parallel_group_id, ...rest } = item;
-            return rest;
-          }
-          return item;
-        });
-      }
+        const groupId = items.find(item => item.id === itemId)?.parallel_group_id;
+        if (!groupId) return items;
+        
+        const groupSize = items.filter(item => item.parallel_group_id === groupId).length;
+        
+        if (groupSize <= 2) {
+            // Remove group from all items if only 2 items in group
+            return items.map(item => {
+                if (item.parallel_group_id === groupId) {
+                    const { parallel_group_id, ...rest } = item;
+                    return rest;
+                }
+                return item;
+            });
+        } else {
+            // Just remove from the one item
+            return items.map(item => {
+                if (item.id === itemId) {
+                    const { parallel_group_id, ...rest } = item;
+                    return rest;
+                }
+                return item;
+            });
+        }
     });
   }
 

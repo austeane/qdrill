@@ -17,6 +17,19 @@ function normalizeString(str) {
   return str?.toLowerCase().trim() || '';
 }
 
+function validatePracticePlan(plan) {
+  // Check if there are any sections with drills
+  const hasAnyDrills = plan.sections?.some(section => 
+    section.items?.some(item => 
+      item.type === 'drill' && (item.drill_id || item.id)
+    )
+  );
+
+  if (!hasAnyDrills) {
+    throw new PracticePlanError('At least one drill is required', 400);
+  }
+}
+
 export const POST = authGuard(async ({ request, locals }) => {
   try {
     const practicePlan = await request.json();
@@ -34,26 +47,25 @@ export const POST = authGuard(async ({ request, locals }) => {
       throw new PracticePlanError('Invalid visibility setting', 400);
     }
 
-    const userId = session.user.id;
+    const userId = session?.user?.id;
+
+    // Validate the practice plan
+    validatePracticePlan(practicePlan);
 
     const {
       name,
       description,
-      drills,
       practice_goals,
       phase_of_season,
       estimated_number_of_participants,
       is_editable_by_others = false,
-      visibility = 'public'
+      visibility = 'public',
+      sections = []
     } = practicePlan;
     
     // Validate required fields
     if (!name?.trim()) {
       throw new PracticePlanError('Name is required', 400);
-    }
-
-    if (!drills || !Array.isArray(drills) || drills.length === 0) {
-      throw new PracticePlanError('At least one drill is required', 400);
     }
 
     // Validate phase_of_season
@@ -85,40 +97,51 @@ export const POST = authGuard(async ({ request, locals }) => {
           phase_of_season,
           estimated_number_of_participants,
           userId,
-          practicePlan.visibility,
-          practicePlan.is_editable_by_others
+          visibility,
+          is_editable_by_others
         ]
       );
 
       const planId = planResult.rows[0].id;
 
-      // Validate each drill before insertion
-      for (let i = 0; i < drills.length; i++) {
-        const item = drills[i];
-        if (!item.type || !['drill', 'break'].includes(item.type)) {
-          throw new PracticePlanError(`Invalid drill type at position ${i + 1}`, 400);
-        }
+      // Insert sections and their items
+      for (const section of sections) {
+        // Generate a numeric ID for the section
+        const sectionResult = await client.query(
+          `INSERT INTO practice_plan_sections 
+           (practice_plan_id, name, "order", goals, notes)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id`,
+          [
+            planId,
+            section.name,
+            section.order,
+            section.goals,
+            section.notes
+          ]
+        );
 
-        const duration = item.duration || item.selected_duration;
-        if (!duration || duration <= 0) {
-          throw new PracticePlanError(`Invalid duration for item at position ${i + 1}`, 400);
-        }
+        const dbSectionId = sectionResult.rows[0].id;
 
-        const orderInPlan = i + 1;
-        const diagramData = item.diagram_data || null;
-
-        if (item.type === 'drill') {
-          await client.query(
-            `INSERT INTO practice_plan_drills (practice_plan_id, drill_id, order_in_plan, duration, type, diagram_data, parallel_group_id) 
-             VALUES ($1, $2, $3, $4, 'drill', $5, $6)`,
-            [planId, item.id, orderInPlan, duration, diagramData, item.parallel_group_id]
-          );
-        } else if (item.type === 'break') {
-          await client.query(
-            `INSERT INTO practice_plan_drills (practice_plan_id, order_in_plan, duration, type) 
-             VALUES ($1, $2, $3, 'break')`,
-            [planId, orderInPlan, duration]
-          );
+        // Insert items for this section
+        if (section.items?.length > 0) {
+          for (const [index, item] of section.items.entries()) {
+            await client.query(
+              `INSERT INTO practice_plan_drills 
+               (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, diagram_data, parallel_group_id)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              [
+                planId,
+                dbSectionId, // Use the database-generated section ID
+                item.drill_id,
+                index,
+                item.duration,
+                item.type,
+                item.diagram_data,
+                item.parallel_group_id
+              ]
+            );
+          }
         }
       }
 

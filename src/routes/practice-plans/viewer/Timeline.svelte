@@ -1,0 +1,384 @@
+<script>
+  import { onMount, createEventDispatcher } from 'svelte';
+  import { tweened } from 'svelte/motion';
+  import { cubicOut } from 'svelte/easing';
+
+  export let sections = [];
+  export let currentSectionId = null;
+  export let totalDuration = 0;
+
+  const dispatch = createEventDispatcher();
+  
+  // Process sections to create timeline items with parallel groups
+  $: timelineItems = sections.reduce((acc, section) => {
+    const sectionItems = [];
+    let currentParallelGroup = null;
+    
+    section.items?.forEach(item => {
+      if (item.parallel_group_id) {
+        // Start or add to parallel group
+        if (!currentParallelGroup || currentParallelGroup.id !== item.parallel_group_id) {
+          if (currentParallelGroup) {
+            sectionItems.push(currentParallelGroup);
+          }
+          currentParallelGroup = {
+            id: item.parallel_group_id,
+            type: 'parallel',
+            items: [item],
+            duration: item.duration
+          };
+        } else {
+          currentParallelGroup.items.push(item);
+          currentParallelGroup.duration = Math.max(currentParallelGroup.duration, item.duration);
+        }
+      } else {
+        // Add any existing parallel group before adding single item
+        if (currentParallelGroup) {
+          sectionItems.push(currentParallelGroup);
+          currentParallelGroup = null;
+        }
+        sectionItems.push(item);
+      }
+    });
+
+    // Add any remaining parallel group
+    if (currentParallelGroup) {
+      sectionItems.push(currentParallelGroup);
+    }
+
+    return [...acc, { ...section, items: sectionItems }];
+  }, []);
+
+  // Animated scroll indicator
+  const scrollPosition = tweened(0, {
+    duration: 200,
+    easing: cubicOut
+  });
+
+  // Update scroll position based on current section
+  $: {
+    if (currentSectionId) {
+      const currentSection = timelineItems.find(item => item.id === currentSectionId);
+      if (currentSection) {
+        const startTime = timelineItems
+          .slice(0, timelineItems.indexOf(currentSection))
+          .reduce((acc, s) => acc + calculateSectionDuration(s.items), 0);
+        scrollPosition.set(startTime / totalDuration * 100);
+      }
+    }
+  }
+
+  function calculateSectionDuration(items) {
+    console.log('Calculating duration for items:', items);
+    return items.reduce((acc, item) => {
+      if (item.type === 'parallel') {
+        console.log('Parallel group duration:', item.duration);
+        return acc + item.duration;
+      }
+      return acc + (item.selected_duration || item.duration || 0);
+    }, 0);
+  }
+
+  function handleTimelineClick(section) {
+    dispatch('sectionSelect', { sectionId: section.id });
+  }
+
+  // Add this array at the top with the other variables
+  const sectionColors = [
+    'bg-blue-50',
+    'bg-green-50',
+    'bg-purple-50',
+    'bg-amber-50',
+    'bg-rose-50',
+    'bg-cyan-50'
+  ];
+
+  // Add this function to get color for a section
+  function getSectionColor(index) {
+    return sectionColors[index % sectionColors.length];
+  }
+
+  $: console.log('Timeline Sections:', sections);
+
+  // Add this debug log at the top of the component
+  $: {
+    console.log('Timeline Items:', timelineItems);
+    timelineItems.forEach(section => {
+      console.log('Section items:', section.items);
+      section.items?.forEach(item => {
+        if (item.type === 'parallel') {
+          console.log('Parallel group:', item);
+        }
+      });
+    });
+  }
+</script>
+
+<div class="timeline-container">
+  <div class="timeline">
+    <!-- Progress indicator -->
+    <div 
+      class="progress-line"
+      style="height: {$scrollPosition}%"
+    />
+
+    <!-- Timeline sections -->
+    {#each timelineItems as section, index}
+      <div 
+        class="timeline-section"
+        class:active={section.id === currentSectionId}
+        on:click={() => handleTimelineClick(section)}
+        style="height: {(calculateSectionDuration(section.items) / totalDuration) * 100}%"
+      >
+        <!-- Section label -->
+        <div class="section-label">
+          <span class="section-name">{section.name}</span>
+          <span class="section-duration">{calculateSectionDuration(section.items)}min</span>
+        </div>
+
+        <!-- Section items -->
+        <div class="section-items">
+          {#each section.items as item}
+            {#if item.type === 'parallel'}
+              <!-- Parallel group -->
+              <div 
+                class="parallel-container"
+                style="height: {(item.duration / calculateSectionDuration(section.items)) * 100}%"
+              >
+                <div class="parallel-split">
+                  {#each item.items as parallelItem}
+                    <div 
+                      class="parallel-branch"
+                      style="height: {(parallelItem.duration / item.duration) * 100}%"
+                    >
+                      <div class="parallel-item">
+                        <div class="parallel-item-inner {getSectionColor(index)}" />
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {:else}
+              <!-- Single item -->
+              <div 
+                class="timeline-item"
+                style="height: {(item.duration / calculateSectionDuration(section.items)) * 100}%"
+              >
+                <div class="timeline-item-inner {getSectionColor(index)}">
+                  <!-- Remove the background and border properties from the base styles -->
+                </div>
+              </div>
+            {/if}
+          {/each}
+        </div>
+      </div>
+    {/each}
+  </div>
+</div>
+
+<style>
+  .timeline-container {
+    position: fixed;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 80vh;
+    width: 4rem;
+    z-index: 10;
+  }
+
+  .timeline {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    background: theme('colors.gray.100');
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+
+  .progress-line {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 2px;
+    background: theme('colors.blue.500');
+    transition: height 0.2s ease;
+  }
+
+  .timeline-section {
+    position: relative;
+    width: 100%;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+  }
+
+  .timeline-section:hover {
+    filter: brightness(0.95);
+  }
+
+  .timeline-section.active {
+    border-left-color: theme('colors.blue.500');
+    filter: brightness(0.95);
+  }
+
+  .section-label {
+    position: absolute;
+    right: 100%;
+    top: 0;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    padding-right: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+
+  .timeline-section:hover .section-label {
+    opacity: 1;
+  }
+
+  .section-name {
+    font-size: 0.875rem;
+    color: theme('colors.gray.700');
+    margin-right: 0.5rem;
+  }
+
+  .section-duration {
+    font-size: 0.75rem;
+    color: theme('colors.gray.500');
+  }
+
+  .section-items {
+    height: 100%;
+    padding: 0.125rem 0;
+  }
+
+  .timeline-item {
+    margin: 0.0625rem 0;
+    padding: 0 0.25rem;
+  }
+
+  .timeline-item-inner {
+    height: 100%;
+    border-radius: 0.25rem;
+  }
+
+  .parallel-container {
+    position: relative;
+    margin: 0.0625rem 0;
+    height: 100%;
+  }
+
+  .parallel-split {
+    height: 100%;
+    display: flex !important;
+    gap: 0.25rem !important;
+    padding: 0 0.25rem;
+  }
+
+  .parallel-branch {
+    flex: 1 !important;
+    position: relative;
+    min-height: 0;
+  }
+
+  .parallel-item {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  .parallel-item-inner {
+    height: 100%;
+    border-radius: 0.25rem;
+  }
+
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    .timeline-container {
+      display: none;
+    }
+  }
+
+  /* Make styles more specific to prevent overrides */
+  .timeline .section-items {
+    height: 100%;
+    padding: 0.125rem 0;
+  }
+
+  .timeline .parallel-container {
+    position: relative;
+    margin: 0.0625rem 0;
+    height: 100%;
+  }
+
+  .timeline .parallel-split {
+    height: 100%;
+    display: flex !important;
+    gap: 0.25rem !important;
+    padding: 0 0.25rem;
+  }
+
+  .timeline .parallel-branch {
+    flex: 1 !important;
+    position: relative;
+    min-height: 0;
+  }
+
+  .timeline .parallel-item {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  .timeline .parallel-item-inner {
+    height: 100%;
+    border-radius: 0.25rem;
+  }
+
+  .timeline .timeline-item {
+    margin: 0.0625rem 0;
+    padding: 0 0.25rem;
+  }
+
+  .timeline .timeline-item-inner {
+    height: 100%;
+    border-radius: 0.25rem;
+  }
+
+  /* Update color styles to be more intense */
+  .bg-blue-50 {
+    background-color: theme('colors.blue.200');
+    border: 1px solid theme('colors.blue.300');
+  }
+
+  .bg-green-50 {
+    background-color: theme('colors.green.200');
+    border: 1px solid theme('colors.green.300');
+  }
+
+  .bg-purple-50 {
+    background-color: theme('colors.purple.200');
+    border: 1px solid theme('colors.purple.300');
+  }
+
+  .bg-amber-50 {
+    background-color: theme('colors.amber.200');
+    border: 1px solid theme('colors.amber.300');
+  }
+
+  .bg-rose-50 {
+    background-color: theme('colors.rose.200');
+    border: 1px solid theme('colors.rose.300');
+  }
+
+  .bg-cyan-50 {
+    background-color: theme('colors.cyan.200');
+    border: 1px solid theme('colors.cyan.300');
+  }
+</style> 

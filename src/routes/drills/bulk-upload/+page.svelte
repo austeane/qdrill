@@ -3,7 +3,7 @@
   import { writable } from 'svelte/store';
   import { goto } from '$app/navigation';
   import { toast } from '@zerodevx/svelte-toast';
-  import DiagramDrawer from '$components/DiagramDrawer.svelte';
+  import ExcalidrawWrapper from '$components/ExcalidrawWrapper.svelte';
 
   let fileInput;
   let uploadedFile = writable(null);
@@ -670,7 +670,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
             <div class="mb-4">
               <h4 class="text-lg font-semibold mb-2">Diagrams:</h4>
               {#each drill.diagrams as diagram, diagIndex (diagIndex)}
-                <DiagramDrawer
+                <ExcalidrawWrapper
                   data={diagram}
                   index={index}
                   diagIndex={diagIndex}
@@ -735,7 +735,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
             <div class="mb-4">
               <h4 class="text-lg font-semibold mb-2">Diagrams:</h4>
               {#each drill.diagrams as diagram, diagIndex (diagIndex)}
-                <DiagramDrawer
+                <ExcalidrawWrapper
                   data={diagram}
                   index={index}
                   diagIndex={diagIndex}

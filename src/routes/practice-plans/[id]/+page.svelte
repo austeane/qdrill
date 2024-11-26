@@ -1,10 +1,11 @@
 <script>
-    import DiagramDrawer from '$components/DiagramDrawer.svelte';
+    import { page } from '$app/stores';
     import { slide } from 'svelte/transition';
     import { ChevronDownIcon, ChevronUpIcon } from 'svelte-feather-icons';
     import Breadcrumb from '../../../components/Breadcrumb.svelte';
     import Comments from '$components/Comments.svelte';
     import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
+    import ExcalidrawWrapper from '$components/ExcalidrawWrapper.svelte';
   
     export let data;
     const { practicePlan } = data;
@@ -17,6 +18,31 @@
         expandedItems[index] = !expandedItems[index];
         expandedItems = expandedItems;
     }
+
+    function groupDrillsByParallel(items) {
+        const timeSlots = [];
+        let currentGroup = null;
+        
+        items.forEach(item => {
+            if (item.parallel_group_id) {
+                if (!currentGroup || currentGroup.groupId !== item.parallel_group_id) {
+                    currentGroup = {
+                        groupId: item.parallel_group_id,
+                        items: [],
+                        duration: item.duration
+                    };
+                    timeSlots.push(currentGroup);
+                }
+                currentGroup.items.push(item);
+            } else {
+                timeSlots.push({ items: [item], duration: item.duration });
+            }
+        });
+        
+        return timeSlots;
+    }
+
+    $: canEdit = $page.data.session?.user?.id === practicePlan.created_by || practicePlan.is_editable_by_others;
 </script>
 
 <Breadcrumb customSegments={[{ name: 'Practice Plans', url: '/practice-plans' }, { name: practicePlan.name }]} />
@@ -26,7 +52,17 @@
         <div class="absolute top-0 right-4">
             <UpvoteDownvote practicePlanId={practicePlan.id} />
         </div>
-        <h1 class="text-3xl font-extrabold text-gray-800 pr-24">{practicePlan.name}</h1>
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">{practicePlan.name}</h1>
+            {#if canEdit}
+                <a 
+                    href="/practice-plans/{practicePlan.id}/edit" 
+                    class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                >
+                    Edit Plan
+                </a>
+            {/if}
+        </div>
         
         {#if practicePlan.description}
             <p class="mt-4 text-gray-600">{practicePlan.description}</p>
@@ -88,89 +124,33 @@
     <section>
         <h2 class="text-2xl font-bold text-gray-800 mb-4">Practice Plan Timeline</h2>
         <div class="space-y-4">
-            {#each practicePlan.items as item, index}
-                <div
-                    class="bg-gray-50 rounded-lg shadow-md overflow-hidden cursor-pointer transition-colors duration-200 hover:bg-gray-100"
-                    on:click={() => toggleExpand(index)}
-                >
-                    <div class="p-4 sm:p-5 flex justify-between items-center">
-                        <h3 class="text-xl font-semibold {item.type === 'drill' ? 'text-blue-700' : 'text-red-500'}">
-                            {item.type === 'drill' ? item.drill.name : 'Break'}
-                        </h3>
-                        <div class="flex items-center">
-                            <span class="text-gray-600 mr-2">{item.duration} mins</span>
-                            {#if item.type === 'drill'}
-                                {#if expandedItems[index]}
-                                    <ChevronUpIcon size="20" class="text-gray-500" />
-                                {:else}
-                                    <ChevronDownIcon size="20" class="text-gray-500" />
-                                {/if}
+            {#each groupDrillsByParallel(practicePlan.items) as timeSlot}
+                <div class="practice-slot mb-4">
+                    {#if timeSlot.items.length === 1}
+                        <div class="bg-white p-4 rounded-lg shadow mb-4">
+                            <div class="flex justify-between items-center">
+                                <h3 class="text-lg font-semibold">{timeSlot.items[0].drill.name} ({timeSlot.duration} mins)</h3>
+                            </div>
+                            {#if timeSlot.items[0].drill.brief_description}
+                                <p class="mb-2"><strong>Brief Description:</strong> {timeSlot.items[0].drill.brief_description}</p>
                             {/if}
-                        </div>
-                    </div>
-                    
-                    {#if item.type === 'drill' && expandedItems[index]}
-                        <div transition:slide class="p-4 sm:p-5 bg-white border-t border-gray-200">
-                            {#if item.drill.brief_description}
-                                <p class="mb-2"><strong>Brief Description:</strong> {item.drill.brief_description}</p>
-                            {/if}
-                            {#if item.drill.detailed_description}
+                            {#if timeSlot.items[0].drill.detailed_description}
                                 <p class="mb-2"><strong>Detailed Description:</strong></p>
-                                <p class="whitespace-pre-wrap">{item.drill.detailed_description}</p>
+                                <p class="whitespace-pre-wrap">{timeSlot.items[0].drill.detailed_description}</p>
                             {/if}
-                            {#if item.drill.skill_level}
-                                <p class="mb-2">
-                                    <strong>Skill Level:</strong>
-                                    {Array.isArray(item.drill.skill_level)
-                                        ? item.drill.skill_level.join(', ')
-                                        : item.drill.skill_level}
-                                </p>
-                            {/if}
-                            {#if item.drill.complexity}
-                                <p class="mb-2"><strong>Complexity:</strong> {item.drill.complexity}</p>
-                            {/if}
-                            {#if item.drill.number_of_people_min && item.drill.number_of_people_max}
-                                <p class="mb-2">
-                                    <strong>Number of People:</strong> {item.drill.number_of_people_min} - {item.drill.number_of_people_max}
-                                </p>
-                            {/if}
-                            {#if item.drill.skills_focused_on}
-                                <p class="mb-2">
-                                    <strong>Skills Focused On:</strong>
-                                    {Array.isArray(item.drill.skills_focused_on)
-                                        ? item.drill.skills_focused_on.join(', ')
-                                        : item.drill.skills_focused_on}
-                                </p>
-                            {/if}
-                            {#if item.drill.positions_focused_on}
-                                <p class="mb-2">
-                                    <strong>Positions Focused On:</strong>
-                                    {Array.isArray(item.drill.positions_focused_on)
-                                        ? item.drill.positions_focused_on.join(', ')
-                                        : item.drill.positions_focused_on}
-                                </p>
-                            {/if}
-                            {#if item.drill.video_link}
-                                <p class="mb-2">
-                                    <strong>Video Link:</strong>
-                                    <a href={item.drill.video_link} target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline">
-                                        Watch Video
-                                    </a>
-                                </p>
-                            {/if}
-                            {#if item.diagram_data || (item.drill.diagrams && item.drill.diagrams.length > 0)}
+                            {#if timeSlot.items[0].diagram_data || (timeSlot.items[0].drill.diagrams && timeSlot.items[0].drill.diagrams.length > 0)}
                                 <div class="mt-4">
                                     <h4 class="text-lg font-semibold text-gray-700 mb-2">Diagram:</h4>
                                     <div class="max-w-full overflow-x-auto">
-                                        {#if item.diagram_data}
-                                            <DiagramDrawer 
-                                                data={item.diagram_data} 
+                                        {#if timeSlot.items[0].diagram_data}
+                                            <ExcalidrawWrapper 
+                                                data={timeSlot.items[0].diagram_data} 
                                                 readonly={true} 
                                                 showSaveButton={false}
                                             />
                                         {:else}
-                                            {#each item.drill.diagrams as diagram}
-                                                <DiagramDrawer 
+                                            {#each timeSlot.items[0].drill.diagrams as diagram}
+                                                <ExcalidrawWrapper 
                                                     data={diagram} 
                                                     readonly={true} 
                                                     showSaveButton={false}
@@ -180,6 +160,46 @@
                                     </div>
                                 </div>
                             {/if}
+                        </div>
+                    {:else}
+                        <div class="parallel-group bg-blue-50 p-4 rounded-lg">
+                            <h3 class="text-lg font-semibold mb-2">Parallel Drills ({timeSlot.duration} mins)</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-{timeSlot.items.length} gap-4">
+                                {#each timeSlot.items as item}
+                                    <div class="bg-white p-4 rounded shadow">
+                                        <h4 class="font-semibold">{item.drill.name}</h4>
+                                        {#if item.drill.brief_description}
+                                            <p class="mb-2"><strong>Brief Description:</strong> {item.drill.brief_description}</p>
+                                        {/if}
+                                        {#if item.drill.detailed_description}
+                                            <p class="mb-2"><strong>Detailed Description:</strong></p>
+                                            <p class="whitespace-pre-wrap">{item.drill.detailed_description}</p>
+                                        {/if}
+                                        {#if item.diagram_data || (item.drill.diagrams && item.drill.diagrams.length > 0)}
+                                            <div class="mt-4">
+                                                <h4 class="text-lg font-semibold text-gray-700 mb-2">Diagram:</h4>
+                                                <div class="max-w-full overflow-x-auto">
+                                                    {#if item.diagram_data}
+                                                        <ExcalidrawWrapper 
+                                                            data={item.diagram_data} 
+                                                            readonly={true} 
+                                                            showSaveButton={false}
+                                                        />
+                                                    {:else}
+                                                        {#each item.drill.diagrams as diagram}
+                                                            <ExcalidrawWrapper 
+                                                                data={diagram} 
+                                                                readonly={true} 
+                                                                showSaveButton={false}
+                                                            />
+                                                        {/each}
+                                                    {/if}
+                                                </div>
+                                            </div>
+                                        {/if}
+                                    </div>
+                                {/each}
+                            </div>
                         </div>
                     {/if}
                 </div>

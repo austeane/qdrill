@@ -10,6 +10,8 @@ export async function GET({ params, locals }) {
   const session = await locals.getSession();
   const userId = session?.user?.id;
 
+  console.log('[API] Fetching practice plan:', id);
+
   try {
     // Fetch the practice plan
     const planResult = await client.query(
@@ -83,9 +85,10 @@ export async function GET({ params, locals }) {
 
     practicePlan.items = items;
 
+    console.log('[API] Returning practice plan:', practicePlan);
     return json(practicePlan);
   } catch (error) {
-    console.error('Error fetching practice plan:', error);
+    console.error('[API] Error fetching practice plan:', error);
     return json(
       { error: 'Failed to retrieve practice plan', details: error.toString() },
       { status: 500 }

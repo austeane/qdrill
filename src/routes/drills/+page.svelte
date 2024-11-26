@@ -91,11 +91,17 @@
     if (isInCart) {
       cart.removeDrill(drill.id);
       buttonStates = { ...buttonStates, [drill.id]: 'removed' };
-      toast.push('Removed from Practice Plan', { theme: { '--toastBackground': '#f56565', '--toastColor': '#fff' } });
+      toast.push('Removed from Practice Plan', { 
+        theme: { '--toastBackground': '#f56565', '--toastColor': '#fff' },
+        duration: 1000  // 1 second duration
+      });
     } else {
       cart.addDrill(drill);
       buttonStates = { ...buttonStates, [drill.id]: 'added' };
-      toast.push('Added to Practice Plan', { theme: { '--toastBackground': '#48bb78', '--toastColor': '#fff' } });
+      toast.push('Added to Practice Plan', { 
+        theme: { '--toastBackground': '#48bb78', '--toastColor': '#fff' },
+        duration: 1000  // 1 second duration
+      });
     }
 
     await tick();

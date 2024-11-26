@@ -109,9 +109,9 @@ export const POST = authGuard(async ({ request, locals }) => {
 
         if (item.type === 'drill') {
           await client.query(
-            `INSERT INTO practice_plan_drills (practice_plan_id, drill_id, order_in_plan, duration, type, diagram_data) 
-             VALUES ($1, $2, $3, $4, 'drill', $5)`,
-            [planId, item.id, orderInPlan, duration, diagramData]
+            `INSERT INTO practice_plan_drills (practice_plan_id, drill_id, order_in_plan, duration, type, diagram_data, parallel_group_id) 
+             VALUES ($1, $2, $3, $4, 'drill', $5, $6)`,
+            [planId, item.id, orderInPlan, duration, diagramData, item.parallel_group_id]
           );
         } else if (item.type === 'break') {
           await client.query(

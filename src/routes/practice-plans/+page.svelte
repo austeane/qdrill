@@ -15,6 +15,7 @@
         selectedEstimatedParticipantsMin,
         selectedEstimatedParticipantsMax
     } from '$lib/stores/practicePlanStore';
+    import DeletePracticePlan from '$components/DeletePracticePlan.svelte';
 
     export let data;
 
@@ -370,9 +371,21 @@
                     </p>
                 {/if}
                 
-                <a href="/practice-plans/{plan.id}" class="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">
-                    View Practice Plan
-                </a>
+                <div class="flex justify-between items-center mt-4">
+                    <a 
+                        href="/practice-plans/{plan.id}" 
+                        class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded"
+                    >
+                        View Practice Plan
+                    </a>
+                    <DeletePracticePlan 
+                        planId={plan.id} 
+                        createdBy={plan.created_by}
+                        onDelete={() => {
+                            sortedPlans = sortedPlans.filter(p => p.id !== plan.id);
+                        }}
+                    />
+                </div>
             </div>
         {/each}
     </div>

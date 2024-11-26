@@ -1,5 +1,7 @@
-import { SvelteKitAuth } from "@auth/sveltekit"
 import { handle } from "$lib/server/auth"
 
-export const GET = handle
-export const POST = handle
+// Export all auth handler methods
+export const GET = handle.GET;
+export const POST = handle.POST;
+export const PUT = handle.PUT;
+export const DELETE = handle.DELETE;

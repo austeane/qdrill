@@ -233,3 +233,8 @@ export const PUT = authGuard(async ({ params, request, locals }) => {
         );
     }
 });
+
+export const DELETE = authGuard(async ({ params, locals }) => {
+  console.log('DELETE handler called with params:', params);
+  return json({ message: 'DELETE endpoint reached' });
+});

@@ -7,6 +7,7 @@
   import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
   import Timeline from '../viewer/Timeline.svelte';
   import Section from '../viewer/Section.svelte';
+  import DeletePracticePlan from '$components/DeletePracticePlan.svelte';
   
   export let data;
   const { practicePlan } = data;
@@ -84,6 +85,10 @@
             Edit Plan
           </a>
         {/if}
+        <DeletePracticePlan 
+          planId={practicePlan.id} 
+          createdBy={practicePlan.created_by}
+        />
         <UpvoteDownvote practicePlanId={practicePlan.id} />
       </div>
     </div>

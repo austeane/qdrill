@@ -177,7 +177,8 @@ export const GET = async ({ locals }) => {
     const result = await client.query(`
       SELECT pp.*, 
              array_agg(ppd.drill_id ORDER BY ppd.order_in_plan) as drills,
-             array_agg(ppd.duration ORDER BY ppd.order_in_plan) as drill_durations
+             array_agg(ppd.duration ORDER BY ppd.order_in_plan) as drill_durations,
+             pp.created_by
       FROM practice_plans pp
       LEFT JOIN practice_plan_drills ppd ON pp.id = ppd.practice_plan_id
       WHERE 

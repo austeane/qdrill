@@ -3,7 +3,6 @@
   import { writable } from 'svelte/store';
   import { page } from '$app/stores';
   import { cart } from '$lib/stores/cartStore';
-  import DiagramDrawer from '../../../components/DiagramDrawer.svelte';
   import Breadcrumb from '../../../components/Breadcrumb.svelte';
   import { goto } from '$app/navigation';
   import UpvoteDownvote from '../../../components/UpvoteDownvote.svelte';

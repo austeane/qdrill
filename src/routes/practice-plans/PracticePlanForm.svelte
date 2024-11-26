@@ -873,6 +873,17 @@
       selectedItems.set(allItems);
     }
   }
+
+  // Add this helper function near the top of your script
+  function isInGroup(item, items, currentIndex) {
+    if (!item.parallel_group_id) return false;
+    
+    // Check if this item's group has already been rendered
+    return items.some((otherItem, idx) => 
+      idx < currentIndex && 
+      otherItem.parallel_group_id === item.parallel_group_id
+    );
+  }
 </script>
 
 <!-- Only show empty cart modal for new plans -->
@@ -1010,12 +1021,8 @@
           on:drop|preventDefault
         >
           {#if section.items && section.items.length > 0}
-            {#each section.items as item, itemIndex (item.id)}
-              {@const isGroupStart = item.parallel_group_id && 
-                (itemIndex === 0 || section.items[itemIndex - 1]?.parallel_group_id !== item.parallel_group_id)}
-              {@const isInGroup = item.parallel_group_id}
-              
-              {#if isGroupStart}
+            {#each section.items as item, itemIndex (item.id || `${section.id}-item-${itemIndex}`)}
+              {#if item.parallel_group_id && !isInGroup(item, section.items, itemIndex)}
                 <div class="parallel-group-container">
                   <div class="parallel-group-member">
                     <li 
@@ -1089,7 +1096,7 @@
                     </div>
                   {/each}
                 </div>
-              {:else if !isInGroup}
+              {:else if !isInGroup(item, section.items, itemIndex)}
                 <li 
                   class="timeline-item relative transition-all duration-200"
                   draggable="true"

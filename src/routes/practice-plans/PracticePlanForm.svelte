@@ -28,11 +28,35 @@
   // Add logging for debugging
   function logState(message, data) {
     try {
+      let sanitizedData = data;
+      if (typeof data === 'object' && data !== null) {
+        sanitizedData = JSON.parse(JSON.stringify(data, (key, value) => {
+          // Skip dataURL fields
+          if (key === 'dataURL') {
+            return '[DATA URL REMOVED]';
+          }
+          // Handle circular references and complex objects
+          if (typeof value === 'object' && value !== null) {
+            if (Object.prototype.toString.call(value) === '[object File]') {
+              return '[File object]';
+            }
+            if (Object.prototype.toString.call(value) === '[object Blob]') {
+              return '[Blob object]';
+            }
+          }
+          return value;
+        }));
+      }
+      
       console.log(`[PracticePlanForm] ${message}:`, 
-        typeof data === 'object' ? JSON.stringify(data, null, 2) : data
+        typeof sanitizedData === 'object' ? 
+          JSON.stringify(sanitizedData, null, 2) : 
+          sanitizedData
       );
     } catch (err) {
-      console.log(`[PracticePlanForm] ${message}: [Unable to stringify data]`, data);
+      console.log(`[PracticePlanForm] ${message}: [Unable to stringify data]`, 
+        typeof data === 'object' ? '[Complex object]' : data
+      );
     }
   }
 
@@ -229,8 +253,8 @@
         }))
       };
 
-      // Add debug logging
-      logState('Submitting plan data', JSON.stringify(planData, null, 2));
+      // Log the sanitized plan data
+      logState('Submitting plan data', planData);
 
       try {
         const url = practicePlan ? `/api/practice-plans/${practicePlan.id}` : '/api/practice-plans';
@@ -245,9 +269,14 @@
         if (!response.ok) {
           let errorData;
           try {
-            errorData = await response.json();
+            const errorText = await response.text();
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { error: errorText };
+            }
           } catch (e) {
-            errorData = { error: await response.text() };
+            errorData = { error: 'Failed to read error response' };
           }
           
           console.error('[PracticePlanForm] API error:', JSON.stringify(errorData, null, 2));

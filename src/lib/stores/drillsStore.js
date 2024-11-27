@@ -69,40 +69,51 @@ function filterByThreeState(itemValue, filterState, allPossibleValues) {
 
 // Helper function for array-based three-state filtering
 function filterByThreeStateArray(itemValues, filterState) {
+    // Add logging to debug the input values
+    console.log('[DrillsStore] Filtering array:', {
+        itemValues,
+        filterState
+    });
+
     if (!filterState || Object.keys(filterState).length === 0) return true;
 
     const requiredValues = [];
     const excludedValues = [];
 
     for (const [value, state] of Object.entries(filterState)) {
+        // Normalize the value to lowercase for comparison
+        const normalizedValue = value.toLowerCase();
         if (state === FILTER_STATES.REQUIRED) {
-            requiredValues.push(value);
+            requiredValues.push(normalizedValue);
         } else if (state === FILTER_STATES.EXCLUDED) {
             excludedValues.push(value);
         }
     }
 
-    // Ensure itemValues is an array
-    const valuesArray = Array.isArray(itemValues) ? itemValues : [];
+    // Ensure itemValues is an array and normalize values
+    const normalizedItemValues = (Array.isArray(itemValues) ? itemValues : [])
+        .map(value => value?.toLowerCase?.() || value);
 
-    // 1. First check if all values are excluded
-    if (excludedValues.length > 0 && excludedValues.length === Object.keys(filterState).length) {
-        return false;
-    }
+    console.log('[DrillsStore] Filter criteria:', {
+        normalizedItemValues,
+        requiredValues,
+        excludedValues
+    });
 
-    // 2. If the item has no values and there are required values, exclude it
-    if ((!valuesArray || valuesArray.length === 0) && requiredValues.length > 0) {
-        return false;
-    }
-
-    // 3. If there are required values, item must have all of them
+    // 1. If there are required values, check if ALL required values are present
     if (requiredValues.length > 0) {
-        return requiredValues.every(value => valuesArray.includes(value));
+        const hasAllRequired = requiredValues.every(value => 
+            normalizedItemValues.some(itemValue => itemValue === value)
+        );
+        if (!hasAllRequired) return false;
     }
 
-    // 4. If any of the item's values are in excluded values, exclude it
-    if (valuesArray.some(value => excludedValues.includes(value))) {
-        return false;
+    // 2. If there are excluded values, check if ANY excluded values are present
+    if (excludedValues.length > 0) {
+        const hasExcluded = excludedValues.some(value => 
+            normalizedItemValues.some(itemValue => itemValue?.toLowerCase?.() === value.toLowerCase())
+        );
+        if (hasExcluded) return false;
     }
 
     return true;

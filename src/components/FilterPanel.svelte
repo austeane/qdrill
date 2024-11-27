@@ -276,7 +276,21 @@
     // Create update handlers for each filter type
     const updateSkillLevel = updateFilterState(selectedSkillLevels);
     const updateComplexity = updateFilterState(selectedComplexities);
-    const updateSkillsFocused = updateFilterState(selectedSkillsFocusedOn);
+    const updateSkillsFocused = (value, newState) => {
+        console.log(`[FilterPanel] Updating skill: ${value} to state: ${newState}`);
+        console.log('[FilterPanel] Current skills state:', $selectedSkillsFocusedOn);
+        
+        selectedSkillsFocusedOn.update(current => {
+            const updated = { ...current };
+            if (newState === FILTER_STATES.NEUTRAL) {
+                delete updated[value];
+            } else {
+                updated[value] = newState;
+            }
+            console.log('[FilterPanel] Updated skills state:', updated);
+            return updated;
+        });
+    };
     const updatePositionsFocused = updateFilterState(selectedPositionsFocusedOn);
     const updatePhaseOfSeason = updateFilterState(selectedPhaseOfSeason);
     const updatePracticeGoals = updateFilterState(selectedPracticeGoals);
@@ -300,9 +314,14 @@
 
     let skillsSearchTerm = '';
     
-    $: filteredSkills = skillsFocusedOn.filter(skill => 
-        skill.toLowerCase().includes(skillsSearchTerm.toLowerCase())
-    );
+    $: filteredSkills = skillsFocusedOn
+        .map(skill => typeof skill === 'object' ? skill.skill : skill)
+        .filter((skill, index, self) => 
+            // Remove duplicates
+            self.indexOf(skill) === index &&
+            // Filter by search term
+            skill.toLowerCase().includes(skillsSearchTerm.toLowerCase())
+        );
 </script>
 
 <!-- Filter Buttons -->
@@ -421,10 +440,12 @@
                         bind:value={skillsSearchTerm}
                     />
                     {#each filteredSkills as skill}
+                        {@const skillValue = typeof skill === 'object' ? skill.skill : skill}
+                        {@const currentState = $selectedSkillsFocusedOn[skillValue] || FILTER_STATES.NEUTRAL}
                         <ThreeStateCheckbox
-                            value={skill}
-                            state={$selectedSkillsFocusedOn[skill] || FILTER_STATES.NEUTRAL}
-                            label={skill}
+                            value={skillValue}
+                            state={currentState}
+                            label={skillValue}
                             onChange={updateSkillsFocused}
                         />
                     {/each}

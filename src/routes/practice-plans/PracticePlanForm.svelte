@@ -27,7 +27,13 @@
 
   // Add logging for debugging
   function logState(message, data) {
-    console.log(`[PracticePlanForm] ${message}:`, data);
+    try {
+      console.log(`[PracticePlanForm] ${message}:`, 
+        typeof data === 'object' ? JSON.stringify(data, null, 2) : data
+      );
+    } catch (err) {
+      console.log(`[PracticePlanForm] ${message}: [Unable to stringify data]`, data);
+    }
   }
 
   // Add this at the top of your script
@@ -156,101 +162,126 @@
   }
 
   async function submitPlan() {
-    console.log('[PracticePlanForm] Submitting plan with sections:', $sections);
-    console.log('[PracticePlanForm] Total items:', $sections.reduce((total, section) => 
-      total + (section.items?.length || 0), 0));
-      
-    errors.set({});
-    if (!$planName) {
-      errors.update(e => ({ ...e, planName: 'Plan name is required' }));
-      return;
-    }
-
-    const totalItems = $sections.reduce((total, section) => 
-      total + (section.items?.length || 0), 0);
-    if (totalItems === 0) {
-      errors.update(e => ({ ...e, selectedItems: 'At least one drill or break is required' }));
-      return;
-    }
-
-    if ($phaseOfSeason && !phaseOfSeasonOptions.includes($phaseOfSeason)) {
-      errors.update(e => ({ ...e, phaseOfSeason: 'Invalid phase of season selected' }));
-      return;
-    }
-
-    // Add logging for participants validation
-    console.log('Validating participants:', {
-      value: $estimatedNumberOfParticipants,
-      parsed: parseInt($estimatedNumberOfParticipants, 10),
-      isNaN: isNaN(parseInt($estimatedNumberOfParticipants, 10)),
-      isPositive: parseInt($estimatedNumberOfParticipants, 10) > 0,
-      isInteger: Number.isInteger(parseFloat($estimatedNumberOfParticipants))
-    });
-
-    if ($estimatedNumberOfParticipants !== '') {  // Only validate if a value is provided
-      const numParticipants = parseInt($estimatedNumberOfParticipants, 10);
-      if (isNaN(numParticipants) || numParticipants <= 0 || !Number.isInteger(parseFloat($estimatedNumberOfParticipants))) {
-        errors.update(e => ({ ...e, estimatedNumberOfParticipants: 'Estimated number of participants must be a positive integer' }));
-        return;
-      }
-    }
-
-    isSubmitting.set(true);
-
-    const planData = {
-      name: $planName,
-      description: $planDescription,
-      phase_of_season: $phaseOfSeason || null,
-      estimated_number_of_participants: $estimatedNumberOfParticipants ? parseInt($estimatedNumberOfParticipants) : null,
-      practice_goals: $practiceGoals.filter(goal => goal.trim() !== ''),
-      visibility: $visibility,
-      is_editable_by_others: $isEditableByOthers,
-      sections: $sections.map(section => ({
-        id: section.id,
-        name: section.name,
-        order: section.order,
-        goals: section.goals || [],
-        notes: section.notes || '',
-        items: section.items.map(item => ({
-          id: item.drill?.id || item.id,
-          type: item.type || 'drill',
-          duration: parseInt(item.selected_duration || item.duration),
-          drill_id: item.type === 'drill' ? (item.drill?.id || item.id) : null,
-          diagram_data: item.diagram_data || null,
-          parallel_group_id: item.parallel_group_id || null
-        }))
-      }))
-    };
-
-    // Add debug logging
-    console.log('[PracticePlanForm] Submitting plan data:', JSON.stringify(planData, null, 2));
-
     try {
-      const url = practicePlan ? `/api/practice-plans/${practicePlan.id}` : '/api/practice-plans';
-      const method = practicePlan ? 'PUT' : 'POST';
+      logState('Submitting plan with sections', JSON.stringify($sections, null, 2));
+      logState('Total items', $sections.reduce((total, section) => 
+        total + (section.items?.length || 0), 0));
       
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(planData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('[PracticePlanForm] API error:', errorData);
-        errors.set(errorData.errors || { general: errorData.error || 'An error occurred while saving the practice plan' });
-        toast.push('Failed to save practice plan', { theme: { '--toastBackground': 'red' } });
+      errors.set({});
+      if (!$planName) {
+        errors.update(e => ({ ...e, planName: 'Plan name is required' }));
         return;
       }
 
-      const data = await response.json();
-      if (!practicePlan) {
-        cart.clear();
+      const totalItems = $sections.reduce((total, section) => 
+        total + (section.items?.length || 0), 0);
+      if (totalItems === 0) {
+        errors.update(e => ({ ...e, selectedItems: 'At least one drill or break is required' }));
+        return;
       }
-      toast.push(`Practice plan ${practicePlan ? 'updated' : 'created'} successfully`);
-      goto(`/practice-plans/${data.id}`);
+
+      if ($phaseOfSeason && !phaseOfSeasonOptions.includes($phaseOfSeason)) {
+        errors.update(e => ({ ...e, phaseOfSeason: 'Invalid phase of season selected' }));
+        return;
+      }
+
+      // Add logging for participants validation
+      logState('Validating participants', JSON.stringify({
+        value: $estimatedNumberOfParticipants,
+        parsed: parseInt($estimatedNumberOfParticipants, 10),
+        isNaN: isNaN(parseInt($estimatedNumberOfParticipants, 10)),
+        isPositive: parseInt($estimatedNumberOfParticipants, 10) > 0,
+        isInteger: Number.isInteger(parseFloat($estimatedNumberOfParticipants))
+      }, null, 2));
+
+      if ($estimatedNumberOfParticipants !== '') {  // Only validate if a value is provided
+        const numParticipants = parseInt($estimatedNumberOfParticipants, 10);
+        if (isNaN(numParticipants) || numParticipants <= 0 || !Number.isInteger(parseFloat($estimatedNumberOfParticipants))) {
+          errors.update(e => ({ ...e, estimatedNumberOfParticipants: 'Estimated number of participants must be a positive integer' }));
+          return;
+        }
+      }
+
+      isSubmitting.set(true);
+
+      const planData = {
+        name: $planName,
+        description: $planDescription,
+        phase_of_season: $phaseOfSeason || null,
+        estimated_number_of_participants: $estimatedNumberOfParticipants ? parseInt($estimatedNumberOfParticipants) : null,
+        practice_goals: $practiceGoals.filter(goal => goal.trim() !== ''),
+        visibility: $visibility,
+        is_editable_by_others: $isEditableByOthers,
+        sections: $sections.map(section => ({
+          id: section.id,
+          name: section.name,
+          order: section.order,
+          goals: section.goals || [],
+          notes: section.notes || '',
+          items: section.items.map(item => ({
+            id: item.drill?.id || item.id,
+            type: item.type || 'drill',
+            duration: parseInt(item.selected_duration || item.duration),
+            drill_id: item.type === 'drill' ? (item.drill?.id || item.id) : null,
+            diagram_data: item.diagram_data || null,
+            parallel_group_id: item.parallel_group_id || null
+          }))
+        }))
+      };
+
+      // Add debug logging
+      logState('Submitting plan data', JSON.stringify(planData, null, 2));
+
+      try {
+        const url = practicePlan ? `/api/practice-plans/${practicePlan.id}` : '/api/practice-plans';
+        const method = practicePlan ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(planData)
+        });
+
+        if (!response.ok) {
+          let errorData;
+          try {
+            errorData = await response.json();
+          } catch (e) {
+            errorData = { error: await response.text() };
+          }
+          
+          console.error('[PracticePlanForm] API error:', JSON.stringify(errorData, null, 2));
+          
+          const errorMessage = errorData.errors 
+            ? Object.values(errorData.errors).join(', ')
+            : errorData.error || 'An error occurred while saving the practice plan';
+            
+          errors.set({ general: errorMessage });
+          toast.push('Failed to save practice plan: ' + errorMessage, { 
+            theme: { '--toastBackground': 'red' } 
+          });
+          return;
+        }
+
+        const data = await response.json();
+        if (!practicePlan) {
+          cart.clear();
+        }
+        toast.push(`Practice plan ${practicePlan ? 'updated' : 'created'} successfully`);
+        goto(`/practice-plans/${data.id}`);
+      } catch (error) {
+        console.error('[PracticePlanForm] Error submitting practice plan:', 
+          error instanceof Error ? error.message : JSON.stringify(error)
+        );
+        errors.set({ general: 'An unexpected error occurred' });
+        toast.push('An unexpected error occurred', { theme: { '--toastBackground': 'red' } });
+      } finally {
+        isSubmitting.set(false);
+      }
     } catch (error) {
-      console.error('[PracticePlanForm] Error submitting practice plan:', error);
+      console.error('[PracticePlanForm] Error submitting practice plan:', 
+        error instanceof Error ? error.message : JSON.stringify(error)
+      );
       errors.set({ general: 'An unexpected error occurred' });
       toast.push('An unexpected error occurred', { theme: { '--toastBackground': 'red' } });
     } finally {

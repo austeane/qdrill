@@ -969,6 +969,14 @@
       otherItem.parallel_group_id === item.parallel_group_id
     );
   }
+
+  // Add this reactive statement near your other reactive statements
+  $: {
+    if (!$page.data.session) {
+      visibility.set('public');
+      isEditableByOthers.set(true);
+    }
+  }
 </script>
 
 <!-- Only show empty cart modal for new plans -->
@@ -1251,11 +1259,13 @@
       title={!$page.data.session ? 'Log in to create private or unlisted practice plans' : ''}
     >
       <option value="public">Public - Visible to everyone</option>
-      <option value="unlisted">Unlisted - Only accessible via direct link</option>
-      <option value="private">Private - Only visible to you</option>
+      {#if $page.data.session}
+        <option value="unlisted">Unlisted - Only accessible via direct link</option>
+        <option value="private">Private - Only visible to you</option>
+      {/if}
     </select>
     {#if !$page.data.session}
-      <p class="text-sm text-gray-500 mt-1">Log in to create private or unlisted practice plans</p>
+      <p class="text-sm text-gray-500 mt-1">Anonymous submissions are always public</p>
     {/if}
   </div>
 

@@ -286,6 +286,17 @@
         selectedEstimatedParticipantsMin.set(estimatedParticipantsRange[0]);
         selectedEstimatedParticipantsMax.set(estimatedParticipantsRange[1]);
     }
+
+    // Update the range slider handlers
+    function handleNumberOfPeopleChange(event) {
+        selectedNumberOfPeopleMin.set(numberOfPeopleRange[0]);
+        selectedNumberOfPeopleMax.set(numberOfPeopleRange[1]);
+    }
+
+    function handleSuggestedLengthsChange(event) {
+        selectedSuggestedLengthsMin.set(suggestedLengthsRange[0]);
+        selectedSuggestedLengthsMax.set(suggestedLengthsRange[1]);
+    }
 </script>
 
 <!-- Filter Buttons -->
@@ -482,6 +493,7 @@
                     last="label"
                     rest={false}
                     hoverable
+                    on:change={handleNumberOfPeopleChange}
                 />
                 <div class="text-center mt-2 text-sm font-medium text-gray-700">
                     Current: {numberOfPeopleRange[0]} - {numberOfPeopleRange[1]}
@@ -525,10 +537,7 @@
                 last="label"
                 rest="pip"
                 pipstep={15} 
-                on:change={() => {
-                selectedSuggestedLengthsMin.set(suggestedLengthsRange[0]);
-                selectedSuggestedLengthsMax.set(suggestedLengthsRange[1]);
-                }}
+                on:change={handleSuggestedLengthsChange}
             />
          </div>
         {/if}
@@ -701,7 +710,7 @@
         >
             Estimated Participants
             <span class="ml-2 text-sm font-semibold">
-                {selectedEstimatedParticipantsMin || 'Any'} - {selectedEstimatedParticipantsMax || 'Any'}
+                {$selectedEstimatedParticipantsMin === 1 ? 'Any' : $selectedEstimatedParticipantsMin} - {$selectedEstimatedParticipantsMax === 100 ? 'Any' : $selectedEstimatedParticipantsMax}
             </span>
         </button>
   
@@ -710,7 +719,10 @@
                 id="estimatedParticipants-content"
                 class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
                 on:click|stopPropagation
+                role="menu"
+                tabindex="0"
             >
+                <label class="block text-sm font-medium text-gray-700 mb-2">Participants Range</label>
                 <RangeSlider
                     bind:values={estimatedParticipantsRange}
                     min={1}
@@ -718,13 +730,15 @@
                     step={1}
                     float
                     pips
-                    all="label"
                     first="label"
                     last="label"
-                    rest="pip"
-                    pipstep={10}
+                    rest={false}
+                    hoverable
                     on:change={handleEstimatedParticipantsChange}
                 />
+                <div class="text-center mt-2 text-sm font-medium text-gray-700">
+                    Current: {estimatedParticipantsRange[0]} - {estimatedParticipantsRange[1]}
+                </div>
             </div>
         {/if}
     </div>

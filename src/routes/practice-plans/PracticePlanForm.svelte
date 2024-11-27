@@ -206,17 +206,20 @@
     try {
       console.log('[PracticePlanForm] Starting plan submission');
       
-      // Log initial form state
-      console.log('[PracticePlanForm] Initial form values:', {
-        planName: $planName,
-        planDescription: $planDescription,
-        phaseOfSeason: $phaseOfSeason,
-        estimatedParticipants: $estimatedNumberOfParticipants,
-        practiceGoals: $practiceGoals,
-        visibility: $visibility,
-        isEditableByOthers: $isEditableByOthers,
-        sectionsCount: $sections.length
-      });
+      const formValues = {
+        planName: String($planName || ''),
+        planDescription: String($planDescription || ''),
+        phaseOfSeason: String($phaseOfSeason || ''),
+        estimatedParticipants: String($estimatedNumberOfParticipants || ''),
+        practiceGoals: $practiceGoals.map(goal => String(goal || '')),
+        visibility: String($visibility || 'public'),
+        isEditableByOthers: Boolean($isEditableByOthers),
+        sectionsCount: Number($sections.length)
+      };
+      
+      console.log('[PracticePlanForm] Initial form values:', 
+        JSON.stringify(formValues, null, 2)
+      );
 
       errors.set({});
       if (!$planName) {
@@ -271,9 +274,8 @@
         }))
       };
 
-      // Log the plan data before stringifying
       console.log('[PracticePlanForm] Plan data before stringify:', 
-        JSON.parse(JSON.stringify(planData))
+        JSON.stringify(planData, null, 2)
       );
 
       const url = practicePlan ? `/api/practice-plans/${practicePlan.id}` : '/api/practice-plans';
@@ -297,10 +299,12 @@
 
           try {
             errorData = JSON.parse(errorText);
-            console.log('[PracticePlanForm] Parsed error data:', errorData);
+            console.log('[PracticePlanForm] Parsed error data:', 
+              JSON.stringify(errorData, null, 2)
+            );
           } catch (e) {
-            console.log('[PracticePlanForm] Failed to parse error response:', e);
-            errorData = { error: errorText };
+            console.log('[PracticePlanForm] Failed to parse error response:', String(e));
+            errorData = { error: String(errorText) };
           }
           
           const errorMessage = errorData.errors 
@@ -328,8 +332,8 @@
         throw error; // Re-throw to be caught by outer try-catch
       }
     } catch (error) {
-      console.error('[PracticePlanForm] Error:', error);
-      console.error('[PracticePlanForm] Error stack:', error.stack);
+      console.error('[PracticePlanForm] Error:', String(error));
+      console.error('[PracticePlanForm] Error stack:', String(error.stack || ''));
       errors.set({ general: 'An unexpected error occurred' });
       toast.push('An unexpected error occurred', { theme: { '--toastBackground': 'red' } });
     } finally {
@@ -826,7 +830,9 @@
   // In your reactive statement, use $selectedItems for reading
   $: {
     if ($selectedItems?.length > 0) {
-      console.log('[PracticePlanForm] First selected item (full object):', $selectedItems[0]);
+      console.log('[PracticePlanForm] First selected item (full object):', 
+        JSON.stringify($selectedItems[0], null, 2)
+      );
       sections.update(currentSections => {
         const newSections = [...currentSections];
         const skillBuildingSection = newSections.find(s => s.name === 'Skill Building');

@@ -298,6 +298,28 @@
         </div>
 
         <a href="/practice-plans" class="text-gray-700 hover:bg-gray-100 hover:text-gray-900 block px-3 py-2 rounded-md text-lg font-semibold">Practice Plans</a>
+
+        {#if user}
+          <div class="px-3 py-2">
+            <div class="flex items-center">
+              <img src={user.image} alt={user.name} class="w-8 h-8 rounded-full" />
+              <span class="ml-2 text-gray-700 font-semibold">{user.name}</span>
+            </div>
+            <button 
+              on:click={() => signOut()} 
+              class="mt-2 w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md"
+            >
+              Sign out
+            </button>
+          </div>
+        {:else}
+          <button 
+            on:click={() => signIn('google')} 
+            class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold"
+          >
+            Sign in with Google
+          </button>
+        {/if}
       </div>
     </div>
   {/if}

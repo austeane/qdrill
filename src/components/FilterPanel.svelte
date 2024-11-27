@@ -297,6 +297,12 @@
         selectedSuggestedLengthsMin.set(suggestedLengthsRange[0]);
         selectedSuggestedLengthsMax.set(suggestedLengthsRange[1]);
     }
+
+    let skillsSearchTerm = '';
+    
+    $: filteredSkills = skillsFocusedOn.filter(skill => 
+        skill.toLowerCase().includes(skillsSearchTerm.toLowerCase())
+    );
 </script>
 
 <!-- Filter Buttons -->
@@ -408,7 +414,13 @@
                     role="menu"
                     tabindex="0"
                 >
-                    {#each skillsFocusedOn as skill}
+                    <input
+                        type="text"
+                        placeholder="Search skills..."
+                        class="w-full p-2 border border-gray-300 rounded-md mb-2"
+                        bind:value={skillsSearchTerm}
+                    />
+                    {#each filteredSkills as skill}
                         <ThreeStateCheckbox
                             value={skill}
                             state={$selectedSkillsFocusedOn[skill] || FILTER_STATES.NEUTRAL}

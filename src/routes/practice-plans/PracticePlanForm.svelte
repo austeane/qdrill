@@ -31,9 +31,9 @@
       let sanitizedData = data;
       if (typeof data === 'object' && data !== null) {
         sanitizedData = JSON.parse(JSON.stringify(data, (key, value) => {
-          // Skip dataURL fields
-          if (key === 'dataURL') {
-            return '[DATA URL REMOVED]';
+          // Skip dataURL fields and diagrams
+          if (key === 'dataURL' || key === 'diagrams') {
+            return '[REMOVED]';
           }
           // Handle circular references and complex objects
           if (typeof value === 'object' && value !== null) {

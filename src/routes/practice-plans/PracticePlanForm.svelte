@@ -204,9 +204,7 @@
 
   async function submitPlan() {
     try {
-      logState('Submitting plan with sections', JSON.stringify($sections, null, 2));
-      logState('Total items', $sections.reduce((total, section) => 
-        total + (section.items?.length || 0), 0));
+      console.log('[PracticePlanForm] Starting plan submission');
       
       errors.set({});
       if (!$planName) {
@@ -226,16 +224,7 @@
         return;
       }
 
-      // Add logging for participants validation
-      logState('Validating participants', JSON.stringify({
-        value: $estimatedNumberOfParticipants,
-        parsed: parseInt($estimatedNumberOfParticipants, 10),
-        isNaN: isNaN(parseInt($estimatedNumberOfParticipants, 10)),
-        isPositive: parseInt($estimatedNumberOfParticipants, 10) > 0,
-        isInteger: Number.isInteger(parseFloat($estimatedNumberOfParticipants))
-      }, null, 2));
-
-      if ($estimatedNumberOfParticipants !== '') {  // Only validate if a value is provided
+      if ($estimatedNumberOfParticipants !== '') {
         const numParticipants = parseInt($estimatedNumberOfParticipants, 10);
         if (isNaN(numParticipants) || numParticipants <= 0 || !Number.isInteger(parseFloat($estimatedNumberOfParticipants))) {
           errors.update(e => ({ ...e, estimatedNumberOfParticipants: 'Estimated number of participants must be a positive integer' }));
@@ -270,9 +259,6 @@
         }))
       };
 
-      // Log the sanitized plan data
-      logState('Submitting plan data', planData);
-
       try {
         const url = practicePlan ? `/api/practice-plans/${practicePlan.id}` : '/api/practice-plans';
         const method = practicePlan ? 'PUT' : 'POST';
@@ -296,7 +282,7 @@
             errorData = { error: 'Failed to read error response' };
           }
           
-          console.error('[PracticePlanForm] API error:', JSON.stringify(errorData, null, 2));
+          console.error('[PracticePlanForm] API error:', errorData);
           
           const errorMessage = errorData.errors 
             ? Object.values(errorData.errors).join(', ')
@@ -316,18 +302,14 @@
         toast.push(`Practice plan ${practicePlan ? 'updated' : 'created'} successfully`);
         goto(`/practice-plans/${data.id}`);
       } catch (error) {
-        console.error('[PracticePlanForm] Error submitting practice plan:', 
-          error instanceof Error ? error.message : JSON.stringify(error)
-        );
+        console.error('[PracticePlanForm] Error:', error);
         errors.set({ general: 'An unexpected error occurred' });
         toast.push('An unexpected error occurred', { theme: { '--toastBackground': 'red' } });
       } finally {
         isSubmitting.set(false);
       }
     } catch (error) {
-      console.error('[PracticePlanForm] Error submitting practice plan:', 
-        error instanceof Error ? error.message : JSON.stringify(error)
-      );
+      console.error('[PracticePlanForm] Error:', error);
       errors.set({ general: 'An unexpected error occurred' });
       toast.push('An unexpected error occurred', { theme: { '--toastBackground': 'red' } });
     } finally {
@@ -908,7 +890,7 @@
 
   // Update the reactive statement for practicePlan initialization
   $: if (practicePlan) {
-    logState('Initializing form with practice plan data', practicePlan);
+    console.log('[PracticePlanForm] Initializing form with practice plan data', practicePlan);
     
     // Initialize form fields with practice plan data
     planName.set(practicePlan.name || '');

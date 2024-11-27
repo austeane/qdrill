@@ -206,6 +206,18 @@
     try {
       console.log('[PracticePlanForm] Starting plan submission');
       
+      // Log initial form state
+      console.log('[PracticePlanForm] Initial form values:', {
+        planName: $planName,
+        planDescription: $planDescription,
+        phaseOfSeason: $phaseOfSeason,
+        estimatedParticipants: $estimatedNumberOfParticipants,
+        practiceGoals: $practiceGoals,
+        visibility: $visibility,
+        isEditableByOthers: $isEditableByOthers,
+        sectionsCount: $sections.length
+      });
+
       errors.set({});
       if (!$planName) {
         errors.update(e => ({ ...e, planName: 'Plan name is required' }));
@@ -259,35 +271,43 @@
         }))
       };
 
+      // Log the plan data before stringifying
+      console.log('[PracticePlanForm] Plan data before stringify:', 
+        JSON.parse(JSON.stringify(planData))
+      );
+
+      const url = practicePlan ? `/api/practice-plans/${practicePlan.id}` : '/api/practice-plans';
+      const method = practicePlan ? 'PUT' : 'POST';
+
+      console.log('[PracticePlanForm] Sending request to:', url, 'with method:', method);
+
       try {
-        const url = practicePlan ? `/api/practice-plans/${practicePlan.id}` : '/api/practice-plans';
-        const method = practicePlan ? 'PUT' : 'POST';
-        
         const response = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(planData)
         });
 
+        console.log('[PracticePlanForm] Response status:', response.status);
+
         if (!response.ok) {
           let errorData;
+          const errorText = await response.text();
+          console.log('[PracticePlanForm] Error response text:', errorText);
+
           try {
-            const errorText = await response.text();
-            try {
-              errorData = JSON.parse(errorText);
-            } catch {
-              errorData = { error: errorText };
-            }
+            errorData = JSON.parse(errorText);
+            console.log('[PracticePlanForm] Parsed error data:', errorData);
           } catch (e) {
-            errorData = { error: 'Failed to read error response' };
+            console.log('[PracticePlanForm] Failed to parse error response:', e);
+            errorData = { error: errorText };
           }
-          
-          console.error('[PracticePlanForm] API error:', errorData);
           
           const errorMessage = errorData.errors 
             ? Object.values(errorData.errors).join(', ')
             : errorData.error || 'An error occurred while saving the practice plan';
-            
+          
+          console.log('[PracticePlanForm] Final error message:', errorMessage);
           errors.set({ general: errorMessage });
           toast.push('Failed to save practice plan: ' + errorMessage, { 
             theme: { '--toastBackground': 'red' } 
@@ -296,20 +316,20 @@
         }
 
         const data = await response.json();
+        console.log('[PracticePlanForm] Success response:', data);
+
         if (!practicePlan) {
           cart.clear();
         }
         toast.push(`Practice plan ${practicePlan ? 'updated' : 'created'} successfully`);
         goto(`/practice-plans/${data.id}`);
       } catch (error) {
-        console.error('[PracticePlanForm] Error:', error);
-        errors.set({ general: 'An unexpected error occurred' });
-        toast.push('An unexpected error occurred', { theme: { '--toastBackground': 'red' } });
-      } finally {
-        isSubmitting.set(false);
+        console.error('[PracticePlanForm] Network or parsing error:', error);
+        throw error; // Re-throw to be caught by outer try-catch
       }
     } catch (error) {
       console.error('[PracticePlanForm] Error:', error);
+      console.error('[PracticePlanForm] Error stack:', error.stack);
       errors.set({ general: 'An unexpected error occurred' });
       toast.push('An unexpected error occurred', { theme: { '--toastBackground': 'red' } });
     } finally {

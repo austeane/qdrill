@@ -30,12 +30,29 @@
     try {
       let sanitizedData = data;
       if (typeof data === 'object' && data !== null) {
-        sanitizedData = JSON.parse(JSON.stringify(data, (key, value) => {
-          // Skip dataURL fields and diagrams
-          if (key === 'dataURL' || key === 'diagrams') {
-            return '[REMOVED]';
+        // Deep clone while removing sensitive fields
+        const removeFields = (obj) => {
+          if (Array.isArray(obj)) {
+            return obj.map(item => removeFields(item));
           }
-          // Handle circular references and complex objects
+          if (typeof obj === 'object' && obj !== null) {
+            const newObj = {};
+            for (const [key, value] of Object.entries(obj)) {
+              // Skip these fields entirely
+              if (key === 'dataURL' || key === 'diagrams') {
+                continue;
+              }
+              newObj[key] = removeFields(value);
+            }
+            return newObj;
+          }
+          return obj;
+        };
+
+        sanitizedData = removeFields(data);
+        
+        // Convert to string for logging
+        sanitizedData = JSON.parse(JSON.stringify(sanitizedData, (key, value) => {
           if (typeof value === 'object' && value !== null) {
             if (Object.prototype.toString.call(value) === '[object File]') {
               return '[File object]';

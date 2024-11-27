@@ -112,10 +112,57 @@
       });
     });
   }
+
+  let tooltipText = '';
+  let tooltipVisible = false;
+  let tooltipX = 0;
+  let tooltipY = 0;
+
+  function showTooltip(event, text) {
+    tooltipText = text;
+    tooltipVisible = true;
+    updateTooltipPosition(event);
+  }
+
+  function hideTooltip() {
+    tooltipVisible = false;
+  }
+
+  function updateTooltipPosition(event) {
+    // Get the timeline container's position
+    const timelineRect = event.currentTarget.getBoundingClientRect();
+    
+    // Get the tooltip element and its width
+    const tooltipElement = document.querySelector('.custom-tooltip');
+    const tooltipWidth = tooltipElement?.offsetWidth || 0;
+    
+    // Position the tooltip so its right edge aligns with the timeline's left edge
+    tooltipX = timelineRect.left - tooltipWidth - 10; // 10px gap from timeline
+    tooltipY = event.clientY - 10; // Offset slightly above the cursor
+  }
+
+  function handleMouseMove(event) {
+    if (tooltipVisible) {
+      updateTooltipPosition(event);
+    }
+  }
 </script>
 
+<!-- Add the tooltip element -->
+{#if tooltipVisible}
+  <div 
+    class="custom-tooltip"
+    style="top: {tooltipY}px; left: {tooltipX}px;"
+  >
+    {tooltipText}
+  </div>
+{/if}
+
 <div class="timeline-container">
-  <div class="timeline">
+  <div 
+    class="timeline"
+    on:mousemove={handleMouseMove}
+  >
     <!-- Progress indicator -->
     <div 
       class="progress-line"
@@ -150,6 +197,8 @@
                     <div 
                       class="parallel-branch"
                       style="height: {(parallelItem.duration / item.duration) * 100}%"
+                      on:mouseenter={(e) => showTooltip(e, `${section.name}: ${parallelItem.drill?.name || parallelItem.name || 'Unnamed Drill'}`)}
+                      on:mouseleave={hideTooltip}
                     >
                       <div class="parallel-item">
                         <div class="parallel-item-inner {getSectionColor(index)}" />
@@ -163,6 +212,8 @@
               <div 
                 class="timeline-item"
                 style="height: {(item.duration / calculateSectionDuration(section.items)) * 100}%"
+                on:mouseenter={(e) => showTooltip(e, `${section.name}: ${item.drill?.name || item.name || 'Unnamed Drill'}`)}
+                on:mouseleave={hideTooltip}
               >
                 <div class="timeline-item-inner {getSectionColor(index)}">
                   <!-- Remove the background and border properties from the base styles -->
@@ -251,11 +302,11 @@
 
   .section-items {
     height: 100%;
-    padding: 0.125rem 0;
+    padding: 0.25rem 0;
   }
 
   .timeline-item {
-    margin: 0.0625rem 0;
+    margin: 0.125rem 0;
     padding: 0 0.25rem;
   }
 
@@ -266,7 +317,7 @@
 
   .parallel-container {
     position: relative;
-    margin: 0.0625rem 0;
+    margin: 0.125rem 0;
     height: 100%;
   }
 
@@ -380,5 +431,32 @@
   .bg-cyan-50 {
     background-color: theme('colors.cyan.200');
     border: 1px solid theme('colors.cyan.300');
+  }
+
+  .custom-tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    pointer-events: none;
+    z-index: 50;
+    max-width: 300px;
+    white-space: nowrap;
+  }
+
+  /* Optional: Add a subtle animation for the tooltip */
+  .custom-tooltip {
+    animation: tooltipFade 0.1s ease-in;
+  }
+
+  @keyframes tooltipFade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 </style> 

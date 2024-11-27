@@ -1,6 +1,5 @@
 import { json } from '@sveltejs/kit';
 import { createClient } from '@vercel/postgres';
-import { authGuard } from '$lib/server/authGuard';
 
 const client = createClient();
 await client.connect();
@@ -30,13 +29,14 @@ function validatePracticePlan(plan) {
   }
 }
 
-export const POST = authGuard(async ({ request, locals }) => {
+export const POST = async ({ request, locals }) => {
   try {
     const practicePlan = await request.json();
     const session = await locals.getSession();
-    
+    const userId = session?.user?.id;
+
     // If user is not logged in, force public visibility and editable by others
-    if (!session?.user?.id) {
+    if (!userId) {
       practicePlan.visibility = 'public';
       practicePlan.is_editable_by_others = true;
     }
@@ -47,7 +47,10 @@ export const POST = authGuard(async ({ request, locals }) => {
       throw new PracticePlanError('Invalid visibility setting', 400);
     }
 
-    const userId = session?.user?.id;
+    // If user is logged out, they can only create public plans
+    if (!userId && practicePlan.visibility !== 'public') {
+      throw new PracticePlanError('Anonymous users can only create public plans', 400);
+    }
 
     // Validate the practice plan
     validatePracticePlan(practicePlan);
@@ -167,7 +170,7 @@ export const POST = authGuard(async ({ request, locals }) => {
       status: error instanceof PracticePlanError ? error.status : 500
     });
   }
-});
+};
 
 export const GET = async ({ locals }) => {
   try {

@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { createClient } from '@vercel/postgres';
 import { authGuard } from '$lib/server/authGuard';
-import { dev } from '$app/environment';
 
 const client = createClient();
 await client.connect();
@@ -152,14 +151,42 @@ function calculateSectionDuration(items) {
   return totalDuration;
 }
 
-export const PUT = authGuard(async ({ params, request, locals }) => {
+export const PUT = async ({ params, request, locals }) => {
     const { id } = params;
     const plan = await request.json();
     const session = await locals.getSession();
-    const userId = session.user.id;
+    const userId = session?.user?.id;
 
     try {
         await client.query('BEGIN');
+
+        // First check if the plan exists and is editable
+        const checkResult = await client.query(
+            `SELECT created_by, is_editable_by_others, visibility 
+             FROM practice_plans 
+             WHERE id = $1`,
+            [id]
+        );
+
+        if (checkResult.rows.length === 0) {
+            throw new PracticePlanError('Practice plan not found', 404);
+        }
+
+        const existingPlan = checkResult.rows[0];
+
+        // Check edit permissions
+        const canEdit = userId === existingPlan.created_by || 
+                       existingPlan.is_editable_by_others;
+
+        if (!canEdit) {
+            throw new PracticePlanError('Unauthorized to edit this practice plan', 403);
+        }
+
+        // If anonymous user, force public visibility and editable
+        if (!userId) {
+            plan.visibility = 'public';
+            plan.is_editable_by_others = true;
+        }
 
         // Update practice plan
         const result = await client.query(
@@ -233,7 +260,7 @@ export const PUT = authGuard(async ({ params, request, locals }) => {
             { status: 500 }
         );
     }
-});
+};
 
 export const DELETE = authGuard(async ({ params, locals }) => {
     const { id } = params;

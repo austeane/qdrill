@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { createClient } from '@vercel/postgres';
 import { authGuard } from '$lib/server/authGuard';
+import { dev } from '$app/environment';
 
 const client = createClient();
 await client.connect();
@@ -235,6 +236,59 @@ export const PUT = authGuard(async ({ params, request, locals }) => {
 });
 
 export const DELETE = authGuard(async ({ params, locals }) => {
-  console.log('DELETE handler called with params:', params);
-  return json({ message: 'DELETE endpoint reached' });
+    const { id } = params;
+    const session = await locals.getSession();
+    const userId = session?.user?.id;
+
+    try {
+        await client.query('BEGIN');
+
+        // First check if the user has permission to delete this plan
+        const checkResult = await client.query(
+            `SELECT created_by, is_editable_by_others 
+             FROM practice_plans 
+             WHERE id = $1`,
+            [id]
+        );
+
+        if (checkResult.rows.length === 0) {
+            return json({ error: 'Practice plan not found' }, { status: 404 });
+        }
+
+        const plan = checkResult.rows[0];
+
+        // Check if user has permission to delete
+        // Allow deletion in development mode
+        if (!dev && plan.created_by !== userId && !plan.is_editable_by_others) {
+            return json({ error: 'Unauthorized to delete this practice plan' }, { status: 403 });
+        }
+
+        // Delete related records first (cascade delete)
+        await client.query(
+            'DELETE FROM practice_plan_drills WHERE practice_plan_id = $1',
+            [id]
+        );
+
+        await client.query(
+            'DELETE FROM practice_plan_sections WHERE practice_plan_id = $1',
+            [id]
+        );
+
+        // Finally delete the practice plan
+        await client.query(
+            'DELETE FROM practice_plans WHERE id = $1',
+            [id]
+        );
+
+        await client.query('COMMIT');
+        return json({ success: true, message: 'Practice plan deleted successfully' });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error deleting practice plan:', error);
+        return json(
+            { error: 'Failed to delete practice plan', details: error.toString() },
+            { status: 500 }
+        );
+    }
 });

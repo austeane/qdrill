@@ -174,20 +174,29 @@ export const GET = async ({ locals }) => {
     const session = await locals.getSession();
     const userId = session?.user?.id;
 
-    const result = await client.query(`
+    let query = `
       SELECT pp.*, 
              array_agg(ppd.drill_id ORDER BY ppd.order_in_plan) as drills,
              array_agg(ppd.duration ORDER BY ppd.order_in_plan) as drill_durations,
              pp.created_by
       FROM practice_plans pp
       LEFT JOIN practice_plan_drills ppd ON pp.id = ppd.practice_plan_id
-      WHERE 
-        pp.visibility = 'public' 
-        OR (pp.visibility = 'unlisted')
-        OR (pp.visibility = 'private' AND pp.created_by = $1)
+      WHERE pp.visibility = 'public' OR pp.visibility = 'unlisted'`;
+    
+    const params = [];
+    
+    // Only add the private plans condition if there's a logged-in user
+    if (userId) {
+      query += ` OR (pp.visibility = 'private' AND pp.created_by = $1)`;
+      params.push(userId);
+    }
+    
+    query += `
       GROUP BY pp.id
       ORDER BY pp.created_at DESC
-    `, [userId || '']);
+    `;
+
+    const result = await client.query(query, params);
 
     return json(result.rows);
   } catch (error) {

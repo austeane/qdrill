@@ -32,12 +32,18 @@ importers:
       '@types/node':
         specifier: ^22.10.0
         version: 22.10.0
+      '@vercel/analytics':
+        specifier: ^1.4.1
+        version: 1.4.1(@sveltejs/kit@2.8.4(@sveltejs/vite-plugin-svelte@5.0.1(svelte@5.2.9)(vite@6.0.0(@types/node@22.10.0)(jiti@2.4.0)(yaml@2.6.1)))(svelte@5.2.9)(vite@6.0.0(@types/node@22.10.0)(jiti@2.4.0)(yaml@2.6.1)))(react@18.3.1)(svelte@5.2.9)
       '@vercel/edge-config':
         specifier: ^1.4.0
         version: 1.4.0
       '@vercel/postgres':
         specifier: ^0.10.0
         version: 0.10.0
+      '@vercel/speed-insights':
+        specifier: ^1.1.0
+        version: 1.1.0(@sveltejs/kit@2.8.4(@sveltejs/vite-plugin-svelte@5.0.1(svelte@5.2.9)(vite@6.0.0(@types/node@22.10.0)(jiti@2.4.0)(yaml@2.6.1)))(svelte@5.2.9)(vite@6.0.0(@types/node@22.10.0)(jiti@2.4.0)(yaml@2.6.1)))(react@18.3.1)(svelte@5.2.9)
       '@zerodevx/svelte-toast':
         specifier: ^0.9.6
         version: 0.9.6(svelte@5.2.9)
@@ -809,6 +815,32 @@ packages:
   '@types/yauzl@2.10.3':
     resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
 
+  '@vercel/analytics@1.4.1':
+    resolution: {integrity: sha512-ekpL4ReX2TH3LnrRZTUKjHHNpNy9S1I7QmS+g/RQXoSUQ8ienzosuX7T9djZ/s8zPhBx1mpHP/Rw5875N+zQIQ==}
+    peerDependencies:
+      '@remix-run/react': ^2
+      '@sveltejs/kit': ^1 || ^2
+      next: '>= 13'
+      react: ^18 || ^19 || ^19.0.0-rc
+      svelte: '>= 4'
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      '@remix-run/react':
+        optional: true
+      '@sveltejs/kit':
+        optional: true
+      next:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
+        optional: true
+
   '@vercel/edge-config-fs@0.1.0':
     resolution: {integrity: sha512-NRIBwfcS0bUoUbRWlNGetqjvLSwgYH/BqKqDN7vK1g32p7dN96k0712COgaz6VFizAm9b0g6IG6hR6+hc0KCPg==}
 
@@ -829,6 +861,29 @@ packages:
   '@vercel/postgres@0.10.0':
     resolution: {integrity: sha512-fSD23DxGND40IzSkXjcFcxr53t3Tiym59Is0jSYIFpG4/0f0KO9SGtcp1sXiebvPaGe7N/tU05cH4yt2S6/IPg==}
     engines: {node: '>=18.14'}
+
+  '@vercel/speed-insights@1.1.0':
+    resolution: {integrity: sha512-rAXxuhhO4mlRGC9noa5F7HLMtGg8YF1zAN6Pjd1Ny4pII4cerhtwSG4vympbCl+pWkH7nBS9kVXRD4FAn54dlg==}
+    peerDependencies:
+      '@sveltejs/kit': ^1 || ^2
+      next: '>= 13'
+      react: ^18 || ^19 || ^19.0.0-rc
+      svelte: '>= 4'
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      '@sveltejs/kit':
+        optional: true
+      next:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
+        optional: true
 
   '@vitest/expect@2.1.6':
     resolution: {integrity: sha512-9M1UR9CAmrhJOMoSwVnPh2rELPKhYo0m/CSgqw9PyStpxtkwhmdM6XYlXGKeYyERY1N6EIuzkQ7e3Lm1WKCoUg==}
@@ -3608,6 +3663,12 @@ snapshots:
       '@types/node': 22.10.0
     optional: true
 
+  '@vercel/analytics@1.4.1(@sveltejs/kit@2.8.4(@sveltejs/vite-plugin-svelte@5.0.1(svelte@5.2.9)(vite@6.0.0(@types/node@22.10.0)(jiti@2.4.0)(yaml@2.6.1)))(svelte@5.2.9)(vite@6.0.0(@types/node@22.10.0)(jiti@2.4.0)(yaml@2.6.1)))(react@18.3.1)(svelte@5.2.9)':
+    optionalDependencies:
+      '@sveltejs/kit': 2.8.4(@sveltejs/vite-plugin-svelte@5.0.1(svelte@5.2.9)(vite@6.0.0(@types/node@22.10.0)(jiti@2.4.0)(yaml@2.6.1)))(svelte@5.2.9)(vite@6.0.0(@types/node@22.10.0)(jiti@2.4.0)(yaml@2.6.1))
+      react: 18.3.1
+      svelte: 5.2.9
+
   '@vercel/edge-config-fs@0.1.0': {}
 
   '@vercel/edge-config@1.4.0':
@@ -3639,6 +3700,12 @@ snapshots:
       ws: 8.18.0(bufferutil@4.0.8)
     transitivePeerDependencies:
       - utf-8-validate
+
+  '@vercel/speed-insights@1.1.0(@sveltejs/kit@2.8.4(@sveltejs/vite-plugin-svelte@5.0.1(svelte@5.2.9)(vite@6.0.0(@types/node@22.10.0)(jiti@2.4.0)(yaml@2.6.1)))(svelte@5.2.9)(vite@6.0.0(@types/node@22.10.0)(jiti@2.4.0)(yaml@2.6.1)))(react@18.3.1)(svelte@5.2.9)':
+    optionalDependencies:
+      '@sveltejs/kit': 2.8.4(@sveltejs/vite-plugin-svelte@5.0.1(svelte@5.2.9)(vite@6.0.0(@types/node@22.10.0)(jiti@2.4.0)(yaml@2.6.1)))(svelte@5.2.9)(vite@6.0.0(@types/node@22.10.0)(jiti@2.4.0)(yaml@2.6.1))
+      react: 18.3.1
+      svelte: 5.2.9
 
   '@vitest/expect@2.1.6':
     dependencies:

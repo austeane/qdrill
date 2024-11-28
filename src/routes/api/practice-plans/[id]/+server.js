@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { createClient } from '@vercel/postgres';
 import { authGuard } from '$lib/server/authGuard';
+import { dev } from '$app/environment';
 
 const client = createClient();
 await client.connect();

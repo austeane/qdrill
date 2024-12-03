@@ -19,7 +19,11 @@
     drillsPerPage,
     isLoading,
     fetchDrills,
-    searchQuery
+    searchQuery,
+    allDrills,
+    allDrillsLoaded,
+    fetchAllDrills,
+    filteredDrills
   } from '$lib/stores/drillsStore';
 
   export let data;
@@ -32,6 +36,21 @@
       totalPages.set(data.pagination?.totalPages || 1);
     }
   }
+
+  // Calculate displayed drills based on current page
+  $: displayedDrills = $allDrillsLoaded
+    ? $filteredDrills.slice(($currentPage - 1) * $drillsPerPage, $currentPage * $drillsPerPage)
+    : $drills;
+
+  // Update total pages when filtered drills change
+  $: if ($allDrillsLoaded) {
+    totalPages.set(Math.ceil($filteredDrills.length / $drillsPerPage));
+  }
+
+  onMount(() => {
+    // Fetch all drills in the background
+    fetchAllDrills();
+  });
 
   // Available filter options from load
   const {
@@ -63,13 +82,21 @@
   // Functions to navigate pages
   async function nextPage() {
     if ($currentPage < $totalPages) {
-      await goto(`?page=${$currentPage + 1}`);
+      if ($allDrillsLoaded) {
+        currentPage.update(p => p + 1);
+      } else {
+        await goto(`?page=${$currentPage + 1}`);
+      }
     }
   }
 
   async function prevPage() {
     if ($currentPage > 1) {
-      await goto(`?page=${$currentPage - 1}`);
+      if ($allDrillsLoaded) {
+        currentPage.update(p => p - 1);
+      } else {
+        await goto(`?page=${$currentPage - 1}`);
+      }
     }
   }
 
@@ -252,14 +279,14 @@
   </div>
 
   <!-- Loading and Empty States -->
-  {#if $isLoading}
+  {#if $isLoading && !$allDrillsLoaded}
     <p class="text-center text-gray-500">Loading drills...</p>
-  {:else if !$drills || $drills.length === 0}
+  {:else if !displayedDrills || displayedDrills.length === 0}
     <p class="text-center text-gray-500">No drills match your criteria.</p>
   {:else}
     <!-- Drills Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {#each $drills as drill}
+      {#each displayedDrills as drill}
         <div class="border border-gray-200 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 hover:shadow-lg">
           <div class="p-6 flex flex-col h-full relative">
             <!-- Variation badges -->

@@ -140,6 +140,7 @@ export const GET = async (event) => {
   const userId = session?.user?.id;
   
   const url = new URL(event.request.url);
+  const all = url.searchParams.get('all') === 'true';
   const page = parseInt(url.searchParams.get('page')) || 1;
   const limit = parseInt(url.searchParams.get('limit')) || 9;
   
@@ -221,8 +222,8 @@ export const GET = async (event) => {
     : '';
 
   try {
-    // If no pagination parameters are provided, return all drills
-    if (url.searchParams.get('page') === null && url.searchParams.get('limit') === null) {
+    // If all=true, return all drills without pagination
+    if (all) {
       const result = await client.query(`
         SELECT d.*,
                (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count

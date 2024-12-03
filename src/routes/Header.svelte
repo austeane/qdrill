@@ -94,6 +94,7 @@
             <a href="/drills" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">View Drills</a>
             <a href="/drills/create" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Create Drill</a>
             <a href="/drills/bulk-upload" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Bulk Upload</a>
+            <a href="/poll" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Suggest Drills</a>
           </div>
         </div>
 
@@ -293,6 +294,7 @@
               <a href="/drills" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem">View Drills</a>
               <a href="/drills/create" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem">Create Drill</a>
               <a href="/drills/bulk-upload" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem">Bulk Upload</a>
+              <a href="/poll" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem">Suggest Drills</a>
             </div>
           {/if}
         </div>

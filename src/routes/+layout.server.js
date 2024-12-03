@@ -8,7 +8,6 @@ export async function load({ locals }) {
 	injectSpeedInsights();
 
 	return {
-		analyticsId: dev ? undefined : 'VERCEL_ANALYTICS_ID',
 		session: await locals.getSession()
 	};
 }

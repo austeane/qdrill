@@ -656,16 +656,10 @@
   }
 
   function centerAndZoomToGuideRectangle(api) {
-    if (!api) {
-      console.log('No API available');
-      return;
-    }
+    if (!api) return;
     
     const elements = api.getSceneElements();
-    if (!elements.length) {
-      console.log('No elements found');
-      return;
-    }
+    if (!elements.length) return;
 
     // Find the guide rectangle
     const guideRect = elements.find(el => 
@@ -674,54 +668,63 @@
       el.strokeStyle === 'dashed'
     );
 
-    if (!guideRect) {
-      console.log('No guide rectangle found');
-      return;
-    }
+    if (!guideRect) return;
 
-    // Get the container dimensions
+    // Calculate zoom level as before
     const container = excalidrawWrapper?.querySelector('.excalidraw-container');
-    if (!container) {
-      console.log('No container found');
-      return;
-    }
+    if (!container) return;
     
     const containerWidth = container.offsetWidth;
     const containerHeight = container.offsetHeight;
-
-    console.log('Container dimensions:', { containerWidth, containerHeight });
-    console.log('Guide rectangle:', {
-      x: guideRect.x,
-      y: guideRect.y,
-      width: guideRect.width,
-      height: guideRect.height
-    });
-
-    // Calculate the zoom level needed to fit the guide rectangle
+    
     const zoomX = containerWidth / CANVAS_WIDTH;
     const zoomY = containerHeight / CANVAS_HEIGHT;
-    const zoom = Math.min(zoomX, zoomY, 1); // Cap at 1 to prevent over-zooming
+    const zoom = Math.min(zoomX, zoomY, 1);
 
-    console.log('Zoom calculations:', { zoomX, zoomY, finalZoom: zoom });
-
-    // Calculate the scroll position to center the guide rectangle
-    // For a guide rectangle at (-250, -300), we need to scroll 250 right and 300 down
-    const scrollX = 250;
-    const scrollY = 300;
-
-    console.log('Scroll positions:', { scrollX, scrollY });
-
-    // Update the view
+    // Set scroll position to align with guide rectangle
+    // Note: We use 0 for both X and Y to align with top-left
     api.updateScene({
       appState: {
         ...api.getAppState(),
-        scrollX,
-        scrollY,
+        scrollX: 0,
+        scrollY: 0,
         zoom: {
           value: zoom
         }
       }
     });
+  }
+
+  function fixGuideRectanglePosition(elements) {
+    const guideRect = elements.find(el => 
+      el.type === 'rectangle' && 
+      el.strokeColor === '#ff0000' && 
+      el.strokeStyle === 'dashed'
+    );
+
+    if (guideRect && (guideRect.x !== 0 || guideRect.y !== 0)) {
+      console.log('Fixing guide rectangle position', { old: { x: guideRect.x, y: guideRect.y } });
+      
+      // Calculate the offset that needs to be applied to all elements
+      const offsetX = -guideRect.x;
+      const offsetY = -guideRect.y;
+
+      // Move all elements by the offset
+      elements.forEach(el => {
+        if (el.type === 'line') {
+          // For lines, we need to move the base position
+          el.x += offsetX;
+          el.y += offsetY;
+        } else if (el.type === 'image' || el.type === 'rectangle' || el.type === 'ellipse') {
+          el.x += offsetX;
+          el.y += offsetY;
+        }
+      });
+
+      console.log('Guide rectangle fixed', { new: { x: guideRect.x + offsetX, y: guideRect.y + offsetY } });
+    }
+
+    return elements;
   }
 
   onMount(async () => {
@@ -736,8 +739,10 @@
         if (!data || (data.elements && data.elements.length === 0)) {
           initialData = await createInitialImageElements();
         } else {
+          // Fix the guide rectangle position in existing diagrams
+          const fixedElements = fixGuideRectanglePosition([...data.elements]);
           initialData = {
-            elements: data.elements || [],
+            elements: fixedElements,
             appState: {
               viewBackgroundColor: '#ffffff',
               gridSize: 20,

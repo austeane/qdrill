@@ -1,7 +1,6 @@
 <script>
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
-  // Remove the import for webVitals
   import Header from './Header.svelte';
   import './styles.css';
   import { SvelteToast } from '@zerodevx/svelte-toast';
@@ -9,8 +8,6 @@
 
   /** @type {import('./$types').LayoutData} */
   export let data;
-
-  // Remove the $: block that calls webVitals
 </script>
 
 <div class="flex flex-col min-h-screen">

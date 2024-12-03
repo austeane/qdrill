@@ -69,7 +69,6 @@ export async function fetchAllDrills() {
   if (get(allDrillsLoaded)) return;
   
   try {
-    console.log('Fetching all drills...');
     const response = await fetch('/api/drills?all=true');
     if (!response.ok) throw new Error('Failed to fetch all drills');
     
@@ -77,11 +76,6 @@ export async function fetchAllDrills() {
     
     // Sort the drills before storing them
     const sortedDrills = sortDrills(data.drills);
-    console.log('All drills fetched and sorted - First 5:', sortedDrills.slice(0, 5).map(d => ({
-      id: d.id,
-      name: d.name,
-      date_created: d.date_created
-    })));
     
     allDrills.set(sortedDrills);
     allDrillsLoaded.set(true);

@@ -11,12 +11,6 @@ export const POST = authGuard(async ({ request, locals }) => {
     const userId = session.user.id;
     const body = await request.json();
     
-    console.log('Vote API received:', {
-        userId,
-        body,
-        contentType: request.headers.get('content-type')
-    });
-
     const { drillId, practicePlanId, vote } = body;
 
     if ((!drillId && !practicePlanId) || ![1, -1].includes(vote)) {

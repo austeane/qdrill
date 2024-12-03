@@ -2,7 +2,7 @@ export async function load({ fetch, url }) {
     try {
         const params = new URLSearchParams(url.search);
         const page = params.get('page') || 1;
-        const limit = params.get('limit') || 9;
+        const limit = parseInt(url.searchParams.get('limit')) || 10;
         
         console.log('Loading drills with params:', {
             page,

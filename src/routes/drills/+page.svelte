@@ -4,6 +4,7 @@
   import { cart } from '$lib/stores/cartStore';
   import { tick } from 'svelte';
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { SvelteToast, toast } from '@zerodevx/svelte-toast';
   import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
   import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
@@ -30,7 +31,7 @@
 
   // Initialize drills data
   $: {
-    if (data.drills) {
+    if (data.drills && !$allDrillsLoaded) {
       drills.set(data.drills);
       currentPage.set(data.pagination?.page || 1);
       totalPages.set(data.pagination?.totalPages || 1);
@@ -42,14 +43,19 @@
     ? $filteredDrills.slice(($currentPage - 1) * $drillsPerPage, $currentPage * $drillsPerPage)
     : $drills;
 
-  // Update total pages when filtered drills change
-  $: if ($allDrillsLoaded) {
-    totalPages.set(Math.ceil($filteredDrills.length / $drillsPerPage));
+  // Update total pages when filtered drills change, but only if we're using filtered drills
+  $: if ($allDrillsLoaded && $filteredDrills) {
+    const newTotalPages = Math.ceil($filteredDrills.length / $drillsPerPage);
+    if (get(totalPages) !== newTotalPages) {
+      totalPages.set(newTotalPages);
+    }
   }
 
   onMount(() => {
-    // Fetch all drills in the background
-    fetchAllDrills();
+    // Only fetch all drills if we haven't already
+    if (!$allDrillsLoaded) {
+      fetchAllDrills();
+    }
   });
 
   // Available filter options from load

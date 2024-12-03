@@ -1,13 +1,10 @@
 import { json } from '@sveltejs/kit';
-import { createClient } from '@vercel/postgres';
+import * as db from '$lib/server/db';
 import { authGuard } from '$lib/server/authGuard';
-
-const client = createClient();
-await client.connect();
 
 async function updateSkills(skills, drillId) {
   for (const skill of skills) {
-    await client.query(
+    await db.query(
       `INSERT INTO skills (skill, drills_used_in, usage_count) 
        VALUES ($1, 1, 1) 
        ON CONFLICT (skill) DO UPDATE SET 
@@ -24,309 +21,173 @@ async function updateSkills(skills, drillId) {
 }
 
 function normalizeString(str) {
-    return str?.toLowerCase().trim() || '';
+  return str?.toLowerCase().trim() || '';
 }
 
 function normalizeArray(arr) {
-    return arr?.map(item => normalizeString(item)) || [];
+  return arr?.map(item => normalizeString(item)) || [];
 }
 
-export const POST = async (event) => {
-    const drill = await event.request.json();
-    const session = await event.locals.getSession();
-    const userId = session?.user?.id || null;
-
-    let {
-        name,
-        brief_description,
-        detailed_description,
-        skill_level,
-        complexity,
-        suggested_length,
-        number_of_people_min,
-        number_of_people_max,
-        skills_focused_on,
-        positions_focused_on,
-        video_link,
-        images,
-        diagrams,
-        drill_type,
-        is_editable_by_others = false,
-        visibility = 'public'
-    } = drill;
-
-    if (!Array.isArray(diagrams)) {
-        diagrams = diagrams ? [diagrams] : [];
-    }
-
-    diagrams = diagrams.map(diagram => JSON.stringify(diagram));
-
-    if (typeof skill_level === 'string') {
-        skill_level = [skill_level];
-    }
-
-    if (typeof skills_focused_on === 'string') {
-        skills_focused_on = [skills_focused_on];
-    }
-
-    if (typeof positions_focused_on === 'string') {
-        positions_focused_on = [positions_focused_on];
-    }
-
-    if (!Array.isArray(images)) {
-        images = [];
-    }
-
-    if (typeof drill_type === 'string') {
-        drill_type = [drill_type];
-    }
-
-    // Normalize the input data
-    const normalizedDrill = {
-        ...drill,
-        skill_level: normalizeArray(drill.skill_level),
-        complexity: normalizeString(drill.complexity),
-        skills_focused_on: normalizeArray(drill.skills_focused_on),
-        positions_focused_on: normalizeArray(drill.positions_focused_on),
-        // ... other fields remain the same
-    };
-
-    try {
-        const result = await client.query(
-            `INSERT INTO drills (
-                name, brief_description, detailed_description, skill_level, complexity,
-                suggested_length, number_of_people_min, number_of_people_max, skills_focused_on,
-                positions_focused_on, video_link, images, diagrams, drill_type,
-                created_by, is_editable_by_others, visibility
-            ) VALUES (
-                $1, $2, $3, $4, $5,
-                $6, $7, $8, $9,
-                $10, $11, $12, $13, $14,
-                $15, $16, $17
-            ) RETURNING id`,
-            [
-                name,
-                brief_description,
-                detailed_description,
-                normalizedDrill.skill_level,
-                normalizedDrill.complexity,
-                suggested_length,
-                number_of_people_min,
-                number_of_people_max,
-                normalizedDrill.skills_focused_on,
-                normalizedDrill.positions_focused_on,
-                video_link,
-                images,
-                diagrams,
-                drill_type,
-                userId,
-                is_editable_by_others,
-                visibility
-            ]
-        );
-        
-        const drillId = result.rows[0].id;
-        await updateSkills(normalizedDrill.skills_focused_on, drillId);
-        
-        return json(result.rows[0]);
-    } catch (error) {
-        console.error('Error occurred while inserting drill:', error);
-        return json({ error: 'An error occurred while creating the drill', details: error.toString() }, { status: 500 });
-    }
-};
-
-export const GET = async (event) => {
-  const session = await event.locals.getSession();
-  const userId = session?.user?.id;
-  
-  const url = new URL(event.request.url);
-  const all = url.searchParams.get('all') === 'true';
+export async function GET({ url }) {
   const page = parseInt(url.searchParams.get('page')) || 1;
-  const limit = parseInt(url.searchParams.get('limit')) || 9;
-  
-  console.log('API received request:', {
-    page,
-    limit,
-    allParams: Object.fromEntries(url.searchParams.entries())
-  });
-
-  // Get filter and sort parameters
-  const skillLevels = url.searchParams.getAll('skillLevel[]');
-  const complexities = url.searchParams.getAll('complexity[]');
-  const skillsFocused = url.searchParams.getAll('skillsFocused[]');
-  const positionsFocused = url.searchParams.getAll('positionsFocused[]');
-  const hasVideo = url.searchParams.get('hasVideo') === 'true';
-  const hasDiagrams = url.searchParams.get('hasDiagrams') === 'true';
-  const hasImages = url.searchParams.get('hasImages') === 'true';
-  const searchQuery = url.searchParams.get('search')?.toLowerCase();
+  const limit = parseInt(url.searchParams.get('limit')) || 10;
+  const all = url.searchParams.get('all') === 'true';
   const sortOption = url.searchParams.get('sort');
-  const sortOrder = url.searchParams.get('order') || 'asc';
+  const sortOrder = url.searchParams.get('order') || 'desc';
 
-  // Add new filter parameters
-  const minPeople = url.searchParams.get('minPeople');
-  const maxPeople = url.searchParams.get('maxPeople');
-  const minLength = url.searchParams.get('minLength');
-  const maxLength = url.searchParams.get('maxLength');
+  // Calculate offset for pagination
+  const offset = (page - 1) * limit;
 
-  // Build WHERE clause
-  const conditions = [];
-  const params = [userId];
-  let paramCount = 1;
+  let conditions = [];
+  let queryParams = [];
+  let paramCount = 0;
 
-  // Base visibility condition
-  conditions.push(`(visibility = 'public' OR visibility = 'unlisted' OR (visibility = 'private' AND created_by = $${paramCount}))`);
-
-  // Modified skill levels condition to use && instead of @>
-  if (skillLevels.length > 0) {
-    paramCount++;
-    params.push(skillLevels);
-    conditions.push(`skill_level && $${paramCount}`);
+  // Build ORDER BY clause
+  let orderBy = '';
+  if (sortOption) {
+    orderBy = `ORDER BY ${sortOption} ${sortOrder}, d.id ${sortOrder}`;
+  } else {
+    // Apply default sort by date_created DESC when no sort option is specified
+    orderBy = 'ORDER BY date_created DESC, d.id DESC';
   }
 
-  if (complexities.length > 0) {
-    paramCount++;
-    params.push(complexities);
-    conditions.push(`complexity = ANY($${paramCount})`);
-  }
-
-  if (skillsFocused.length > 0) {
-    paramCount++;
-    params.push(skillsFocused);
-    conditions.push(`skills_focused_on && $${paramCount}`);
-  }
-
-  if (positionsFocused.length > 0) {
-    paramCount++;
-    params.push(positionsFocused);
-    conditions.push(`positions_focused_on && $${paramCount}`);
-  }
-
-  if (hasVideo) {
-    conditions.push('video_link IS NOT NULL');
-  }
-
-  if (hasDiagrams) {
-    conditions.push('diagrams IS NOT NULL AND array_length(diagrams, 1) > 0');
-  }
-
-  if (hasImages) {
-    conditions.push('images IS NOT NULL AND array_length(images, 1) > 0');
-  }
-
-  if (searchQuery) {
-    paramCount++;
-    params.push(`%${searchQuery}%`);
-    conditions.push(`(
-      LOWER(name) LIKE $${paramCount} OR 
-      LOWER(brief_description) LIKE $${paramCount} OR 
-      LOWER(detailed_description) LIKE $${paramCount}
-    )`);
-  }
-
-  // Add new conditions for number of people
-  if (minPeople) {
-    paramCount++;
-    params.push(parseInt(minPeople));
-    conditions.push(`number_of_people_min >= $${paramCount}`);
-  }
-
-  if (maxPeople) {
-    paramCount++;
-    params.push(parseInt(maxPeople));
-    conditions.push(`
-      CASE 
-        WHEN number_of_people_max IS NULL THEN number_of_people_min <= $${paramCount}
-        ELSE number_of_people_max <= $${paramCount}
-      END
-    `);
-  }
-
-  // Add new conditions for suggested length
-  if (minLength) {
-    paramCount++;
-    params.push(parseInt(minLength));
-    conditions.push(`suggested_length >= $${paramCount}`);
-  }
-
-  if (maxLength) {
-    paramCount++;
-    params.push(parseInt(maxLength));
-    conditions.push(`suggested_length <= $${paramCount}`);
-  }
-
-  const whereClause = conditions.length > 0 
-    ? 'WHERE ' + conditions.join(' AND ') 
-    : '';
-
-  try {
-    // If all=true, return all drills without pagination
-    if (all) {
-      const result = await client.query(`
-        SELECT d.*,
-               (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
-        FROM drills d
-        ${whereClause}
-        ORDER BY date_created DESC
-      `, params);
-
-      return json({ drills: result.rows });
-    }
-
-    // Handle paginated request
-    const offset = (page - 1) * limit;
-
-    // Get total count with filters
-    const countResult = await client.query(`
-      SELECT COUNT(*) 
-      FROM drills d
-      ${whereClause}
-    `, params);
-    
-    const totalCount = parseInt(countResult.rows[0].count);
-    console.log('Total count:', totalCount);
-
-    // Add pagination parameters
-    params.push(limit, offset);
-
-    console.log('Executing paginated query:', {
-      whereClause,
-      params,
-      limit,
-      offset
-    });
-
-    // Get paginated results
-    const result = await client.query(`
+  // Build the final query
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  
+  let query;
+  let countQuery;
+  
+  if (all) {
+    query = `
       SELECT d.*,
              (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
       FROM drills d
       ${whereClause}
-      ORDER BY date_created DESC
+      ${orderBy}
+    `;
+  } else {
+    countQuery = `
+      SELECT COUNT(*)
+      FROM drills d
+      ${whereClause}
+    `;
+    
+    query = `
+      SELECT d.*,
+             (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
+      FROM drills d
+      ${whereClause}
+      ${orderBy}
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
-    `, params);
+    `;
+  }
 
-    console.log('Query results:', {
-      resultCount: result.rows.length,
-      pagination: {
-        total: totalCount,
-        page,
-        limit,
-        totalPages: Math.ceil(totalCount / limit)
-      }
-    });
+  try {
+    let drills;
+    let pagination = {};
+
+    if (!all) {
+      const countResult = await db.query(countQuery, queryParams);
+      const totalItems = parseInt(countResult.rows[0].count);
+      pagination = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalItems,
+        totalPages: Math.ceil(totalItems / limit)
+      };
+
+      // Add pagination parameters for the main query
+      queryParams = [...queryParams, limit, offset];
+    }
+
+    console.log('Executing query with params:', { query, queryParams, orderBy });
+    const result = await db.query(query, queryParams);
+    drills = result.rows;
+
+    console.log('API Response - Sort criteria:', { orderBy, sortOption, sortOrder });
+    console.log('API Response - First 5 drills:', drills.slice(0, 5).map(d => ({
+      id: d.id,
+      name: d.name,
+      date_created: d.date_created
+    })));
 
     return json({
-      drills: result.rows,
-      pagination: {
-        total: totalCount,
-        page,
-        limit,
-        totalPages: Math.ceil(totalCount / limit)
-      }
+      drills,
+      pagination: all ? null : pagination
     });
   } catch (error) {
-    console.error('Error fetching drills:', error);
-    return json({ error: 'Failed to fetch drills' }, { status: 500 });
+    console.error('Database query error:', error);
+    throw error;
+  }
+}
+
+export const POST = async (event) => {
+  const drill = await event.request.json();
+  const session = await event.locals.getSession();
+  const userId = session?.user?.id || null;
+
+  let {
+    name,
+    brief_description,
+    detailed_description,
+    skill_level,
+    complexity,
+    suggested_length,
+    number_of_people_min,
+    number_of_people_max,
+    skills_focused_on,
+    positions_focused_on,
+    video_link,
+    images,
+    diagrams,
+    drill_type,
+    is_editable_by_others = false,
+    visibility = 'public'
+  } = drill;
+
+  // Normalize inputs
+  if (!Array.isArray(diagrams)) {
+    diagrams = diagrams ? [diagrams] : [];
+  }
+  diagrams = diagrams.map(diagram => JSON.stringify(diagram));
+
+  if (typeof skill_level === 'string') skill_level = [skill_level];
+  if (typeof skills_focused_on === 'string') skills_focused_on = [skills_focused_on];
+  if (typeof positions_focused_on === 'string') positions_focused_on = [positions_focused_on];
+  if (!Array.isArray(images)) images = [];
+  if (typeof drill_type === 'string') drill_type = [drill_type];
+
+  const normalizedDrill = {
+    ...drill,
+    skill_level: normalizeArray(skill_level),
+    complexity: normalizeString(complexity),
+    skills_focused_on: normalizeArray(skills_focused_on),
+    positions_focused_on: normalizeArray(positions_focused_on),
+  };
+
+  try {
+    const result = await db.query(
+      `INSERT INTO drills (
+        name, brief_description, detailed_description, skill_level, complexity,
+        suggested_length, number_of_people_min, number_of_people_max, skills_focused_on,
+        positions_focused_on, video_link, images, diagrams, drill_type,
+        created_by, is_editable_by_others, visibility
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      RETURNING id`,
+      [name, brief_description, detailed_description, normalizedDrill.skill_level,
+       normalizedDrill.complexity, suggested_length, number_of_people_min,
+       number_of_people_max, normalizedDrill.skills_focused_on,
+       normalizedDrill.positions_focused_on, video_link, images, diagrams,
+       drill_type, userId, is_editable_by_others, visibility]
+    );
+    
+    const drillId = result.rows[0].id;
+    await updateSkills(normalizedDrill.skills_focused_on, drillId);
+    
+    return json(result.rows[0]);
+  } catch (error) {
+    console.error('Error occurred while inserting drill:', error);
+    return json({ error: 'An error occurred while creating the drill', details: error.toString() }, { status: 500 });
   }
 };
 
@@ -334,13 +195,11 @@ export const PUT = authGuard(async ({ request, locals }) => {
     const drill = await request.json();
     const session = await locals.getSession();
     const userId = session.user.id;
-
     const { id } = drill;
     
-
     try {
         // Check if the drill exists first
-        const { rows } = await client.query(
+        const { rows } = await db.query(
             `SELECT created_by, is_editable_by_others FROM drills WHERE id = $1`,
             [id]
         );
@@ -400,20 +259,23 @@ export const PUT = authGuard(async ({ request, locals }) => {
 
         try {
             // First, get the existing skills for this drill
-            const existingSkillsResult = await client.query('SELECT skills_focused_on FROM drills WHERE id = $1', [id]);
+            const existingSkillsResult = await db.query(
+                'SELECT skills_focused_on FROM drills WHERE id = $1',
+                [id]
+            );
             const existingSkills = existingSkillsResult.rows[0].skills_focused_on;
 
             // Update the drill
-            const result = await client.query(
-              `UPDATE drills SET 
-               name = $2, brief_description = $3, detailed_description = $4, skill_level = $5, 
-               complexity = $6, suggested_length = $7, number_of_people_min = $8, number_of_people_max = $9, 
-               skills_focused_on = $10, positions_focused_on = $11, video_link = $12, images = $13, diagrams = $14, drill_type = $15,
-               is_editable_by_others = $16, visibility = $17, created_by = $18
-               WHERE id = $1 RETURNING *`,
-              [id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, 
-               number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams, drill_type,
-               is_editable_by_others, visibility, created_by]
+            const result = await db.query(
+                `UPDATE drills SET 
+                 name = $2, brief_description = $3, detailed_description = $4, skill_level = $5, 
+                 complexity = $6, suggested_length = $7, number_of_people_min = $8, number_of_people_max = $9, 
+                 skills_focused_on = $10, positions_focused_on = $11, video_link = $12, images = $13, diagrams = $14, drill_type = $15,
+                 is_editable_by_others = $16, visibility = $17, created_by = $18
+                 WHERE id = $1 RETURNING *`,
+                [id, name, brief_description, detailed_description, skill_level, complexity, suggested_length, 
+                 number_of_people_min, number_of_people_max, skills_focused_on, positions_focused_on, video_link, images, diagrams, drill_type,
+                 is_editable_by_others, visibility, created_by]
             );
 
             // Update skills
@@ -422,12 +284,12 @@ export const PUT = authGuard(async ({ request, locals }) => {
 
             // Remove skills no longer used in this drill
             for (const skill of skillsToRemove) {
-              await client.query(
-                `UPDATE skills SET 
-                 drills_used_in = drills_used_in - 1
-                 WHERE skill = $1`,
-                [skill]
-              );
+                await db.query(
+                    `UPDATE skills SET 
+                     drills_used_in = drills_used_in - 1
+                     WHERE skill = $1`,
+                    [skill]
+                );
             }
 
             // Add new skills used in this drill
@@ -441,5 +303,41 @@ export const PUT = authGuard(async ({ request, locals }) => {
     } catch (error) {
         console.error('Error checking drill ownership:', error);
         return json({ error: 'An error occurred while checking drill ownership', details: error.toString() }, { status: 500 });
+    }
+});
+
+export const DELETE = authGuard(async ({ params, locals }) => {
+    const drillId = params.drillId;
+    const session = await locals.getSession();
+    const userId = session.user.id;
+
+    try {
+        // Check if the drill exists and if the user has permission to delete it
+        const { rows } = await db.query(
+            `SELECT created_by FROM drills WHERE id = $1`,
+            [drillId]
+        );
+
+        if (!rows || rows.length === 0) {
+            return json({ error: 'Drill not found' }, { status: 404 });
+        }
+
+        const drill = rows[0];
+
+        // Only allow deletion if the user created the drill
+        if (drill.created_by !== userId) {
+            return json({ error: 'Unauthorized' }, { status: 403 });
+        }
+
+        // Delete the drill
+        await db.query(
+            `DELETE FROM drills WHERE id = $1`,
+            [drillId]
+        );
+
+        return json({ message: 'Drill deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting drill:', error);
+        return json({ error: 'An error occurred while deleting the drill' }, { status: 500 });
     }
 });

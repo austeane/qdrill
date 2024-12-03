@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { createClient } from '@vercel/postgres';
+import { dev } from '$app/environment';
 
 const client = createClient();
 await client.connect();
@@ -152,7 +153,7 @@ export async function DELETE({ params, locals }) {
 
         try {
             // Check if user owns the drill (skip in development)
-            if (!isDevelopment) {
+            if (!dev) {
                 const checkResult = await client.query(
                     'SELECT created_by FROM drills WHERE id = $1',
                     [id]
@@ -162,7 +163,7 @@ export async function DELETE({ params, locals }) {
                     return json({ error: 'Drill not found' }, { status: 404 });
                 }
 
-                if (checkResult.rows[0].created_by !== userId) {
+                if (checkResult.rows[0].created_by !== locals.userId) {
                     return json({ error: 'Unauthorized' }, { status: 403 });
                 }
             }

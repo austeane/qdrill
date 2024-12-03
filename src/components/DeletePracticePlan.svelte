@@ -21,7 +21,10 @@
       }
 
       const response = await fetch(`/api/practice-plans/${planId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       if (!response.ok) {

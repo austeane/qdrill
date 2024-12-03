@@ -71,11 +71,11 @@
 
   // Initialize buttonStates
   $: {
-    if ($drills) {
-      buttonStates = $drills.reduce((acc, drill) => {
+    if (displayedDrills) {
+      buttonStates = displayedDrills.reduce((acc, drill) => {
         acc[drill.id] = drillsInCart.has(drill.id) ? 'in-cart' : null;
         return acc;
-      }, {});
+      }, {...buttonStates}); // Keep preserving existing states
     }
   }
 
@@ -106,23 +106,23 @@
     if (isInCart) {
       cart.removeDrill(drill.id);
       buttonStates = { ...buttonStates, [drill.id]: 'removed' };
-      toast.push('Removed from Practice Plan', { 
-        theme: { '--toastBackground': '#f56565', '--toastColor': '#fff' },
-        duration: 1000  // 1 second duration
-      });
     } else {
       cart.addDrill(drill);
       buttonStates = { ...buttonStates, [drill.id]: 'added' };
-      toast.push('Added to Practice Plan', { 
-        theme: { '--toastBackground': '#48bb78', '--toastColor': '#fff' },
-        duration: 1000  // 1 second duration
-      });
     }
+
+    // Keep the force reactive update
+    buttonStates = { ...buttonStates };
 
     await tick();
 
     setTimeout(() => {
-      buttonStates = { ...buttonStates, [drill.id]: isInCart ? null : 'in-cart' };
+      buttonStates = { 
+        ...buttonStates, 
+        [drill.id]: isInCart ? null : 'in-cart' 
+      };
+      // Keep the force reactive update
+      buttonStates = { ...buttonStates };
     }, 500);
   }
 
@@ -358,7 +358,9 @@
               class:hover:bg-blue-600={!drillsInCart.has(drill.id) && buttonStates[drill.id] === null}
               on:click|stopPropagation={() => toggleDrillInCart(drill)}
             >
-              {#if buttonStates[drill.id] === 'added'}
+              {#if buttonStates[drill.id] === undefined}
+                <span class="opacity-0">Loading...</span>
+              {:else if buttonStates[drill.id] === 'added'}
                 Added
               {:else if buttonStates[drill.id] === 'removed'}
                 Removed

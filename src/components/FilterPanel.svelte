@@ -11,7 +11,8 @@
       selectedSuggestedLengthsMax,
       selectedHasVideo,
       selectedHasDiagrams,
-      selectedHasImages
+      selectedHasImages,
+      searchQuery
     } from '$lib/stores/drillsStore';
     import { debounce } from 'lodash-es';
     import { onMount, onDestroy } from 'svelte';
@@ -19,14 +20,16 @@
     import { writable } from 'svelte/store';
     import ThreeStateCheckbox from './ThreeStateCheckbox.svelte';
     import { FILTER_STATES } from '$lib/constants';
-  
     import {
         selectedPhaseOfSeason,
         selectedPracticeGoals,
         selectedEstimatedParticipantsMin,
         selectedEstimatedParticipantsMax
     } from '$lib/stores/practicePlanStore';
-  
+    import { page } from '$app/stores';
+    import { goto } from '$app/navigation';
+    import { browser } from '$app/environment';
+
     export let customClass = '';
     export let filterType = 'drills'; // New prop to determine filter context
     export let selectedDrills = [];
@@ -322,6 +325,125 @@
             // Filter by search term
             skill.toLowerCase().includes(skillsSearchTerm.toLowerCase())
         );
+  
+    let unsubscribe;
+    
+    onMount(() => {
+      // Initialize the updateFilters function
+      const updateFilters = debounce(async () => {
+        if (!browser) return; // Only run on client side
+        
+        // Start with a fresh URLSearchParams, keeping only pagination and sort
+        const params = new URLSearchParams();
+        const currentParams = $page.url.searchParams;
+        
+        // Keep sort parameters
+        if (currentParams.has('sort')) params.set('sort', currentParams.get('sort'));
+        if (currentParams.has('order')) params.set('order', currentParams.get('order'));
+        
+        // Reset page when filters change
+        params.set('page', '1');
+        
+        // Update filter parameters based on filter type
+        if (filterType === 'drills') {
+          // Add selected filters
+          Object.entries($selectedSkillLevels).forEach(([level, state]) => {
+            if (state === FILTER_STATES.REQUIRED) {
+              params.append('skillLevel[]', level);
+            }
+          });
+
+          Object.entries($selectedComplexities).forEach(([complexity, state]) => {
+            if (state === FILTER_STATES.REQUIRED) {
+              params.append('complexity[]', complexity);
+            }
+          });
+
+          Object.entries($selectedSkillsFocusedOn).forEach(([skill, state]) => {
+            if (state === FILTER_STATES.REQUIRED) {
+              params.append('skillsFocused[]', skill);
+            }
+          });
+
+          Object.entries($selectedPositionsFocusedOn).forEach(([position, state]) => {
+            if (state === FILTER_STATES.REQUIRED) {
+              params.append('positionsFocused[]', position);
+            }
+          });
+
+          // Add boolean filters only if they're true
+          if ($selectedHasVideo) params.set('hasVideo', 'true');
+          if ($selectedHasDiagrams) params.set('hasDiagrams', 'true');
+          if ($selectedHasImages) params.set('hasImages', 'true');
+        } else if (filterType === 'practice-plans') {
+          Object.entries($selectedPhaseOfSeason).forEach(([phase, state]) => {
+            if (state === FILTER_STATES.REQUIRED) {
+              params.append('phaseOfSeason', phase);
+            }
+          });
+          
+          Object.entries($selectedPracticeGoals).forEach(([goal, state]) => {
+            if (state === FILTER_STATES.REQUIRED) {
+              params.append('practiceGoals', goal);
+            }
+          });
+
+          if ($selectedEstimatedParticipantsMin) {
+            params.set('participantsMin', $selectedEstimatedParticipantsMin.toString());
+          }
+          if ($selectedEstimatedParticipantsMax) {
+            params.set('participantsMax', $selectedEstimatedParticipantsMax.toString());
+          }
+        }
+        
+        // Common parameters
+        if ($searchQuery) params.set('search', $searchQuery);
+
+        // Navigate with new parameters
+        await goto(`?${params.toString()}`, { replaceState: true });
+      }, 300);
+
+      // Set up the reactive statement with appropriate stores based on filter type
+      let storesToWatch;
+      if (filterType === 'drills') {
+        storesToWatch = [
+          selectedSkillLevels,
+          selectedComplexities,
+          selectedSkillsFocusedOn,
+          selectedPositionsFocusedOn,
+          selectedHasVideo,
+          selectedHasDiagrams,
+          selectedHasImages,
+          searchQuery,
+          selectedSortOption,
+          selectedSortOrder
+        ];
+      } else {
+        storesToWatch = [
+          selectedPhaseOfSeason,
+          selectedPracticeGoals,
+          selectedEstimatedParticipantsMin,
+          selectedEstimatedParticipantsMax,
+          searchQuery,
+          selectedSortOption,
+          selectedSortOrder
+        ];
+      }
+
+      unsubscribe = subscribe(storesToWatch, updateFilters);
+    });
+
+    onDestroy(() => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    });
+
+    // Helper function to subscribe to multiple stores
+    function subscribe(stores, callback) {
+      const unsubscribes = stores.map(store => store.subscribe(() => callback()));
+      return () => unsubscribes.forEach(unsub => unsub());
+    }
 </script>
 
 <!-- Filter Buttons -->

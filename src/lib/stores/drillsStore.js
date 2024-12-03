@@ -29,6 +29,10 @@ export const selectedHasImages = writable(false);
 export const searchQuery = writable('');
 export const selectedDrillTypes = writable({});
 
+// Skills store
+export const allSkills = writable(PREDEFINED_SKILLS);
+export const sortedSkills = derived(allSkills, $allSkills => [...$allSkills].sort((a, b) => a.name.localeCompare(b.name)));
+
 // Function to fetch all drills
 export async function fetchAllDrills() {
   try {

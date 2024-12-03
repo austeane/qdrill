@@ -100,16 +100,8 @@ export async function GET({ url }) {
       queryParams = [...queryParams, limit, offset];
     }
 
-    console.log('Executing query with params:', { query, queryParams, orderBy });
     const result = await db.query(query, queryParams);
     drills = result.rows;
-
-    console.log('API Response - Sort criteria:', { orderBy, sortOption, sortOrder });
-    console.log('API Response - First 5 drills:', drills.slice(0, 5).map(d => ({
-      id: d.id,
-      name: d.name,
-      date_created: d.date_created
-    })));
 
     return json({
       drills,

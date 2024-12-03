@@ -43,7 +43,6 @@ export async function query(text, params) {
 export async function cleanup() {
     // This is a no-op function since we want to keep the pool alive
     // If we add request-specific resources in the future, we can clean them up here
-    console.debug('Cleaning up request-specific database resources');
 }
 
 // Keep the end() function for graceful shutdown scenarios

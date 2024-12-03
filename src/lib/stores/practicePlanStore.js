@@ -115,3 +115,33 @@ export function removeFromParallelGroup(itemId, items) {
         return item;
     });
 }
+
+// Add error handling wrapper
+async function withErrorHandling(operation) {
+    try {
+        return await operation();
+    } catch (error) {
+        console.error('Database operation failed:', error);
+        if (error.code === '57P01') {
+            // If connection was terminated, retry once
+            try {
+                return await operation();
+            } catch (retryError) {
+                console.error('Retry failed:', retryError);
+                throw retryError;
+            }
+        }
+        throw error;
+    }
+}
+
+// Modify existing functions to use error handling
+export async function fetchPracticePlans() {
+    return await withErrorHandling(async () => {
+        const response = await fetch('/api/practice-plans');
+        if (!response.ok) {
+            throw new Error('Failed to fetch practice plans');
+        }
+        return await response.json();
+    });
+}

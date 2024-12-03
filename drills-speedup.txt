@@ -1,0 +1,93 @@
+I want to speed up the drills page. It's a svelte app on vercel using postgres. I haven't optimized anything on the vercel side.
+Here is some context:
+
+Drills:
+SELECT 
+    column_name,
+    data_type,
+    character_maximum_length,
+    column_default,
+    is_nullable
+FROM information_schema.columns
+WHERE table_name = 'drills'
+ORDER BY ordinal_position;
+column_name
+data_type
+character_maximum_length
+column_default
+is_nullable
+id	integer	null	nextval('drills_id_seq'::regclass)	NO
+name	character varying	255	null	NO
+brief_description	text	null	null	NO
+detailed_description	text	null	null	YES
+skill_level	ARRAY	null	null	NO
+complexity	character varying	50	null	YES
+suggested_length	character varying	50	null	NO
+number_of_people_min	integer	null	0	YES
+number_of_people_max	integer	null	99	YES
+skills_focused_on	ARRAY	null	null	YES
+positions_focused_on	ARRAY	null	null	YES
+video_link	character varying	255	null	YES
+images	ARRAY	null	null	YES
+diagrams	ARRAY	null	null	YES
+drill_type	ARRAY	null	null	YES
+upload_source	character varying	255	'single'::character varying	NO
+created_by	integer	null	null	YES
+is_editable_by_others	boolean	null	false	YES
+visibility	character varying	20	'public'::character varying	YES
+upvotes	integer	null	0	YES
+date_created	timestamp with time zone	null	CURRENT_TIMESTAMP	NO
+parent_drill_id	integer	null	null	YES
+
+
+
+-- Get index information
+SELECT
+    i.relname as index_name,
+    a.attname as column_name,
+    ix.indisunique as is_unique,
+    ix.indisprimary as is_primary
+FROM
+    pg_class t,
+    pg_class i,
+    pg_index ix,
+    pg_attribute a
+WHERE
+    t.oid = ix.indrelid
+    AND i.oid = ix.indexrelid
+    AND a.attrelid = t.oid
+    AND a.attnum = ANY(ix.indkey)
+    AND t.relkind = 'r'
+    AND t.relname = 'drills'
+ORDER BY
+    i.relname;
+
+index_name
+column_name
+is_unique
+is_primary
+drills_pkey	id	true	true
+idx_drills_created_by	created_by	false	false
+idx_drills_parent_drill_id	parent_drill_id	false	false
+idx_drills_parent_id	parent_drill_id	false	false
+idx_drills_upvotes	upvotes	false	false
+idx_drills_visibility	visibility	false	false
+
+
+Loading drills takes 5.89 seconds, the drills document takes 5.64 seconds, and is 7.5mb. I think we can make it faster, pagination might be one option. 
+curl 'https://www.qdrill.app/drills' \
+  -H 'accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7' \
+  -H 'accept-language: en-US,en;q=0.9' \
+  -H 'cache-control: max-age=0' \
+  -H 'cookie: __Secure-authjs.session-token=4b56df6b-77e3-49f0-bb85-69b4d0cfd813; __Secure-authjs.callback-url=https%3A%2F%2Fnull' \
+  -H 'dnt: 1' \
+  -H 'priority: u=0, i' \
+  -H 'sec-ch-ua: "Chromium";v="131", "Not_A Brand";v="24"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  -H 'sec-fetch-dest: document' \
+  -H 'sec-fetch-mode: navigate' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'sec-fetch-user: ?1' \
+  -H 'upgrade-insecure-requests: 1' \
+  -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'

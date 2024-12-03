@@ -340,20 +340,19 @@
             <div class="border border-gray-200 p-6 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 cursor-pointer">
                 <!-- Header section with title and voting -->
                 <div class="relative flex justify-between items-start mb-4">
-                    <div class="flex-1 pr-16">
+                    <div class="flex-1 pr-12">
                         <h2 class="text-xl font-bold">
                             <a href="/practice-plans/{plan.id}" class="text-blue-600 hover:text-blue-800">
                                 {plan.name}
                             </a>
                         </h2>
+                        <p class="text-gray-600 mb-2">{plan.description}</p>
                     </div>
-                    <div class="flex-shrink-0">
+                    <div class="absolute right-0 top-0">
                         <UpvoteDownvote practicePlanId={plan.id} />
                     </div>
                 </div>
 
-                <p class="text-gray-600 mb-2">{plan.description}</p>
-                
                 <!-- Rest of the card content -->
                 {#if plan.phase_of_season}
                     <p class="text-sm text-gray-500 mb-1">

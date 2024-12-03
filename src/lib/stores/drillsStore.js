@@ -76,11 +76,13 @@ export const filteredDrills = derived(
   [allDrills, allDrillsLoaded, selectedSkillLevels, selectedComplexities, 
    selectedSkillsFocusedOn, selectedPositionsFocusedOn, selectedHasVideo, 
    selectedHasDiagrams, selectedHasImages, searchQuery, selectedSortOption, 
-   selectedSortOrder],
+   selectedSortOrder, selectedNumberOfPeopleMin, selectedNumberOfPeopleMax,
+   selectedSuggestedLengthsMin, selectedSuggestedLengthsMax],
   ([$allDrills, $allDrillsLoaded, $selectedSkillLevels, $selectedComplexities,
     $selectedSkillsFocusedOn, $selectedPositionsFocusedOn, $selectedHasVideo,
     $selectedHasDiagrams, $selectedHasImages, $searchQuery, $selectedSortOption,
-    $selectedSortOrder]) => {
+    $selectedSortOrder, $selectedNumberOfPeopleMin, $selectedNumberOfPeopleMax,
+    $selectedSuggestedLengthsMin, $selectedSuggestedLengthsMax]) => {
     
     if (!$allDrillsLoaded) return [];
 
@@ -90,27 +92,47 @@ export const filteredDrills = derived(
     filtered = filtered.filter(drill => {
       // Skill Levels
       const skillLevelsMatch = Object.entries($selectedSkillLevels)
-        .every(([level, state]) => 
-          state !== FILTER_STATES.REQUIRED || 
-          drill.skill_level.includes(level.toLowerCase()));
+        .every(([level, state]) => {
+          const hasLevel = drill.skill_level.some(s => s.toLowerCase() === level.toLowerCase());
+          return (state !== FILTER_STATES.REQUIRED || hasLevel) && 
+                 (state !== FILTER_STATES.EXCLUDED || !hasLevel);
+        });
 
       // Complexities
       const complexityMatch = Object.entries($selectedComplexities)
-        .every(([complexity, state]) =>
-          state !== FILTER_STATES.REQUIRED ||
-          drill.complexity?.toLowerCase() === complexity.toLowerCase());
+        .every(([complexity, state]) => {
+          const hasComplexity = drill.complexity?.toLowerCase() === complexity.toLowerCase();
+          return (state !== FILTER_STATES.REQUIRED || hasComplexity) && 
+                 (state !== FILTER_STATES.EXCLUDED || !hasComplexity);
+        });
 
       // Skills Focused On
       const skillsFocusedMatch = Object.entries($selectedSkillsFocusedOn)
-        .every(([skill, state]) =>
-          state !== FILTER_STATES.REQUIRED ||
-          drill.skills_focused_on.some(s => s.toLowerCase() === skill.toLowerCase()));
+        .every(([skill, state]) => {
+          const hasSkill = drill.skills_focused_on.some(s => s.toLowerCase() === skill.toLowerCase());
+          return (state !== FILTER_STATES.REQUIRED || hasSkill) && 
+                 (state !== FILTER_STATES.EXCLUDED || !hasSkill);
+        });
 
       // Positions Focused On
       const positionsFocusedMatch = Object.entries($selectedPositionsFocusedOn)
-        .every(([position, state]) =>
-          state !== FILTER_STATES.REQUIRED ||
-          drill.positions_focused_on.some(p => p.toLowerCase() === position.toLowerCase()));
+        .every(([position, state]) => {
+          const hasPosition = drill.positions_focused_on.some(p => p.toLowerCase() === position.toLowerCase());
+          return (state !== FILTER_STATES.REQUIRED || hasPosition) && 
+                 (state !== FILTER_STATES.EXCLUDED || !hasPosition);
+        });
+
+      // Number of People filter
+      const numberOfPeopleMatch = (
+        (drill.number_of_people_min >= $selectedNumberOfPeopleMin || !$selectedNumberOfPeopleMin) &&
+        (drill.number_of_people_max <= $selectedNumberOfPeopleMax || !$selectedNumberOfPeopleMax)
+      );
+
+      // Suggested Length filter
+      const suggestedLengthMatch = (
+        (parseInt(drill.suggested_length) >= $selectedSuggestedLengthsMin || !$selectedSuggestedLengthsMin) &&
+        (parseInt(drill.suggested_length) <= $selectedSuggestedLengthsMax || !$selectedSuggestedLengthsMax)
+      );
 
       // Media filters
       const videoMatch = !$selectedHasVideo || drill.video_link;
@@ -125,7 +147,8 @@ export const filteredDrills = derived(
 
       return skillLevelsMatch && complexityMatch && skillsFocusedMatch && 
              positionsFocusedMatch && videoMatch && diagramsMatch && 
-             imagesMatch && searchMatch;
+             imagesMatch && searchMatch && numberOfPeopleMatch && 
+             suggestedLengthMatch;
     });
 
     // Apply sorting
@@ -140,10 +163,12 @@ export const filteredDrills = derived(
             comparison = (a.complexity || '').localeCompare(b.complexity || '');
             break;
           case 'suggested_length':
-            comparison = (a.suggested_length || '').localeCompare(b.suggested_length || '');
+            const aLength = parseInt(a.suggested_length) || 0;
+            const bLength = parseInt(b.suggested_length) || 0;
+            comparison = aLength - bLength;
             break;
           case 'date_created':
-            comparison = new Date(b.date_created) - new Date(a.date_created);
+            comparison = new Date(a.date_created) - new Date(b.date_created);
             break;
           default:
             return 0;

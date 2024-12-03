@@ -371,6 +371,22 @@
             }
           });
 
+          // Add number of people parameters
+          if ($selectedNumberOfPeopleMin > numberOfPeopleOptions.min) {
+            params.set('numberOfPeopleMin', $selectedNumberOfPeopleMin.toString());
+          }
+          if ($selectedNumberOfPeopleMax < numberOfPeopleOptions.max) {
+            params.set('numberOfPeopleMax', $selectedNumberOfPeopleMax.toString());
+          }
+
+          // Add suggested lengths parameters
+          if ($selectedSuggestedLengthsMin > suggestedLengths.min) {
+            params.set('suggestedLengthsMin', $selectedSuggestedLengthsMin.toString());
+          }
+          if ($selectedSuggestedLengthsMax < suggestedLengths.max) {
+            params.set('suggestedLengthsMax', $selectedSuggestedLengthsMax.toString());
+          }
+
           // Add boolean filters only if they're true
           if ($selectedHasVideo) params.set('hasVideo', 'true');
           if ($selectedHasDiagrams) params.set('hasDiagrams', 'true');
@@ -404,21 +420,25 @@
       }, 300);
 
       // Set up the reactive statement with appropriate stores based on filter type
-      let storesToWatch;
-      if (filterType === 'drills') {
-        storesToWatch = [
-          selectedSkillLevels,
-          selectedComplexities,
-          selectedSkillsFocusedOn,
-          selectedPositionsFocusedOn,
-          selectedHasVideo,
-          selectedHasDiagrams,
-          selectedHasImages,
-          searchQuery,
-          selectedSortOption,
-          selectedSortOrder
-        ];
-      } else {
+      let storesToWatch = [
+        selectedSkillLevels,
+        selectedComplexities,
+        selectedSkillsFocusedOn,
+        selectedPositionsFocusedOn,
+        selectedHasVideo,
+        selectedHasDiagrams,
+        selectedHasImages,
+        searchQuery,
+        selectedSortOption,
+        selectedSortOrder,
+        // Add these stores to watch for changes
+        selectedNumberOfPeopleMin,
+        selectedNumberOfPeopleMax,
+        selectedSuggestedLengthsMin,
+        selectedSuggestedLengthsMax
+      ];
+
+      if (filterType === 'practice-plans') {
         storesToWatch = [
           selectedPhaseOfSeason,
           selectedPracticeGoals,

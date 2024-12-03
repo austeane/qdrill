@@ -162,6 +162,12 @@ export const GET = async (event) => {
   const sortOption = url.searchParams.get('sort');
   const sortOrder = url.searchParams.get('order') || 'asc';
 
+  // Add new filter parameters
+  const minPeople = url.searchParams.get('minPeople');
+  const maxPeople = url.searchParams.get('maxPeople');
+  const minLength = url.searchParams.get('minLength');
+  const maxLength = url.searchParams.get('maxLength');
+
   // Build WHERE clause
   const conditions = [];
   const params = [userId];
@@ -170,11 +176,11 @@ export const GET = async (event) => {
   // Base visibility condition
   conditions.push(`(visibility = 'public' OR visibility = 'unlisted' OR (visibility = 'private' AND created_by = $${paramCount}))`);
 
-  // Add filter conditions
+  // Modified skill levels condition to use && instead of @>
   if (skillLevels.length > 0) {
     paramCount++;
     params.push(skillLevels);
-    conditions.push(`skill_level @> $${paramCount}`);
+    conditions.push(`skill_level && $${paramCount}`);
   }
 
   if (complexities.length > 0) {
@@ -215,6 +221,37 @@ export const GET = async (event) => {
       LOWER(brief_description) LIKE $${paramCount} OR 
       LOWER(detailed_description) LIKE $${paramCount}
     )`);
+  }
+
+  // Add new conditions for number of people
+  if (minPeople) {
+    paramCount++;
+    params.push(parseInt(minPeople));
+    conditions.push(`number_of_people_min >= $${paramCount}`);
+  }
+
+  if (maxPeople) {
+    paramCount++;
+    params.push(parseInt(maxPeople));
+    conditions.push(`
+      CASE 
+        WHEN number_of_people_max IS NULL THEN number_of_people_min <= $${paramCount}
+        ELSE number_of_people_max <= $${paramCount}
+      END
+    `);
+  }
+
+  // Add new conditions for suggested length
+  if (minLength) {
+    paramCount++;
+    params.push(parseInt(minLength));
+    conditions.push(`suggested_length >= $${paramCount}`);
+  }
+
+  if (maxLength) {
+    paramCount++;
+    params.push(parseInt(maxLength));
+    conditions.push(`suggested_length <= $${paramCount}`);
   }
 
   const whereClause = conditions.length > 0 

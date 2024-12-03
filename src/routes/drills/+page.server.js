@@ -1,106 +1,44 @@
-export async function load({ fetch }) {
+export async function load({ fetch, url }) {
     try {
-      const response = await fetch('/api/drills');
-      const drills = await response.json();
-  
-      // Create Sets with normalized values
-      const skillLevelSet = new Set();
-      const complexitySet = new Set();
-      const skillsFocusedSet = new Set();
-      const positionsFocusedSet = new Set();
-      let minNumberOfPeople = Infinity;
-      let maxNumberOfPeople = -Infinity;
-      let minSuggestedLength = Infinity;
-      let maxSuggestedLength = -Infinity;
-      const drillTypeSet = new Set();
-  
-      drills.forEach(drill => {
-        // Normalize and add skill levels
-        drill.skill_level?.forEach(level => {
-          skillLevelSet.add(normalizeString(level));
+        const params = new URLSearchParams(url.search);
+        const page = params.get('page') || 1;
+        const limit = params.get('limit') || 9;
+        
+        console.log('Loading drills with params:', {
+            page,
+            limit,
+            allParams: Object.fromEntries(params.entries())
         });
-  
-        // Normalize and add complexity
-        if (drill.complexity) {
-          complexitySet.add(normalizeString(drill.complexity));
-        }
-  
-        // Normalize and add skills
-        drill.skills_focused_on?.forEach(skill => {
-          skillsFocusedSet.add(normalizeString(skill));
-        });
-  
-        // Normalize and add positions
-        drill.positions_focused_on?.forEach(pos => {
-          positionsFocusedSet.add(normalizeString(pos));
-        });
-  
-        // Number of People
-        if (drill.number_of_people_min < minNumberOfPeople) {
-          minNumberOfPeople = drill.number_of_people_min;
-        }
-        if (drill.number_of_people_max > maxNumberOfPeople) {
-          maxNumberOfPeople = drill.number_of_people_max;
-        }
-  
-        // Suggested Length
-        const length = parseInt(drill.suggested_length, 10);
-        if (!isNaN(length)) {
-          if (length < minSuggestedLength) {
-            minSuggestedLength = length;
-          }
-          if (length > maxSuggestedLength) {
-            maxSuggestedLength = length;
-          }
-        }
-  
-        // If the drill has a range format (e.g., "5-15")
-        const lengthRange = drill.suggested_length?.split('-');
-        if (lengthRange?.length === 2) {
-          const start = parseInt(lengthRange[0], 10);
-          const end = parseInt(lengthRange[1], 10);
-          
-          if (!isNaN(start) && start < minSuggestedLength) {
-            minSuggestedLength = start;
-          }
-          if (!isNaN(end) && end > maxSuggestedLength) {
-            maxSuggestedLength = end;
-          }
-        }
-  
-        // Drill Types
-        if (Array.isArray(drill.drill_type)) {
-          drill.drill_type.forEach(type => drillTypeSet.add(type));
-        }
-      });
-  
-      return {
-        drills,
-        filterOptions: {
-          skillLevels: Array.from(skillLevelSet).sort(),
-          complexities: Array.from(complexitySet).sort(),
-          skillsFocusedOn: Array.from(skillsFocusedSet).sort(),
-          positionsFocusedOn: Array.from(positionsFocusedSet).sort(),
-          numberOfPeopleOptions: {
-            min: minNumberOfPeople !== Infinity ? minNumberOfPeople : null,
-            max: maxNumberOfPeople !== -Infinity ? maxNumberOfPeople : null
-          },
-          suggestedLengths: {
-            min: minSuggestedLength !== Infinity ? minSuggestedLength : null,
-            max: maxSuggestedLength !== -Infinity ? maxSuggestedLength : null
-          },
-          drillTypes: Array.from(drillTypeSet),
-        }
-      };
-    } catch (error) {
-      console.error('Error fetching drills:', error);
-      return {
-        status: 500,
-        error: 'Failed to fetch drills'
-      };
-    }
-}
+        
+        // Forward all query parameters to the API
+        params.set('page', page.toString());
+        params.set('limit', limit.toString());
+        
+        // Fetch paginated drills and filter options in parallel
+        const [drillsResponse, filterOptionsResponse] = await Promise.all([
+            fetch(`/api/drills?${params.toString()}`),
+            fetch('/api/drills/filter-options')
+        ]);
 
-function normalizeString(str) {
-  return str?.toLowerCase().trim() || '';
+        if (!drillsResponse.ok || !filterOptionsResponse.ok) {
+            throw new Error('Failed to fetch data');
+        }
+
+        const [drillsData, filterOptions] = await Promise.all([
+            drillsResponse.json(),
+            filterOptionsResponse.json()
+        ]);
+
+        return {
+            drills: drillsData.drills,
+            pagination: drillsData.pagination,
+            filterOptions
+        };
+    } catch (error) {
+        console.error('Error loading drills:', error);
+        return {
+            status: 500,
+            error: 'Failed to load drills'
+        };
+    }
 }

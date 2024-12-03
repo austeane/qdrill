@@ -9,36 +9,29 @@
   import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
   import { dev } from '$app/environment';
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   
   // Import stores
   import {
     drills,
-    filteredDrills,
-    paginatedDrills,
-    totalPages,
     currentPage,
+    totalPages,
     drillsPerPage,
-    selectedSkillLevels,
-    selectedComplexities,
-    selectedSkillsFocusedOn,
-    selectedPositionsFocusedOn,
-    selectedNumberOfPeopleMin,
-    selectedNumberOfPeopleMax,
-    selectedSuggestedLengthsMin,
-    selectedSuggestedLengthsMax,
-    selectedHasVideo,
-    selectedHasDiagrams,
-    selectedHasImages,
-    searchQuery,
-    initializeDrills
+    isLoading,
+    fetchDrills,
+    searchQuery
   } from '$lib/stores/drillsStore';
 
   export let data;
 
   // Initialize drills data
-  onMount(() => {
-    initializeDrills(data.drills || []);
-  });
+  $: {
+    if (data.drills) {
+      drills.set(data.drills);
+      currentPage.set(data.pagination?.page || 1);
+      totalPages.set(data.pagination?.totalPages || 1);
+    }
+  }
 
   // Available filter options from load
   const {
@@ -58,30 +51,25 @@
   $: drillsInCart = new Set($cart.map(d => d.id));
 
   // Initialize buttonStates
-  $: buttonStates = $filteredDrills.reduce((acc, drill) => {
-    acc[drill.id] = drillsInCart.has(drill.id) ? 'in-cart' : null;
-    return acc;
-  }, {});
-
-  // Define sort options for drills
-  const sortOptions = [
-    { value: '', label: 'Default' },
-    { value: 'name', label: 'Name' },
-    { value: 'complexity', label: 'Complexity' },
-    { value: 'suggested_length', label: 'Suggested Length' },
-    { value: 'date_created', label: 'Date Created' }
-  ];
-
-  // Functions to navigate pages
-  function nextPage() {
-    if ($currentPage < $totalPages) {
-      currentPage.update(n => n + 1);
+  $: {
+    if ($drills) {
+      buttonStates = $drills.reduce((acc, drill) => {
+        acc[drill.id] = drillsInCart.has(drill.id) ? 'in-cart' : null;
+        return acc;
+      }, {});
     }
   }
 
-  function prevPage() {
+  // Functions to navigate pages
+  async function nextPage() {
+    if ($currentPage < $totalPages) {
+      await goto(`?page=${$currentPage + 1}`);
+    }
+  }
+
+  async function prevPage() {
     if ($currentPage > 1) {
-      currentPage.update(n => n - 1);
+      await goto(`?page=${$currentPage - 1}`);
     }
   }
 
@@ -174,6 +162,15 @@
         });
     }
   }
+
+  // Define sort options for drills
+  const sortOptions = [
+    { value: '', label: 'Default' },
+    { value: 'name', label: 'Name' },
+    { value: 'complexity', label: 'Complexity' },
+    { value: 'suggested_length', label: 'Suggested Length' },
+    { value: 'date_created', label: 'Date Created' }
+  ];
 </script>
 
 <svelte:head>
@@ -205,6 +202,7 @@
     {numberOfPeopleOptions}
     {suggestedLengths}
     {drillTypes}
+    {sortOptions}
   />
 
   <!-- Sorting Section and Search Input -->
@@ -254,14 +252,14 @@
   </div>
 
   <!-- Loading and Empty States -->
-  {#if $filteredDrills === undefined}
+  {#if $isLoading}
     <p class="text-center text-gray-500">Loading drills...</p>
-  {:else if $paginatedDrills.length === 0}
+  {:else if !$drills || $drills.length === 0}
     <p class="text-center text-gray-500">No drills match your criteria.</p>
   {:else}
     <!-- Drills Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {#each $paginatedDrills as drill}
+      {#each $drills as drill}
         <div class="border border-gray-200 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 hover:shadow-lg">
           <div class="p-6 flex flex-col h-full relative">
             <!-- Variation badges -->

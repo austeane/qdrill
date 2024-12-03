@@ -14,9 +14,14 @@
       <p class="mb-6 text-lg">
         QDrill is created for coaches and athletes to create, organize, and share drills and practice plans.
       </p>
+
+
+      <p class="mb-6">
+        As a player and a coach, for years I wished I had a resource like this to help me easily find, share, and create drills and plans.
+      </p>
   
       <p class="mb-6">
-        Quadball coaches are given the thankless task of running countless practices, often without guidance or support. QDrill is here to help.
+        Quadball coaches are given the thankless task of running countless practices, often without guidance or support.
       </p>
   
       <p class="mb-6">
@@ -24,7 +29,6 @@
       </p>
   
       <p class="mb-6">
-        I'm a player and coach who would have loved to have this as a resource, so I built it.
       </p>
   
       <p class="mb-6 italic">

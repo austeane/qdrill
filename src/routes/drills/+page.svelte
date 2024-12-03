@@ -9,35 +9,47 @@
   import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
   import { dev } from '$app/environment';
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   
   // Import stores
   import {
     drills,
-    filteredDrills,
-    paginatedDrills,
-    totalPages,
     currentPage,
+    totalPages,
     drillsPerPage,
-    selectedSkillLevels,
-    selectedComplexities,
-    selectedSkillsFocusedOn,
-    selectedPositionsFocusedOn,
-    selectedNumberOfPeopleMin,
-    selectedNumberOfPeopleMax,
-    selectedSuggestedLengthsMin,
-    selectedSuggestedLengthsMax,
-    selectedHasVideo,
-    selectedHasDiagrams,
-    selectedHasImages,
+    isLoading,
+    fetchDrills,
     searchQuery,
-    initializeDrills
+    allDrills,
+    allDrillsLoaded,
+    fetchAllDrills,
+    filteredDrills
   } from '$lib/stores/drillsStore';
 
   export let data;
 
   // Initialize drills data
+  $: {
+    if (data.drills) {
+      drills.set(data.drills);
+      currentPage.set(data.pagination?.page || 1);
+      totalPages.set(data.pagination?.totalPages || 1);
+    }
+  }
+
+  // Calculate displayed drills based on current page
+  $: displayedDrills = $allDrillsLoaded
+    ? $filteredDrills.slice(($currentPage - 1) * $drillsPerPage, $currentPage * $drillsPerPage)
+    : $drills;
+
+  // Update total pages when filtered drills change
+  $: if ($allDrillsLoaded) {
+    totalPages.set(Math.ceil($filteredDrills.length / $drillsPerPage));
+  }
+
   onMount(() => {
-    initializeDrills(data.drills || []);
+    // Fetch all drills in the background
+    fetchAllDrills();
   });
 
   // Available filter options from load
@@ -58,30 +70,33 @@
   $: drillsInCart = new Set($cart.map(d => d.id));
 
   // Initialize buttonStates
-  $: buttonStates = $filteredDrills.reduce((acc, drill) => {
-    acc[drill.id] = drillsInCart.has(drill.id) ? 'in-cart' : null;
-    return acc;
-  }, {});
-
-  // Define sort options for drills
-  const sortOptions = [
-    { value: '', label: 'Default' },
-    { value: 'name', label: 'Name' },
-    { value: 'complexity', label: 'Complexity' },
-    { value: 'suggested_length', label: 'Suggested Length' },
-    { value: 'date_created', label: 'Date Created' }
-  ];
-
-  // Functions to navigate pages
-  function nextPage() {
-    if ($currentPage < $totalPages) {
-      currentPage.update(n => n + 1);
+  $: {
+    if (displayedDrills) {
+      buttonStates = displayedDrills.reduce((acc, drill) => {
+        acc[drill.id] = drillsInCart.has(drill.id) ? 'in-cart' : null;
+        return acc;
+      }, {...buttonStates}); // Keep preserving existing states
     }
   }
 
-  function prevPage() {
+  // Functions to navigate pages
+  async function nextPage() {
+    if ($currentPage < $totalPages) {
+      if ($allDrillsLoaded) {
+        currentPage.update(p => p + 1);
+      } else {
+        await goto(`?page=${$currentPage + 1}`);
+      }
+    }
+  }
+
+  async function prevPage() {
     if ($currentPage > 1) {
-      currentPage.update(n => n - 1);
+      if ($allDrillsLoaded) {
+        currentPage.update(p => p - 1);
+      } else {
+        await goto(`?page=${$currentPage - 1}`);
+      }
     }
   }
 
@@ -91,23 +106,23 @@
     if (isInCart) {
       cart.removeDrill(drill.id);
       buttonStates = { ...buttonStates, [drill.id]: 'removed' };
-      toast.push('Removed from Practice Plan', { 
-        theme: { '--toastBackground': '#f56565', '--toastColor': '#fff' },
-        duration: 1000  // 1 second duration
-      });
     } else {
       cart.addDrill(drill);
       buttonStates = { ...buttonStates, [drill.id]: 'added' };
-      toast.push('Added to Practice Plan', { 
-        theme: { '--toastBackground': '#48bb78', '--toastColor': '#fff' },
-        duration: 1000  // 1 second duration
-      });
     }
+
+    // Keep the force reactive update
+    buttonStates = { ...buttonStates };
 
     await tick();
 
     setTimeout(() => {
-      buttonStates = { ...buttonStates, [drill.id]: isInCart ? null : 'in-cart' };
+      buttonStates = { 
+        ...buttonStates, 
+        [drill.id]: isInCart ? null : 'in-cart' 
+      };
+      // Keep the force reactive update
+      buttonStates = { ...buttonStates };
     }, 500);
   }
 
@@ -174,6 +189,15 @@
         });
     }
   }
+
+  // Define sort options for drills
+  const sortOptions = [
+    { value: '', label: 'Default' },
+    { value: 'name', label: 'Name' },
+    { value: 'complexity', label: 'Complexity' },
+    { value: 'suggested_length', label: 'Suggested Length' },
+    { value: 'date_created', label: 'Date Created' }
+  ];
 </script>
 
 <svelte:head>
@@ -205,6 +229,7 @@
     {numberOfPeopleOptions}
     {suggestedLengths}
     {drillTypes}
+    {sortOptions}
   />
 
   <!-- Sorting Section and Search Input -->
@@ -254,14 +279,14 @@
   </div>
 
   <!-- Loading and Empty States -->
-  {#if $filteredDrills === undefined}
+  {#if $isLoading && !$allDrillsLoaded}
     <p class="text-center text-gray-500">Loading drills...</p>
-  {:else if $paginatedDrills.length === 0}
+  {:else if !displayedDrills || displayedDrills.length === 0}
     <p class="text-center text-gray-500">No drills match your criteria.</p>
   {:else}
     <!-- Drills Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {#each $paginatedDrills as drill}
+      {#each displayedDrills as drill}
         <div class="border border-gray-200 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 hover:shadow-lg">
           <div class="p-6 flex flex-col h-full relative">
             <!-- Variation badges -->
@@ -333,7 +358,9 @@
               class:hover:bg-blue-600={!drillsInCart.has(drill.id) && buttonStates[drill.id] === null}
               on:click|stopPropagation={() => toggleDrillInCart(drill)}
             >
-              {#if buttonStates[drill.id] === 'added'}
+              {#if buttonStates[drill.id] === undefined}
+                <span class="opacity-0">Loading...</span>
+              {:else if buttonStates[drill.id] === 'added'}
                 Added
               {:else if buttonStates[drill.id] === 'removed'}
                 Removed

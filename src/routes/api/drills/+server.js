@@ -138,33 +138,192 @@ export const POST = async (event) => {
 export const GET = async (event) => {
   const session = await event.locals.getSession();
   const userId = session?.user?.id;
+  
+  const url = new URL(event.request.url);
+  const all = url.searchParams.get('all') === 'true';
+  const page = parseInt(url.searchParams.get('page')) || 1;
+  const limit = parseInt(url.searchParams.get('limit')) || 9;
+  
+  console.log('API received request:', {
+    page,
+    limit,
+    allParams: Object.fromEntries(url.searchParams.entries())
+  });
+
+  // Get filter and sort parameters
+  const skillLevels = url.searchParams.getAll('skillLevel[]');
+  const complexities = url.searchParams.getAll('complexity[]');
+  const skillsFocused = url.searchParams.getAll('skillsFocused[]');
+  const positionsFocused = url.searchParams.getAll('positionsFocused[]');
+  const hasVideo = url.searchParams.get('hasVideo') === 'true';
+  const hasDiagrams = url.searchParams.get('hasDiagrams') === 'true';
+  const hasImages = url.searchParams.get('hasImages') === 'true';
+  const searchQuery = url.searchParams.get('search')?.toLowerCase();
+  const sortOption = url.searchParams.get('sort');
+  const sortOrder = url.searchParams.get('order') || 'asc';
+
+  // Add new filter parameters
+  const minPeople = url.searchParams.get('minPeople');
+  const maxPeople = url.searchParams.get('maxPeople');
+  const minLength = url.searchParams.get('minLength');
+  const maxLength = url.searchParams.get('maxLength');
+
+  // Build WHERE clause
+  const conditions = [];
+  const params = [userId];
+  let paramCount = 1;
+
+  // Base visibility condition
+  conditions.push(`(visibility = 'public' OR visibility = 'unlisted' OR (visibility = 'private' AND created_by = $${paramCount}))`);
+
+  // Modified skill levels condition to use && instead of @>
+  if (skillLevels.length > 0) {
+    paramCount++;
+    params.push(skillLevels);
+    conditions.push(`skill_level && $${paramCount}`);
+  }
+
+  if (complexities.length > 0) {
+    paramCount++;
+    params.push(complexities);
+    conditions.push(`complexity = ANY($${paramCount})`);
+  }
+
+  if (skillsFocused.length > 0) {
+    paramCount++;
+    params.push(skillsFocused);
+    conditions.push(`skills_focused_on && $${paramCount}`);
+  }
+
+  if (positionsFocused.length > 0) {
+    paramCount++;
+    params.push(positionsFocused);
+    conditions.push(`positions_focused_on && $${paramCount}`);
+  }
+
+  if (hasVideo) {
+    conditions.push('video_link IS NOT NULL');
+  }
+
+  if (hasDiagrams) {
+    conditions.push('diagrams IS NOT NULL AND array_length(diagrams, 1) > 0');
+  }
+
+  if (hasImages) {
+    conditions.push('images IS NOT NULL AND array_length(images, 1) > 0');
+  }
+
+  if (searchQuery) {
+    paramCount++;
+    params.push(`%${searchQuery}%`);
+    conditions.push(`(
+      LOWER(name) LIKE $${paramCount} OR 
+      LOWER(brief_description) LIKE $${paramCount} OR 
+      LOWER(detailed_description) LIKE $${paramCount}
+    )`);
+  }
+
+  // Add new conditions for number of people
+  if (minPeople) {
+    paramCount++;
+    params.push(parseInt(minPeople));
+    conditions.push(`number_of_people_min >= $${paramCount}`);
+  }
+
+  if (maxPeople) {
+    paramCount++;
+    params.push(parseInt(maxPeople));
+    conditions.push(`
+      CASE 
+        WHEN number_of_people_max IS NULL THEN number_of_people_min <= $${paramCount}
+        ELSE number_of_people_max <= $${paramCount}
+      END
+    `);
+  }
+
+  // Add new conditions for suggested length
+  if (minLength) {
+    paramCount++;
+    params.push(parseInt(minLength));
+    conditions.push(`suggested_length >= $${paramCount}`);
+  }
+
+  if (maxLength) {
+    paramCount++;
+    params.push(parseInt(maxLength));
+    conditions.push(`suggested_length <= $${paramCount}`);
+  }
+
+  const whereClause = conditions.length > 0 
+    ? 'WHERE ' + conditions.join(' AND ') 
+    : '';
 
   try {
+    // If all=true, return all drills without pagination
+    if (all) {
+      const result = await client.query(`
+        SELECT d.*,
+               (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
+        FROM drills d
+        ${whereClause}
+        ORDER BY date_created DESC
+      `, params);
+
+      return json({ drills: result.rows });
+    }
+
+    // Handle paginated request
+    const offset = (page - 1) * limit;
+
+    // Get total count with filters
+    const countResult = await client.query(`
+      SELECT COUNT(*) 
+      FROM drills d
+      ${whereClause}
+    `, params);
+    
+    const totalCount = parseInt(countResult.rows[0].count);
+    console.log('Total count:', totalCount);
+
+    // Add pagination parameters
+    params.push(limit, offset);
+
+    console.log('Executing paginated query:', {
+      whereClause,
+      params,
+      limit,
+      offset
+    });
+
+    // Get paginated results
     const result = await client.query(`
       SELECT d.*,
              (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
       FROM drills d
-    `);
+      ${whereClause}
+      ORDER BY date_created DESC
+      LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+    `, params);
 
-    const drills = result.rows.filter(drill => {
-      if (drill.visibility === 'public') {
-        return true;
-      } else if (drill.visibility === 'unlisted') {
-        return true;
-      } else if (drill.visibility === 'private') {
-        return drill.created_by === userId;
+    console.log('Query results:', {
+      resultCount: result.rows.length,
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit)
       }
-      return false;
-    }).map(drill => ({
-      ...drill,
-      dateCreated: drill.date_created,
-      diagrams: drill.diagrams || [],
-      min_duration: drill.min_duration || 5,
-      max_duration: drill.max_duration || 15,
-      suggested_length: drill.suggested_length || Math.floor((drill.min_duration + drill.max_duration) / 2),
-      variation_count: parseInt(drill.variation_count) || 0
-    }));
-    return json(drills);
+    });
+
+    return json({
+      drills: result.rows,
+      pagination: {
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit)
+      }
+    });
   } catch (error) {
     console.error('Error fetching drills:', error);
     return json({ error: 'Failed to fetch drills' }, { status: 500 });

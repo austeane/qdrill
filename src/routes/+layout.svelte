@@ -5,6 +5,14 @@
   import './styles.css';
   import { SvelteToast } from '@zerodevx/svelte-toast';
   import FeedbackButton from '../components/FeedbackButton.svelte';
+  import { inject } from '@vercel/analytics';
+  import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
+  import { dev } from '$app/environment';
+
+  inject({ mode: dev ? 'development' : 'production' });
+  injectSpeedInsights();
+
+
 
   /** @type {import('./$types').LayoutData} */
   export let data;

@@ -19,8 +19,8 @@
 
     export let data;
 
-    // Practice Plans data from load
-    let practicePlans = data.practicePlans || [];
+    // Practice Plans data from load with safety check
+    let practicePlans = Array.isArray(data.practicePlans) ? data.practicePlans : [];
 
     // Available filter options from load
     const {
@@ -183,14 +183,14 @@
         return true;
     }
 
-    // Filtering logic
-    $: filteredPlans = practicePlans.filter(plan => {
+    // Filtering logic with additional safety check
+    $: filteredPlans = (Array.isArray(practicePlans) ? practicePlans : []).filter(plan => {
         let matches = true;
 
         // Search filtering
         if (searchQuery.trim() !== '') {
             const query = searchQuery.toLowerCase();
-            const nameMatch = plan.name.toLowerCase().includes(query);
+            const nameMatch = plan.name?.toLowerCase().includes(query) || false;
             const descriptionMatch = plan.description?.toLowerCase().includes(query) || false;
             matches = matches && (nameMatch || descriptionMatch);
         }

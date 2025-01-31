@@ -1,8 +1,22 @@
 <script>
+    import { onMount } from 'svelte';
     import { basicInfo } from '$lib/stores/wizardStore';
     import { validationErrors, getFieldError } from '$lib/stores/wizardValidation';
     import { scheduleAutoSave } from '$lib/stores/wizardStore';
-    import { Editor } from '@tinymce/tinymce-svelte';
+    
+    // Change Editor import to be loaded dynamically
+    let Editor;
+
+    onMount(async () => {
+        try {
+            console.log('Loading TinyMCE editor...');
+            const module = await import('@tinymce/tinymce-svelte');
+            Editor = module.default;
+            console.log('TinyMCE editor loaded successfully');
+        } catch (error) {
+            console.error('Error loading TinyMCE:', error);
+        }
+    });
 
     // Phase of season options
     const phaseOptions = [
@@ -227,25 +241,38 @@
                 Description
             </label>
             <div class="mt-1">
-                <Editor
-                    apiKey="your-tinymce-api-key"
-                    init={{
-                        height: 300,
-                        menubar: false,
-                        plugins: [
-                            'advlist', 'autolink', 'lists', 'link', 'charmap',
-                            'anchor', 'searchreplace', 'visualblocks', 'code',
-                            'insertdatetime', 'table', 'code', 'help', 'wordcount'
-                        ],
-                        toolbar: 'undo redo | blocks | ' +
-                                'bold italic | alignleft aligncenter ' +
-                                'alignright alignjustify | bullist numlist outdent indent | ' +
-                                'removeformat | help',
-                        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }'
-                    }}
-                    value={$basicInfo.description}
-                    on:change={handleDescriptionChange}
-                />
+                {#if Editor}
+                    <div class="min-h-[300px]">
+                        <svelte:component
+                            this={Editor}
+                            apiKey={import.meta.env.VITE_TINY_API_KEY}
+                            init={{
+                                height: 300,
+                                menubar: false,
+                                plugins: [
+                                    'advlist', 'autolink', 'lists', 'link', 'charmap',
+                                    'anchor', 'searchreplace', 'visualblocks', 'code',
+                                    'insertdatetime', 'table', 'code', 'help', 'wordcount'
+                                ],
+                                toolbar: 'undo redo | blocks | ' +
+                                        'bold italic | alignleft aligncenter ' +
+                                        'alignright alignjustify | bullist numlist outdent indent | ' +
+                                        'removeformat | help',
+                                content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
+                                branding: false
+                            }}
+                            value={$basicInfo.description}
+                            on:change={handleDescriptionChange}
+                        />
+                    </div>
+                {:else}
+                    <textarea
+                        id="description"
+                        bind:value={$basicInfo.description}
+                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                        rows="8"
+                    ></textarea>
+                {/if}
             </div>
         </div>
 

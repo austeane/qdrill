@@ -9,6 +9,7 @@
   import { page } from '$app/stores';
   import { signIn } from '@auth/sveltekit/client';
   import { toast } from '@zerodevx/svelte-toast'
+
   // Initialize stores
   export let drill = {
     id: null,
@@ -182,49 +183,109 @@
   });
 
   function handleSkillInput() {
-    const input = $newSkill.toLowerCase();
+    const input = $newSkill.toLowerCase().trim();
     if (input.length > 0) {
-      skillSuggestions.set($allSkills.filter(skill => {
-        const skillText = typeof skill === 'string' ? skill : skill.skill;
-        return skillText.toLowerCase().includes(input) && !$selectedSkills.includes(skillText);
-      }));
+      // Filter existing skills for suggestions, ensuring we handle the skill property correctly
+      skillSuggestions.set($allSkills.filter(skill => 
+        typeof skill.skill === 'string' && 
+        skill.skill.toLowerCase().includes(input) && 
+        !$selectedSkills.includes(skill.skill)
+      ));
     } else {
       skillSuggestions.set([]);
     }
     skillSearchTerm.set(input);
   }
 
-  function handleSkillKeydown(event) {
-    if (event.key === 'Enter' || event.key === 'Tab') {
-      event.preventDefault();
-      addSkill();
+  async function addSkill() {
+    const rawSkill = $newSkill.trim();
+    if (!rawSkill) return;
+
+    // Standardize the skill case
+    const skillToAdd = rawSkill.toLowerCase().split(' ').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+
+    try {
+      // Check if skill already exists in selected skills (case-insensitive)
+      if ($selectedSkills.some(s => s.toLowerCase() === skillToAdd.toLowerCase())) {
+        toast.push('This skill is already added');
+        return;
+      }
+
+      // Check if skill exists in allSkills (case-insensitive)
+      const existingSkill = $allSkills.find(s => 
+        s.skill.toLowerCase() === skillToAdd.toLowerCase()
+      );
+
+      if (existingSkill) {
+        // If skill exists, use the existing case/formatting
+        selectSkill(existingSkill);
+        return;
+      }
+
+      // Add to selected skills immediately for UI responsiveness
+      selectedSkills.update(skills => [...skills, skillToAdd]);
+
+      // Add new skill to database
+      const response = await fetch('/api/skills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skill: skillToAdd })
+      });
+
+      if (!response.ok) throw new Error('Failed to add new skill');
+
+      // Add to allSkills store
+      allSkills.update(skills => [...skills, { 
+        skill: skillToAdd, 
+        usage_count: 1, 
+        isPredefined: false 
+      }]);
+
+      toast.push('New skill added successfully');
+      
+      // Clear input and suggestions
+      newSkill.set('');
+      skillSuggestions.set([]);
+
+    } catch (error) {
+      console.error('Error adding skill:', error);
+      toast.push('Failed to add skill', {
+        theme: {
+          '--toastBackground': '#F56565',
+          '--toastColor': 'white',
+        }
+      });
+      // Remove from selected skills if server request failed
+      selectedSkills.update(skills => skills.filter(s => s !== skillToAdd));
     }
   }
 
-  function addSkill() {
-    if ($newSkill && !$selectedSkills.includes($newSkill)) {
-      selectedSkills.update(skills => [...skills, $newSkill]);
-      if (!$allSkills.some(skill => {
-        const skillText = typeof skill === 'string' ? skill : skill.skill;
-        return skillText === $newSkill;
-      })) {
-        addNewSkill($newSkill);
+  function handleSkillKeydown(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const skillToAdd = $newSkill.trim();
+      
+      // If a suggestion is highlighted/selected, use that
+      const matchingSuggestion = $skillSuggestions[0];
+      if (matchingSuggestion) {
+        selectSkill(matchingSuggestion);
+      } else if (skillToAdd) {
+        // Otherwise add the typed skill
+        addSkill();
       }
+    }
+  }
+
+  // Update the selectSkill function to handle skill objects consistently
+  function selectSkill(skill) {
+    const skillText = skill.skill || skill;
+    if (!$selectedSkills.includes(skillText)) {
+      selectedSkills.update(skills => [...skills, skillText]);
       newSkill.set('');
       skillSuggestions.set([]);
     }
-  }
-
-  function removeSkill(skill) {
-    selectedSkills.update(skills => skills.filter(s => s !== skill));
-  }
-
-  function selectSkill(skill) {
-    if (!$selectedSkills.includes(skill.skill)) {
-      selectedSkills.update(skills => [...skills, skill.skill]);
-    }
-    newSkill.set('');
-    skillSuggestions.set([]);
   }
 
   function handleModalSkillInput() {
@@ -256,20 +317,6 @@
   function selectSkillFromModal(skill) {
     if (!$selectedSkills.includes(skill.skill)) {
       selectedSkills.update(skills => [...skills, skill.skill]);
-    }
-  }
-
-  async function addNewSkill(skill) {
-    const response = await fetch('/api/skills', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ skill })
-    });
-    if (response.ok) {
-      allSkills.update(skills => [...skills, skill]);
-      // No need to call selectSkill here again
     }
   }
 
@@ -516,12 +563,6 @@
     }
   }
 
-  function adjustTextareaHeight(event) {
-    const textarea = event.target;
-    textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 300)}px`;
-  }
-
   function duplicateDiagram(index) {
     if (diagramRefs[index]) {
       // Save the current state of the diagram being duplicated
@@ -599,6 +640,31 @@
   $: if ($isVariation) {
     fetchParentDrills();
   }
+
+  // Add handler for rich text changes
+  function handleDescriptionChange(e) {
+    detailed_description.set(e.detail.content);
+    scheduleAutoSave(); // If you have auto-save functionality
+  }
+
+  // Modify the Editor import and initialization
+  let Editor;
+  onMount(async () => {
+    try {
+      console.log('Attempting to load TinyMCE module...');
+      const module = await import('@tinymce/tinymce-svelte');
+      console.log('Module loaded:', module);
+      Editor = module.default;
+      console.log('Editor component assigned:', Editor);
+    } catch (error) {
+      console.error('Error loading TinyMCE:', error);
+    }
+  });
+
+  // Add this function to remove skills
+  function removeSkill(skillToRemove) {
+    selectedSkills.update(skills => skills.filter(skill => skill !== skillToRemove));
+  }
 </script>
 
 <svelte:head>
@@ -635,14 +701,47 @@
 
             <div class="flex flex-col">
               <label for="detailed_description" class="mb-1 text-sm font-medium text-gray-700">Detailed Description:</label>
-              <p class="text-xs text-gray-500 mb-1">As much detail as would be needed for a new coach to teach this drill. May include, setup, focus areas, adaptations, or credit for the creator of the drill. </p>
-              <textarea 
-                id="detailed_description" 
-                bind:value={$detailed_description} 
-                on:input={adjustTextareaHeight}
-                class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows="3"
-              ></textarea>
+              <p class="text-xs text-gray-500 mb-1">As much detail as would be needed for a new coach to teach this drill. May include, setup, focus areas, adaptations, or credit for the creator of the drill.</p>
+              
+              {#if Editor}
+                <div class="min-h-[300px]">
+                  {#if true}
+                    {@const editorProps = {
+                      apiKey: import.meta.env.VITE_TINY_API_KEY,
+                      init: {
+                        height: 300,
+                        menubar: false,
+                        plugins: [
+                          'advlist', 'autolink', 'lists', 'link', 'charmap',
+                          'anchor', 'searchreplace', 'visualblocks', 'code',
+                          'insertdatetime', 'table', 'code', 'help', 'wordcount'
+                        ],
+                        toolbar: 'undo redo | blocks | ' +
+                                'bold italic | alignleft aligncenter ' +
+                                'alignright alignjustify | bullist numlist outdent indent | ' +
+                                'removeformat | help',
+                        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
+                        branding: false
+                      },
+                      value: $detailed_description,
+                    }}
+                    {console.log('Rendering Editor with props:', editorProps)}
+                    <svelte:component 
+                      this={Editor} 
+                      {...editorProps}
+                      on:change={handleDescriptionChange}
+                    />
+                  {/if}
+                </div>
+              {:else}
+                <p class="text-yellow-500">Editor not loaded yet...</p>
+                <textarea
+                  id="detailed_description"
+                  bind:value={$detailed_description}
+                  class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows="8"
+                ></textarea>
+              {/if}
             </div>
 
             <!-- Moved Drill Type Field -->
@@ -747,8 +846,9 @@
                   id="skills_focused_on"
                   bind:value={$newSkill}
                   on:input={handleSkillInput}
-                  class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  on:keydown={handleSkillKeydown}
                   placeholder="Type to search or add new skills"
+                  class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {#if $skillSuggestions.length > 0}
                   <ul class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto">
@@ -760,27 +860,41 @@
                           class="w-full text-left px-3 py-2 hover:bg-gray-100"
                         >
                           {suggestion.skill}
+                          {#if suggestion.isPredefined}
+                            <span class="text-xs text-gray-500 ml-2">(predefined)</span>
+                          {/if}
                         </button>
                       </li>
                     {/each}
                   </ul>
+                {:else if $newSkill.trim().length > 0 && !$allSkills.some(s => s.skill.toLowerCase() === $newSkill.toLowerCase())}
+                  <div class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 p-2">
+                    <button
+                      type="button"
+                      on:click={addSkill}
+                      class="w-full text-left text-blue-600 hover:text-blue-800"
+                    >
+                      Add "{$newSkill}" as new skill
+                    </button>
+                  </div>
                 {/if}
               </div>
-              <div class="flex flex-wrap gap-2 mb-2">
+              
+              <!-- Selected skills display -->
+              <div class="flex flex-wrap gap-2 mt-2">
                 {#each $selectedSkills as skill}
-                  <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
+                  <span class="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full flex items-center">
                     {skill}
-                    <button on:click={() => removeSkill(skill)} class="ml-1 text-blue-600 hover:text-blue-800">×</button>
+                    <button
+                      type="button"
+                      class="ml-1 text-blue-600 hover:text-blue-800"
+                      on:click={() => removeSkill(skill)}
+                    >
+                      ×
+                    </button>
                   </span>
                 {/each}
               </div>
-              <button
-                type="button"
-                on:click={openSkillsModal}
-                class="mt-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-              >
-                Browse Skills
-              </button>
             </div>
             {#if $errors.skills_focused_on}
               <p class="text-red-500 text-sm mt-1">{$errors.skills_focused_on}</p>

@@ -63,7 +63,6 @@
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => {
-          console.log(`Successfully converted ${url} to base64`);
           resolve(reader.result);
         };
         reader.onerror = (error) => {
@@ -238,23 +237,11 @@
   }
 
   async function addPlayersToField(elements, files, positions) {
-    console.log('Adding players to field:', { 
-      positionCount: positions.length,
-      positions: positions.map(p => ({ type: p.type, team: p.team }))
-    });
-    
     for (const pos of positions) {
       const imageId = uuidv4();
       const teamColor = pos.team || 'blue';
       const imagePath = `/images/icons/${teamColor}-player-${pos.type}.png`;
       
-      console.log('Creating player element:', {
-        imageId,
-        teamColor,
-        imagePath,
-        position: { x: pos.x, y: pos.y, type: pos.type }
-      });
-
       // Convert image to base64
       const dataURL = await fetchImageAsDataURL(imagePath);
       if (!dataURL) {
@@ -296,19 +283,10 @@
         created: Date.now(),
         lastRetrieved: Date.now(),
       };
-
-      console.log('Successfully added player:', {
-        imageId,
-        path: imagePath,
-        hasDataURL: !!dataURL
-      });
     }
   }
 
   async function addSidebarElements(elements, files) {
-    console.log('Starting to add sidebar elements');
-    
-    // This is where your existing createInitialImageElements code would go
     // Add hoops - positioned to the right of the guide box
     const hoopSizes = [
       { width: 40, height: 80 },
@@ -390,8 +368,6 @@
       'yellow-arrow-player'
     ];
 
-    console.log('Processing icon sets:', iconSets);
-
     const positions = [
       { type: 'k', x: 0 },
       { type: 'c1', x: 60 },
@@ -415,12 +391,6 @@
         const imageId = uuidv4();
         const imagePath = `/images/icons/${iconSets[setIndex]}-${position.type}.png`;
         
-        console.log('Attempting to add sidebar icon:', {
-          iconSet: iconSets[setIndex],
-          position: position.type,
-          imagePath
-        });
-
         // Convert image to base64
         const dataURL = await fetchImageAsDataURL(imagePath);
         if (!dataURL) {
@@ -462,12 +432,6 @@
           created: Date.now(),
           lastRetrieved: Date.now(),
         };
-
-        console.log('Successfully added sidebar icon:', {
-          imageId,
-          path: imagePath,
-          hasDataURL: !!dataURL
-        });
       }
     }
 
@@ -479,8 +443,6 @@
       { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 210, y: 115, size: { width: 16, height: 20 } },
       { url: '/images/cone.webp', x: CANVAS_WIDTH + 70 + 270, y: 115, size: { width: 20, height: 20 }, scale: [0.25, 0.25] }
     ];
-
-    console.log('Adding balls and cone elements:', balls);
 
     for (const ball of balls) {
       const imageId = uuidv4();
@@ -526,18 +488,7 @@
         created: Date.now(),
         lastRetrieved: Date.now(),
       };
-
-      console.log('Successfully added ball/cone:', {
-        imageId,
-        url: ball.url,
-        hasDataURL: !!dataURL
-      });
     }
-
-    console.log('Finished adding sidebar elements:', {
-      totalElements: elements.length,
-      totalFiles: Object.keys(files).length
-    });
   }
 
   function zoomToIncludeAllElements(api) {
@@ -625,12 +576,6 @@
               files: excalidrawAPI.getFiles() || {}
             };
             
-            console.log('Transferring state to fullscreen:', {
-              elementCount: currentState.elements.length,
-              fileCount: Object.keys(currentState.files).length,
-              imageElements: currentState.elements.filter(el => el.type === 'image').length
-            });
-            
             fullscreenExcalidrawAPI.updateScene(currentState);
             setTimeout(() => zoomToIncludeAllElements(fullscreenExcalidrawAPI), 100);
           }
@@ -650,7 +595,6 @@
       
       const excalidrawProps = {
         onReady: (api) => {
-          console.log('Fullscreen Excalidraw ready');
           fullscreenExcalidrawAPI = api;
           if (initialSceneData) {
             api.updateScene(initialSceneData);
@@ -784,8 +728,6 @@
     );
 
     if (guideRect && (guideRect.x !== 0 || guideRect.y !== 0)) {
-      console.log('Fixing guide rectangle position', { old: { x: guideRect.x, y: guideRect.y } });
-      
       // Calculate the offset that needs to be applied to all elements
       const offsetX = -guideRect.x;
       const offsetY = -guideRect.y;
@@ -793,7 +735,6 @@
       // Move all elements by the offset
       elements.forEach(el => {
         if (el.type === 'line') {
-          // For lines, we need to move the base position
           el.x += offsetX;
           el.y += offsetY;
         } else if (el.type === 'image' || el.type === 'rectangle' || el.type === 'ellipse') {
@@ -801,29 +742,15 @@
           el.y += offsetY;
         }
       });
-
-      console.log('Guide rectangle fixed', { new: { x: guideRect.x + offsetX, y: guideRect.y + offsetY } });
     }
 
     return elements;
   }
 
   function handleImageElements(elements, files) {
-    console.log('handleImageElements called with:', { 
-      elementCount: elements.length, 
-      fileCount: Object.keys(files).length 
-    });
-    
     elements.forEach(element => {
       if (element.type === 'image') {
         const file = files[element.fileId];
-        console.log('Processing image element:', { 
-          elementId: element.fileId,
-          hasFile: !!file,
-          staticPath: file?.staticPath,
-          hasDataURL: !!file?.dataURL
-        });
-
         if (file?.staticPath) {
           element.staticImagePath = file.staticPath;
         } else if (file?.dataURL) {

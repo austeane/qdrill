@@ -184,10 +184,10 @@
   function handleSkillInput() {
     const input = $newSkill.toLowerCase();
     if (input.length > 0) {
-      skillSuggestions.set($allSkills.filter(skill => 
-        typeof skill.skill === 'string' && skill.skill.toLowerCase().includes(input) && 
-        !$selectedSkills.includes(skill.skill)
-      ));
+      skillSuggestions.set($allSkills.filter(skill => {
+        const skillText = typeof skill === 'string' ? skill : skill.skill;
+        return skillText.toLowerCase().includes(input) && !$selectedSkills.includes(skillText);
+      }));
     } else {
       skillSuggestions.set([]);
     }
@@ -204,7 +204,10 @@
   function addSkill() {
     if ($newSkill && !$selectedSkills.includes($newSkill)) {
       selectedSkills.update(skills => [...skills, $newSkill]);
-      if (!$allSkills.some(skill => skill.skill === $newSkill)) {
+      if (!$allSkills.some(skill => {
+        const skillText = typeof skill === 'string' ? skill : skill.skill;
+        return skillText === $newSkill;
+      })) {
         addNewSkill($newSkill);
       }
       newSkill.set('');
@@ -756,10 +759,10 @@
                           on:click={() => selectSkill(suggestion)}
                           class="w-full text-left px-3 py-2 hover:bg-gray-100"
                         >
-                          {suggestion.skill} {suggestion.isPredefined ? '(Predefined)' : ''}
+                          {suggestion.skill}
                         </button>
                       </li>
-                  {/each}
+                    {/each}
                   </ul>
                 {/if}
               </div>
@@ -1038,7 +1041,7 @@
                 class="w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer"
                 on:click={() => selectSkillFromModal(skill)}
               >
-                {skill.skill} {skill.isPredefined ? '(Predefined)' : ''}
+                {skill.skill}
               </button>
             {/each}
             {#if $modalSkillSuggestions.length === 0}

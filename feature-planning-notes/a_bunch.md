@@ -298,13 +298,66 @@ Catching (chasers)
 ## Drill Diagram Issues
 
 ### 1. Multiple Diagram Save Error
+
 **Files Needed**:
-- `src/routes/drills/DrillForm.svelte` (contains diagram handling)
+- `src/routes/api/drill-assets/+server.js` (new file for asset management)
 - `src/routes/api/drills/[id]/+server.js` (handles drill saving)
 - `src/components/ExcalidrawWrapper.svelte` (diagram component)
 
-**Description**: Error when saving drills with multiple diagrams due to function payload size limit.
+**Description**: Error when saving drills with multiple diagrams due to function payload size limit. The root cause is storing large base64-encoded images multiple times within the diagram JSON data.
 
+**Solution Strategy**:
+
+1. **Create Separate Asset Storage**
+   - New `drill_diagram_assets` table to store image data once
+   - Fields: id, hash (for deduplication), data (base64), mime_type, created_at, last_used_at
+   - Index on hash field for quick lookups
+
+2. **Asset Management Endpoint**
+   - New `/api/drill-assets` endpoint for CRUD operations on assets
+   - POST: Save new assets, returns asset IDs
+   - GET: Retrieve asset data by ID
+   - Automatic deduplication using content hashing
+
+3. **Modified Diagram Storage**
+   - Store only asset references in diagram JSON
+   - Replace base64 data with asset IDs
+   - Maintain all other diagram properties (elements, appState)
+
+4. **Implementation Flow**:
+   - When saving: Extract images → Store as assets → Replace with references → Save diagram
+   - When loading: Load diagram → Fetch assets → Reconstruct full diagram data
+
+**Benefits**:
+- Eliminates duplicate storage of identical images
+- Reduces payload size significantly
+- Enables better caching of commonly used assets
+- Maintains backward compatibility
+- Allows future optimization (compression, CDN)
+
+**Migration Path**:
+1. Create new assets table
+2. Add asset management endpoint
+3. Modify save/load flow in ExcalidrawWrapper
+4. Migrate existing diagrams (can be done gradually)
+
+**Success Criteria**:
+- Multiple diagrams save successfully
+- Load time remains fast
+- Storage efficiency improves
+- No duplicate assets stored
+
+**Future Optimizations**:
+- Add compression to stored assets
+- Implement CDN for frequently accessed assets
+- Add cleanup job for unused assets
+- Cache headers for asset responses
+
+**Monitoring Needs**:
+- Asset storage growth
+- Asset retrieval performance
+- Cache hit rates
+- Migration progress
 
 ### 2. Diagram Preview Sync Issues
 **Files Needed**:

@@ -43,17 +43,37 @@
     };
   }
 
-  async function loadImageAsDataUrl(url) {
+  async function fetchImageAsDataURL(url) {
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
+      // First check if image exists
+      const headResponse = await fetch(url, { method: 'HEAD' });
+      if (!headResponse.ok) {
+        console.error(`HEAD request failed with status ${headResponse.status} for URL: ${url}`);
+        return null;
+      }
+
+      // Then fetch the actual image
+      const getResponse = await fetch(url);
+      if (!getResponse.ok) {
+        console.error(`GET request failed with status ${getResponse.status} for URL: ${url}`);
+        return null;
+      }
+
+      const blob = await getResponse.blob();
       return new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
+        reader.onloadend = () => {
+          console.log(`Successfully converted ${url} to base64`);
+          resolve(reader.result);
+        };
+        reader.onerror = (error) => {
+          console.error(`Error converting ${url} to base64:`, error);
+          resolve(null);
+        };
         reader.readAsDataURL(blob);
       });
     } catch (error) {
-      console.error(`Error loading image from ${url}:`, error);
+      console.error(`Network error loading image from ${url}:`, error);
       return null;
     }
   }
@@ -218,52 +238,76 @@
   }
 
   async function addPlayersToField(elements, files, positions) {
+    console.log('Adding players to field:', { 
+      positionCount: positions.length,
+      positions: positions.map(p => ({ type: p.type, team: p.team }))
+    });
+    
     for (const pos of positions) {
       const imageId = uuidv4();
-      // Use the team property to determine the image path
-      const teamColor = pos.team || 'blue';  // Default to blue if team not specified
+      const teamColor = pos.team || 'blue';
       const imagePath = `/images/icons/${teamColor}-player-${pos.type}.png`;
-      const dataUrl = await loadImageAsDataUrl(imagePath);
       
-      if (dataUrl) {
-        elements.push({
-          id: imageId,
-          type: 'image',
-          x: pos.x,
-          y: pos.y,
-          width: 40,
-          height: 40,
-          angle: 0,
-          strokeColor: 'transparent',
-          backgroundColor: 'transparent',
-          fillStyle: 'hachure',
-          strokeWidth: 1,
-          strokeStyle: 'solid',
-          roughness: 0,
-          opacity: 100,
-          groupIds: [],
-          strokeSharpness: 'sharp',
-          seed: Math.floor(Math.random() * 1000000),
-          version: 1,
-          versionNonce: Math.floor(Math.random() * 1000000),
-          isDeleted: false,
-          scale: [1, 1],
-          fileId: imageId,
-          status: 'idle',
-        });
+      console.log('Creating player element:', {
+        imageId,
+        teamColor,
+        imagePath,
+        position: { x: pos.x, y: pos.y, type: pos.type }
+      });
 
-        files[imageId] = {
-          id: imageId,
-          dataURL: dataUrl,
-          mimeType: 'image/png',
-          created: Date.now(),
-          lastRetrieved: Date.now(),
-        };
+      // Convert image to base64
+      const dataURL = await fetchImageAsDataURL(imagePath);
+      if (!dataURL) {
+        console.warn(`Failed to load image: ${imagePath}`);
+        continue;
       }
+
+      elements.push({
+        id: imageId,
+        type: 'image',
+        x: pos.x,
+        y: pos.y,
+        width: 40,
+        height: 40,
+        angle: 0,
+        strokeColor: 'transparent',
+        backgroundColor: 'transparent',
+        fillStyle: 'hachure',
+        strokeWidth: 1,
+        strokeStyle: 'solid',
+        roughness: 0,
+        opacity: 100,
+        groupIds: [],
+        strokeSharpness: 'sharp',
+        seed: Math.floor(Math.random() * 1000000),
+        version: 1,
+        versionNonce: Math.floor(Math.random() * 1000000),
+        isDeleted: false,
+        scale: [1, 1],
+        fileId: imageId,
+        status: 'idle'
+      });
+
+      files[imageId] = {
+        id: imageId,
+        dataURL,
+        staticPath: imagePath,
+        mimeType: 'image/png',
+        created: Date.now(),
+        lastRetrieved: Date.now(),
+      };
+
+      console.log('Successfully added player:', {
+        imageId,
+        path: imagePath,
+        hasDataURL: !!dataURL
+      });
     }
   }
 
   async function addSidebarElements(elements, files) {
+    console.log('Starting to add sidebar elements');
+    
     // This is where your existing createInitialImageElements code would go
     // Add hoops - positioned to the right of the guide box
     const hoopSizes = [
@@ -334,8 +378,7 @@
       elements.push(hoopCircle, pole);
     });
 
-    // Add your existing player icons grid code here
-    // Define the icon sets and their positions
+    // Add player icons grid with base64 conversion
     const iconSets = [
       'b-and-w-player',
       'blue-player',
@@ -346,6 +389,8 @@
       'y-and-b-player',
       'yellow-arrow-player'
     ];
+
+    console.log('Processing icon sets:', iconSets);
 
     const positions = [
       { type: 'k', x: 0 },
@@ -369,67 +414,27 @@
       for (const position of positions) {
         const imageId = uuidv4();
         const imagePath = `/images/icons/${iconSets[setIndex]}-${position.type}.png`;
-        const dataUrl = await loadImageAsDataUrl(imagePath);
         
-        if (dataUrl) {
-          elements.push({
-            id: imageId,
-            type: 'image',
-            x: baseX + position.x,
-            y: currentY,
-            width: iconSize,
-            height: iconSize,
-            angle: 0,
-            strokeColor: 'transparent',
-            backgroundColor: 'transparent',
-            fillStyle: 'hachure',
-            strokeWidth: 1,
-            strokeStyle: 'solid',
-            roughness: 0,
-            opacity: 100,
-            groupIds: [],
-            strokeSharpness: 'sharp',
-            seed: Math.floor(Math.random() * 1000000),
-            version: 1,
-            versionNonce: Math.floor(Math.random() * 1000000),
-            isDeleted: false,
-            scale: [1, 1],
-            fileId: imageId,
-            status: 'idle',
-          });
+        console.log('Attempting to add sidebar icon:', {
+          iconSet: iconSets[setIndex],
+          position: position.type,
+          imagePath
+        });
 
-          files[imageId] = {
-            id: imageId,
-            dataURL: dataUrl,
-            mimeType: 'image/png',
-            created: Date.now(),
-            lastRetrieved: Date.now(),
-          };
+        // Convert image to base64
+        const dataURL = await fetchImageAsDataURL(imagePath);
+        if (!dataURL) {
+          console.warn(`Failed to load sidebar icon: ${imagePath}`);
+          continue;
         }
-      }
-    }
 
-    // Add the balls and cone
-    const balls = [
-      { url: '/images/icons/quaffle.png', x: CANVAS_WIDTH + 70 + 30, y: 115, size: { width: 16, height: 20 } },
-      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 90, y: 115, size: { width: 16, height: 20 } },
-      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 150, y: 115, size: { width: 16, height: 20 } },
-      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 210, y: 115, size: { width: 16, height: 20 } },
-      { url: '/images/cone.webp', x: CANVAS_WIDTH + 70 + 270, y: 115, size: { width: 20, height: 20 }, scale: [0.25, 0.25] }
-    ];
-
-    for (const ball of balls) {
-      const imageId = uuidv4();
-      const dataUrl = await loadImageAsDataUrl(ball.url);
-      
-      if (dataUrl) {
         elements.push({
           id: imageId,
           type: 'image',
-          x: ball.x,
-          y: ball.y,
-          width: ball.size.width,
-          height: ball.size.height,
+          x: baseX + position.x,
+          y: currentY,
+          width: iconSize,
+          height: iconSize,
           angle: 0,
           strokeColor: 'transparent',
           backgroundColor: 'transparent',
@@ -444,20 +449,95 @@
           version: 1,
           versionNonce: Math.floor(Math.random() * 1000000),
           isDeleted: false,
-          scale: ball.scale || [1, 1],
+          scale: [1, 1],
           fileId: imageId,
-          status: 'idle',
+          status: 'idle'
         });
 
         files[imageId] = {
           id: imageId,
-          dataURL: dataUrl,
+          dataURL,
+          staticPath: imagePath,
           mimeType: 'image/png',
           created: Date.now(),
           lastRetrieved: Date.now(),
         };
+
+        console.log('Successfully added sidebar icon:', {
+          imageId,
+          path: imagePath,
+          hasDataURL: !!dataURL
+        });
       }
     }
+
+    // Add the balls and cone with base64 conversion
+    const balls = [
+      { url: '/images/icons/quaffle.png', x: CANVAS_WIDTH + 70 + 30, y: 115, size: { width: 16, height: 20 } },
+      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 90, y: 115, size: { width: 16, height: 20 } },
+      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 150, y: 115, size: { width: 16, height: 20 } },
+      { url: '/images/icons/bludger.png', x: CANVAS_WIDTH + 70 + 210, y: 115, size: { width: 16, height: 20 } },
+      { url: '/images/cone.webp', x: CANVAS_WIDTH + 70 + 270, y: 115, size: { width: 20, height: 20 }, scale: [0.25, 0.25] }
+    ];
+
+    console.log('Adding balls and cone elements:', balls);
+
+    for (const ball of balls) {
+      const imageId = uuidv4();
+      
+      // Convert image to base64
+      const dataURL = await fetchImageAsDataURL(ball.url);
+      if (!dataURL) {
+        console.warn(`Failed to load ball/cone: ${ball.url}`);
+        continue;
+      }
+
+      elements.push({
+        id: imageId,
+        type: 'image',
+        x: ball.x,
+        y: ball.y,
+        width: ball.size.width,
+        height: ball.size.height,
+        angle: 0,
+        strokeColor: 'transparent',
+        backgroundColor: 'transparent',
+        fillStyle: 'hachure',
+        strokeWidth: 1,
+        strokeStyle: 'solid',
+        roughness: 0,
+        opacity: 100,
+        groupIds: [],
+        strokeSharpness: 'sharp',
+        seed: Math.floor(Math.random() * 1000000),
+        version: 1,
+        versionNonce: Math.floor(Math.random() * 1000000),
+        isDeleted: false,
+        scale: ball.scale || [1, 1],
+        fileId: imageId,
+        status: 'idle'
+      });
+
+      files[imageId] = {
+        id: imageId,
+        dataURL,
+        staticPath: ball.url,
+        mimeType: ball.url.endsWith('.webp') ? 'image/webp' : 'image/png',
+        created: Date.now(),
+        lastRetrieved: Date.now(),
+      };
+
+      console.log('Successfully added ball/cone:', {
+        imageId,
+        url: ball.url,
+        hasDataURL: !!dataURL
+      });
+    }
+
+    console.log('Finished adding sidebar elements:', {
+      totalElements: elements.length,
+      totalFiles: Object.keys(files).length
+    });
   }
 
   function zoomToIncludeAllElements(api) {
@@ -537,15 +617,20 @@
     
     if (isFullscreen) {
       try {
-        // Wait for next tick to ensure fullscreen component is ready
         tick().then(() => {
           if (fullscreenExcalidrawAPI) {
-            // Get fresh state directly from excalidrawAPI
             const currentState = {
               elements: excalidrawAPI.getSceneElements() || [],
               appState: excalidrawAPI.getAppState() || {},
               files: excalidrawAPI.getFiles() || {}
             };
+            
+            console.log('Transferring state to fullscreen:', {
+              elementCount: currentState.elements.length,
+              fileCount: Object.keys(currentState.files).length,
+              imageElements: currentState.elements.filter(el => el.type === 'image').length
+            });
+            
             fullscreenExcalidrawAPI.updateScene(currentState);
             setTimeout(() => zoomToIncludeAllElements(fullscreenExcalidrawAPI), 100);
           }
@@ -720,6 +805,37 @@
       console.log('Guide rectangle fixed', { new: { x: guideRect.x + offsetX, y: guideRect.y + offsetY } });
     }
 
+    return elements;
+  }
+
+  function handleImageElements(elements, files) {
+    console.log('handleImageElements called with:', { 
+      elementCount: elements.length, 
+      fileCount: Object.keys(files).length 
+    });
+    
+    elements.forEach(element => {
+      if (element.type === 'image') {
+        const file = files[element.fileId];
+        console.log('Processing image element:', { 
+          elementId: element.fileId,
+          hasFile: !!file,
+          staticPath: file?.staticPath,
+          hasDataURL: !!file?.dataURL
+        });
+
+        if (file?.staticPath) {
+          element.staticImagePath = file.staticPath;
+        } else if (file?.dataURL) {
+          element.dataURL = file.dataURL;
+        } else {
+          console.warn('Image element missing both staticPath and dataURL:', {
+            elementId: element.fileId,
+            element: element
+          });
+        }
+      }
+    });
     return elements;
   }
 

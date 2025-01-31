@@ -6,6 +6,8 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { handleDrillMove } from '$lib/stores/practicePlanStore';
+  // Add Editor import
+  let Editor;
 
   // Add proper prop definitions with defaults
   export let data = { drills: [] }; // Add default value
@@ -150,7 +152,7 @@
   }
 
   // Add this to your existing onMount
-  onMount(() => {
+  onMount(async () => {
     if ($cart.length === 0) {
       showEmptyCartModal = true;
     }
@@ -166,6 +168,16 @@
         parallel_group_id: null
       }));
       selectedItems.set(cartItems);
+    }
+
+    // Load TinyMCE Editor
+    try {
+      console.log('Loading TinyMCE editor...');
+      const module = await import('@tinymce/tinymce-svelte');
+      Editor = module.default;
+      console.log('TinyMCE editor loaded successfully');
+    } catch (error) {
+      console.error('Error loading TinyMCE:', error);
     }
   });
 
@@ -977,6 +989,11 @@
       isEditableByOthers.set(true);
     }
   }
+
+  // Add handler for rich text changes
+  function handleDescriptionChange(e) {
+    planDescription.set(e.detail.content);
+  }
 </script>
 
 <!-- Only show empty cart modal for new plans -->
@@ -1024,7 +1041,38 @@
 
   <div class="mb-4">
     <label for="planDescription" class="block text-sm font-medium text-gray-700">Plan Description:</label>
-    <textarea id="planDescription" bind:value={$planDescription} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" rows="3"></textarea>
+    {#if Editor}
+      <div class="min-h-[300px]">
+        <svelte:component 
+          this={Editor}
+          apiKey={import.meta.env.VITE_TINY_API_KEY}
+          init={{
+            height: 300,
+            menubar: false,
+            plugins: [
+              'advlist', 'autolink', 'lists', 'link', 'charmap',
+              'anchor', 'searchreplace', 'visualblocks', 'code',
+              'insertdatetime', 'table', 'code', 'help', 'wordcount'
+            ],
+            toolbar: 'undo redo | blocks | ' +
+                    'bold italic | alignleft aligncenter ' +
+                    'alignright alignjustify | bullist numlist outdent indent | ' +
+                    'removeformat | help',
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
+            branding: false
+          }}
+          value={$planDescription}
+          on:change={handleDescriptionChange}
+        />
+      </div>
+    {:else}
+      <textarea 
+        id="planDescription" 
+        bind:value={$planDescription} 
+        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" 
+        rows="3"
+      ></textarea>
+    {/if}
   </div>
 
   <div class="mb-4">

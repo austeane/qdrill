@@ -95,28 +95,14 @@ Catching (chasers)
 
 ## UI/UX Improvements
 
-### 1. Hover Area Fix
-**Files Needed**: 
-- `src/routes/drills/[id]/+page.svelte` (contains variant marking UI)
-- `src/routes/styles.css` (contains hover styles)
-
-**Description**: Fix the hover area for marking variants which is currently behaving oddly. Just above mark a variant button it doesnt hover, but above that more it doese hover where the tooltip text would be. 
 
 
 
-
-### 2. Rich Text Support
+### 3. Save Feedback
 **Files Needed**:
-- `src/routes/drills/DrillForm.svelte` (contains detailed description field)
-- `/src/routes/practice-plans/PracticePlanForm.svelte` (plan description)
-- `src/routes/practice-plans/wizard/basic-info/+page.svelte` (for reference implementation)
-- New component for rich text editor
+- `src/routes/drills/DrillForm.svelte` (handles save operations)
 
-**Description**: Add support for bold, italics, and other formatting in detailed descriptions. Should be able to paste even lists from google docs in bullet pointed or numbered.
-
-**Implementation Notes**:
-- Reference implementation in practice plan wizard uses TinyMCE editor
-
+**Description**: No visual feedback during drill save operations.
 ## Search and Selection Issues
 
 ### 1. Skills Search Fix
@@ -295,164 +281,6 @@ Catching (chasers)
 - Ensure proper handling of special characters
 - Add proper error handling for malformed content
 
-## Drill Diagram Issues
+## Drill Creation Issues
 
-### 1. Multiple Diagram Save Error
 
-**Files Needed**:
-- `src/routes/api/drill-assets/+server.js` (new file for asset management)
-- `src/routes/api/drills/[id]/+server.js` (handles drill saving)
-- `src/components/ExcalidrawWrapper.svelte` (diagram component)
-
-**Description**: Error when saving drills with multiple diagrams due to function payload size limit. The root cause is storing large base64-encoded images multiple times within the diagram JSON data.
-
-**Solution Strategy**:
-
-1. **Create Separate Asset Storage**
-   - New `drill_diagram_assets` table to store image data once
-   - Fields: id, hash (for deduplication), data (base64), mime_type, created_at, last_used_at
-   - Index on hash field for quick lookups
-
-2. **Asset Management Endpoint**
-   - New `/api/drill-assets` endpoint for CRUD operations on assets
-   - POST: Save new assets, returns asset IDs
-   - GET: Retrieve asset data by ID
-   - Automatic deduplication using content hashing
-
-3. **Modified Diagram Storage**
-   - Store only asset references in diagram JSON
-   - Replace base64 data with asset IDs
-   - Maintain all other diagram properties (elements, appState)
-
-4. **Implementation Flow**:
-   - When saving: Extract images → Store as assets → Replace with references → Save diagram
-   - When loading: Load diagram → Fetch assets → Reconstruct full diagram data
-
-**Benefits**:
-- Eliminates duplicate storage of identical images
-- Reduces payload size significantly
-- Enables better caching of commonly used assets
-- Maintains backward compatibility
-- Allows future optimization (compression, CDN)
-
-**Migration Path**:
-1. Create new assets table
-2. Add asset management endpoint
-3. Modify save/load flow in ExcalidrawWrapper
-4. Migrate existing diagrams (can be done gradually)
-
-**Success Criteria**:
-- Multiple diagrams save successfully
-- Load time remains fast
-- Storage efficiency improves
-- No duplicate assets stored
-
-**Future Optimizations**:
-- Add compression to stored assets
-- Implement CDN for frequently accessed assets
-- Add cleanup job for unused assets
-- Cache headers for asset responses
-
-**Monitoring Needs**:
-- Asset storage growth
-- Asset retrieval performance
-- Cache hit rates
-- Migration progress
-
-### 2. Diagram Preview Sync Issues
-**Files Needed**:
-- `src/components/ExcalidrawWrapper.svelte` (contains preview and fullscreen logic)
-- `src/routes/drills/DrillForm.svelte` (manages diagram state)
-
-**Description**: When editing diagrams in fullscreen mode, the preview doesn't properly sync with the latest changes. Specifically:
-1. User edits diagram in fullscreen and saves
-2. Preview shows old version
-3. If user reopens fullscreen, it loads the old version
-4. Any new edits will overwrite the previously saved changes
-
-**Root Cause**:
-The issue stems from state management in ExcalidrawWrapper.svelte. When opening fullscreen mode, it caches the initial scene data but never updates this cache. Subsequent fullscreen opens use this stale cache instead of the current diagram state.
-
-**Implementation Strategy**:
-Remove the caching mechanism entirely and always fetch fresh state from excalidrawAPI. Key points:
-
-1. State Management:
-   - Remove `initialSceneData` variable
-   - Always get fresh state from `excalidrawAPI` when needed
-   - Ensure excalidrawAPI is initialized before requesting state
-
-2. Component Lifecycle:
-   - Add proper initialization checks before accessing excalidrawAPI
-   - Handle component mounting/unmounting cleanly
-   - Ensure proper cleanup of event listeners
-
-3. API Readiness:
-   - Add checks for API availability before state operations
-   - Handle edge cases where API might not be ready
-   - Add error boundaries for API failures
-
-4. State Synchronization:
-   - Update preview immediately after save operations
-   - Ensure proper state propagation between modes
-   - Maintain undo/redo functionality
-
-**Implementation Notes**:
-1. API Initialization:
-   ```javascript
-   // Check API readiness before operations
-   function ensureAPIReady(api) {
-     if (!api) {
-       throw new Error('Excalidraw API not initialized');
-     }
-     return true;
-   }
-   ```
-
-2. State Transfer:
-   ```javascript
-   // Get fresh state when needed
-   function getCurrentState(api) {
-     if (!ensureAPIReady(api)) return null;
-     return {
-       elements: api.getSceneElements() || [],
-       appState: api.getAppState() || {},
-       files: api.getFiles() || {}
-     };
-   }
-   ```
-
-3. Error Handling:
-   ```javascript
-   // Wrap API operations in try-catch
-   try {
-     const currentState = getCurrentState(excalidrawAPI);
-     // Use state...
-   } catch (error) {
-     console.error('Error accessing Excalidraw API:', error);
-     // Handle error appropriately
-   }
-   ```
-
-**Concerns**:
-- Ensure proper cleanup of event listeners
-- Handle edge cases where API isn't ready
-- Consider performance implications of removing cache
-- Maintain undo/redo functionality
-- Handle errors gracefully
-- Prevent unnecessary re-renders
-- Manage component lifecycle properly
-
-**Success Criteria**:
-1. Opening fullscreen shows current state
-2. Saving changes updates preview correctly
-3. Reopening fullscreen shows latest changes
-4. Undo/redo works as expected
-5. No stale state issues
-6. Proper error handling
-7. Clean component cleanup
-
-### 3. Save Feedback
-**Files Needed**:
-- `src/routes/drills/DrillForm.svelte` (handles save operations)
-
-**Description**: No visual feedback during drill save operations.

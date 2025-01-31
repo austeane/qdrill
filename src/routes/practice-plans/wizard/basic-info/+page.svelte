@@ -2,6 +2,7 @@
     import { basicInfo } from '$lib/stores/wizardStore';
     import { validationErrors, getFieldError } from '$lib/stores/wizardValidation';
     import { scheduleAutoSave } from '$lib/stores/wizardStore';
+    import { Editor } from '@tinymce/tinymce-svelte';
 
     // Phase of season options
     const phaseOptions = [
@@ -45,6 +46,12 @@
     function removePracticeGoal(index) {
         $basicInfo.practiceGoals = $basicInfo.practiceGoals.filter((_, i) => i !== index);
         handleChange();
+    }
+
+    // Handle description change
+    function handleDescriptionChange(e) {
+        $basicInfo.description = e.detail.content;
+        handleChange('description');
     }
 </script>
 
@@ -219,12 +226,27 @@
             <label for="description" class="block text-sm font-medium text-gray-700">
                 Description
             </label>
-            <textarea
-                id="description"
-                bind:value={$basicInfo.description}
-                rows="3"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            ></textarea>
+            <div class="mt-1">
+                <Editor
+                    apiKey="your-tinymce-api-key"
+                    init={{
+                        height: 300,
+                        menubar: false,
+                        plugins: [
+                            'advlist', 'autolink', 'lists', 'link', 'charmap',
+                            'anchor', 'searchreplace', 'visualblocks', 'code',
+                            'insertdatetime', 'table', 'code', 'help', 'wordcount'
+                        ],
+                        toolbar: 'undo redo | blocks | ' +
+                                'bold italic | alignleft aligncenter ' +
+                                'alignright alignjustify | bullist numlist outdent indent | ' +
+                                'removeformat | help',
+                        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }'
+                    }}
+                    value={$basicInfo.description}
+                    on:change={handleDescriptionChange}
+                />
+            </div>
         </div>
 
         <!-- Visibility settings -->

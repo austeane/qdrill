@@ -1,15 +1,26 @@
 <!-- Home Page -->
 
 <script>
-	// No additional script needed for the Home page
-  </script>
+	import { goto } from '$app/navigation';
+	import Spinner from '../components/Spinner.svelte';
+	let isNavigating = false;
+
+	async function navigateToWizard() {
+		isNavigating = true;
+		try {
+			await goto('/practice-plans/wizard');
+		} finally {
+			isNavigating = false;
+		}
+	}
+</script>
   
-  <svelte:head>
+<svelte:head>
 	<title>QDrill - Practice Planning Made Easy</title>
 	<meta name="description" content="Create and manage quadball drills and practice plans." />
-  </svelte:head>
+</svelte:head>
   
-  <section class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+<section class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
 	<!-- Main Title Section -->
 	<div class="flex flex-col lg:flex-row items-center">
 	  <!-- Left Side: Title and Blurb -->
@@ -23,9 +34,20 @@
 		/>
 		<p class="text-lg mb-6">Easily find, create, and share drills and practice plans. Focus on coaching, QDrill makes planning easy.</p>
 		<div class="space-y-4">
-		  <a href="/practice-plans/wizard" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto text-center">
-			Create Practice Plan
-		  </a>
+		  <button 
+			on:click={navigateToWizard}
+			disabled={isNavigating}
+			class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto text-center relative"
+		  >
+			{#if isNavigating}
+				<div class="absolute inset-0 flex items-center justify-center">
+					<Spinner size="sm" color="white" />
+				</div>
+				<span class="opacity-0">Create Practice Plan</span>
+			{:else}
+				Create Practice Plan
+			{/if}
+		  </button>
 		  <a href="/drills" class="inline-block bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto text-center">
 			Browse Drills
 		  </a>
@@ -56,9 +78,20 @@
 			<p class="text-gray-600 mb-4">Create complete practice plans from scratch, guided step by step.</p>
 		  </div>
 		  <div class="mt-auto">
-			<a href="/practice-plans/wizard" class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">
-			  Plan a Practice
-			</a>
+			<button 
+			  on:click={navigateToWizard}
+			  disabled={isNavigating}
+			  class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg relative"
+			>
+			  {#if isNavigating}
+				<div class="absolute inset-0 flex items-center justify-center">
+					<Spinner size="sm" color="white" />
+				</div>
+				<span class="opacity-0">Plan a Practice</span>
+			  {:else}
+				Plan a Practice
+			  {/if}
+			</button>
 		  </div>
 		</div>
 
@@ -99,4 +132,4 @@
 		</div>
 	  </div>
 	</div>
-  </section>
+</section>

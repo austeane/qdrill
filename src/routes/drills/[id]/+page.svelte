@@ -334,7 +334,7 @@
             title="Link this drill as a variant of another similar drill"
           >
             Mark as Variant
-            <div class="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap">
+            <div class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap">
               If this is very similar to another drill, you can set it to be a variant of that drill, which will link their pages and reduce the clutter on the main drills page
             </div>
           </button>

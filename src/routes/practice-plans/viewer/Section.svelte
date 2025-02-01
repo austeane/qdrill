@@ -186,17 +186,19 @@
   $: console.log('Section Color:', getSectionColor(sectionIndex), 'Index:', sectionIndex);
 </script>
 
-<section
+<div
   class="practice-section {getSectionColor(sectionIndex)}"
   class:active={isActive}
   id={`section-${section.id}`}
 >
   <header class="section-header">
     <div class="section-info">
-      <button 
-        class="collapse-btn"
+      <div 
+        class="title-area"
         on:click={toggleCollapse}
-        aria-label={isCollapsed ? "Expand section" : "Collapse section"}
+        role="button"
+        tabindex="0"
+        on:keydown={e => e.key === 'Enter' && toggleCollapse()}
       >
         <svg
           class="w-4 h-4 transform transition-transform {isCollapsed ? '-rotate-90' : ''}"
@@ -205,8 +207,8 @@
         >
           <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
         </svg>
-      </button>
-      <h2 class="section-title">{section.name || 'Unnamed Section'}</h2>
+        <h2 class="section-title">{section.name || 'Unnamed Section'}</h2>
+      </div>
       <span class="section-duration">{sectionDuration} minutes</span>
     </div>
 
@@ -235,12 +237,7 @@
             on:durationChange
           />
         {:else}
-          <div
-            draggable={canEdit}
-            on:dragstart={(e) => handleDragStart(e, item)}
-            on:drop={(e) => handleDrop(e, item)}
-            on:dragover={(e) => e.preventDefault()}
-          >
+          <div class:draggable={canEdit}>
             <DrillCard 
               item={item}
               {canEdit}
@@ -253,7 +250,7 @@
       {/each}
     </div>
   {/if}
-</section>
+</div>
 
 <style>
   .practice-section {
@@ -279,19 +276,22 @@
   .section-info {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: space-between;
+    width: 100%;
   }
 
-  .collapse-btn {
+  .title-area {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
     padding: 0.25rem;
-    color: theme('colors.gray.500');
     border-radius: 0.25rem;
     transition: all 0.2s ease;
   }
 
-  .collapse-btn:hover {
-    background: theme('colors.gray.100');
-    color: theme('colors.gray.700');
+  .title-area:hover {
+    background: rgba(0, 0, 0, 0.05);
   }
 
   .section-title {
@@ -331,5 +331,9 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+  }
+
+  .draggable {
+    cursor: move;
   }
 </style> 

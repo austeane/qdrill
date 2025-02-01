@@ -189,7 +189,7 @@ export const PUT = async ({ params, request, locals }) => {
             plan.is_editable_by_others = true;
         }
 
-        // Update practice plan
+        // Update practice plan - add start_time to the UPDATE query
         const result = await client.query(
             `UPDATE practice_plans SET 
              name = $1,
@@ -198,12 +198,14 @@ export const PUT = async ({ params, request, locals }) => {
              phase_of_season = $4,
              estimated_number_of_participants = $5,
              is_editable_by_others = $6,
-             visibility = $7
-             WHERE id = $8 AND (created_by = $9 OR is_editable_by_others = true)
+             visibility = $7,
+             start_time = $8
+             WHERE id = $9 AND (created_by = $10 OR is_editable_by_others = true)
              RETURNING *`,
             [plan.name, plan.description, plan.practice_goals, 
              plan.phase_of_season, plan.estimated_number_of_participants,
-             plan.is_editable_by_others, plan.visibility, id, userId]
+             plan.is_editable_by_others, plan.visibility, plan.start_time,
+             id, userId]
         );
 
         if (result.rowCount === 0) {

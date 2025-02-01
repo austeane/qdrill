@@ -22,10 +22,8 @@
   let practiceGoals = writable(['']);
   let visibility = writable('public');
   let isEditableByOthers = writable(false);
-  const selectedItems = writable([]);
-
-  // Add startTime store initialization with other store initializations
   let startTime = writable('09:00'); // Default to 9 AM
+  const selectedItems = writable([]);
 
   // Initialize drills from data
   $: availableDrills = data?.drills || [];
@@ -217,10 +215,14 @@
   let dragOverSection = null;
   let sectionDragPosition = null; // 'top' or 'bottom'
 
+  // Add these variables after the other let declarations
   let showDrillSearch = false;
   let searchQuery = '';
   let searchResults = [];
   let selectedSectionForDrill = null;
+
+  // Add this near the top of the file with other state variables
+  let isParallelDragActive = false;
 
   function closeModal() {
     showEmptyCartModal = false;
@@ -236,7 +238,7 @@
       
       const formValues = {
         planName: String($planName || ''),
-        planDescription: String($planDescription || ''),
+        planDescription: String($planDescription || ''), // Verify this shows content
         phaseOfSeason: String($phaseOfSeason || ''),
         estimatedParticipants: String($estimatedNumberOfParticipants || ''),
         practiceGoals: $practiceGoals.map(goal => String(goal || '')),
@@ -281,7 +283,7 @@
         name: $planName,
         description: $planDescription,
         phase_of_season: $phaseOfSeason || null,
-        estimated_number_of_participants: $estimatedNumberOfParticipants ? parseInt($estimatedNumberOfParticipants) : null,
+        estimated_number_of_participants: $estimatedNumberOfParticipants ? parseInt($estimatedNumberOfParticipants, 10) : null,
         practice_goals: $practiceGoals.filter(goal => goal.trim() !== ''),
         visibility: $visibility,
         is_editable_by_others: $isEditableByOthers,
@@ -296,9 +298,7 @@
         }))
       };
 
-      console.log('[PracticePlanForm] Plan data before stringify:', 
-        JSON.stringify(planData, null, 2)
-      );
+      console.log('[PracticePlanForm] Plan data before stringify:', JSON.stringify(planData, null, 2));
 
       const url = practicePlan ? `/api/practice-plans/${practicePlan.id}` : '/api/practice-plans';
       const method = practicePlan ? 'PUT' : 'POST';
@@ -396,6 +396,39 @@
     });
   }
 
+  function updateBreakDuration(index, duration) {
+    $selectedItems.update(items => {
+      const updatedItems = [...items];
+      updatedItems[index].duration = duration;
+      return updatedItems;
+    });
+  }
+
+  function toggleExpand(index) {
+    $selectedItems.update(items => {
+      const updatedItems = [...items];
+      updatedItems[index].expanded = !updatedItems[index].expanded;
+      return updatedItems;
+    });
+  }
+
+  // Add this logging function
+  function logSections(message) {
+    console.log(message, $sections.map(section => ({
+      id: section.id,
+      name: section.name,
+      items: section.items.map(item => ({
+        id: item.id,
+        drill_id: item.drill?.id,
+        name: item.name,
+        duration: item.duration,
+        selected_duration: item.selected_duration,
+        parallel_group_id: item.parallel_group_id
+      }))
+    })));
+  }
+
+  // Update the handleDurationChange function
   function handleDurationChange(sectionIndex, itemIndex, newDuration) {
     console.log(`Updating duration for section ${sectionIndex}, item ${itemIndex} to ${newDuration}`);
     
@@ -556,38 +589,46 @@
   }
 
   // Update these functions for drag handling
-  function handleParallelDragStart(e, index) {
-    e.preventDefault(); // Prevent default drag behavior
+  function handleParallelDragStart(e, itemIndex) {
+    console.log('Parallel drag start:', { itemIndex });
     isDraggingForParallel = true;
+    isParallelDragActive = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
-    currentDragItem = $selectedItems[index];
+    currentDragItem = {
+        sectionIndex: $sections.findIndex(section => 
+            section.items.some(item => item === $sections[0].items[itemIndex])
+        ),
+        itemIndex: itemIndex
+    };
     
     const handleMouseMove = (e) => {
-      if (!isDraggingForParallel) return;
-      
-      const deltaX = e.clientX - dragStartX;
-      const deltaY = e.clientY - dragStartY;
-      
-      // If horizontal drag is more significant than vertical
-      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > dragThreshold) {
-        const targetIndex = findClosestItemIndex(e.clientY);
-        if (targetIndex !== -1 && targetIndex !== index) {
-          $selectedItems.update(items => mergeIntoParallelGroup(index, targetIndex, items));
+        if (!isDraggingForParallel) return;
+        
+        const deltaX = e.clientX - dragStartX;
+        const deltaY = e.clientY - dragStartY;
+        
+        console.log('Mouse move during parallel drag:', { deltaX, deltaY });
+        
+        // If horizontal drag is significant
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > dragThreshold) {
+            console.log('Horizontal drag threshold met');
+            // Add visual feedback here if needed
         }
-      }
     };
     
     const handleMouseUp = () => {
-      isDraggingForParallel = false;
-      currentDragItem = null;
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+        console.log('Mouse up during parallel drag');
+        isDraggingForParallel = false;
+        isParallelDragActive = false;
+        currentDragItem = null;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
     };
     
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  }
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+}
 
   function removeFromParallelGroup(itemId, items) {
     return items.map(item => {
@@ -607,10 +648,9 @@
     e.dataTransfer.setData('text/plain', JSON.stringify({ sectionIndex, itemIndex }));
   }
 
-  // Update handleDragOver to be more forgiving
   function handleDragOver(e, sectionIndex, itemIndex) {
     e.preventDefault();
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent event from bubbling to section
     
     if (!draggedItem) return;
 
@@ -627,14 +667,10 @@
     
     // If we're in the same section, allow grouping in the middle zone
     if (draggedItem.sectionIndex === sectionIndex) {
-      // Make the middle zone larger (40% of height)
-      const middleZoneStart = rect.height * 0.3;
-      const middleZoneEnd = rect.height * 0.7;
-      
-      if (y < middleZoneStart) {
+      if (y < rect.height / 3) {
         dragOverPosition = 'top';
         targetElement.classList.add('border-t-4', 'border-t-blue-500');
-      } else if (y > middleZoneEnd) {
+      } else if (y > (rect.height * 2) / 3) {
         dragOverPosition = 'bottom';
         targetElement.classList.add('border-b-4', 'border-b-blue-500');
       } else {
@@ -642,7 +678,7 @@
         targetElement.classList.add('bg-blue-100', 'scale-95');
       }
     } else {
-      // For different sections, use a simpler top/bottom split
+      // If different sections, only allow top/bottom positioning
       if (y < rect.height / 2) {
         dragOverPosition = 'top';
         targetElement.classList.add('border-t-4', 'border-t-blue-500');
@@ -672,102 +708,88 @@
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('Item drop:', { 
-      sectionIndex, 
-      itemIndex, 
-      draggedItem, 
-      dragOverPosition,
-      isSameSection: draggedItem?.sectionIndex === sectionIndex 
+    console.log('Drop event:', { 
+        sectionIndex, 
+        itemIndex, 
+        draggedItem, 
+        dragOverPosition,
+        isParallelDragActive,
+        isDraggingForParallel
     });
-    
-    e.currentTarget.classList.remove(
-      'bg-blue-100',
-      'scale-95',
-      'transform',
-      'border-t-4',
-      'border-t-blue-500',
-      'border-b-4',
-      'border-b-blue-500'
-    );
 
     if (!draggedItem) return;
 
+    const isSameSection = draggedItem.sectionIndex === sectionIndex;
+    
     sections.update(currentSections => {
-      const newSections = [...currentSections];
-      const sourceSection = newSections[draggedItem.sectionIndex];
-      const targetSection = newSections[sectionIndex];
-      
-      if (!sourceSection || !targetSection) return currentSections;
-
-      // Handle grouping (only within same section)
-      if (dragOverPosition === 'middle' && draggedItem.sectionIndex === sectionIndex) {
+        const newSections = [...currentSections];
+        const sourceSection = newSections[draggedItem.sectionIndex];
+        const targetSection = newSections[sectionIndex];
+        
         const sourceItem = sourceSection.items[draggedItem.itemIndex];
         const targetItem = targetSection.items[itemIndex];
-        
-        if (!sourceItem || !targetItem) return currentSections;
-        
-        // Don't group if already in same group
-        if (sourceItem.parallel_group_id && sourceItem.parallel_group_id === targetItem.parallel_group_id) {
-          return currentSections;
+
+        if (!sourceItem || !targetItem) {
+            console.log('Missing source or target item');
+            return currentSections;
         }
-        
-        // Create or join group
-        const groupId = targetItem.parallel_group_id || `group_${Date.now()}`;
-        sourceItem.parallel_group_id = groupId;
-        targetItem.parallel_group_id = groupId;
-        
-        // Update durations
-        const groupDuration = Math.max(
-          sourceItem.selected_duration || sourceItem.duration,
-          targetItem.selected_duration || targetItem.duration
-        );
-        
-        targetSection.items = targetSection.items.map(item => {
-          if (item.parallel_group_id === groupId) {
-            return {
-              ...item,
-              selected_duration: groupDuration,
-              duration: groupDuration
-            };
-          }
-          return item;
-        });
-      } else {
-        // Handle moving items between or within sections
-        const [originalMovedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
-        const insertIndex = dragOverPosition === 'bottom' ? itemIndex + 1 : itemIndex;
 
-        // Check if the moved item was part of a group
-        let finalMovedItem = originalMovedItem;
-        if (originalMovedItem.parallel_group_id) {
-          const oldGroupId = originalMovedItem.parallel_group_id;
-          
-          const remainingGroupItems = sourceSection.items.filter(
-            item => item.parallel_group_id === oldGroupId
-          );
+        // Check if this is a parallel grouping operation
+        if (dragOverPosition === 'middle' && isSameSection && isParallelDragActive) {
+            console.log('Creating parallel group');
+            
+            // If items are already in the same group, do nothing
+            if (sourceItem.parallel_group_id && sourceItem.parallel_group_id === targetItem.parallel_group_id) {
+                console.log('Items already in same group');
+                return currentSections;
+            }
+            
+            const groupId = `group_${Date.now()}`;
+            console.log('New group ID:', groupId);
 
-          if (remainingGroupItems.length <= 1) {
-            sourceSection.items = sourceSection.items.map(item => {
-              if (item.parallel_group_id === oldGroupId) {
-                const { parallel_group_id, ...rest } = item;
-                return rest;
-              }
-              return item;
+            // If target is already in a group, add source to that group
+            if (targetItem.parallel_group_id) {
+                sourceItem.parallel_group_id = targetItem.parallel_group_id;
+            } else {
+                // Create new group for both items
+                sourceItem.parallel_group_id = groupId;
+                targetItem.parallel_group_id = groupId;
+            }
+            
+            // Update durations for all items in the group
+            const groupDuration = Math.max(
+                sourceItem.selected_duration || sourceItem.duration,
+                targetItem.selected_duration || targetItem.duration
+            );
+            
+            targetSection.items = targetSection.items.map(item => {
+                if (item.parallel_group_id === (targetItem.parallel_group_id || groupId)) {
+                    return {
+                        ...item,
+                        selected_duration: groupDuration,
+                        duration: groupDuration
+                    };
+                }
+                return item;
             });
-            const { parallel_group_id, ...rest } = originalMovedItem;
-            finalMovedItem = rest;
-          }
+            
+            console.log('Updated section items:', targetSection.items);
+        } else {
+            // Handle regular item movement
+            console.log('Regular item movement');
+            const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
+            const insertIndex = dragOverPosition === 'bottom' ? itemIndex + 1 : itemIndex;
+            targetSection.items.splice(insertIndex, 0, movedItem);
         }
-
-        targetSection.items.splice(insertIndex, 0, finalMovedItem);
-      }
-      
-      return newSections;
+        
+        return newSections;
     });
 
+    // Reset drag state
     draggedItem = null;
     dragOverItem = null;
     dragOverPosition = null;
+    isParallelDragActive = false;
   }
 
   // Add this new function to handle section drops
@@ -792,54 +814,30 @@
     dragOverPosition = null;
   }
 
-  // Update the handleUngroup function with logging
+  // Add this function before the existing removeFromGroup function
   function handleUngroup(itemId) {
-    console.log('[handleUngroup] Starting ungroup for itemId:', itemId);
-    
-    if (!itemId) {
-      console.error('[handleUngroup] No itemId provided');
-      return;
-    }
-    
     sections.update(currentSections => {
-      console.log('[handleUngroup] Current sections:', JSON.stringify(currentSections, null, 2));
-      
       return currentSections.map(section => {
-        const groupId = section.items.find(item => 
-          (item.id === itemId || item.drill?.id === itemId)
-        )?.parallel_group_id;
-        
-        console.log('[handleUngroup] Found groupId:', groupId);
-        
+        const groupId = section.items.find(item => item.id === itemId)?.parallel_group_id;
         if (!groupId) return section;
 
-        const groupSize = section.items.filter(item => 
-          item.parallel_group_id === groupId
-        ).length;
-        console.log('[handleUngroup] Group size:', groupSize);
+        const groupSize = section.items.filter(item => item.parallel_group_id === groupId).length;
         
-        const updatedSection = {
+        return {
           ...section,
           items: section.items.map(item => {
             if (groupSize <= 2 && item.parallel_group_id === groupId) {
               // Remove group from all items if only 2 items in group
-              console.log('[handleUngroup] Removing group from item:', item.id || item.drill?.id);
               const { parallel_group_id, ...rest } = item;
               return rest;
-            } else if (item.id === itemId || item.drill?.id === itemId) {
-              // Just remove from the one item if more than 2 in group
-              console.log('[handleUngroup] Removing group from single item:', item.id || item.drill?.id);
+            } else if (item.id === itemId) {
+              // Just remove from the one item
               const { parallel_group_id, ...rest } = item;
               return rest;
             }
             return item;
           })
         };
-        
-        console.log('[handleUngroup] Updated section items:', 
-          JSON.stringify(updatedSection.items, null, 2));
-        
-        return updatedSection;
       });
     });
   }
@@ -1119,7 +1117,53 @@
     sectionDragPosition = null;
   }
 
-  // Add the new normalizeItems helper function
+  // Add these functions before the submitPlan function
+  async function searchDrills(query) {
+    const response = await fetch(`/api/drills/search?query=${encodeURIComponent(query)}`);
+    if (response.ok) {
+      searchResults = await response.json();
+    } else {
+      console.error('Failed to search drills');
+      searchResults = [];
+    }
+  }
+
+  function handleAddDrill(drill, sectionId) {
+    sections.update(currentSections => {
+      const newSections = [...currentSections];
+      const targetSection = newSections.find(s => s.id === sectionId);
+      
+      if (targetSection) {
+        const newDrill = {
+          id: drill.id,
+          type: 'drill',
+          name: drill.name,
+          drill: drill,
+          duration: 15,
+          selected_duration: 15
+        };
+        
+        targetSection.items = [...targetSection.items, newDrill];
+        
+        // Add success toast notification
+        toast.push(`Added "${drill.name}" to ${targetSection.name}`, {
+          theme: {
+            '--toastBackground': '#4CAF50',
+            '--toastColor': 'white'
+          }
+        });
+      }
+      
+      return newSections;
+    });
+    
+    showDrillSearch = false;
+    searchQuery = '';
+    searchResults = [];
+    selectedSectionForDrill = null;
+  }
+
+  // Add this helper function somewhere in your <script> tag
   function normalizeItems(items) {
     const normalized = [];
     const processedGroups = new Set();
@@ -1163,90 +1207,6 @@
     });
     return normalized;
   }
-
-  // Add new helper function for break duration updates
-  function updateBreakDuration(index, duration) {
-    $selectedItems.update(items => {
-      const updatedItems = [...items];
-      updatedItems[index].duration = duration;
-      return updatedItems;
-    });
-  }
-
-  // Add drill search functionality
-  async function searchDrills(query) {
-    const response = await fetch(`/api/drills/search?query=${encodeURIComponent(query)}`);
-    if (response.ok) {
-      searchResults = await response.json();
-    } else {
-      console.error('Failed to search drills');
-      searchResults = [];
-    }
-  }
-
-  // Replace old addDrillToPlan with new handleAddDrill
-  function handleAddDrill(drill, sectionId) {
-    sections.update(currentSections => {
-      const newSections = [...currentSections];
-      const targetSection = newSections.find(s => s.id === sectionId);
-      
-      if (targetSection) {
-        const newDrill = {
-          id: drill.id,
-          type: 'drill',
-          name: drill.name,
-          drill: drill,
-          duration: 15,
-          selected_duration: 15
-        };
-        
-        targetSection.items = [...targetSection.items, newDrill];
-        
-        // Add success toast notification
-        toast.push(`Added "${drill.name}" to ${targetSection.name}`, {
-          theme: {
-            '--toastBackground': '#4CAF50',
-            '--toastColor': 'white'
-          }
-        });
-      }
-      
-      return newSections;
-    });
-    
-    showDrillSearch = false;
-    searchQuery = '';
-    searchResults = [];
-    selectedSectionForDrill = null;
-  }
-
-  // Add new function to handle empty section drops
-  function handleEmptySectionDrop(e, sectionIndex) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!draggedItem) return;
-    
-    sections.update(currentSections => {
-      const newSections = [...currentSections];
-      const sourceSection = newSections[draggedItem.sectionIndex];
-      const targetSection = newSections[sectionIndex];
-      
-      if (!sourceSection || !targetSection) return currentSections;
-      
-      // Remove item from source section
-      const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
-      
-      // Add to target section
-      targetSection.items.push(movedItem);
-      
-      return newSections;
-    });
-    
-    draggedItem = null;
-    dragOverItem = null;
-    dragOverPosition = null;
-  }
 </script>
 
 <!-- Only show empty cart modal for new plans -->
@@ -1281,60 +1241,54 @@
   </div>
 {/if}
 
-<!-- Add this modal before the closing </div> of the container -->
+<!-- Add this modal markup just before the submit button -->
 {#if showDrillSearch}
-  <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
-      <div class="mt-3">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">Add Drill</h3>
-        
-        <!-- Search input -->
-        <div class="mb-4">
-          <input
-            type="text"
-            bind:value={searchQuery}
-            on:input={() => searchDrills(searchQuery)}
-            placeholder="Search drills..."
-            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
+  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-lg w-full max-h-[80vh] flex flex-col" on:click|stopPropagation>
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Add Drill to {selectedSectionForDrill ? $sections.find(s => s.id === selectedSectionForDrill)?.name || 'Section' : 'Section'}</h3>
+        <button 
+          class="text-gray-500 hover:text-gray-700"
+          on:click={() => {
+            showDrillSearch = false;
+            searchQuery = '';
+            searchResults = [];
+            selectedSectionForDrill = null;
+          }}
+        >
+          ✕
+        </button>
+      </div>
+      
+      <div class="mb-4">
+        <input
+          type="text"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md"
+          placeholder="Search drills..."
+          bind:value={searchQuery}
+          on:input={() => searchDrills(searchQuery)}
+        />
+      </div>
 
-        <!-- Search results -->
-        <div class="max-h-[400px] overflow-y-auto">
-          {#if searchResults.length === 0}
-            <p class="text-gray-500 text-center py-4">
-              {searchQuery ? 'No drills found' : 'Start typing to search drills'}
-            </p>
-          {:else}
-            <ul class="divide-y divide-gray-200">
-              {#each searchResults as drill}
-                <li class="py-3 hover:bg-gray-50 cursor-pointer px-2 rounded"
-                    on:click={() => handleAddDrill(drill, selectedSectionForDrill)}>
-                  <div class="flex justify-between items-center">
-                    <span>{drill.name}</span>
-                    <button class="text-blue-500 hover:text-blue-700">
-                      Add
-                    </button>
-                  </div>
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </div>
-
-        <!-- Close button -->
-        <div class="mt-4 flex justify-end">
-          <button
-            class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
-            on:click={() => {
-              showDrillSearch = false;
-              searchQuery = '';
-              searchResults = [];
-            }}
-          >
-            Close
-          </button>
-        </div>
+      <div class="flex-1 overflow-y-auto">
+        {#if searchResults.length > 0}
+          <ul class="space-y-2">
+            {#each searchResults as drill}
+              <li>
+                <button
+                  class="w-full text-left px-4 py-2 hover:bg-gray-100 rounded-md transition-colors"
+                  on:click={() => handleAddDrill(drill, selectedSectionForDrill)}
+                >
+                  {drill.name}
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {:else if searchQuery}
+          <p class="text-gray-500 text-center">No drills found</p>
+        {:else}
+          <p class="text-gray-500 text-center">Start typing to search for drills</p>
+        {/if}
       </div>
     </div>
   </div>
@@ -1445,10 +1399,20 @@
       <div 
         class="section-container bg-white rounded-lg shadow-sm p-4 mb-4"
         draggable="true"
-        on:dragstart={(e) => handleSectionDragStart(e, sectionIndex)}
+        on:dragstart={(e) => {
+          // Only handle section drag if we're dragging the container itself
+          if (e.target === e.currentTarget) {
+            handleSectionDragStart(e, sectionIndex);
+          }
+        }}
         on:dragover={(e) => handleSectionDragOver(e, sectionIndex)}
         on:dragleave={handleSectionDragLeave}
-        on:drop={(e) => handleSectionDrop(e, sectionIndex)}
+        on:drop={(e) => {
+          // Only handle section drop if we're dropping on the container itself
+          if (e.target === e.currentTarget) {
+            handleSectionDrop(e, sectionIndex);
+          }
+        }}
       >
         <div class="section-header flex items-center gap-4 mb-4">
           <input
@@ -1476,112 +1440,51 @@
         </div>
 
         <ul 
-          class="space-y-4 min-h-[50px]"
+          class="space-y-4"
           on:dragover|preventDefault
-          on:drop={(e) => section.items.length === 0 ? handleEmptySectionDrop(e, sectionIndex) : null}
+          on:drop|preventDefault
         >
-          {#if section.items.length === 0}
-            <div 
-              class="empty-section-placeholder h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-500"
-              on:dragover|preventDefault
-              on:drop={(e) => handleEmptySectionDrop(e, sectionIndex)}
+          {#each section.items as item, itemIndex}
+            <li 
+              class="timeline-item relative transition-all duration-200"
+              draggable="true"
+              on:dragstart={(e) => handleDragStart(e, sectionIndex, itemIndex)}
+              on:dragover={(e) => handleDragOver(e, sectionIndex, itemIndex)}
+              on:dragleave={handleDragLeave}
+              on:drop={(e) => handleDrop(e, sectionIndex, itemIndex)}
             >
-              Drag drills here
-            </div>
-          {:else}
-            {#each section.items as item, itemIndex}
-              {#if item.parallel_group_id}
-                <!-- Only render the group container for the first item in a group -->
-                {#if section.items.findIndex(i => i.parallel_group_id === item.parallel_group_id) === itemIndex}
-                  <div class="parallel-group-container">
-                    {#each section.items.filter(i => i.parallel_group_id === item.parallel_group_id) as groupItem, idx}
-                      <div class="parallel-group-member" key={`${section.id}-group-${item.parallel_group_id}-${idx}-${groupItem.id ?? `item-${idx}`}`}>
-                        <li class="timeline-item relative transition-all duration-200"
-                          draggable="true"
-                          on:dragstart={(e) => handleDragStart(e, sectionIndex, section.items.indexOf(groupItem))}
-                          on:dragover={(e) => handleDragOver(e, sectionIndex, section.items.indexOf(groupItem))}
-                          on:dragleave={handleDragLeave}
-                          on:drop={(e) => handleDrop(e, sectionIndex, section.items.indexOf(groupItem))}
-                        >
-                          <!-- Item content -->
-                          <div class="bg-white p-4 rounded-lg shadow-sm border transition-all duration-200 hover:shadow-md">
-                            <div class="flex justify-between items-center">
-                              <div class="flex items-center">
-                                <div class="mr-2 cursor-grab">⋮⋮</div>
-                                <span>{groupItem.name}</span>
-                              </div>
-                              <div class="flex items-center space-x-2">
-                                <!-- Add duration input for group items -->
-                                <div class="flex items-center">
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="120"
-                                    class="w-16 px-2 py-1 border rounded mr-2"
-                                    value={groupItem.selected_duration || groupItem.duration}
-                                    on:input={(e) => handleDurationChange(sectionIndex, section.items.indexOf(groupItem), parseInt(e.target.value) || 15)}
-                                  />
-                                  <span class="text-sm text-gray-600">min</span>
-                                </div>
-                                <button 
-                                  class="text-red-500 hover:text-red-700 text-sm"
-                                  on:click={() => {
-                                    console.log('Ungroup clicked for item:', groupItem);
-                                    handleUngroup(groupItem.id || groupItem.drill?.id);
-                                  }}
-                                >
-                                  Ungroup
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </li>
-                      </div>
-                    {/each}
+              <div class="bg-white p-4 rounded-lg shadow-sm border transition-all duration-200 hover:shadow-md">
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center">
+                    <div 
+                      class="mr-2 cursor-grab"
+                      on:mousedown={(e) => handleParallelDragStart(e, itemIndex)}
+                    >⋮⋮</div>
+                    <span>{item.name}</span>
                   </div>
-                {/if}
-              {:else}
-                <!-- Render non-grouped items as before -->
-                <li class="timeline-item relative transition-all duration-200"
-                  draggable="true"
-                  on:dragstart={(e) => handleDragStart(e, sectionIndex, itemIndex)}
-                  on:dragover={(e) => handleDragOver(e, sectionIndex, itemIndex)}
-                  on:dragleave={handleDragLeave}
-                  on:drop={(e) => handleDrop(e, sectionIndex, itemIndex)}
-                >
-                  <!-- Item content -->
-                  <div class="bg-white p-4 rounded-lg shadow-sm border transition-all duration-200 hover:shadow-md">
-                    <div class="flex justify-between items-center">
-                      <div class="flex items-center">
-                        <div class="mr-2 cursor-grab">⋮⋮</div>
-                        <span>{item.name}</span>
-                      </div>
-                      <div class="flex items-center space-x-2">
-                        <!-- Update duration input to pass indices -->
-                        <div class="flex items-center">
-                          <input
-                            type="number"
-                            min="1"
-                            max="120"
-                            class="w-16 px-2 py-1 border rounded mr-2"
-                            value={item.selected_duration || item.duration}
-                            on:input={(e) => handleDurationChange(sectionIndex, itemIndex, parseInt(e.target.value) || 15)}
-                          />
-                          <span class="text-sm text-gray-600">min</span>
-                        </div>
-                        <button 
-                          class="text-red-500 hover:text-red-700 text-sm"
-                          on:click={() => removeItem(sectionIndex, itemIndex)}
-                        >
-                          Remove
-                        </button>
-                      </div>
+                  <div class="flex items-center space-x-2">
+                    <div class="flex items-center">
+                      <input
+                        type="number"
+                        min="1"
+                        max="120"
+                        class="w-16 px-2 py-1 border rounded mr-2"
+                        value={item.selected_duration || item.duration}
+                        on:input={(e) => handleDurationChange(sectionIndex, itemIndex, parseInt(e.target.value) || 15)}
+                      />
+                      <span class="text-sm text-gray-600">min</span>
                     </div>
+                    <button 
+                      class="text-red-500 hover:text-red-700 text-sm"
+                      on:click={() => removeItem(sectionIndex, itemIndex)}
+                    >
+                      Remove
+                    </button>
                   </div>
-                </li>
-              {/if}
-            {/each}
-          {/if}
+                </div>
+              </div>
+            </li>
+          {/each}
         </ul>
       </div>
     {/each}
@@ -1837,7 +1740,6 @@
     cursor: grabbing;
   }
 
-  /* Add these new styles at the end of the style block */
   .break-insert-button {
     text-align: center;
     margin: -0.25rem 0;
@@ -1865,42 +1767,5 @@
 
   .timeline-item[data-type="break"]:hover {
     opacity: 1;
-  }
-
-  /* Add styles for empty section placeholder */
-  .empty-section-placeholder {
-    transition: all 0.2s ease;
-  }
-
-  .empty-section-placeholder:hover {
-    border-color: theme('colors.blue.500');
-    color: theme('colors.blue.500');
-  }
-
-  /* Update timeline-item styles to be more forgiving */
-  .timeline-item {
-    position: relative;
-    transition: all 0.2s ease;
-    padding: 0.5rem 0; /* Add padding to increase drop target area */
-  }
-
-  .timeline-item::before {
-    content: '';
-    position: absolute;
-    top: -0.5rem;
-    left: 0;
-    right: 0;
-    height: 1rem;
-    background: transparent;
-  }
-
-  .timeline-item::after {
-    content: '';
-    position: absolute;
-    bottom: -0.5rem;
-    left: 0;
-    right: 0;
-    height: 1rem;
-    background: transparent;
   }
 </style>

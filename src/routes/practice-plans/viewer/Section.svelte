@@ -8,6 +8,7 @@
   export let isActive = false;
   export let canEdit = false;
   export let sectionIndex = 0;
+  export let startTime = '09:00';
 
   const dispatch = createEventDispatcher();
   let isCollapsed = false;
@@ -127,6 +128,31 @@
     return acc;
   }, []);
 
+  // Helper function to add minutes to a time string
+  function addMinutes(timeStr, minutes) {
+    const [hours, mins] = timeStr.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, mins + minutes);
+    return date.getHours().toString().padStart(2, '0') + ':' + 
+           date.getMinutes().toString().padStart(2, '0');
+  }
+
+  // Calculate start time for each item
+  function calculateItemStartTime(items, itemIndex) {
+    let currentTime = startTime;
+    for (let i = 0; i < itemIndex; i++) {
+      const item = items[i];
+      if (item.type === 'parallel') {
+        // For parallel groups, use the maximum duration
+        const maxDuration = Math.max(...item.items.map(i => i.duration || i.selected_duration || 0));
+        currentTime = addMinutes(currentTime, maxDuration);
+      } else {
+        currentTime = addMinutes(currentTime, item.duration || item.selected_duration || 0);
+      }
+    }
+    return currentTime;
+  }
+
   function toggleCollapse() {
     isCollapsed = !isCollapsed;
     dispatch('collapse', { isCollapsed });
@@ -198,9 +224,16 @@
 
   {#if !isCollapsed}
     <div class="section-content" transition:slide>
-      {#each organizedItems as item}
+      {#each organizedItems as item, itemIndex}
         {#if item.isParallelGroup}
-          <ParallelGroup items={item.items} {canEdit} on:ungroup />
+          <ParallelGroup 
+            items={item.items}
+            {canEdit}
+            startTime={calculateItemStartTime(organizedItems, itemIndex)}
+            on:ungroup
+            on:edit
+            on:durationChange
+          />
         {:else}
           <div
             draggable={canEdit}
@@ -211,6 +244,7 @@
             <DrillCard 
               item={item}
               {canEdit}
+              startTime={calculateItemStartTime(organizedItems, itemIndex)}
               on:edit
               on:durationChange
             />

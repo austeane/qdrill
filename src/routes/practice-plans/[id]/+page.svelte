@@ -8,6 +8,8 @@
   import Timeline from '../viewer/Timeline.svelte';
   import Section from '../viewer/Section.svelte';
   import DeletePracticePlan from '$components/DeletePracticePlan.svelte';
+  import { goto } from '$app/navigation';
+  import { toast } from '@zerodevx/svelte-toast';
   
   export let data;
   const { practicePlan } = data;
@@ -23,6 +25,9 @@
   // Check edit permissions
   $: canEdit = $page.data.session?.user?.id === practicePlan.created_by || 
                practicePlan.is_editable_by_others;
+
+  // Add this near the other state variables
+  const isDescriptionExpanded = writable(true);
 
   // Intersection Observer setup for section tracking
   onMount(() => {
@@ -57,6 +62,37 @@
       section.scrollIntoView({ behavior: 'smooth' });
     }
   }
+
+  // Format time for display
+  function formatTime(timeStr) {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  }
+
+  // Add minutes to a time string
+  function addMinutes(timeStr, minutes) {
+    const [hours, mins] = timeStr.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, mins + minutes);
+    return date.getHours().toString().padStart(2, '0') + ':' + 
+           date.getMinutes().toString().padStart(2, '0');
+  }
+
+  // Calculate section start times
+  function calculateSectionStartTime(sections, sectionIndex) {
+    let currentTime = practicePlan.start_time?.slice(0, 5) || '09:00';
+    for (let i = 0; i < sectionIndex; i++) {
+      const section = sections[i];
+      const sectionDuration = section.items.reduce((total, item) => 
+        total + (item.duration || 0), 0);
+      currentTime = addMinutes(currentTime, sectionDuration);
+    }
+    return currentTime;
+  }
 </script>
 
 <Breadcrumb 
@@ -73,8 +109,37 @@
       <div>
         <h1 class="text-2xl font-bold">{practicePlan.name}</h1>
         {#if practicePlan.description}
-          <div class="mt-2 text-gray-600 prose prose-sm sm:prose lg:prose-lg">
-            {@html practicePlan.description}
+          <div class="mt-2">
+            {#if $isDescriptionExpanded}
+              <div class="flex justify-end">
+                <button 
+                  class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md mb-2"
+                  on:click={() => $isDescriptionExpanded = false}
+                >
+                  Show less of description ↑
+                </button>
+              </div>
+            {/if}
+            <div class="text-gray-600 prose prose-sm sm:prose lg:prose-lg" class:truncate={!$isDescriptionExpanded}>
+              {@html practicePlan.description}
+            </div>
+            <div class="flex justify-end mt-1">
+              {#if $isDescriptionExpanded}
+                <button 
+                  class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md"
+                  on:click={() => $isDescriptionExpanded = false}
+                >
+                  Show less of description ↓
+                </button>
+              {:else}
+                <button 
+                  class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md"
+                  on:click={() => $isDescriptionExpanded = true}
+                >
+                  Show more of description ↓
+                </button>
+              {/if}
+            </div>
           </div>
         {/if}
       </div>
@@ -100,8 +165,10 @@
       <div class="stat-card">
         <div class="stat-icon">⏱️</div>
         <div class="stat-content">
-          <span class="stat-label">Total Duration</span>
-          <span class="stat-value">{totalDuration} minutes</span>
+          <span class="stat-label">Time & Duration</span>
+          <span class="stat-value">
+            {formatTime(practicePlan.start_time?.slice(0, 5) || '09:00')} • {totalDuration} min
+          </span>
         </div>
       </div>
 
@@ -174,6 +241,7 @@
             isActive={section.id === $currentSectionId}
             {canEdit}
             sectionIndex={index}
+            startTime={calculateSectionStartTime(practicePlan.sections, index)}
           />
         </div>
       {/each}
@@ -223,5 +291,13 @@
       padding-left: 0.5rem;
       padding-right: 0.5rem;
     }
+  }
+
+  .truncate {
+    max-height: 3em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 </style>

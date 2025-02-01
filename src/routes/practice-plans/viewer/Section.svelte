@@ -105,6 +105,28 @@
     return acc;
   }, { single: [], parallel: {} });
 
+  // Sort items by order and create a combined array
+  $: sortedItems = section.items?.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  // Group consecutive parallel items
+  $: organizedItems = sortedItems?.reduce((acc, item) => {
+    if (item.parallel_group_id) {
+      const lastItem = acc[acc.length - 1];
+      if (lastItem?.isParallelGroup && lastItem.groupId === item.parallel_group_id) {
+        lastItem.items.push(item);
+      } else {
+        acc.push({
+          isParallelGroup: true,
+          groupId: item.parallel_group_id,
+          items: [item]
+        });
+      }
+    } else {
+      acc.push(item);
+    }
+    return acc;
+  }, []);
+
   function toggleCollapse() {
     isCollapsed = !isCollapsed;
     dispatch('collapse', { isCollapsed });
@@ -176,12 +198,10 @@
 
   {#if !isCollapsed}
     <div class="section-content" transition:slide>
-      {#each Object.entries(groupedItems.parallel) as [groupId, items]}
-        <ParallelGroup {items} {canEdit} on:ungroup />
-      {/each}
-
-      {#each groupedItems.single as item}
-        {#if item}
+      {#each organizedItems as item}
+        {#if item.isParallelGroup}
+          <ParallelGroup items={item.items} {canEdit} on:ungroup />
+        {:else}
           <div
             draggable={canEdit}
             on:dragstart={(e) => handleDragStart(e, item)}

@@ -81,23 +81,22 @@
   class:parallel={isInParallelGroup}
   class:expanded={isExpanded}
 >
-  <div class="card-header">
+  <div 
+    class="card-header"
+    on:click={toggleExpand}
+    role="button"
+    tabindex="0"
+    on:keydown={e => e.key === 'Enter' && toggleExpand()}
+  >
     <!-- Main Info -->
     <div class="header-content">
-      <button 
-        type="button"
-        class="expand-btn"
-        on:click={toggleExpand}
-        aria-label={isExpanded ? "Collapse drill details" : "Expand drill details"}
+      <svg
+        class="w-4 h-4 transform transition-transform {isExpanded ? 'rotate-180' : ''}"
+        viewBox="0 0 20 20"
+        fill="currentColor"
       >
-        <svg
-          class="w-4 h-4 transform transition-transform {isExpanded ? 'rotate-180' : ''}"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-        </svg>
-      </button>
+        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+      </svg>
 
       <div class="title-section">
         <h3 class="drill-title">
@@ -129,6 +128,7 @@
             value={normalizedItem.duration}
             on:input={handleDurationInput}
             on:blur={handleDurationInput}
+            on:click|stopPropagation={() => {}}
           />
           <span class="duration-label">min</span>
         {:else}
@@ -290,6 +290,14 @@
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+  }
+
+  .card-header:hover {
+    background: theme('colors.gray.50');
   }
 
   .header-content {
@@ -297,25 +305,6 @@
     align-items: center;
     gap: 0.75rem;
     flex: 1;
-  }
-
-  .expand-btn {
-    padding: 0.25rem;
-    color: theme('colors.gray.500');
-    transition: all 0.2s ease;
-  }
-
-  .expand-btn:hover {
-    color: theme('colors.gray.700');
-    background: theme('colors.gray.100');
-    border-radius: 0.25rem;
-  }
-
-  .title-section {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
   }
 
   .drill-title {

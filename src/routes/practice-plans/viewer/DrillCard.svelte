@@ -7,6 +7,7 @@
   export let canEdit = false;
   export let isInParallelGroup = false;
   export let editable = false;
+  export let startTime = null;
 
   const dispatch = createEventDispatcher();
   let isExpanded = false;
@@ -18,7 +19,7 @@
 
   $: normalizedItem = {
     ...item,
-    name: item?.name || item?.drill?.name || 'Unnamed Item',
+    name: item?.type === 'break' ? 'Break' : (item?.name || item?.drill?.name || 'Unnamed Item'),
     duration: item?.selected_duration || item?.duration || item?.drill?.duration || 15,
     description: item?.brief_description || item?.drill?.brief_description || '',
     detailedDescription: item?.detailed_description || item?.drill?.detailed_description || '',
@@ -61,6 +62,16 @@
     if (newDuration > 0) {
       handleDurationChange(newDuration);
     }
+  }
+
+  // Helper function to format time
+  function formatTime(timeStr) {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
   }
 </script>
 
@@ -121,8 +132,15 @@
           />
           <span class="duration-label">min</span>
         {:else}
-          <span class="duration-display">{normalizedItem.duration}</span>
-          <span class="duration-label">min</span>
+          <div class="flex flex-col items-end">
+            {#if startTime}
+              <span class="text-sm text-gray-500">{formatTime(startTime)}</span>
+            {/if}
+            <div class="flex items-center">
+              <span class="duration-display">{normalizedItem.duration}</span>
+              <span class="duration-label">min</span>
+            </div>
+          </div>
         {/if}
       </div>
     </div>

@@ -1,172 +1,9 @@
-# Task Organization and Implementation Plan
-
-## Skill Management
-### 1. Dynamic Skill Addition
-**Files Needed**: 
-- `src/routes/drills/DrillForm.svelte`
-- `src/lib/stores/drillsStore.js`
-- `src/lib/constants/skills.js`
-
-**Description**: Enable dynamic addition of new skills during drill creation/editing. Should be able to press enter or a button to add the skill, or use the dropdown to select existing skill.
-
-**Implementation Notes**:
-- Check current skill handling in DrillForm.svelte (lines 32-63)
-
-**Concerns**:
-- Verify skill uniqueness before adding
-- Normalize of skill names (caps and spacing)
-
-### 1b. Bad inputs in skills
-
-**Files Needed**: 
-- `src/routes/api/skills/+server.js`
-- `src/lib/constants/skills.js`
-- `src/routes/drills/DrillForm.svelte`
-
-**Description**: Fix inconsistent skill storage and normalization issues in the skills table.
-
-**Issues**:
-- Inconsistent casing (e.g., "Close outs" vs "close outs")
-- Skills stored as JSON strings instead of plain text
-- Duplicate skills with different casing
-- Inconsistent normalization across entry points
-
-**Implementation Notes**:
-- Add skill name normalization (case, whitespace)
-- Clean up JSON string entries and merge duplicates
-- Update DrillForm to handle skills consistently
-- Add validation to prevent future bad inputs
-- Delete from db bad entries
-
-**Concerns**:
-- Maintain compatibility with existing drills
-- Handle migration of existing skills data
-
-Skill column from skills table:
-Cuts
-Close outs
-Positioning
-close outs
-marked defence
-throwbacks
-throwing
-picks
-zone defence
-driving
-shooting
-catching (chasers)
-catching (beaters)
-dodgeball blocks
-dodging
-communication
-timing
-tackling
-tracking
-passing
-positioning
-decision making
-speed
-agility
-offence
-defence
-Ball carrying
-Wing
-Timing
-Communication
-Throwing
-Offence
-Defence
-Tackling
-Tracking
-Shooting
-Decision making
-Strips
-Driving
-Agility
-Speed
-{"skill":"Offence","usage_count":3,"isPredefined":true}
-{"skill":"Throwing","usage_count":4,"isPredefined":true}
-{"skill":"{\"skill\":\"Close outs\",\"usage_count\":2,\"isPredefined\":true}","usage_count":1,"isPredefined":false}
-{"skill":"Agility","usage_count":1,"isPredefined":true}
-{"skill":"Reaction time","usage_count":0,"isPredefined":true}
-{"skill":"Close outs","usage_count":2,"isPredefined":true}
-Passing
-Catching (chasers)
-
-## UI/UX Improvements
-
-
-
-
-### 3. Save Feedback
-**Files Needed**:
-- `src/routes/drills/DrillForm.svelte` (handles save operations)
-
-**Description**: No visual feedback during drill save operations.
-## Search and Selection Issues
-
-### 1. Skills Search Fix
-**Files Needed**:
-- `src/routes/drills/DrillForm.svelte` (contains skills search and selection UI)
-- `src/lib/stores/drillsStore.js` (contains skills filtering logic)
-- `src/components/FilterPanel.svelte` (for reference implementation of skills filtering)
-
-**Description**: Fix non-functioning skills search functionality.
-
-**Implementation Notes**:
-- Current implementation includes:
-  - Skills search input with suggestions dropdown
-  - Skills selection modal with search functionality
-  - Skills store with filtering logic
-- Need to fix:
-  - Event handlers in DrillForm.svelte (lines 183-260)
-  - Search and filtering logic in drillsStore.js
-  - Suggestion display and selection UI
-- Consider using FilterPanel.svelte's implementation as reference:
-  - Uses ThreeStateCheckbox for selection
-  - Implements debounced search
-  - Handles keyboard navigation
-
-**Concerns**:
-- Verify event handler bindings
-- Ensure proper state updates in store
-- Test search with various input patterns
-- Consider case sensitivity handling
-- Add proper error handling for failed searches
-- Test with large datasets
-- Ensure proper cleanup of event listeners
-
-### 2. Skills Dropdown Format
-**Files Needed**:
-- `src/routes/drills/DrillForm.svelte` (contains skills dropdown)
-- `src/lib/constants/skills.js` (contains predefined skills)
-- `src/components/FilterPanel.svelte` (for reference implementation)
-
-**Description**: Remove "predefined" text in brackets from skills dropdown.
-
-**Implementation Notes**:
-- Current dropdown shows "[predefined]" text for predefined skills
-- Need to update skill display format in:
-  - Main skills input dropdown
-  - Skills selection modal
-  - Selected skills display
-- Consider using FilterPanel.svelte's clean label display
-
-**Concerns**:
-- Maintain distinction between predefined and custom skills in data
-- Update any sorting/filtering that relies on "[predefined]" text
-- Ensure consistent display across all skill selection UIs
-- Test with both predefined and custom skills
-- Verify no impact on skill storage/retrieval
 
 ## Section Management
 
 ### 1. Section Reordering
 **Files Needed**:
-- `src/routes/practice-plans/wizard/sections/+page.svelte`
-- `src/routes/practice-plans/wizard/timeline/+page.svelte`
-- `src/lib/stores/wizardStore.js`
-- `src/lib/stores/wizardValidation.js`
+- `src/routes/practice-plans/PracticePlanForm.svelte`
 
 **Description**: Implement section reordering functionality.
 
@@ -186,10 +23,7 @@ Catching (chasers)
 
 ### 2. Drill Duration Editing
 **Files Needed**:
-- `src/routes/practice-plans/PracticePlanForm.svelte`
-- `src/routes/practice-plans/wizard/drills/+page.svelte`
 - `src/routes/practice-plans/viewer/DrillCard.svelte`
-- `src/lib/stores/wizardStore.js`
 
 **Description**: Enable editing of individual drill durations.
 
@@ -210,7 +44,6 @@ Catching (chasers)
 ### 3. Drill Ordering Preservation
 **Files Needed**:
 - `src/routes/practice-plans/PracticePlanForm.svelte`
-- `src/routes/practice-plans/wizard/drills/+page.svelte`
 - `src/routes/api/practice-plans/[id]/+server.js`
 - Database schema (practice_plan_drills table with order_in_plan column)
 

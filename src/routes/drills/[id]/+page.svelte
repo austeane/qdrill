@@ -405,7 +405,9 @@
 
       <div class="mb-6">
         <h2 class="text-lg font-semibold mb-2">Detailed Description</h2>
-        <p class="whitespace-pre-wrap">{$drill.detailed_description}</p>
+        <div class="prose prose-sm sm:prose lg:prose-lg">
+          {@html $drill.detailed_description}
+        </div>
       </div>
 
       {#if $drill.video_link}

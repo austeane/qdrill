@@ -230,23 +230,37 @@ export const PUT = async ({ params, request, locals }) => {
                      (practice_plan_id, id, name, "order", goals, notes)
                      VALUES ($1, $2, $3, $4, $5, $6)
                      RETURNING id`,
-                    [id, section.id, section.name, section.order, 
-                     section.goals, section.notes]
+                    [id, section.id, section.name, section.order, section.goals, section.notes]
                 );
 
-                // Insert items for this section
+                // Insert items with explicit ordering
                 if (section.items?.length > 0) {
-                    for (const [index, item] of section.items.entries()) {
-                        await client.query(
-                            `INSERT INTO practice_plan_drills 
-                             (practice_plan_id, section_id, drill_id, 
-                              order_in_plan, duration, type, parallel_group_id)
-                             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                            [id, section.id, item.type === 'drill' ? item.id : null,
-                             index, item.duration || item.selected_duration,
-                             item.type, item.parallel_group_id]
-                        );
-                    }
+                    const values = section.items.map((item, index) => ({
+                        practice_plan_id: id,
+                        section_id: section.id,
+                        drill_id: item.type === 'drill' ? item.id : null,
+                        order_in_plan: index,
+                        duration: item.duration || item.selected_duration,
+                        type: item.type,
+                        parallel_group_id: item.parallel_group_id
+                    }));
+
+                    // Use a single bulk insert for better performance
+                    const valueStrings = values.map((_, index) => 
+                        `($${index * 7 + 1}, $${index * 7 + 2}, $${index * 7 + 3}, $${index * 7 + 4}, $${index * 7 + 5}, $${index * 7 + 6}, $${index * 7 + 7})`
+                    );
+                    
+                    const flatValues = values.flatMap(v => [
+                        v.practice_plan_id, v.section_id, v.drill_id, 
+                        v.order_in_plan, v.duration, v.type, v.parallel_group_id
+                    ]);
+
+                    await client.query(
+                        `INSERT INTO practice_plan_drills 
+                         (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, parallel_group_id)
+                         VALUES ${valueStrings.join(', ')}`,
+                        flatValues
+                    );
                 }
             }
         }

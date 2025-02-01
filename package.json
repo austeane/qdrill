@@ -22,6 +22,7 @@
 		"@playwright/test": "^1.49.0",
 		"@sveltejs/adapter-vercel": "^5.4.8",
 		"@sveltejs/kit": "^2.8.4",
+		"@tailwindcss/typography": "^0.5.16",
 		"@types/cookie": "^1.0.0",
 		"autoprefixer": "^10.4.20",
 		"cypress": "^13.16.0",

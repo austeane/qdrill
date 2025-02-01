@@ -206,6 +206,10 @@
   let dragOverItem = null;
   let dragOverPosition = null; // 'top', 'middle', or 'bottom'
 
+  let draggedSection = null;
+  let dragOverSection = null;
+  let sectionDragPosition = null; // 'top' or 'bottom'
+
   function closeModal() {
     showEmptyCartModal = false;
   }
@@ -220,7 +224,7 @@
       
       const formValues = {
         planName: String($planName || ''),
-        planDescription: String($planDescription || ''),
+        planDescription: String($planDescription || ''), // Verify this shows content
         phaseOfSeason: String($phaseOfSeason || ''),
         estimatedParticipants: String($estimatedNumberOfParticipants || ''),
         practiceGoals: $practiceGoals.map(goal => String(goal || '')),
@@ -394,15 +398,54 @@
     });
   }
 
-  // Function to handle duration changes for drills
-  function handleDurationChange(item, newDuration) {
-    $selectedItems.update(items => {
-      return items.map(it => {
-        if (it.id === item.id) {
-          return { ...it, selected_duration: newDuration };
-        }
-        return it;
-      });
+  // Add this logging function
+  function logSections(message) {
+    console.log(message, $sections.map(section => ({
+      id: section.id,
+      name: section.name,
+      items: section.items.map(item => ({
+        id: item.id,
+        drill_id: item.drill?.id,
+        name: item.name,
+        duration: item.duration,
+        selected_duration: item.selected_duration,
+        parallel_group_id: item.parallel_group_id
+      }))
+    })));
+  }
+
+  // Update the handleDurationChange function
+  function handleDurationChange(sectionIndex, itemIndex, newDuration) {
+    console.log(`Updating duration for section ${sectionIndex}, item ${itemIndex} to ${newDuration}`);
+    
+    sections.update(currentSections => {
+      const newSections = [...currentSections];
+      const section = newSections[sectionIndex];
+      const item = section.items[itemIndex];
+
+      if (item.parallel_group_id) {
+        // If item is in a parallel group, update all items in that group within this section
+        section.items = section.items.map(it => {
+          if (it.parallel_group_id === item.parallel_group_id) {
+            return {
+              ...it,
+              selected_duration: newDuration,
+              duration: newDuration
+            };
+          }
+          return it;
+        });
+      } else {
+        // Update just this specific item
+        section.items[itemIndex] = {
+          ...item,
+          selected_duration: newDuration,
+          duration: newDuration
+        };
+      }
+
+      logSections('Updated sections after duration change:');
+      return newSections;
     });
   }
 
@@ -736,7 +779,7 @@
   }
 
   // Add this new function to handle section drops
-  function handleSectionDrop(e, sectionIndex) {
+  function handleItemIntoSectionDrop(e, sectionIndex) {
     e.preventDefault();
     if (!draggedItem) return;
 
@@ -971,15 +1014,16 @@
     }
   }
 
-  // Add this helper function near the top of your script
+  // Update the isInGroup helper function to be more robust
   function isInGroup(item, items, currentIndex) {
     if (!item.parallel_group_id) return false;
     
-    // Check if this item's group has already been rendered
-    return items.some((otherItem, idx) => 
-      idx < currentIndex && 
-      otherItem.parallel_group_id === item.parallel_group_id
+    // Check if this item's group has already been started rendering
+    const firstGroupItemIndex = items.findIndex(i => 
+      i.parallel_group_id === item.parallel_group_id
     );
+    
+    return firstGroupItemIndex !== -1 && firstGroupItemIndex < currentIndex;
   }
 
   // Add this reactive statement near your other reactive statements
@@ -990,9 +1034,72 @@
     }
   }
 
-  // Add handler for rich text changes
-  function handleDescriptionChange(e) {
-    planDescription.set(e.detail.content);
+  // Add this function to handle section reordering
+  function handleSectionDragStart(e, sectionIndex) {
+    draggedSection = sectionIndex;
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleSectionDragOver(e, sectionIndex) {
+    e.preventDefault();
+    if (draggedSection === null || draggedSection === sectionIndex) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    
+    // Determine if we're in the top or bottom half
+    sectionDragPosition = y < rect.height / 2 ? 'top' : 'bottom';
+    dragOverSection = sectionIndex;
+
+    // Remove existing indicators
+    e.currentTarget.classList.remove('border-t-4', 'border-b-4');
+    
+    // Add visual indicator
+    if (sectionDragPosition === 'top') {
+      e.currentTarget.classList.add('border-t-4');
+    } else {
+      e.currentTarget.classList.add('border-b-4');
+    }
+  }
+
+  function handleSectionDragLeave(e) {
+    e.currentTarget.classList.remove('border-t-4', 'border-b-4');
+    dragOverSection = null;
+    sectionDragPosition = null;
+  }
+
+  function handleSectionDrop(e, sectionIndex) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('border-t-4', 'border-b-4');
+
+    if (draggedSection === null || draggedSection === sectionIndex) return;
+
+    sections.update(currentSections => {
+      const newSections = [...currentSections];
+      const [movedSection] = newSections.splice(draggedSection, 1);
+      
+      // Calculate insert position
+      let insertIndex = sectionIndex;
+      if (sectionDragPosition === 'bottom') {
+        insertIndex++;
+      }
+      // Adjust index if we're moving to a later position
+      if (draggedSection < sectionIndex) {
+        insertIndex--;
+      }
+      
+      newSections.splice(insertIndex, 0, movedSection);
+      
+      // Update order property for all sections
+      return newSections.map((section, index) => ({
+        ...section,
+        order: index
+      }));
+    });
+
+    draggedSection = null;
+    dragOverSection = null;
+    sectionDragPosition = null;
   }
 </script>
 
@@ -1046,6 +1153,7 @@
         <svelte:component 
           this={Editor}
           apiKey={import.meta.env.VITE_TINY_API_KEY}
+          bind:value={$planDescription}
           init={{
             height: 300,
             menubar: false,
@@ -1058,11 +1166,9 @@
                     'bold italic | alignleft aligncenter ' +
                     'alignright alignjustify | bullist numlist outdent indent | ' +
                     'removeformat | help',
-            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "San Francisco", Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
             branding: false
           }}
-          value={$planDescription}
-          on:change={handleDescriptionChange}
         />
       </div>
     {:else}
@@ -1120,25 +1226,14 @@
 
   <!-- Selected Drills and Breaks with drag-and-drop -->
   <div class="practice-plan-sections mb-6">
-    {#each $sections as section, sectionIndex (section.id)}
+    {#each $sections as section, sectionIndex}
       <div 
         class="section-container bg-white rounded-lg shadow-sm p-4 mb-4"
-        on:dragover|preventDefault={(e) => {
-          // Only show section drop indicator if we're not over an item
-          if (!e.target.closest('.timeline-item')) {
-            e.currentTarget.classList.add('section-drag-over');
-          }
-        }}
-        on:dragleave|preventDefault={(e) => {
-          e.currentTarget.classList.remove('section-drag-over');
-        }}
-        on:drop|preventDefault={(e) => {
-          // Only handle section-level drop if we're not over an item
-          if (!e.target.closest('.timeline-item')) {
-            e.currentTarget.classList.remove('section-drag-over');
-            handleSectionDrop(e, sectionIndex);
-          }
-        }}
+        draggable="true"
+        on:dragstart={(e) => handleSectionDragStart(e, sectionIndex)}
+        on:dragover={(e) => handleSectionDragOver(e, sectionIndex)}
+        on:dragleave={handleSectionDragLeave}
+        on:drop={(e) => handleSectionDrop(e, sectionIndex)}
       >
         <div class="section-header flex items-center gap-4 mb-4">
           <input
@@ -1161,72 +1256,43 @@
           on:dragover|preventDefault
           on:drop|preventDefault
         >
-          {#if section.items && section.items.length > 0}
-            {#each section.items as item, itemIndex (item.id || `${section.id}-item-${itemIndex}`)}
-              {#if item.parallel_group_id && !isInGroup(item, section.items, itemIndex)}
+          {#each section.items as item, itemIndex}
+            {#if item.parallel_group_id}
+              <!-- Only render the group container for the first item in a group -->
+              {#if section.items.findIndex(i => i.parallel_group_id === item.parallel_group_id) === itemIndex}
                 <div class="parallel-group-container">
-                  <div class="parallel-group-member">
-                    <li 
-                      class="timeline-item relative transition-all duration-200"
-                      draggable="true"
-                      on:dragstart={(e) => {
-                        handleDragStart(e, sectionIndex, itemIndex);
-                      }}
-                      on:dragover={(e) => {
-                        handleDragOver(e, sectionIndex, itemIndex);
-                      }}
-                      on:dragleave={handleDragLeave}
-                      on:drop={(e) => {
-                        handleDrop(e, sectionIndex, itemIndex);
-                      }}
-                    >
-                      <div class="bg-white p-4 rounded-lg shadow-sm border transition-all duration-200 hover:shadow-md">
-                        <div class="flex justify-between items-center">
-                          <div class="flex items-center">
-                            <div class="mr-2 cursor-grab">⋮⋮</div>
-                            <span>{item.name}</span>
-                          </div>
-                          <div class="flex items-center space-x-2">
-                            <span>{item.selected_duration || item.duration} minutes</span>
-                            <button 
-                              class="text-red-500 hover:text-red-700 text-sm"
-                              on:click={() => handleUngroup(item.id)}
-                            >
-                              Ungroup
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  </div>
-                  
-                  {#each section.items.filter(i => i.parallel_group_id === item.parallel_group_id && i.id !== item.id) as groupedItem}
-                    <div class="parallel-group-member">
-                      <li 
-                        class="timeline-item relative transition-all duration-200"
+                  {#each section.items.filter(i => i.parallel_group_id === item.parallel_group_id) as groupItem, idx}
+                    <div class="parallel-group-member" key={`${section.id}-group-${item.parallel_group_id}-${idx}-${groupItem.id ?? `item-${idx}`}`}>
+                      <li class="timeline-item relative transition-all duration-200"
                         draggable="true"
-                        on:dragstart={(e) => {
-                          handleDragStart(e, sectionIndex, section.items.indexOf(groupedItem));
-                        }}
-                        on:dragover={(e) => {
-                          handleDragOver(e, sectionIndex, section.items.indexOf(groupedItem));
-                        }}
+                        on:dragstart={(e) => handleDragStart(e, sectionIndex, section.items.indexOf(groupItem))}
+                        on:dragover={(e) => handleDragOver(e, sectionIndex, section.items.indexOf(groupItem))}
                         on:dragleave={handleDragLeave}
-                        on:drop={(e) => {
-                          handleDrop(e, sectionIndex, section.items.indexOf(groupedItem));
-                        }}
+                        on:drop={(e) => handleDrop(e, sectionIndex, section.items.indexOf(groupItem))}
                       >
+                        <!-- Item content -->
                         <div class="bg-white p-4 rounded-lg shadow-sm border transition-all duration-200 hover:shadow-md">
                           <div class="flex justify-between items-center">
                             <div class="flex items-center">
                               <div class="mr-2 cursor-grab">⋮⋮</div>
-                              <span>{groupedItem.name}</span>
+                              <span>{groupItem.name}</span>
                             </div>
                             <div class="flex items-center space-x-2">
-                              <span>{groupedItem.selected_duration || groupedItem.duration} minutes</span>
+                              <!-- Add duration input for group items -->
+                              <div class="flex items-center">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="120"
+                                  class="w-16 px-2 py-1 border rounded mr-2"
+                                  value={groupItem.selected_duration || groupItem.duration}
+                                  on:input={(e) => handleDurationChange(sectionIndex, section.items.indexOf(groupItem), parseInt(e.target.value) || 15)}
+                                />
+                                <span class="text-sm text-gray-600">min</span>
+                              </div>
                               <button 
                                 class="text-red-500 hover:text-red-700 text-sm"
-                                on:click={() => handleUngroup(groupedItem.id)}
+                                on:click={() => handleUngroup(groupItem.id)}
                               >
                                 Ungroup
                               </button>
@@ -1237,46 +1303,48 @@
                     </div>
                   {/each}
                 </div>
-              {:else if !isInGroup(item, section.items, itemIndex)}
-                <li 
-                  class="timeline-item relative transition-all duration-200"
-                  draggable="true"
-                  on:dragstart={(e) => {
-                    handleDragStart(e, sectionIndex, itemIndex);
-                  }}
-                  on:dragover={(e) => {
-                    handleDragOver(e, sectionIndex, itemIndex);
-                  }}
-                  on:dragleave={handleDragLeave}
-                  on:drop={(e) => {
-                    handleDrop(e, sectionIndex, itemIndex);
-                  }}
-                >
-                  <div class="bg-white p-4 rounded-lg shadow-sm border transition-all duration-200 hover:shadow-md">
-                    <div class="flex justify-between items-center">
+              {/if}
+            {:else}
+              <!-- Render non-grouped items as before -->
+              <li class="timeline-item relative transition-all duration-200"
+                draggable="true"
+                on:dragstart={(e) => handleDragStart(e, sectionIndex, itemIndex)}
+                on:dragover={(e) => handleDragOver(e, sectionIndex, itemIndex)}
+                on:dragleave={handleDragLeave}
+                on:drop={(e) => handleDrop(e, sectionIndex, itemIndex)}
+              >
+                <!-- Item content -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border transition-all duration-200 hover:shadow-md">
+                  <div class="flex justify-between items-center">
+                    <div class="flex items-center">
+                      <div class="mr-2 cursor-grab">⋮⋮</div>
+                      <span>{item.name}</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <!-- Update duration input to pass indices -->
                       <div class="flex items-center">
-                        <div class="mr-2 cursor-grab">⋮⋮</div>
-                        <span>{item.name}</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="120"
+                          class="w-16 px-2 py-1 border rounded mr-2"
+                          value={item.selected_duration || item.duration}
+                          on:input={(e) => handleDurationChange(sectionIndex, itemIndex, parseInt(e.target.value) || 15)}
+                        />
+                        <span class="text-sm text-gray-600">min</span>
                       </div>
-                      <div class="flex items-center space-x-2">
-                        <span>{item.selected_duration || item.duration} minutes</span>
-                        <button 
-                          class="text-red-500 hover:text-red-700 text-sm"
-                          on:click={() => removeItem(sectionIndex, itemIndex)}
-                        >
-                          Remove
-                        </button>
-                      </div>
+                      <button 
+                        class="text-red-500 hover:text-red-700 text-sm"
+                        on:click={() => removeItem(sectionIndex, itemIndex)}
+                      >
+                        Remove
+                      </button>
                     </div>
                   </div>
-                </li>
-              {/if}
-            {/each}
-          {:else}
-            <li class="text-gray-500 italic p-4 border-2 border-dashed border-gray-300 rounded-lg">
-              Drop items here
-            </li>
-          {/if}
+                </div>
+              </li>
+            {/if}
+          {/each}
         </ul>
       </div>
     {/each}
@@ -1491,6 +1559,29 @@
   }
 
   .timeline-item:active {
+    cursor: grabbing;
+  }
+
+  /* Add these styles */
+  .section-container {
+    transition: border-color 0.2s ease;
+    border: 2px solid transparent;
+  }
+
+  .section-container.border-t-4 {
+    border-top: 4px solid theme('colors.blue.500');
+  }
+
+  .section-container.border-b-4 {
+    border-bottom: 4px solid theme('colors.blue.500');
+  }
+
+  /* Add a grab cursor to indicate draggability */
+  .section-container {
+    cursor: grab;
+  }
+
+  .section-container:active {
     cursor: grabbing;
   }
 </style>

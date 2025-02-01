@@ -73,7 +73,9 @@
       <div>
         <h1 class="text-2xl font-bold">{practicePlan.name}</h1>
         {#if practicePlan.description}
-          <p class="mt-2 text-gray-600">{practicePlan.description}</p>
+          <div class="mt-2 text-gray-600 prose prose-sm sm:prose lg:prose-lg">
+            {@html practicePlan.description}
+          </div>
         {/if}
       </div>
       <div class="flex items-center gap-4">

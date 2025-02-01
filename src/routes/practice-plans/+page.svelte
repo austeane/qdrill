@@ -346,7 +346,6 @@
                                 {plan.name}
                             </a>
                         </h2>
-                        <p class="text-gray-600 mb-2">{plan.description}</p>
                     </div>
                     <div class="absolute right-0 top-0">
                         <UpvoteDownvote practicePlanId={plan.id} />

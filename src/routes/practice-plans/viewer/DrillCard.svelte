@@ -6,6 +6,7 @@
   export let item;
   export let canEdit = false;
   export let isInParallelGroup = false;
+  export let editable = false;
 
   const dispatch = createEventDispatcher();
   let isExpanded = false;
@@ -53,6 +54,13 @@
       itemId: item.id, 
       duration: parseInt(newDuration) 
     });
+  }
+
+  function handleDurationInput(event) {
+    const newDuration = parseInt(event.target.value) || normalizedItem.duration;
+    if (newDuration > 0) {
+      handleDurationChange(newDuration);
+    }
   }
 </script>
 
@@ -102,8 +110,20 @@
 
       <!-- Duration Control -->
       <div class="duration-control">
-        <span class="duration-display">{normalizedItem.duration}</span>
-        <span class="duration-label">min</span>
+        {#if editable}
+          <input
+            type="number"
+            min="1"
+            class="duration-input"
+            value={normalizedItem.duration}
+            on:input={handleDurationInput}
+            on:blur={handleDurationInput}
+          />
+          <span class="duration-label">min</span>
+        {:else}
+          <span class="duration-display">{normalizedItem.duration}</span>
+          <span class="duration-label">min</span>
+        {/if}
       </div>
     </div>
   </div>
@@ -302,7 +322,7 @@
   }
 
   .duration-input {
-    width: 3rem;
+    width: 4rem;
     padding: 0.25rem;
     border: 1px solid theme('colors.gray.300');
     border-radius: 0.25rem;

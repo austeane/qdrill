@@ -320,7 +320,9 @@
                       {drill.name}
                     </a>
                   </h2>
-                  <p class="text-gray-600 mt-2">{drill.brief_description}</p>
+                  <div class="prose prose-sm mt-2 text-gray-600">
+                    {@html drill.brief_description}
+                  </div>
                 </div>
                 {#if dev || drill.created_by === $page.data.session?.user?.id}
                     <button

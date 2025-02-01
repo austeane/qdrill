@@ -641,10 +641,9 @@
     fetchParentDrills();
   }
 
-  // Add handler for rich text changes
+  // Update the Editor initialization and handling
   function handleDescriptionChange(e) {
     detailed_description.set(e.detail.content);
-    scheduleAutoSave(); // If you have auto-save functionality
   }
 
   // Modify the Editor import and initialization
@@ -705,36 +704,28 @@
               
               {#if Editor}
                 <div class="min-h-[300px]">
-                  {#if true}
-                    {@const editorProps = {
-                      apiKey: import.meta.env.VITE_TINY_API_KEY,
-                      init: {
-                        height: 300,
-                        menubar: false,
-                        plugins: [
-                          'advlist', 'autolink', 'lists', 'link', 'charmap',
-                          'anchor', 'searchreplace', 'visualblocks', 'code',
-                          'insertdatetime', 'table', 'code', 'help', 'wordcount'
-                        ],
-                        toolbar: 'undo redo | blocks | ' +
-                                'bold italic | alignleft aligncenter ' +
-                                'alignright alignjustify | bullist numlist outdent indent | ' +
-                                'removeformat | help',
-                        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
-                        branding: false
-                      },
-                      value: $detailed_description,
+                  <svelte:component 
+                    this={Editor}
+                    apiKey={import.meta.env.VITE_TINY_API_KEY}
+                    bind:value={$detailed_description}
+                    init={{
+                      height: 300,
+                      menubar: false,
+                      plugins: [
+                        'advlist', 'autolink', 'lists', 'link', 'charmap',
+                        'anchor', 'searchreplace', 'visualblocks', 'code',
+                        'insertdatetime', 'table', 'code', 'help', 'wordcount'
+                      ],
+                      toolbar: 'undo redo | blocks | ' +
+                              'bold italic | alignleft aligncenter ' +
+                              'alignright alignjustify | bullist numlist outdent indent | ' +
+                              'removeformat | help',
+                      content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
+                      branding: false
                     }}
-                    {console.log('Rendering Editor with props:', editorProps)}
-                    <svelte:component 
-                      this={Editor} 
-                      {...editorProps}
-                      on:change={handleDescriptionChange}
-                    />
-                  {/if}
+                  />
                 </div>
               {:else}
-                <p class="text-yellow-500">Editor not loaded yet...</p>
                 <textarea
                   id="detailed_description"
                   bind:value={$detailed_description}

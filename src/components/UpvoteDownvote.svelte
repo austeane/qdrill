@@ -3,7 +3,7 @@
     import { writable } from 'svelte/store';
     import { page } from '$app/stores';
     import { signIn } from '@auth/sveltekit/client';
-    import { ChevronUpIcon, ChevronDownIcon } from 'svelte-feather-icons';
+    import { ThumbsUpIcon, ThumbsDownIcon } from 'svelte-feather-icons';
     import { toast } from '@zerodevx/svelte-toast';
 
     export let drillId = null;
@@ -154,7 +154,7 @@
         class:hover:bg-blue-50={$userVote !== 1}
         aria-label="Upvote"
     >
-        <ChevronUpIcon size="24"/>
+        <ThumbsUpIcon size="20"/>
         <span class="sr-only">Upvote</span>
     </button>
     
@@ -171,7 +171,7 @@
         class:hover:bg-red-50={$userVote !== -1}
         aria-label="Downvote"
     >
-        <ChevronDownIcon size="24"/>
+        <ThumbsDownIcon size="20"/>
         <span class="sr-only">Downvote</span>
     </button>
 </div>

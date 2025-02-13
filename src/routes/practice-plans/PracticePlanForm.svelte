@@ -367,9 +367,32 @@
     sections.update(currentSections => {
       const newSections = [...currentSections];
       const section = newSections[sectionIndex];
+      const itemToRemove = section.items[itemIndex];
       
       // Remove the item from the section
       section.items.splice(itemIndex, 1);
+      
+      // If the removed item was part of a group, check remaining group size
+      if (itemToRemove.parallel_group_id) {
+        const remainingGroupItems = section.items.filter(
+          item => item.parallel_group_id === itemToRemove.parallel_group_id
+        );
+        
+        // If only one item remains in the group, remove the group
+        if (remainingGroupItems.length === 1) {
+          section.items = section.items.map(item => {
+            if (item.parallel_group_id === itemToRemove.parallel_group_id) {
+              const { parallel_group_id, ...rest } = item;
+              return {
+                ...rest,
+                id: item.drill?.id || item.id,
+                drill: item.drill || { id: item.id, name: item.name }
+              };
+            }
+            return item;
+          });
+        }
+      }
       
       return newSections;
     });
@@ -1513,7 +1536,15 @@
               {#if item.parallel_group_id}
                 <!-- Only render the group container for the first item in a group -->
                 {#if section.items.findIndex(i => i.parallel_group_id === item.parallel_group_id) === itemIndex}
-                  <div class="parallel-group-container">
+                  <div class="parallel-group-container border-l-4 border-blue-500 pl-4 relative">
+                    <!-- Add Ungroup button outside the items -->
+                    <button 
+                      class="absolute -left-20 top-1/2 -translate-y-1/2 text-blue-500 hover:text-blue-700 text-sm"
+                      on:click={() => handleUngroup(item.parallel_group_id)}
+                    >
+                      Ungroup
+                    </button>
+                    
                     {#each section.items.filter(i => i.parallel_group_id === item.parallel_group_id) as groupItem, idx}
                       <div class="parallel-group-member" key={`${section.id}-group-${item.parallel_group_id}-${idx}-${groupItem.id ?? `item-${idx}`}`}>
                         <li class="timeline-item relative transition-all duration-200"
@@ -1545,12 +1576,9 @@
                                 </div>
                                 <button 
                                   class="text-red-500 hover:text-red-700 text-sm"
-                                  on:click={() => {
-                                    console.log('Ungroup clicked for item:', groupItem);
-                                    handleUngroup(groupItem.id || groupItem.drill?.id);
-                                  }}
+                                  on:click={() => removeItem(sectionIndex, section.items.indexOf(groupItem))}
                                 >
-                                  Ungroup
+                                  Remove
                                 </button>
                               </div>
                             </div>

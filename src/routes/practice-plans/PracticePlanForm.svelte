@@ -517,22 +517,35 @@
     
     const newItems = [...items];
     
+    // Preserve drill information when creating group
+    const sourceItemWithDrill = {
+        ...sourceItem,
+        id: sourceItem.drill?.id || sourceItem.id,
+        drill: sourceItem.drill || { id: sourceItem.id, name: sourceItem.name }
+    };
+    
+    const targetItemWithDrill = {
+        ...targetItem,
+        id: targetItem.drill?.id || targetItem.id,
+        drill: targetItem.drill || { id: targetItem.id, name: targetItem.name }
+    };
+    
     // If target is already in a group, add source to that group
     if (targetItem.parallel_group_id) {
         const groupId = targetItem.parallel_group_id;
         newItems[sourceIndex] = {
-            ...sourceItem,
+            ...sourceItemWithDrill,
             parallel_group_id: groupId
         };
     } else {
         // Create new group for both items
         const groupId = `group_${Date.now()}`;
         newItems[sourceIndex] = {
-            ...sourceItem,
+            ...sourceItemWithDrill,
             parallel_group_id: groupId
         };
         newItems[targetIndex] = {
-            ...targetItem,
+            ...targetItemWithDrill,
             parallel_group_id: groupId
         };
     }
@@ -792,55 +805,62 @@
     dragOverPosition = null;
   }
 
-  // Update the handleUngroup function with logging
+  // Update the handleUngroup function
   function handleUngroup(itemId) {
     console.log('[handleUngroup] Starting ungroup for itemId:', itemId);
     
     if (!itemId) {
-      console.error('[handleUngroup] No itemId provided');
-      return;
+        console.error('[handleUngroup] No itemId provided');
+        return;
     }
     
     sections.update(currentSections => {
-      console.log('[handleUngroup] Current sections:', JSON.stringify(currentSections, null, 2));
-      
-      return currentSections.map(section => {
-        const groupId = section.items.find(item => 
-          (item.id === itemId || item.drill?.id === itemId)
-        )?.parallel_group_id;
+        console.log('[handleUngroup] Current sections:', JSON.stringify(currentSections, null, 2));
         
-        console.log('[handleUngroup] Found groupId:', groupId);
-        
-        if (!groupId) return section;
+        return currentSections.map(section => {
+            // Find item by either drill.id or direct id
+            const groupId = section.items.find(item => 
+                (item.drill?.id === itemId || item.id === itemId)
+            )?.parallel_group_id;
+            
+            console.log('[handleUngroup] Found groupId:', groupId);
+            
+            if (!groupId) return section;
 
-        const groupSize = section.items.filter(item => 
-          item.parallel_group_id === groupId
-        ).length;
-        console.log('[handleUngroup] Group size:', groupSize);
-        
-        const updatedSection = {
-          ...section,
-          items: section.items.map(item => {
-            if (groupSize <= 2 && item.parallel_group_id === groupId) {
-              // Remove group from all items if only 2 items in group
-              console.log('[handleUngroup] Removing group from item:', item.id || item.drill?.id);
-              const { parallel_group_id, ...rest } = item;
-              return rest;
-            } else if (item.id === itemId || item.drill?.id === itemId) {
-              // Just remove from the one item if more than 2 in group
-              console.log('[handleUngroup] Removing group from single item:', item.id || item.drill?.id);
-              const { parallel_group_id, ...rest } = item;
-              return rest;
-            }
-            return item;
-          })
-        };
-        
-        console.log('[handleUngroup] Updated section items:', 
-          JSON.stringify(updatedSection.items, null, 2));
-        
-        return updatedSection;
-      });
+            const groupSize = section.items.filter(item => 
+                item.parallel_group_id === groupId
+            ).length;
+            console.log('[handleUngroup] Group size:', groupSize);
+            
+            const updatedSection = {
+                ...section,
+                items: section.items.map(item => {
+                    if (groupSize <= 2 && item.parallel_group_id === groupId) {
+                        // Remove group but preserve drill information
+                        const { parallel_group_id, ...rest } = item;
+                        return {
+                            ...rest,
+                            id: item.drill?.id || item.id,
+                            drill: item.drill || { id: item.id, name: item.name }
+                        };
+                    } else if (item.drill?.id === itemId || item.id === itemId) {
+                        // Remove from group but preserve drill information
+                        const { parallel_group_id, ...rest } = item;
+                        return {
+                            ...rest,
+                            id: item.drill?.id || item.id,
+                            drill: item.drill || { id: item.id, name: item.name }
+                        };
+                    }
+                    return item;
+                })
+            };
+            
+            console.log('[handleUngroup] Updated section items:', 
+                JSON.stringify(updatedSection.items, null, 2));
+            
+            return updatedSection;
+        });
     });
   }
 

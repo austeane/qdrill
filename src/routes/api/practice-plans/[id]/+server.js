@@ -240,7 +240,7 @@ export const PUT = async ({ params, request, locals }) => {
                     const values = section.items.map((item, index) => ({
                         practice_plan_id: id,
                         section_id: section.id,
-                        drill_id: item.type === 'drill' ? item.id : null,
+                        drill_id: item.type === 'drill' ? (item.drill?.id || item.id) : null,
                         order_in_plan: index,
                         duration: item.duration || item.selected_duration,
                         type: item.type,

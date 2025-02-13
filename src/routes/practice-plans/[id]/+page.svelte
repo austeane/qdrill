@@ -93,6 +93,37 @@
     }
     return currentTime;
   }
+
+  // Function to handle plan duplication
+  async function handleDuplicate() {
+    try {
+      const response = await fetch(`/api/practice-plans/${practicePlan.id}/duplicate`, {
+        method: 'POST',
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        toast.push('Practice plan duplicated successfully', {
+          theme: {
+            '--toastBackground': '#48BB78',
+            '--toastBarBackground': '#2F855A'
+          }
+        });
+        goto(`/practice-plans/${result.id}/edit`);
+      } else {
+        throw new Error(result.error || 'Failed to duplicate practice plan');
+      }
+    } catch (error) {
+      console.error('Error duplicating practice plan:', error);
+      toast.push(error.message, {
+        theme: {
+          '--toastBackground': '#F56565',
+          '--toastBarBackground': '#C53030'
+        }
+      });
+    }
+  }
 </script>
 
 <Breadcrumb 
@@ -104,10 +135,11 @@
 
 <div class="container mx-auto p-4 sm:p-6">
   <!-- Header Section -->
-  <header class="bg-white shadow-md rounded-lg p-6 mb-6">
-    <div class="flex justify-between items-start mb-4">
-      <div>
-        <h1 class="text-2xl font-bold">{practicePlan.name}</h1>
+  <header class="bg-white shadow-md rounded-lg p-4 sm:p-6 mb-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+      <!-- Title and Description -->
+      <div class="w-full sm:w-auto order-last sm:order-first">
+        <h1 class="text-2xl font-bold break-words">{practicePlan.name}</h1>
         {#if practicePlan.description}
           <div class="mt-2">
             {#if $isDescriptionExpanded}
@@ -143,15 +175,23 @@
           </div>
         {/if}
       </div>
-      <div class="flex items-center gap-4">
+
+      <!-- Action Buttons -->
+      <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-4 order-first sm:order-last">
         {#if canEdit}
           <a 
             href="/practice-plans/{practicePlan.id}/edit" 
-            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors text-sm sm:text-base whitespace-nowrap"
           >
             Edit Plan
           </a>
         {/if}
+        <button
+          on:click={handleDuplicate}
+          class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors text-sm sm:text-base whitespace-nowrap"
+        >
+          Duplicate Plan
+        </button>
         <DeletePracticePlan 
           planId={practicePlan.id} 
           createdBy={practicePlan.created_by}

@@ -322,6 +322,11 @@
 
   function validateNumber(value, field) {
     if (value === '') {
+      // For max participants, empty string is valid
+      if (field === 'number_of_people_max') {
+        numberWarnings[field] = '';
+        return;
+      }
       numberWarnings[field] = '';
       return;
     }
@@ -346,7 +351,8 @@
     if ($number_of_people_min && !Number.isInteger(Number($number_of_people_min))) {
       newErrors.number_of_people_min = 'Min number of people must be a whole number';
     }
-    if ($number_of_people_max && !Number.isInteger(Number($number_of_people_max))) {
+    // Only validate max if it's not empty string and not "0"
+    if ($number_of_people_max !== '' && $number_of_people_max !== '0' && !Number.isInteger(Number($number_of_people_max))) {
       newErrors.number_of_people_max = 'Max number of people must be a whole number';
     }
     
@@ -419,6 +425,9 @@
       const method = drill.id ? 'PUT' : 'POST';
       const url = drill.id ? `/api/drills/${drill.id}` : '/api/drills';
       
+      // Convert empty string or "0" to null for max participants
+      const maxParticipants = $number_of_people_max === '' || $number_of_people_max === '0' ? null : Number($number_of_people_max);
+      
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -431,7 +440,7 @@
           complexity: $complexity,
           suggested_length: $suggested_length,
           number_of_people_min: $number_of_people_min,
-          number_of_people_max: $number_of_people_max,
+          number_of_people_max: maxParticipants,
           skills_focused_on: $selectedSkills,
           positions_focused_on: $positions_focused_on,
           video_link: $video_link,

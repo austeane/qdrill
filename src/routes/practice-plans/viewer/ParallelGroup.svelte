@@ -8,8 +8,26 @@
 
   const dispatch = createEventDispatcher();
 
-  $: groupDuration = Math.max(...items.map(item => 
-    item.selected_duration || item.duration || 0
+  // Define timeline constants
+  const PARALLEL_TIMELINES = {
+    BEATERS: { name: 'Beaters', color: 'bg-gray-500' },
+    CHASERS: { name: 'Chasers', color: 'bg-green-500' },
+    SEEKERS: { name: 'Seekers', color: 'bg-yellow-500' }
+  };
+
+  // Group items by timeline
+  $: timelineGroups = items.reduce((acc, item) => {
+    const timeline = item.parallel_timeline || 'CHASERS';
+    if (!acc[timeline]) {
+      acc[timeline] = [];
+    }
+    acc[timeline].push(item);
+    return acc;
+  }, {});
+
+  // Calculate max duration across all timelines
+  $: groupDuration = Math.max(...Object.values(timelineGroups).map(timelineItems => 
+    Math.max(...timelineItems.map(item => item.selected_duration || item.duration || 0))
   ));
 
   function ungroup() {
@@ -42,15 +60,24 @@
   </div>
 
   <div class="group-content">
-    {#each items as item (item.drill?.id || item.id || crypto.randomUUID())}
-      <DrillCard 
-        {item}
-        {canEdit}
-        {startTime}
-        isInParallelGroup={true}
-        on:edit
-        on:durationChange
-      />
+    {#each Object.entries(timelineGroups) as [timeline, timelineItems]}
+      <div class="timeline-column" class:single-timeline={Object.keys(timelineGroups).length === 1}>
+        <div class="timeline-header {PARALLEL_TIMELINES[timeline]?.color || 'bg-gray-200'}">
+          {PARALLEL_TIMELINES[timeline]?.name || timeline}
+        </div>
+        <div class="timeline-items">
+          {#each timelineItems as item (item.drill?.id || item.id || crypto.randomUUID())}
+            <DrillCard 
+              {item}
+              {canEdit}
+              {startTime}
+              isInParallelGroup={true}
+              on:edit
+              on:durationChange
+            />
+          {/each}
+        </div>
+      </div>
     {/each}
   </div>
 </div>
@@ -101,13 +128,50 @@
   }
 
   .group-content {
-    display: flex;
+    display: grid;
     gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+
+  .timeline-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .timeline-column.single-timeline {
+    grid-column: 1 / -1;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .timeline-header {
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    font-weight: 500;
+    color: white;
+    text-align: center;
+  }
+
+  .timeline-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
   @media (max-width: 640px) {
     .group-content {
-      flex-direction: column;
+      grid-template-columns: 1fr;
+    }
+
+    .timeline-column {
+      border-bottom: 1px solid theme('colors.gray.200');
+      padding-bottom: 1rem;
+    }
+
+    .timeline-column:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
     }
   }
 </style> 

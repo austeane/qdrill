@@ -79,8 +79,8 @@ export async function POST({ params, locals }) {
                 await client.query(
                     `INSERT INTO practice_plan_drills 
                      (practice_plan_id, section_id, drill_id, order_in_plan, 
-                      duration, type, diagram_data, parallel_group_id)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                      duration, type, diagram_data, parallel_group_id, parallel_timeline)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
                     [
                         newPlanId,
                         newSectionId,
@@ -89,7 +89,8 @@ export async function POST({ params, locals }) {
                         drill.duration,
                         drill.type,
                         drill.diagram_data,
-                        drill.parallel_group_id
+                        drill.parallel_group_id,
+                        drill.parallel_timeline
                     ]
                 );
             }

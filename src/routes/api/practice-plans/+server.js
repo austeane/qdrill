@@ -165,8 +165,8 @@ export const POST = async ({ request, locals }) => {
           for (const [index, item] of section.items.entries()) {
             await db.query(
               `INSERT INTO practice_plan_drills 
-               (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, diagram_data, parallel_group_id)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+               (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, diagram_data, parallel_group_id, parallel_timeline)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
               [
                 planId,
                 dbSectionId,
@@ -175,7 +175,8 @@ export const POST = async ({ request, locals }) => {
                 item.duration,
                 item.type,
                 item.diagram_data,
-                item.parallel_group_id
+                item.parallel_group_id,
+                item.parallel_timeline
               ]
             );
           }

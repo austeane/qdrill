@@ -166,37 +166,122 @@
     }
   }
 
-  // Add this to your existing onMount
+  // Add this new function before the reactive statement
+  function formatDrillItem(item) {
+    if (item.type === 'drill') {
+      return {
+        id: item.id,
+        type: 'drill',
+        name: item.drill.name,
+        duration: item.duration,
+        drill: item.drill,
+        selected_duration: item.duration,
+        parallel_group_id: item.parallel_group_id,
+        parallel_timeline: item.parallel_timeline,
+        diagram_data: item.diagram_data,
+        // Add normalized fields for drills
+        skill_level: item.drill?.skill_level || [],
+        skills_focused_on: item.drill?.skills_focused_on || [],
+        brief_description: item.drill?.brief_description || '',
+        video_link: item.drill?.video_link || null,
+        diagrams: item.drill?.diagrams || []
+      };
+    } else {
+      return {
+        id: item.id,
+        type: 'break',
+        name: 'Break',
+        duration: item.duration,
+        selected_duration: item.duration,
+        parallel_group_id: item.parallel_group_id,
+        parallel_timeline: item.parallel_timeline
+      };
+    }
+  }
+
+  // Add this new function before the reactive statement
+  function initializeTimelinesFromPlan(plan) {
+    if (!plan?.sections) return;
+    
+    const allTimelines = new Set();
+    plan.sections.forEach(section => {
+      section.items.forEach(item => {
+        if (item.parallel_timeline) {
+          allTimelines.add(item.parallel_timeline);
+        }
+      });
+    });
+    
+    if (allTimelines.size > 0) {
+      selectedTimelines = allTimelines;
+    }
+  }
+
+  // Update the reactive statement
+  $: if (practicePlan) {
+    console.log('[PracticePlanForm] Initializing form with practice plan data', practicePlan);
+    
+    // Initialize form fields with practice plan data
+    planName.set(practicePlan.name || '');
+    planDescription.set(practicePlan.description || '');
+    phaseOfSeason.set(practicePlan.phase_of_season || '');
+    estimatedNumberOfParticipants.set(practicePlan.estimated_number_of_participants?.toString() || '');
+    practiceGoals.set(practicePlan.practice_goals || ['']);
+    visibility.set(practicePlan.visibility || 'public');
+    isEditableByOthers.set(practicePlan.is_editable_by_others || false);
+    startTime.set(practicePlan.start_time?.slice(0, 5) || '09:00');
+
+    // Initialize sections
+    if (practicePlan.sections?.length) {
+        sections.set(practicePlan.sections.map(section => ({
+            id: section.id,
+            name: section.name,
+            order: section.order,
+            goals: section.goals || [],
+            notes: section.notes || '',
+            items: section.items.map(item => formatDrillItem(item))
+        })));
+
+        // Initialize selectedItems from all sections
+        const allItems = practicePlan.sections.flatMap(section => section.items);
+        selectedItems.set(allItems);
+
+        // Log the initialized data for debugging
+        console.log('[PracticePlanForm] Initialized sections:', $sections);
+        console.log('[PracticePlanForm] Initialized selectedItems:', $selectedItems);
+    }
+}
+
+  // Add this to onMount
   onMount(async () => {
     if ($cart.length === 0) {
-      showEmptyCartModal = true;
+        showEmptyCartModal = true;
     }
     if (!practicePlan) {
-      const cartItems = $cart.map(drill => ({
-        id: drill.id,
-        type: 'drill',
-        name: drill.name,
-        drill: drill,
-        expanded: false,
-        selected_duration: 15,
-        diagram_data: null,
-        parallel_group_id: null
-      }));
-      selectedItems.set(cartItems);
+        const cartItems = $cart.map(drill => ({
+            id: drill.id,
+            type: 'drill',
+            name: drill.name,
+            drill: drill,
+            expanded: false,
+            selected_duration: 15,
+            diagram_data: null,
+            parallel_group_id: null
+        }));
+        selectedItems.set(cartItems);
+    } else {
+        // Initialize timelines once when component loads
+        initializeTimelinesFromPlan(practicePlan);
     }
 
     // Load TinyMCE Editor
     try {
-      console.log('Loading TinyMCE editor...');
-      const module = await import('@tinymce/tinymce-svelte');
-      Editor = module.default;
-      console.log('TinyMCE editor loaded successfully');
+        console.log('Loading TinyMCE editor...');
+        const module = await import('@tinymce/tinymce-svelte');
+        Editor = module.default;
+        console.log('TinyMCE editor loaded successfully');
     } catch (error) {
-      console.error('Error loading TinyMCE:', error);
-    }
-
-    if (practicePlan) {
-      startTime.set(practicePlan.start_time?.slice(0, 5) || '09:00');
+        console.error('Error loading TinyMCE:', error);
     }
   });
 
@@ -1043,56 +1128,24 @@
 
     // Initialize sections
     if (practicePlan.sections?.length) {
-      // First, collect all unique timelines from the items
-      const allTimelines = new Set();
-      practicePlan.sections.forEach(section => {
-        section.items.forEach(item => {
-          if (item.parallel_timeline) {
-            allTimelines.add(item.parallel_timeline);
-          }
-        });
-      });
-      
-      // Update selectedTimelines with the found timelines
-      if (allTimelines.size > 0) {
-        selectedTimelines = allTimelines;
-      }
+        sections.set(practicePlan.sections.map(section => ({
+            id: section.id,
+            name: section.name,
+            order: section.order,
+            goals: section.goals || [],
+            notes: section.notes || '',
+            items: section.items.map(item => formatDrillItem(item))
+        })));
 
-      sections.set(practicePlan.sections.map(section => ({
-        id: section.id,
-        name: section.name,
-        order: section.order,
-        goals: section.goals || [],
-        notes: section.notes || '',
-        items: section.items.map(item => ({
-          id: item.id,
-          type: item.type,
-          name: item.type === 'drill' ? item.drill.name : 'Break',
-          duration: item.duration,
-          drill: item.drill,
-          selected_duration: item.duration,
-          parallel_group_id: item.parallel_group_id,
-          parallel_timeline: item.parallel_timeline,
-          diagram_data: item.diagram_data,
-          // Add normalized fields for drills
-          skill_level: item.drill?.skill_level || [],
-          skills_focused_on: item.drill?.skills_focused_on || [],
-          brief_description: item.drill?.brief_description || '',
-          video_link: item.drill?.video_link || null,
-          diagrams: item.drill?.diagrams || []
-        }))
-      })));
+        // Initialize selectedItems from all sections
+        const allItems = practicePlan.sections.flatMap(section => section.items);
+        selectedItems.set(allItems);
 
-      // Initialize selectedItems from all sections
-      const allItems = practicePlan.sections.flatMap(section => section.items);
-      selectedItems.set(allItems);
-
-      // Log the initialized data for debugging
-      console.log('[PracticePlanForm] Initialized sections:', $sections);
-      console.log('[PracticePlanForm] Initialized selectedItems:', $selectedItems);
-      console.log('[PracticePlanForm] Selected timelines:', selectedTimelines);
+        // Log the initialized data for debugging
+        console.log('[PracticePlanForm] Initialized sections:', $sections);
+        console.log('[PracticePlanForm] Initialized selectedItems:', $selectedItems);
     }
-  }
+}
 
   // Update the isInGroup helper function to be more robust
   function isInGroup(item, items, currentIndex) {

@@ -8,7 +8,7 @@
   export let isActive = false;
   export let canEdit = false;
   export let sectionIndex = 0;
-  export let startTime = '09:00';
+  export let startTime = null;
 
   const dispatch = createEventDispatcher();
   let isCollapsed = false;
@@ -94,63 +94,54 @@
   $: sectionDuration = calculateSectionDuration(section.items);
 
   $: groupedItems = section.items?.reduce((acc, item) => {
-    console.log('[Section] Processing item for grouping:', item);
     if (item.parallel_group_id) {
-      if (!acc.parallel[item.parallel_group_id]) {
-        acc.parallel[item.parallel_group_id] = [];
+      if (!acc.parallelGroups[item.parallel_group_id]) {
+        acc.parallelGroups[item.parallel_group_id] = [];
       }
-      acc.parallel[item.parallel_group_id].push(item);
+      acc.parallelGroups[item.parallel_group_id].push(item);
     } else {
-      acc.single.push(item);
+      acc.singles.push(item);
     }
     return acc;
-  }, { single: [], parallel: {} });
+  }, { singles: [], parallelGroups: {} }) || { singles: [], parallelGroups: {} };
 
-  // Sort items by order and create a combined array
-  $: sortedItems = section.items?.sort((a, b) => (a.order || 0) - (b.order || 0));
+  // Calculate cumulative duration for start times
+  $: {
+    let currentTime = startTime;
+    groupedItems.singles.forEach(item => {
+      item.startTime = currentTime;
+      currentTime = addMinutes(currentTime, item.selected_duration || item.duration || 0);
+    });
 
-  // Group consecutive parallel items
-  $: organizedItems = sortedItems?.reduce((acc, item) => {
-    if (item.parallel_group_id) {
-      const lastItem = acc[acc.length - 1];
-      if (lastItem?.isParallelGroup && lastItem.groupId === item.parallel_group_id) {
-        lastItem.items.push(item);
-      } else {
-        acc.push({
-          isParallelGroup: true,
-          groupId: item.parallel_group_id,
-          items: [item]
-        });
-      }
-    } else {
-      acc.push(item);
-    }
-    return acc;
-  }, []);
-
-  // Helper function to add minutes to a time string
-  function addMinutes(timeStr, minutes) {
-    const [hours, mins] = timeStr.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours, mins + minutes);
-    return date.getHours().toString().padStart(2, '0') + ':' + 
-           date.getMinutes().toString().padStart(2, '0');
+    Object.values(groupedItems.parallelGroups).forEach(group => {
+      const groupStartTime = currentTime;
+      const maxDuration = Math.max(...group.map(item => item.selected_duration || item.duration || 0));
+      group.forEach(item => {
+        item.startTime = groupStartTime;
+      });
+      currentTime = addMinutes(currentTime, maxDuration);
+    });
   }
 
-  // Calculate start time for each item
-  function calculateItemStartTime(items, itemIndex) {
-    let currentTime = startTime;
-    for (let i = 0; i < itemIndex; i++) {
-      const item = items[i];
-      if (item.type === 'parallel') {
-        // For parallel groups, use the maximum duration
-        const maxDuration = Math.max(...item.items.map(i => i.duration || i.selected_duration || 0));
-        currentTime = addMinutes(currentTime, maxDuration);
-      } else {
-        currentTime = addMinutes(currentTime, item.duration || item.selected_duration || 0);
-      }
-    }
-    return currentTime;
+  function addMinutes(timeStr, minutes) {
+    if (!timeStr) return null;
+    const [hours, mins] = timeStr.split(':').map(Number);
+    const totalMinutes = hours * 60 + mins + minutes;
+    const newHours = Math.floor(totalMinutes / 60);
+    const newMins = totalMinutes % 60;
+    return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
+  }
+
+  function handleEdit(event) {
+    dispatch('edit', event.detail);
+  }
+
+  function handleDurationChange(event) {
+    dispatch('durationChange', event.detail);
+  }
+
+  function handleUngroup(event) {
+    dispatch('ungroup', event.detail);
   }
 
   function toggleCollapse() {
@@ -226,27 +217,25 @@
 
   {#if !isCollapsed}
     <div class="section-content" transition:slide>
-      {#each organizedItems as item, itemIndex}
-        {#if item.isParallelGroup}
-          <ParallelGroup 
-            items={item.items}
-            {canEdit}
-            startTime={calculateItemStartTime(organizedItems, itemIndex)}
-            on:ungroup
-            on:edit
-            on:durationChange
-          />
-        {:else}
-          <div class:draggable={canEdit}>
-            <DrillCard 
-              item={item}
-              {canEdit}
-              startTime={calculateItemStartTime(organizedItems, itemIndex)}
-              on:edit
-              on:durationChange
-            />
-          </div>
-        {/if}
+      {#each groupedItems.singles as item (item.drill?.id || item.id)}
+        <DrillCard 
+          {item}
+          {canEdit}
+          startTime={item.startTime}
+          on:edit={handleEdit}
+          on:durationChange={handleDurationChange}
+        />
+      {/each}
+
+      {#each Object.entries(groupedItems.parallelGroups) as [groupId, items]}
+        <ParallelGroup
+          {items}
+          {canEdit}
+          startTime={items[0]?.startTime}
+          on:edit={handleEdit}
+          on:durationChange={handleDurationChange}
+          on:ungroup={handleUngroup}
+        />
       {/each}
     </div>
   {/if}
@@ -335,5 +324,16 @@
 
   .draggable {
     cursor: move;
+  }
+
+  @media (max-width: 640px) {
+    .practice-section {
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+    }
   }
 </style> 

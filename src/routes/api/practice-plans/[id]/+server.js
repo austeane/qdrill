@@ -99,6 +99,7 @@ function formatDrillItem(item) {
       order_in_plan: item.order_in_plan,
       section_id: item.section_id,
       parallel_group_id: item.parallel_group_id,
+      parallel_timeline: item.parallel_timeline,
       diagram_data: item.ppd_diagram_data,
       drill: {
         id: item.drill_id,
@@ -124,7 +125,8 @@ function formatDrillItem(item) {
       duration: item.duration,
       order_in_plan: item.order_in_plan,
       section_id: item.section_id,
-      parallel_group_id: item.parallel_group_id
+      parallel_group_id: item.parallel_group_id,
+      parallel_timeline: item.parallel_timeline
     };
   }
 }
@@ -244,22 +246,24 @@ export const PUT = async ({ params, request, locals }) => {
                         order_in_plan: index,
                         duration: item.duration || item.selected_duration,
                         type: item.type,
-                        parallel_group_id: item.parallel_group_id
+                        parallel_group_id: item.parallel_group_id,
+                        parallel_timeline: item.parallel_timeline || null
                     }));
 
-                    // Use a single bulk insert for better performance
+                    // Update the SQL query to include parallel_timeline
                     const valueStrings = values.map((_, index) => 
-                        `($${index * 7 + 1}, $${index * 7 + 2}, $${index * 7 + 3}, $${index * 7 + 4}, $${index * 7 + 5}, $${index * 7 + 6}, $${index * 7 + 7})`
+                        `($${index * 8 + 1}, $${index * 8 + 2}, $${index * 8 + 3}, $${index * 8 + 4}, $${index * 8 + 5}, $${index * 8 + 6}, $${index * 8 + 7}, $${index * 8 + 8})`
                     );
                     
                     const flatValues = values.flatMap(v => [
                         v.practice_plan_id, v.section_id, v.drill_id, 
-                        v.order_in_plan, v.duration, v.type, v.parallel_group_id
+                        v.order_in_plan, v.duration, v.type, 
+                        v.parallel_group_id, v.parallel_timeline
                     ]);
 
                     await client.query(
                         `INSERT INTO practice_plan_drills 
-                         (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, parallel_group_id)
+                         (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, parallel_group_id, parallel_timeline)
                          VALUES ${valueStrings.join(', ')}`,
                         flatValues
                     );

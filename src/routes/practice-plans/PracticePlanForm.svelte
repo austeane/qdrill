@@ -131,25 +131,25 @@
     if ($selectedItems?.length > 0) {
       sections.update(currentSections => {
         const newSections = [...currentSections];
-        // Find Skill Building section
         const skillBuildingSection = newSections.find(s => s.name === 'Skill Building');
         if (skillBuildingSection) {
-          // Map the items with proper structure and normalization
-          skillBuildingSection.items = $selectedItems.map(item => ({
-            id: item.id,
-            type: item.type,
-            name: item.drill?.name || item.name,
-            duration: item.selected_duration || item.drill?.duration || 15,
-            drill: item.drill,
-            selected_duration: item.selected_duration || item.drill?.duration || 15,
-            parallel_group_id: item.parallel_group_id,
-            // Add these normalized fields
-            skill_level: item.drill?.skill_level || [],
-            skills_focused_on: item.drill?.skills_focused_on || [],
-            brief_description: item.drill?.brief_description || '',
-            video_link: item.drill?.video_link || null,
-            diagrams: item.drill?.diagrams || []
-          }));
+          skillBuildingSection.items = $selectedItems.map(item => {
+            const mappedItem = {
+              id: item.drill?.id || item.id, // Use drill.id if available, fallback to item.id
+              type: item.type,
+              name: item.drill?.name || item.name,
+              duration: item.selected_duration || item.drill?.duration || 15,
+              drill: item.drill,
+              selected_duration: item.selected_duration || item.drill?.duration || 15,
+              parallel_group_id: item.parallel_group_id,
+              skill_level: item.drill?.skill_level || [],
+              skills_focused_on: item.drill?.skills_focused_on || [],
+              brief_description: item.drill?.brief_description || '',
+              video_link: item.drill?.video_link || null,
+              diagrams: item.drill?.diagrams || []
+            };
+            return mappedItem;
+          });
         }
         return newSections;
       });
@@ -170,9 +170,9 @@
   function formatDrillItem(item) {
     if (item.type === 'drill') {
       return {
-        id: item.id,
+        id: item.drill?.id || item.id, // Use the drill's id if available
         type: 'drill',
-        name: item.drill.name,
+        name: item.drill?.name || item.name,
         duration: item.duration,
         drill: item.drill,
         selected_duration: item.duration,
@@ -1037,7 +1037,7 @@
         if (skillBuildingSection) {
           skillBuildingSection.items = $selectedItems.map(item => {
             const mappedItem = {
-              id: item.id,
+              id: item.drill?.id || item.id, // Use drill.id if available, fallback to item.id
               type: item.type,
               name: item.drill?.name || item.name,
               duration: item.selected_duration || item.drill?.duration || 15,
@@ -1050,10 +1050,8 @@
               video_link: item.drill?.video_link || null,
               diagrams: item.drill?.diagrams || []
             };
-            console.log('[PracticePlanForm] Mapped item:', mappedItem);
             return mappedItem;
           });
-          console.log('[PracticePlanForm] Updated Skill Building section items:', skillBuildingSection.items);
         }
         return newSections;
       });
@@ -1445,6 +1443,24 @@
         });
       });
     });
+  }
+
+  // AFTER: Instead of reading from $selectedItems, update only the section's own items.
+  $: {
+    sections.update(currentSections =>
+      currentSections.map(section => {
+        if (section.name === 'Skill Building') {
+          return {
+            ...section,
+            items: section.items.map(item => ({
+              ...item,
+              id: item.drill?.id || item.id // ensure we have the proper id
+            }))
+          };
+        }
+        return section;
+      })
+    );
   }
 </script>
 

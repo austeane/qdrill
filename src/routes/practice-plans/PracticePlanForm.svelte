@@ -12,7 +12,7 @@
   // Add proper prop definitions with defaults
   export let data = { drills: [] }; // Add default value
   export let practicePlan = null;
-  console.log('[PracticePlanForm] Received practicePlan:', practicePlan);
+  logState('Received practicePlan', practicePlan);
 
   // Add timeline selection state
   let showTimelineSelector = false;
@@ -43,52 +43,61 @@
   $: availableDrills = data?.drills || [];
 
   // Add logging for debugging
+  function simplifyForLogging(obj) {
+    if (Array.isArray(obj)) {
+      return obj.map(simplifyForLogging);
+    }
+    if (obj && typeof obj === 'object') {
+      // If this is a drill item, return only essential fields
+      if (obj.type === 'drill') {
+        return {
+          id: obj.id || obj.drill?.id,
+          type: obj.type,
+          name: obj.name || obj.drill?.name,
+          duration: obj.duration || obj.selected_duration
+        };
+      }
+      // For section objects (and similar) that include drill items
+      if (Array.isArray(obj.items)) {
+        return {
+          id: obj.id,
+          name: obj.name,
+          order: obj.order,
+          goals: obj.goals,
+          notes: obj.notes,
+          items: simplifyForLogging(obj.items)
+        };
+      }
+      // For any other object, only keep a few allowed keys
+      const allowedKeys = ['id', 'name', 'order', 'goals', 'notes', 'type', 'duration', 'selected_duration'];
+      const simplified = {};
+      for (const key in obj) {
+        if (allowedKeys.includes(key)) {
+          simplified[key] = simplifyForLogging(obj[key]);
+        }
+      }
+      return simplified;
+    }
+    return obj;
+  }
+
   function logState(message, data) {
     try {
       let sanitizedData = data;
       if (typeof data === 'object' && data !== null) {
-        // Deep clone while removing sensitive fields
-        const removeFields = (obj) => {
-          if (Array.isArray(obj)) {
-            return obj.map(item => removeFields(item));
-          }
-          if (typeof obj === 'object' && obj !== null) {
-            const newObj = {};
-            for (const [key, value] of Object.entries(obj)) {
-              // Skip these fields entirely
-              if (key === 'dataURL' || key === 'diagrams') {
-                continue;
-              }
-              newObj[key] = removeFields(value);
-            }
-            return newObj;
-          }
-          return obj;
-        };
-
-        sanitizedData = removeFields(data);
-        
+        sanitizedData = simplifyForLogging(data);
         // Convert to string for logging
-        sanitizedData = JSON.parse(JSON.stringify(sanitizedData, (key, value) => {
-          if (typeof value === 'object' && value !== null) {
-            if (Object.prototype.toString.call(value) === '[object File]') {
-              return '[File object]';
-            }
-            if (Object.prototype.toString.call(value) === '[object Blob]') {
-              return '[Blob object]';
-            }
-          }
-          return value;
-        }));
+        sanitizedData = JSON.parse(JSON.stringify(sanitizedData));
       }
-      
-      console.log(`[PracticePlanForm] ${message}:`, 
-        typeof sanitizedData === 'object' ? 
-          JSON.stringify(sanitizedData, null, 2) : 
-          sanitizedData
+      console.log(
+        `[PracticePlanForm] ${message}:`,
+        typeof sanitizedData === 'object'
+          ? JSON.stringify(sanitizedData, null, 2)
+          : sanitizedData
       );
     } catch (err) {
-      console.log(`[PracticePlanForm] ${message}: [Unable to stringify data]`, 
+      console.log(
+        `[PracticePlanForm] ${message}: [Unable to stringify data]`,
         typeof data === 'object' ? '[Complex object]' : data
       );
     }
@@ -126,51 +135,191 @@
 
   let sections = writable(DEFAULT_SECTIONS);
 
-  // Replace the existing reactive statement
+  // ====================
+  // NEW INITIALIZATION GUARDS
+  // ====================
+  let formInitialized = false;
+  let initialLoadComplete = false;
+
+  // ====================
+  // Guarded initialization using practicePlan (runs only once)
+  // ====================
+  $: if (practicePlan && !formInitialized) {
+    console.log('[DEBUG] Initializing form with practice plan data', practicePlan);
+    // Initialize form fields from practicePlan only once
+    planName.set(practicePlan.name || '');
+    planDescription.set(practicePlan.description || '');
+    phaseOfSeason.set(practicePlan.phase_of_season || '');
+    estimatedNumberOfParticipants.set(practicePlan.estimated_number_of_participants?.toString() || '');
+    practiceGoals.set(practicePlan.practice_goals || ['']);
+    visibility.set(practicePlan.visibility || 'public');
+    isEditableByOthers.set(practicePlan.is_editable_by_others || false);
+    startTime.set(practicePlan.start_time?.slice(0, 5) || '09:00');
+
+    if (practicePlan.sections?.length) {
+      sections.set(practicePlan.sections.map(section => ({
+        id: section.id,
+        name: section.name,
+        order: section.order,
+        goals: section.goals || [],
+        notes: section.notes || '',
+        items: section.items.map(item => formatDrillItem(item, section.id))
+      })));
+
+      const allItems = practicePlan.sections.flatMap(section =>
+        section.items.map(item => formatDrillItem(item, section.id))
+      );
+      selectedItems.set(allItems);
+
+      logState('DEBUG] Initialized sections', sections);
+      logState('DEBUG] Initialized selectedItems', selectedItems);
+    }
+
+    formInitialized = true;
+  }
+
+  // ====================
+  // Updated reactive statement for $selectedItems refresh
+  // ====================
   $: {
     if ($selectedItems?.length > 0) {
-      sections.update(currentSections => {
-        const newSections = [...currentSections];
-        const skillBuildingSection = newSections.find(s => s.name === 'Skill Building');
-        if (skillBuildingSection) {
-          skillBuildingSection.items = $selectedItems.map(item => {
-            const mappedItem = {
-              id: item.drill?.id || item.id, // Use drill.id if available, fallback to item.id
-              type: item.type,
-              name: item.drill?.name || item.name,
-              duration: item.selected_duration || item.drill?.duration || 15,
-              drill: item.drill,
-              selected_duration: item.selected_duration || item.drill?.duration || 15,
-              parallel_group_id: item.parallel_group_id,
-              skill_level: item.drill?.skill_level || [],
-              skills_focused_on: item.drill?.skills_focused_on || [],
-              brief_description: item.drill?.brief_description || '',
-              video_link: item.drill?.video_link || null,
-              diagrams: item.drill?.diagrams || []
-            };
-            return mappedItem;
-          });
-        }
-        return newSections;
-      });
+      logState('DEBUG] selectedItems reactive running, length:', $selectedItems.length);
+
+      if (!initialLoadComplete) {
+        logState('DEBUG] Doing initial load from selectedItems');
+        sections.update(currentSections => {
+          const newSections = currentSections.map(section => ({
+            ...section,
+            // Filter items by section_id instead of assigning all to Skill Building.
+            items: $selectedItems
+              .filter(item => item.section_id === section.id)
+              .map(item => ({
+                id: item.drill?.id || item.id,
+                type: item.type,
+                name: item.drill?.name || item.name,
+                duration: item.selected_duration || item.drill?.duration || 15,
+                drill: item.drill,
+                selected_duration: item.selected_duration || item.drill?.duration || 15,
+                parallel_group_id: item.parallel_group_id,
+                skill_level: item.drill?.skill_level || [],
+                skills_focused_on: item.drill?.skills_focused_on || [],
+                brief_description: item.drill?.brief_description || '',
+                video_link: item.drill?.video_link || null,
+                diagrams: item.drill?.diagrams || []
+              }))
+          }));
+          logState('DEBUG] After initial load from selectedItems', newSections);
+          return newSections;
+        });
+        initialLoadComplete = true;
+      } else {
+        // For subsequent updates: create an update to individual drill data.
+        logState('DEBUG] Checking for drill data updates from $selectedItems');
+        sections.update(currentSections => {
+          return currentSections.map(section => ({
+            ...section,
+            items: section.items.map(item => {
+              const selectedItem = $selectedItems.find(
+                si => si.id === item.id || si.drill?.id === item.id
+              );
+              if (
+                selectedItem &&
+                selectedItem.drill &&
+                (item.name !== selectedItem.drill.name ||
+                  item.brief_description !== selectedItem.drill.brief_description)
+              ) {
+                logState('DEBUG] Updating drill data for:', item.id);
+                return {
+                  ...item,
+                  name: selectedItem.drill.name,
+                  brief_description: selectedItem.drill.brief_description,
+                  drill: selectedItem.drill
+                };
+              }
+              return item;
+            })
+          }));
+        });
+      }
     }
   }
 
-  // Update when practicePlan changes
-  $: {
-    if (practicePlan) {
-      sections.set(practicePlan.sections.map(section => ({
-        ...section,
-        items: $selectedItems.filter(item => item.section_id === section.id) || []
-      })));
+  // ====================
+  // Updated drop handler logging
+  // ====================
+  function handleDrop(e, sectionIndex, itemIndex, targetTimeline = null) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    logState('DEBUG] Drop event starting', { 
+      sectionIndex, 
+      itemIndex, 
+      draggedItem,
+      dragOverPosition,
+      targetTimeline,
+      sectionsBeforeDrop: sections
+    });
+
+    if (!draggedItem) {
+      logState('DEBUG] No draggedItem, aborting drop');
+      return;
     }
+
+    sections.update(currentSections => {
+      logState('DEBUG] Starting sections update');
+      const newSections = [...currentSections];
+      const sourceSection = newSections[draggedItem.sectionIndex];
+      const targetSection = newSections[sectionIndex];
+
+      if (!sourceSection || !targetSection) {
+        logState('DEBUG] Missing source or target section, aborting');
+        return currentSections;
+      }
+
+      const targetItem = targetSection.items[itemIndex];
+
+      if (targetItem?.parallel_group_id || targetTimeline) {
+        logState('DEBUG] Handling parallel group drop');
+        const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
+        const parallelGroupId = targetItem?.parallel_group_id || `group_${Date.now()}`;
+        const updatedMovedItem = {
+          ...movedItem,
+          parallel_group_id: parallelGroupId,
+          parallel_timeline: targetTimeline || targetItem.parallel_timeline
+        };
+
+        const groupItems = targetSection.items.filter(item => 
+          item.parallel_group_id === parallelGroupId &&
+          item.parallel_timeline === updatedMovedItem.parallel_timeline
+        );
+
+        const insertIndex = groupItems.length > 0 ? 
+          targetSection.items.indexOf(groupItems[groupItems.length - 1]) + 1 : 
+          itemIndex;
+        targetSection.items.splice(insertIndex, 0, updatedMovedItem);
+      } else {
+        logState('DEBUG] Handling regular item drop');
+        const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
+        const insertIndex = dragOverPosition === 'bottom' ? itemIndex + 1 : itemIndex;
+        targetSection.items.splice(insertIndex, 0, movedItem);
+      }
+
+      logState('DEBUG] Sections after drop update', newSections);
+      return newSections;
+    });
+
+    draggedItem = null;
+    dragOverItem = null;
+    dragOverPosition = null;
+    logState('DEBUG] Drop complete');
   }
+
 
   // Add this new function before the reactive statement
-  function formatDrillItem(item) {
+  function formatDrillItem(item, sectionId) {
     if (item.type === 'drill') {
       return {
-        id: item.drill?.id || item.id, // Use the drill's id if available
+        id: item.drill?.id || item.id,
         type: 'drill',
         name: item.drill?.name || item.name,
         duration: item.duration,
@@ -179,12 +328,12 @@
         parallel_group_id: item.parallel_group_id,
         parallel_timeline: item.parallel_timeline,
         diagram_data: item.diagram_data,
-        // Add normalized fields for drills
         skill_level: item.drill?.skill_level || [],
         skills_focused_on: item.drill?.skills_focused_on || [],
         brief_description: item.drill?.brief_description || '',
         video_link: item.drill?.video_link || null,
-        diagrams: item.drill?.diagrams || []
+        diagrams: item.drill?.diagrams || [],
+        section_id: sectionId  // Add section_id
       };
     } else {
       return {
@@ -194,7 +343,8 @@
         duration: item.duration,
         selected_duration: item.duration,
         parallel_group_id: item.parallel_group_id,
-        parallel_timeline: item.parallel_timeline
+        parallel_timeline: item.parallel_timeline,
+        section_id: sectionId  // Add section_id
       };
     }
   }
@@ -216,41 +366,6 @@
       selectedTimelines = allTimelines;
     }
   }
-
-  // Update the reactive statement
-  $: if (practicePlan) {
-    console.log('[PracticePlanForm] Initializing form with practice plan data', practicePlan);
-    
-    // Initialize form fields with practice plan data
-    planName.set(practicePlan.name || '');
-    planDescription.set(practicePlan.description || '');
-    phaseOfSeason.set(practicePlan.phase_of_season || '');
-    estimatedNumberOfParticipants.set(practicePlan.estimated_number_of_participants?.toString() || '');
-    practiceGoals.set(practicePlan.practice_goals || ['']);
-    visibility.set(practicePlan.visibility || 'public');
-    isEditableByOthers.set(practicePlan.is_editable_by_others || false);
-    startTime.set(practicePlan.start_time?.slice(0, 5) || '09:00');
-
-    // Initialize sections
-    if (practicePlan.sections?.length) {
-        sections.set(practicePlan.sections.map(section => ({
-            id: section.id,
-            name: section.name,
-            order: section.order,
-            goals: section.goals || [],
-            notes: section.notes || '',
-            items: section.items.map(item => formatDrillItem(item))
-        })));
-
-        // Initialize selectedItems from all sections
-        const allItems = practicePlan.sections.flatMap(section => section.items);
-        selectedItems.set(allItems);
-
-        // Log the initialized data for debugging
-        console.log('[PracticePlanForm] Initialized sections:', $sections);
-        console.log('[PracticePlanForm] Initialized selectedItems:', $selectedItems);
-    }
-}
 
   // Add this to onMount
   onMount(async () => {
@@ -276,12 +391,12 @@
 
     // Load TinyMCE Editor
     try {
-        console.log('Loading TinyMCE editor...');
+        logState('Loading TinyMCE editor...');
         const module = await import('@tinymce/tinymce-svelte');
         Editor = module.default;
-        console.log('TinyMCE editor loaded successfully');
+        logState('TinyMCE editor loaded successfully');
     } catch (error) {
-        console.error('Error loading TinyMCE:', error);
+        logState('Error loading TinyMCE', error);
     }
   });
 
@@ -329,7 +444,7 @@
 
   async function submitPlan() {
     try {
-      console.log('[PracticePlanForm] Starting plan submission');
+      logState('Starting plan submission');
       
       const formValues = {
         planName: String($planName || ''),
@@ -342,9 +457,7 @@
         sectionsCount: Number($sections.length)
       };
       
-      console.log('[PracticePlanForm] Initial form values:', 
-        JSON.stringify(formValues, null, 2)
-      );
+      logState('Initial form values', formValues);
 
       errors.set({});
       if (!$planName) {
@@ -393,14 +506,12 @@
         }))
       };
 
-      console.log('[PracticePlanForm] Plan data before stringify:', 
-        JSON.stringify(planData, null, 2)
-      );
+      logState('Plan data before stringify', planData);
 
       const url = practicePlan ? `/api/practice-plans/${practicePlan.id}` : '/api/practice-plans';
       const method = practicePlan ? 'PUT' : 'POST';
 
-      console.log('[PracticePlanForm] Sending request to:', url, 'with method:', method);
+      logState('Sending request', { url, method });
 
       try {
         const response = await fetch(url, {
@@ -409,20 +520,18 @@
           body: JSON.stringify(planData)
         });
 
-        console.log('[PracticePlanForm] Response status:', response.status);
+        logState('Response status', response.status);
 
         if (!response.ok) {
           let errorData;
           const errorText = await response.text();
-          console.log('[PracticePlanForm] Error response text:', errorText);
+          logState('Error response text', errorText);
 
           try {
             errorData = JSON.parse(errorText);
-            console.log('[PracticePlanForm] Parsed error data:', 
-              JSON.stringify(errorData, null, 2)
-            );
+            logState('Parsed error data', errorData);
           } catch (e) {
-            console.log('[PracticePlanForm] Failed to parse error response:', String(e));
+            logState('Failed to parse error response', String(e));
             errorData = { error: String(errorText) };
           }
           
@@ -430,7 +539,7 @@
             ? Object.values(errorData.errors).join(', ')
             : errorData.error || 'An error occurred while saving the practice plan';
           
-          console.log('[PracticePlanForm] Final error message:', errorMessage);
+          logState('Final error message', errorMessage);
           errors.set({ general: errorMessage });
           toast.push('Failed to save practice plan: ' + errorMessage, { 
             theme: { '--toastBackground': 'red' } 
@@ -439,7 +548,7 @@
         }
 
         const data = await response.json();
-        console.log('[PracticePlanForm] Success response:', data);
+        logState('Success response', data);
 
         if (!practicePlan) {
           cart.clear();
@@ -447,12 +556,12 @@
         toast.push(`Practice plan ${practicePlan ? 'updated' : 'created'} successfully`);
         goto(`/practice-plans/${data.id}`);
       } catch (error) {
-        console.error('[PracticePlanForm] Network or parsing error:', error);
+        logState('Network or parsing error', error);
         throw error; // Re-throw to be caught by outer try-catch
       }
     } catch (error) {
-      console.error('[PracticePlanForm] Error:', String(error));
-      console.error('[PracticePlanForm] Error stack:', String(error.stack || ''));
+      logState('Error', String(error));
+      logState('Error stack', String(error.stack || ''));
       errors.set({ general: 'An unexpected error occurred' });
       toast.push('An unexpected error occurred', { theme: { '--toastBackground': 'red' } });
     } finally {
@@ -517,7 +626,7 @@
   }
 
   function handleDurationChange(sectionIndex, itemIndex, newDuration) {
-    console.log(`Updating duration for section ${sectionIndex}, item ${itemIndex} to ${newDuration}`);
+    logState('Updating duration', { sectionIndex, itemIndex, newDuration });
     
     sections.update(currentSections => {
       const newSections = [...currentSections];
@@ -810,99 +919,6 @@
     dragOverPosition = null;
   }
 
-  // Update handleDrop to handle timeline assignments
-  function handleDrop(e, sectionIndex, itemIndex, targetTimeline = null) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    console.log('Item drop:', { 
-      sectionIndex, 
-      itemIndex, 
-      draggedItem, 
-      dragOverPosition,
-      targetTimeline,
-      isSameSection: draggedItem?.sectionIndex === sectionIndex 
-    });
-    
-    e.currentTarget.classList.remove(
-      'bg-blue-100',
-      'scale-95',
-      'transform',
-      'border-t-4',
-      'border-t-blue-500',
-      'border-b-4',
-      'border-b-blue-500',
-      'drag-over'
-    );
-
-    if (!draggedItem) return;
-
-    sections.update(currentSections => {
-      const newSections = [...currentSections];
-      const sourceSection = newSections[draggedItem.sectionIndex];
-      const targetSection = newSections[sectionIndex];
-      
-      if (!sourceSection || !targetSection) return currentSections;
-
-      const targetItem = targetSection.items[itemIndex];
-      
-      // If target is part of a parallel block or we have a target timeline
-      if (targetItem?.parallel_group_id || targetTimeline) {
-        const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
-        const parallelGroupId = targetItem?.parallel_group_id || `group_${Date.now()}`;
-        
-        // Update the moved item with parallel group info
-        const updatedMovedItem = {
-          ...movedItem,
-          parallel_group_id: parallelGroupId,
-          parallel_timeline: targetTimeline || targetItem.parallel_timeline
-        };
-
-        // Get all items in the target parallel group
-        const groupItems = targetSection.items.filter(item => 
-          item.parallel_group_id === parallelGroupId &&
-          item.parallel_timeline === updatedMovedItem.parallel_timeline
-        );
-
-        // Insert at the appropriate position
-        const insertIndex = groupItems.length > 0 ? 
-          targetSection.items.indexOf(groupItems[groupItems.length - 1]) + 1 : 
-          itemIndex;
-
-        targetSection.items.splice(insertIndex, 0, updatedMovedItem);
-
-        // Ensure all items in the group have the same duration
-        const maxDuration = Math.max(
-          ...targetSection.items
-            .filter(item => item.parallel_group_id === parallelGroupId)
-            .map(item => item.selected_duration || item.duration)
-        );
-
-        targetSection.items = targetSection.items.map(item => {
-          if (item.parallel_group_id === parallelGroupId) {
-            return {
-              ...item,
-              selected_duration: maxDuration,
-              duration: maxDuration
-            };
-          }
-          return item;
-        });
-      } else {
-        // Handle regular item moving
-        const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
-        const insertIndex = dragOverPosition === 'bottom' ? itemIndex + 1 : itemIndex;
-        targetSection.items.splice(insertIndex, 0, movedItem);
-      }
-      
-      return newSections;
-    });
-
-    draggedItem = null;
-    dragOverItem = null;
-    dragOverPosition = null;
-  }
-
   // Add this new function to handle section drops
   function handleItemIntoSectionDrop(e, sectionIndex) {
     e.preventDefault();
@@ -927,15 +943,15 @@
 
   // Update the handleUngroup function
   function handleUngroup(groupId) {
-    console.log('[handleUngroup] Starting ungroup for groupId:', groupId);
+    logState('Starting ungroup for groupId', groupId);
     
     if (!groupId) {
-      console.error('[handleUngroup] No groupId provided');
+      logState('No groupId provided');
       return;
     }
     
     sections.update(currentSections => {
-      console.log('[handleUngroup] Current sections:', JSON.stringify(currentSections, null, 2));
+      logState('Current sections', currentSections);
       
       return currentSections.map(section => {
         // Find all items in this group
@@ -943,7 +959,7 @@
           item.parallel_group_id === groupId
         );
         
-        console.log('[handleUngroup] Found group items:', groupItems.length);
+        logState('Found group items count', groupItems.length);
         
         if (groupItems.length === 0) return section;
 
@@ -973,7 +989,7 @@
 
   // Add logging to your drill addition function
   function addDrillToPlan(drill) {
-    console.log('[PracticePlanForm] Adding drill to plan:', drill);
+    logState('Adding drill to plan', drill);
     $selectedItems.update(items => {
       const newItems = [...items, {
         id: drill.id,
@@ -985,13 +1001,13 @@
         diagram_data: null,
         parallel_group_id: null
       }];
-      console.log('[PracticePlanForm] Updated selectedItems:', newItems);
+      logState('Updated selectedItems', newItems);
       return newItems;
     });
   }
 
   // Make sure the drills are being rendered in the template
-  $: console.log('[PracticePlanForm] Current selectedItems in template:', $selectedItems);
+  $: logState('Current selectedItems in template', $selectedItems);
 
   // Add section management functions
   function addSection() {
@@ -1025,38 +1041,6 @@
     })));
   }
 
-  // In your reactive statement, use $selectedItems for reading
-  $: {
-    if ($selectedItems?.length > 0) {
-      console.log('[PracticePlanForm] First selected item (full object):', 
-        JSON.stringify($selectedItems[0], null, 2)
-      );
-      sections.update(currentSections => {
-        const newSections = [...currentSections];
-        const skillBuildingSection = newSections.find(s => s.name === 'Skill Building');
-        if (skillBuildingSection) {
-          skillBuildingSection.items = $selectedItems.map(item => {
-            const mappedItem = {
-              id: item.drill?.id || item.id, // Use drill.id if available, fallback to item.id
-              type: item.type,
-              name: item.drill?.name || item.name,
-              duration: item.selected_duration || item.drill?.duration || 15,
-              drill: item.drill,
-              selected_duration: item.selected_duration || item.drill?.duration || 15,
-              parallel_group_id: item.parallel_group_id,
-              skill_level: item.drill?.skill_level || [],
-              skills_focused_on: item.drill?.skills_focused_on || [],
-              brief_description: item.drill?.brief_description || '',
-              video_link: item.drill?.video_link || null,
-              diagrams: item.drill?.diagrams || []
-            };
-            return mappedItem;
-          });
-        }
-        return newSections;
-      });
-    }
-  }
 
   function handleUpdateItems(event) {
     const { type, sourceId, targetId, groupId, position, sourceSectionId, targetSectionId } = event.detail;
@@ -1109,41 +1093,6 @@
       return newSections;
     });
   }
-
-  // Update the reactive statement for practicePlan initialization
-  $: if (practicePlan) {
-    console.log('[PracticePlanForm] Initializing form with practice plan data', practicePlan);
-    
-    // Initialize form fields with practice plan data
-    planName.set(practicePlan.name || '');
-    planDescription.set(practicePlan.description || '');
-    phaseOfSeason.set(practicePlan.phase_of_season || '');
-    estimatedNumberOfParticipants.set(practicePlan.estimated_number_of_participants?.toString() || '');
-    practiceGoals.set(practicePlan.practice_goals || ['']);
-    visibility.set(practicePlan.visibility || 'public');
-    isEditableByOthers.set(practicePlan.is_editable_by_others || false);
-    startTime.set(practicePlan.start_time?.slice(0, 5) || '09:00');
-
-    // Initialize sections
-    if (practicePlan.sections?.length) {
-        sections.set(practicePlan.sections.map(section => ({
-            id: section.id,
-            name: section.name,
-            order: section.order,
-            goals: section.goals || [],
-            notes: section.notes || '',
-            items: section.items.map(item => formatDrillItem(item))
-        })));
-
-        // Initialize selectedItems from all sections
-        const allItems = practicePlan.sections.flatMap(section => section.items);
-        selectedItems.set(allItems);
-
-        // Log the initialized data for debugging
-        console.log('[PracticePlanForm] Initialized sections:', $sections);
-        console.log('[PracticePlanForm] Initialized selectedItems:', $selectedItems);
-    }
-}
 
   // Update the isInGroup helper function to be more robust
   function isInGroup(item, items, currentIndex) {

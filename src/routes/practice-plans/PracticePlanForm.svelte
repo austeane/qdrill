@@ -201,6 +201,7 @@
                 drill: item.drill,
                 selected_duration: item.selected_duration || item.drill?.duration || 15,
                 parallel_group_id: item.parallel_group_id,
+                parallel_timeline: item.parallel_timeline,
                 skill_level: item.drill?.skill_level || [],
                 skills_focused_on: item.drill?.skills_focused_on || [],
                 brief_description: item.drill?.brief_description || '',

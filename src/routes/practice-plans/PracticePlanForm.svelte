@@ -1324,23 +1324,23 @@
       
       if (!section) return currentSections;
 
-      // Create a parallel group ID for this block
+      // Create block ID and capture current timelines
       const parallelGroupId = `group_${Date.now()}`;
+      const groupTimelines = Array.from(selectedTimelines);
       
-      // Create a placeholder drill for each selected timeline
-      const placeholderDrills = Array.from(selectedTimelines).map(timeline => ({
+      // Create placeholders with the block's timeline configuration
+      const placeholderDrills = groupTimelines.map(timeline => ({
         id: `placeholder_${timeline}_${Date.now()}`,
         type: 'break',
         name: `${PARALLEL_TIMELINES[timeline].name} Drill`,
         duration: 15,
         selected_duration: 15,
         parallel_group_id: parallelGroupId,
-        parallel_timeline: timeline
+        parallel_timeline: timeline,
+        groupTimelines // Store timeline config with the block
       }));
-
-      // Add the placeholder drills to the section
+      
       section.items = [...section.items, ...placeholderDrills];
-
       return newSections;
     });
 
@@ -1728,7 +1728,7 @@
                 {#if section.items.findIndex(i => i.parallel_group_id === item.parallel_group_id) === itemIndex}
                   <div 
                     class="parallel-group-container"
-                    style="--timeline-count: {selectedTimelines.size}"
+                    style="--timeline-count: {(item.groupTimelines ? item.groupTimelines.length : Array.from(selectedTimelines).length)}"
                   >
                     <button 
                       class="absolute -left-20 top-4 text-blue-500 hover:text-blue-700 text-sm"
@@ -1737,14 +1737,13 @@
                       Ungroup
                     </button>
 
-                    <!-- Add timeline columns -->
-                    {#each Array.from(selectedTimelines).sort() as timeline}
+                    <!-- Use block-specific timelines with fallback -->
+                    {#each (item.groupTimelines || Array.from(selectedTimelines)).sort() as timeline}
                       <div 
                         class="timeline-column" 
                         data-timeline={timeline}
                         on:dragover|preventDefault
                         on:drop|preventDefault={(e) => {
-                          // Handle drops directly on empty timeline
                           if (!draggedItem) return;
                           handleDrop(e, sectionIndex, itemIndex, timeline);
                         }}
@@ -1752,7 +1751,6 @@
                         <div class="timeline-column-header">
                           <div class={`timeline-color ${PARALLEL_TIMELINES[timeline].color}`}></div>
                           <span>{PARALLEL_TIMELINES[timeline].name}</span>
-                          <!-- Add duration indicator -->
                           <span class="timeline-duration">
                             {section.items
                               .filter(i => i.parallel_group_id === item.parallel_group_id && i.parallel_timeline === timeline)

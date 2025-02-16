@@ -40,10 +40,30 @@ export async function GET({ params, locals }) {
     // Fetch items with their section assignments
     const itemsResult = await client.query(
       `SELECT 
-        ppd.*,
-        d.*,
+        ppd.id,
+        ppd.practice_plan_id,
+        ppd.section_id,
+        ppd.drill_id,
+        ppd.order_in_plan,
+        ppd.duration AS item_duration,
+        ppd.type,
+        ppd.parallel_group_id,
+        ppd.parallel_timeline,
         ppd.diagram_data AS ppd_diagram_data,
-        ppd.group_timelines::text[] AS "groupTimelines"
+        ppd.group_timelines::text[] AS "groupTimelines",
+        d.id AS drill_id,
+        d.name,
+        d.brief_description,
+        d.detailed_description,
+        d.suggested_length,
+        d.skill_level,
+        d.complexity,
+        d.number_of_people_min,
+        d.number_of_people_max,
+        d.skills_focused_on,
+        d.positions_focused_on,
+        d.video_link,
+        d.diagrams
        FROM practice_plan_drills ppd
        LEFT JOIN drills d ON ppd.drill_id = d.id
        WHERE ppd.practice_plan_id = $1
@@ -96,7 +116,7 @@ function formatDrillItem(item) {
   if (item.type === 'drill') {
     return {
       type: 'drill',
-      duration: item.duration,
+      duration: item.item_duration,
       order_in_plan: item.order_in_plan,
       section_id: item.section_id,
       parallel_group_id: item.parallel_group_id,
@@ -108,8 +128,6 @@ function formatDrillItem(item) {
         name: item.name,
         brief_description: item.brief_description,
         detailed_description: item.detailed_description,
-        min_duration: item.min_duration,
-        max_duration: item.max_duration,
         suggested_length: item.suggested_length,
         skill_level: item.skill_level,
         complexity: item.complexity,
@@ -124,7 +142,7 @@ function formatDrillItem(item) {
   } else {
     return {
       type: 'break',
-      duration: item.duration,
+      duration: item.item_duration,
       order_in_plan: item.order_in_plan,
       section_id: item.section_id,
       parallel_group_id: item.parallel_group_id,

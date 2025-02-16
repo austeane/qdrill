@@ -313,83 +313,57 @@
   // ====================
   // Updated drop handler logging
   // ====================
+
   function handleDrop(e, sectionIndex, itemIndex, targetTimeline = null) {
     e.preventDefault();
     e.stopPropagation();
 
-    logState('DEBUG] Drop event starting', { 
-      sectionIndex, 
-      itemIndex, 
-      draggedItem,
-      dragOverPosition,
-      targetTimeline,
-      sectionsBeforeDrop: sections
-    });
-
-    if (!draggedItem) {
-      logState('DEBUG] No draggedItem, aborting drop');
-      return;
-    }
+    if (!draggedItem) return;
 
     sections.update(currentSections => {
-      logState('DEBUG] Starting sections update');
       const newSections = [...currentSections];
       const sourceSection = newSections[draggedItem.sectionIndex];
       const targetSection = newSections[sectionIndex];
+      
+      if (!sourceSection || !targetSection) return currentSections;
 
-      if (!sourceSection || !targetSection) {
-        logState('DEBUG] Missing source or target section, aborting');
-        return currentSections;
-      }
+      const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
 
-      const targetItem = targetSection.items[itemIndex];
-
-      if (targetItem?.parallel_group_id || targetTimeline) {
-        logState('DEBUG] Handling parallel group drop');
-        const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
-        const parallelGroupId = targetItem?.parallel_group_id || `group_${Date.now()}`;
-        
-        // Get groupTimelines from the target group or create new ones
-        const groupTimelines = targetItem?.groupTimelines || 
-          targetSection.items.find(i => i.parallel_group_id === parallelGroupId)?.groupTimelines ||
-          [targetTimeline];
-
-        const updatedMovedItem = {
-          ...movedItem,
-          parallel_group_id: parallelGroupId,
-          parallel_timeline: targetTimeline || targetItem.parallel_timeline,
-          groupTimelines // Use the group's timeline configuration
-        };
-
-        logState('DEBUG] Updated moved item:', updatedMovedItem);
-
-        const groupItems = targetSection.items.filter(item => 
-          item.parallel_group_id === parallelGroupId &&
-          item.parallel_timeline === updatedMovedItem.parallel_timeline
+      // If dropping into a timeline column within a group
+      if (targetTimeline) {
+        // Get the target group's ID from an existing item
+        const targetGroupItem = targetSection.items.find(item => 
+          item.parallel_timeline === targetTimeline
         );
-
-        const insertIndex = groupItems.length > 0 ? 
-          targetSection.items.indexOf(groupItems[groupItems.length - 1]) + 1 : 
-          itemIndex;
-        targetSection.items.splice(insertIndex, 0, updatedMovedItem);
-      } else {
-        logState('DEBUG] Handling regular item drop');
-        const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
-        const insertIndex = dragOverPosition === 'bottom' ? itemIndex + 1 : itemIndex;
-        targetSection.items.splice(insertIndex, 0, movedItem);
+        
+        if (targetGroupItem) {
+          movedItem.parallel_group_id = targetGroupItem.parallel_group_id;
+          movedItem.parallel_timeline = targetTimeline;
+          movedItem.groupTimelines = targetGroupItem.groupTimelines;
+        }
       }
 
-      logState('DEBUG] Sections after drop update', newSections);
+      // Calculate insert position
+      let insertIndex = itemIndex;
+      if (dragOverPosition === 'bottom') {
+        insertIndex++;
+      }
+
+      // If we're moving within the same parallel group, maintain the timeline
+      if (movedItem.parallel_group_id && !targetTimeline) {
+        const targetItem = targetSection.items[itemIndex];
+        if (targetItem?.parallel_group_id === movedItem.parallel_group_id) {
+          movedItem.parallel_timeline = targetItem.parallel_timeline;
+        }
+      }
+
+      targetSection.items.splice(insertIndex, 0, movedItem);
       return newSections;
     });
 
     draggedItem = null;
-    dragOverItem = null;
     dragOverPosition = null;
-    logState('DEBUG] Drop complete');
   }
-
-
   // Add this new function before the reactive statement
   function formatDrillItem(item, sectionId) {
     logState('DEBUG] formatDrillItem - input item:', {
@@ -781,12 +755,19 @@
   }
 
 
-  // Replace the existing drag handling functions with these updated versions
   function handleDragStart(e, sectionIndex, itemIndex) {
-    draggedItem = { sectionIndex, itemIndex };
+    const item = $sections[sectionIndex].items[itemIndex];
+    
+    // Set type based on whether item is part of a group
+    draggedItem = {
+      sectionIndex,
+      itemIndex,
+      type: item.parallel_group_id ? 'group' : 'drill'
+    };
+    
     e.dataTransfer.effectAllowed = 'move';
-    // Add some data to the drag event
     e.dataTransfer.setData('text/plain', JSON.stringify({ sectionIndex, itemIndex }));
+
   }
 
   // Update handleDragOver to be more forgiving
@@ -837,6 +818,9 @@
     dragOverItem = { sectionIndex, itemIndex };
   }
 
+  function handleParallelGroupDragLeave(e) {
+    e.currentTarget.classList.remove('border-t-4', 'border-b-4', 'border-blue-500');
+  }
   function handleDragLeave(e) {
     e.currentTarget.classList.remove(
       'bg-blue-100',
@@ -1450,7 +1434,76 @@
 
   // Add new state variable for group dragging
   let draggedGroup = null;
+  let dragOverGroupSection = null;
+  let groupDragPosition = null;
 
+  // === NEW: parallel group-level DRAG & DROP logic ===
+  function handleParallelGroupDragStart(e, sectionIndex, groupId) {
+    draggedGroup = { sectionIndex, groupId };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ sectionIndex, groupId }));
+    e.stopPropagation();
+  }
+
+  function handleParallelGroupDragOver(e, sectionIndex) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    
+    e.currentTarget.classList.remove('border-t-4','border-b-4','border-blue-500');
+
+    groupDragPosition = y < rect.height / 2 ? 'top' : 'bottom';
+    if (groupDragPosition === 'top') {
+      e.currentTarget.classList.add('border-t-4','border-blue-500');
+    } else {
+      e.currentTarget.classList.add('border-b-4','border-blue-500');
+    }
+    dragOverGroupSection = sectionIndex;
+  }
+
+  function handleParallelGroupDrop(e, sectionIndex) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    e.currentTarget.classList.remove('border-t-4','border-b-4','border-blue-500');
+    if (!draggedGroup) return;
+
+    sections.update((current) => {
+      const newSections = [...current];
+      const sourceSection = newSections[draggedGroup.sectionIndex];
+      const targetSection = newSections[sectionIndex];
+      if (!sourceSection || !targetSection) return current;
+
+      const groupItems = removeGroup(sourceSection.items, draggedGroup.groupId);
+
+      let insertIndex;
+      if (groupDragPosition === 'top') {
+        insertIndex = 0;
+      } else {
+        insertIndex = targetSection.items.length;
+      }
+
+      targetSection.items.splice(insertIndex, 0, ...groupItems);
+
+      draggedGroup = null;
+      dragOverGroupSection = null;
+      groupDragPosition = null;
+      return newSections;
+    });
+  }
+
+  function removeGroup(items, groupId) {
+    const chunk = [];
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (items[i].parallel_group_id === groupId) {
+        chunk.unshift(items[i]);
+        items.splice(i, 1);
+      }
+    }
+    return chunk;
+  }
   // Add these new group drag handler functions
   function handleGroupDragStart(e, sectionIndex, groupId) {
     logState('DEBUG] Group drag start:', { sectionIndex, groupId });
@@ -1896,18 +1949,18 @@
           {:else}
             {#each section.items as item, itemIndex}
               {#if item.parallel_group_id}
-                <!-- Only render the group container for the first item in a group -->
                 {#if section.items.findIndex(i => i.parallel_group_id === item.parallel_group_id) === itemIndex}
                   <div 
-                    class="parallel-group-container relative"
+                    class="parallel-group-container relative px-2 py-2 mb-2 bg-blue-50 border-l-4 border-blue-300 rounded"
                     draggable="true"
-                    on:dragstart={(e) => handleGroupDragStart(e, sectionIndex, item.parallel_group_id)}
-                    on:dragover={(e) => handleGroupDragOver(e, sectionIndex, item.parallel_group_id)}
-                    on:drop={(e) => handleGroupDrop(e, sectionIndex)}
+                    on:dragstart={(e) => handleDragStart(e, sectionIndex, itemIndex)}
+                    on:dragover={(e) => handleDragOver(e, sectionIndex, itemIndex)}
+                    on:dragleave={handleDragLeave}
+                    on:drop={(e) => handleDrop(e, sectionIndex, itemIndex)}
                   >
-                    <!-- Add group drag handle -->
-                    <div class="group-drag-handle absolute -left-8 top-0 cursor-grab text-gray-500 hover:text-gray-700">
-                      ⋮⋮
+                    <div class="flex items-center justify-between">
+                      <strong>Drag Entire Block</strong>
+                      <button on:click={() => handleUngroup(item.parallel_group_id)}>Ungroup</button>
                     </div>
 
                     <!-- Add top drop zone -->
@@ -1922,8 +1975,9 @@
                         <div 
                           class="timeline-column" 
                           data-timeline={timeline}
-                          on:dragover|preventDefault
+                          on:dragover|preventDefault={(e) => e.stopPropagation()}
                           on:drop|preventDefault={(e) => {
+                            e.stopPropagation();
                             if (!draggedItem) return;
                             handleDrop(e, sectionIndex, itemIndex, timeline);
                           }}
@@ -1965,24 +2019,47 @@
                               data-timeline={timeline}
                               data-index={section.items.indexOf(timelineItem)}
                               on:dragstart={(e) => {
-                                e.dataTransfer.effectAllowed = 'move';
+                                e.stopPropagation(); // Prevent parent group drag
                                 draggedItem = {
                                   sectionIndex,
                                   itemIndex: section.items.indexOf(timelineItem),
-                                  timeline
+                                  type: 'drill'
                                 };
+                                e.dataTransfer.effectAllowed = 'move';
                               }}
                               on:dragover={(e) => {
                                 e.preventDefault();
-                                e.currentTarget.classList.add('drag-over');
+                                e.stopPropagation(); // Prevent parent group drag
+                                
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const y = e.clientY - rect.top;
+                                
+                                e.currentTarget.classList.remove('border-t-4', 'border-b-4', 'border-blue-500');
+                                
+                                if (y < rect.height / 2) {
+                                  dragOverPosition = 'top';
+                                  e.currentTarget.classList.add('border-t-4', 'border-blue-500');
+                                } else {
+                                  dragOverPosition = 'bottom';
+                                  e.currentTarget.classList.add('border-b-4', 'border-blue-500');
+                                }
+                                
+                                dragOverItem = {
+                                  sectionIndex,
+                                  itemIndex: section.items.indexOf(timelineItem)
+                                };
                               }}
                               on:dragleave={(e) => {
-                                e.currentTarget.classList.remove('drag-over');
+                                e.currentTarget.classList.remove('border-t-4', 'border-b-4', 'border-blue-500');
                               }}
                               on:drop={(e) => {
                                 e.preventDefault();
-                                e.currentTarget.classList.remove('drag-over');
-                                handleDrop(e, sectionIndex, section.items.indexOf(timelineItem), timeline);
+                                e.stopPropagation(); // Prevent parent group drop
+                                
+                                if (!draggedItem) return;
+                                
+                                handleDrop(e, sectionIndex, section.items.indexOf(timelineItem));
+                                e.currentTarget.classList.remove('border-t-4', 'border-b-4', 'border-blue-500');
                               }}
                             >
                               <div class="bg-white p-4 rounded-lg shadow-sm border transition-all duration-200 hover:shadow-md">
@@ -2552,5 +2629,22 @@
   .parallel-group-container > .h-2.drag-over {
     height: 1rem;
     background-color: rgba(59, 130, 246, 0.1);
+  }
+  .group-drag-handle {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid transparent;
+  background-color: #f9fafb;
+  border-radius: 0.25rem;
+  }
+  .group-drag-handle:active {
+    cursor: grabbing;
+  }
+  .group-drag-handle:hover {
+    border-color: #93c5fd;
+  }
+
+  .parallel-group-container.border-t-4,
+  .parallel-group-container.border-b-4 {
+    border-color: #3b82f6;
   }
 </style>

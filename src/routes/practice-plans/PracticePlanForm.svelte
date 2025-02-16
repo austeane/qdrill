@@ -1282,23 +1282,31 @@
     selectedSectionId = null;
   }
 
-  // Add timeline duration calculation function
+  // Update timeline duration calculation function
   function calculateTimelineDurations(items, groupId) {
-    const durations = {};
-    const groupItems = items.filter(item => item.parallel_group_id === groupId);
+    if (!groupId) return {};
     
-    // Calculate duration for each timeline
-    Array.from(selectedTimelines).forEach(timeline => {
+    // Get all items in this specific parallel group
+    const groupItems = items.filter(item => item.parallel_group_id === groupId);
+    if (groupItems.length === 0) return {};
+    
+    // Get the timelines that are actually used in this group
+    const firstItem = groupItems[0];
+    const groupTimelines = firstItem?.groupTimelines || [];
+    
+    // Calculate duration for each timeline in this group
+    const durations = {};
+    groupTimelines.forEach(timeline => {
       const timelineItems = groupItems.filter(item => item.parallel_timeline === timeline);
       durations[timeline] = timelineItems.reduce((total, item) => 
-        total + (item.selected_duration || item.duration), 0
+        total + (parseInt(item.selected_duration) || parseInt(item.duration) || 0), 0
       );
     });
 
-    // Find the maximum duration
+    // Find the maximum duration among the timelines in this group
     const maxDuration = Math.max(...Object.values(durations));
     
-    // Check for mismatches and collect all differences
+    // Check for mismatches only within this group's timelines
     const mismatches = [];
     Object.entries(durations).forEach(([timeline, duration]) => {
       if (duration < maxDuration) {
@@ -1309,7 +1317,7 @@
       }
     });
 
-    // If there are mismatches, send a single consolidated warning
+    // If there are mismatches, send a single consolidated warning for this group
     if (mismatches.length > 0) {
       const warningMessage = mismatches
         .map(({ timeline, difference }) => 
@@ -1317,7 +1325,7 @@
         )
         .join(', ');
 
-      toast.push(`Timeline duration mismatch: ${warningMessage}`, {
+      toast.push(`Timeline duration mismatch in group: ${warningMessage}`, {
         theme: {
           '--toastBackground': '#FFA500',
           '--toastColor': 'black'
@@ -1328,16 +1336,18 @@
     return durations;
   }
 
-  // Add this reactive statement to monitor timeline durations
+  // Update the reactive statement to check durations per group
   $: {
     sections.subscribe(currentSections => {
       currentSections.forEach(section => {
+        // Get unique parallel group IDs in this section
         const parallelGroups = new Set(
           section.items
             .filter(item => item.parallel_group_id)
             .map(item => item.parallel_group_id)
         );
 
+        // Calculate durations for each parallel group separately
         parallelGroups.forEach(groupId => {
           calculateTimelineDurations(section.items, groupId);
         });

@@ -43,7 +43,7 @@ export async function GET({ params, locals }) {
         ppd.*,
         d.*,
         ppd.diagram_data AS ppd_diagram_data,
-        ppd.group_timelines::text[] AS group_timelines
+        ppd.group_timelines::text[] AS "groupTimelines"
        FROM practice_plan_drills ppd
        LEFT JOIN drills d ON ppd.drill_id = d.id
        WHERE ppd.practice_plan_id = $1
@@ -101,7 +101,7 @@ function formatDrillItem(item) {
       section_id: item.section_id,
       parallel_group_id: item.parallel_group_id,
       parallel_timeline: item.parallel_timeline,
-      groupTimelines: item.group_timelines,
+      groupTimelines: item.groupTimelines,
       diagram_data: item.ppd_diagram_data,
       drill: {
         id: item.drill_id,
@@ -129,7 +129,7 @@ function formatDrillItem(item) {
       section_id: item.section_id,
       parallel_group_id: item.parallel_group_id,
       parallel_timeline: item.parallel_timeline,
-      groupTimelines: item.group_timelines
+      groupTimelines: item.groupTimelines
     };
   }
 }
@@ -252,6 +252,8 @@ export const PUT = async ({ params, request, locals }) => {
                         parallel_group_id: item.parallel_group_id,
                         parallel_timeline: item.parallel_timeline || null,
                         group_timelines: item.groupTimelines
+                          ? `{${item.groupTimelines.join(',')}}`
+                          : null          
                     }));
 
                     // Update the SQL query to include parallel_timeline and group_timelines

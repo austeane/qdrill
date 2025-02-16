@@ -42,10 +42,12 @@ export async function GET({ params, locals, url }) {
         const drill = drillResult.rows[0];
 
         // Check visibility and ownership (skip in development)
-        if (!dev) {
+        if (!dev && drill.visibility === 'private') {
             const session = await locals.getSession();
             const userId = session?.user?.id;
-            if (drill.visibility === 'private' && drill.created_by !== userId) {
+            
+            // If private drill and no user session, or user is not the owner
+            if (!userId || drill.created_by !== userId) {
                 return json({ error: 'Unauthorized' }, { status: 403 });
             }
         }

@@ -1447,6 +1447,129 @@
   }
 
   // Update the template to add timeline management buttons
+
+  // Add new state variable for group dragging
+  let draggedGroup = null;
+
+  // Add these new group drag handler functions
+  function handleGroupDragStart(e, sectionIndex, groupId) {
+    logState('DEBUG] Group drag start:', { sectionIndex, groupId });
+    draggedGroup = { sectionIndex, groupId };
+    draggedItem = null; // Clear any item drag state
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ sectionIndex, groupId }));
+  }
+
+  function handleGroupDragOver(e, sectionIndex, groupId) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!draggedGroup) return;
+    
+    const targetElement = e.currentTarget;
+    const rect = targetElement.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    
+    // Clear previous indicators
+    targetElement.classList.remove(
+      'border-t-4', 'border-t-blue-500',
+      'border-b-4', 'border-b-blue-500'
+    );
+    
+    // Show drop position indicator
+    if (y < rect.height / 2) {
+      dragOverPosition = 'top';
+      targetElement.classList.add('border-t-4', 'border-t-blue-500');
+    } else {
+      dragOverPosition = 'bottom';
+      targetElement.classList.add('border-b-4', 'border-b-blue-500');
+    }
+  }
+
+  function handleGroupDrop(e, sectionIndex) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    logState('DEBUG] Group drop:', { sectionIndex, draggedGroup, dragOverPosition });
+    
+    if (!draggedGroup) return;
+    
+    sections.update(currentSections => {
+      const newSections = [...currentSections];
+      const sourceSection = newSections[draggedGroup.sectionIndex];
+      const targetSection = newSections[sectionIndex];
+      
+      if (!sourceSection || !targetSection) {
+        logState('DEBUG] Missing source or target section');
+        return currentSections;
+      }
+      
+      // Find all items in the dragged group
+      const groupItems = sourceSection.items.filter(
+        item => item.parallel_group_id === draggedGroup.groupId
+      );
+      
+      // Remove items from source section
+      sourceSection.items = sourceSection.items.filter(
+        item => item.parallel_group_id !== draggedGroup.groupId
+      );
+      
+      // Find insert position in target section
+      let insertIndex = 0;
+      if (dragOverPosition === 'bottom') {
+        // Find the last item of the target group
+        const lastGroupItemIndex = targetSection.items.findLastIndex(
+          item => item.parallel_group_id === draggedGroup.groupId
+        );
+        insertIndex = lastGroupItemIndex !== -1 ? lastGroupItemIndex + 1 : targetSection.items.length;
+      }
+      
+      // Insert group items at the determined position
+      targetSection.items.splice(insertIndex, 0, ...groupItems);
+      
+      logState('DEBUG] Updated sections after group drop');
+      return newSections;
+    });
+    
+    draggedGroup = null;
+    dragOverPosition = null;
+  }
+
+  // Add this helper function to handle drops at the top of sections
+  function handleDropOnTop(e, sectionIndex) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    logState('DEBUG] Drop on top:', { sectionIndex, draggedItem, draggedGroup });
+    
+    if (!draggedItem && !draggedGroup) return;
+    
+    sections.update(currentSections => {
+      const newSections = [...currentSections];
+      const targetSection = newSections[sectionIndex];
+      
+      if (draggedItem) {
+        const sourceSection = newSections[draggedItem.sectionIndex];
+        const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
+        targetSection.items.unshift(movedItem);
+        draggedItem = null;
+      } else if (draggedGroup) {
+        const sourceSection = newSections[draggedGroup.sectionIndex];
+        const groupItems = sourceSection.items.filter(
+          item => item.parallel_group_id === draggedGroup.groupId
+        );
+        sourceSection.items = sourceSection.items.filter(
+          item => item.parallel_group_id !== draggedGroup.groupId
+        );
+        targetSection.items.unshift(...groupItems);
+        draggedGroup = null;
+      }
+      
+      return newSections;
+    });
+    
+    dragOverPosition = null;
+  }
 </script>
 
 <!-- Only show empty cart modal for new plans -->
@@ -1775,37 +1898,27 @@
               {#if item.parallel_group_id}
                 <!-- Only render the group container for the first item in a group -->
                 {#if section.items.findIndex(i => i.parallel_group_id === item.parallel_group_id) === itemIndex}
-
-                  {console.log('[DEBUG] Rendering parallel block in section:', section.id, 
-                    'for parallel_group_id:', item.parallel_group_id,
-                    'groupTimelines:', item.groupTimelines, 
-                    'fallback selectedTimelines:', Array.from(selectedTimelines))}
-
                   <div 
-                    class="parallel-group-container"
-                    style="--timeline-count: {(item.groupTimelines?.length || 2)}"
+                    class="parallel-group-container relative"
+                    draggable="true"
+                    on:dragstart={(e) => handleGroupDragStart(e, sectionIndex, item.parallel_group_id)}
+                    on:dragover={(e) => handleGroupDragOver(e, sectionIndex, item.parallel_group_id)}
+                    on:drop={(e) => handleGroupDrop(e, sectionIndex)}
                   >
-                    <!-- Add timeline management buttons -->
-                    <div class="absolute -left-20 flex flex-col gap-2">
-                      <button 
-                        class="text-blue-500 hover:text-blue-700 text-sm"
-                        on:click={() => handleUngroup(item.parallel_group_id)}
-                      >
-                        Ungroup
-                      </button>
-                      <button 
-                        class="text-blue-500 hover:text-blue-700 text-sm"
-                        on:click={() => addTimelineToGroup(section.id, item.parallel_group_id)}
-                      >
-                        Add Timeline
-                      </button>
+                    <!-- Add group drag handle -->
+                    <div class="group-drag-handle absolute -left-8 top-0 cursor-grab text-gray-500 hover:text-gray-700">
+                      ⋮⋮
                     </div>
+
+                    <!-- Add top drop zone -->
+                    <div 
+                      class="h-2 -mt-2 mb-2"
+                      on:dragover|preventDefault
+                      on:drop={(e) => handleDropOnTop(e, sectionIndex)}
+                    ></div>
 
                     {#if item.groupTimelines?.length > 0}
                       {#each item.groupTimelines.sort() as timeline}
-                        {console.log('[DEBUG] Rendering timeline column:', timeline, 
-                          'for parallel_group_id:', item.parallel_group_id, 
-                          'block-specific groupTimelines:', item.groupTimelines)}
                         <div 
                           class="timeline-column" 
                           data-timeline={timeline}
@@ -2403,5 +2516,41 @@
       top: -1.5rem;
       transform: none;
     }
+  }
+
+  /* Add these new styles */
+  .group-drag-handle {
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+  }
+
+  .parallel-group-container:hover .group-drag-handle {
+    opacity: 1;
+  }
+
+  .parallel-group-container {
+    position: relative;
+    transition: transform 0.2s ease, outline 0.2s ease;
+  }
+
+  .parallel-group-container.border-t-4 {
+    border-top: 4px solid theme('colors.blue.500');
+    margin-top: -4px;
+  }
+
+  .parallel-group-container.border-b-4 {
+    border-bottom: 4px solid theme('colors.blue.500');
+    margin-bottom: -4px;
+  }
+
+  /* Style for the top drop zone */
+  .parallel-group-container > .h-2 {
+    transition: height 0.2s ease;
+  }
+
+  .parallel-group-container > .h-2:hover,
+  .parallel-group-container > .h-2.drag-over {
+    height: 1rem;
+    background-color: rgba(59, 130, 246, 0.1);
   }
 </style>

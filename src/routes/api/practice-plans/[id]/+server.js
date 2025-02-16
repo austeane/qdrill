@@ -42,7 +42,8 @@ export async function GET({ params, locals }) {
       `SELECT 
         ppd.*,
         d.*,
-        ppd.diagram_data AS ppd_diagram_data
+        ppd.diagram_data AS ppd_diagram_data,
+        ppd.group_timelines::text[] AS group_timelines
        FROM practice_plan_drills ppd
        LEFT JOIN drills d ON ppd.drill_id = d.id
        WHERE ppd.practice_plan_id = $1
@@ -100,6 +101,7 @@ function formatDrillItem(item) {
       section_id: item.section_id,
       parallel_group_id: item.parallel_group_id,
       parallel_timeline: item.parallel_timeline,
+      groupTimelines: item.group_timelines,
       diagram_data: item.ppd_diagram_data,
       drill: {
         id: item.drill_id,
@@ -117,7 +119,7 @@ function formatDrillItem(item) {
         positions_focused_on: item.positions_focused_on,
         video_link: item.video_link,
         diagrams: item.diagrams
-      }
+      },
     };
   } else {
     return {
@@ -126,7 +128,8 @@ function formatDrillItem(item) {
       order_in_plan: item.order_in_plan,
       section_id: item.section_id,
       parallel_group_id: item.parallel_group_id,
-      parallel_timeline: item.parallel_timeline
+      parallel_timeline: item.parallel_timeline,
+      groupTimelines: item.group_timelines
     };
   }
 }
@@ -247,23 +250,23 @@ export const PUT = async ({ params, request, locals }) => {
                         duration: item.duration || item.selected_duration,
                         type: item.type,
                         parallel_group_id: item.parallel_group_id,
-                        parallel_timeline: item.parallel_timeline || null
+                        parallel_timeline: item.parallel_timeline || null,
+                        group_timelines: item.groupTimelines
                     }));
 
-                    // Update the SQL query to include parallel_timeline
+                    // Update the SQL query to include parallel_timeline and group_timelines
                     const valueStrings = values.map((_, index) => 
-                        `($${index * 8 + 1}, $${index * 8 + 2}, $${index * 8 + 3}, $${index * 8 + 4}, $${index * 8 + 5}, $${index * 8 + 6}, $${index * 8 + 7}, $${index * 8 + 8})`
+                        `($${index * 9 + 1}, $${index * 9 + 2}, $${index * 9 + 3}, $${index * 9 + 4}, $${index * 9 + 5}, $${index * 9 + 6}, $${index * 9 + 7}, $${index * 9 + 8}, $${index * 9 + 9})`
                     );
                     
                     const flatValues = values.flatMap(v => [
                         v.practice_plan_id, v.section_id, v.drill_id, 
                         v.order_in_plan, v.duration, v.type, 
-                        v.parallel_group_id, v.parallel_timeline
+                        v.parallel_group_id, v.parallel_timeline, v.group_timelines
                     ]);
 
                     await client.query(
-                        `INSERT INTO practice_plan_drills 
-                         (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, parallel_group_id, parallel_timeline)
+                        `INSERT INTO practice_plan_drills (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, parallel_group_id, parallel_timeline, group_timelines)
                          VALUES ${valueStrings.join(', ')}`,
                         flatValues
                     );
@@ -275,7 +278,7 @@ export const PUT = async ({ params, request, locals }) => {
         return json(result.rows[0]);
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('Error updating practice plan:', error);
+        console.error('[API] Error updating practice plan:', error);
         return json(
             { error: 'Failed to update practice plan', details: error.toString() },
             { status: 500 }
@@ -310,7 +313,6 @@ export const DELETE = authGuard(async ({ params, locals }) => {
         if (!dev && plan.created_by !== userId && !plan.is_editable_by_others) {
             return json({ error: 'Unauthorized to delete this practice plan' }, { status: 403 });
         }
-
         // Delete related records first (cascade delete)
         await client.query(
             'DELETE FROM practice_plan_drills WHERE practice_plan_id = $1',

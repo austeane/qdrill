@@ -5,12 +5,10 @@
   import { toast } from '@zerodevx/svelte-toast';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import { handleDrillMove } from '$lib/stores/practicePlanStore';
   // Add Editor import
   let Editor;
 
   // Add proper prop definitions with defaults
-  export let data = { drills: [] }; // Add default value
   export let practicePlan = null;
   logState('Received practicePlan', practicePlan);
 
@@ -39,8 +37,6 @@
   // Add startTime store initialization with other store initializations
   let startTime = writable('09:00'); // Default to 9 AM
 
-  // Initialize drills from data
-  $: availableDrills = data?.drills || [];
 
   // Add logging for debugging
   function simplifyForLogging(obj) {
@@ -399,6 +395,7 @@
     logState('DEBUG] formatDrillItem - input item:', {
       id: item.id,
       parallel_group_id: item.parallel_group_id,
+      parallel_timeline: item.parallel_timeline,
       groupTimelines: item.groupTimelines || item.group_timelines
     });
 
@@ -421,21 +418,28 @@
     };
 
     if (item.parallel_group_id) {
+      // First check for groupTimelines (either camelCase or snake_case)
       if (Array.isArray(item.groupTimelines) && item.groupTimelines.length > 0) {
         base.groupTimelines = item.groupTimelines;
       } else if (Array.isArray(item.group_timelines) && item.group_timelines.length > 0) {
         base.groupTimelines = item.group_timelines;
-      } else if (item.parallel_timeline) {
-        base.groupTimelines = [item.parallel_timeline];
       } else {
-        base.groupTimelines = null;
+        // If no groupTimelines, create an array with at least the parallel_timeline
+        const timelines = new Set();
+        if (item.parallel_timeline) {
+          timelines.add(item.parallel_timeline);
+        }
+        // Convert back to array
+        base.groupTimelines = Array.from(timelines);
       }
     } else {
       base.groupTimelines = null;
     }
+
     logState('DEBUG] formatDrillItem - output base:', {
       id: base.id,
       parallel_group_id: base.parallel_group_id,
+      parallel_timeline: base.parallel_timeline,
       groupTimelines: base.groupTimelines
     });
 
@@ -449,14 +453,24 @@
     const allTimelines = new Set();
     plan.sections.forEach(section => {
       section.items.forEach(item => {
+        // Add parallel_timeline if it exists
         if (item.parallel_timeline) {
           allTimelines.add(item.parallel_timeline);
+        }
+        // Add all timelines from groupTimelines if they exist
+        if (Array.isArray(item.groupTimelines)) {
+          item.groupTimelines.forEach(timeline => allTimelines.add(timeline));
+        }
+        // Also check snake_case version
+        if (Array.isArray(item.group_timelines)) {
+          item.group_timelines.forEach(timeline => allTimelines.add(timeline));
         }
       });
     });
     
     if (allTimelines.size > 0) {
       selectedTimelines = allTimelines;
+      console.log('[DEBUG] Initialized selectedTimelines from plan:', Array.from(selectedTimelines));
     }
   }
 
@@ -506,12 +520,6 @@
   ];
 
   let showEmptyCartModal = false;
-
-  let dragStartX = 0;
-  let dragStartY = 0;
-  let currentDragItem = null;
-  let dragThreshold = 50; // pixels to trigger horizontal drag
-  let isDraggingForParallel = false;
 
   // Add these variables to track drag state
   let draggedItem = null;
@@ -722,44 +730,39 @@
   }
 
   function handleDurationChange(sectionIndex, itemIndex, newDuration) {
-    logState('Updating duration', { sectionIndex, itemIndex, newDuration });
-    
-    sections.update(currentSections => {
-      const newSections = [...currentSections];
-      const section = newSections[sectionIndex];
-      const item = section.items[itemIndex];
+  logState('Updating duration', { sectionIndex, itemIndex, newDuration });
+  
+  sections.update(currentSections => {
+    const newSections = [...currentSections];
+    const section = newSections[sectionIndex];
+    const item = section.items[itemIndex];
 
-      if (item.type === 'break') {
-        // For breaks, just update the duration directly
-        section.items[itemIndex] = {
-          ...item,
-          duration: newDuration,
-          selected_duration: newDuration
-        };
-      } else if (item.parallel_group_id) {
-        // Existing parallel group logic
-        section.items = section.items.map(it => {
-          if (it.parallel_group_id === item.parallel_group_id) {
-            return {
-              ...it,
-              selected_duration: newDuration,
-              duration: newDuration
-            };
-          }
-          return it;
-        });
-      } else {
-        // Existing single item logic
-        section.items[itemIndex] = {
-          ...item,
-          selected_duration: newDuration,
-          duration: newDuration
-        };
-      }
+    if (item.type === 'break') {
+      // For breaks, update the duration directly
+      section.items[itemIndex] = {
+        ...item,
+        duration: newDuration,
+        selected_duration: newDuration
+      };
+    } else if (item.parallel_group_id) {
+      // For a drill in a parallel group, update only the current drill.
+      section.items[itemIndex] = {
+        ...item,
+        selected_duration: newDuration,
+        duration: newDuration
+      };
+    } else {
+      // For single drills, update normally.
+      section.items[itemIndex] = {
+        ...item,
+        selected_duration: newDuration,
+        duration: newDuration
+      };
+    }
 
-      return newSections;
-    });
-  }
+    return newSections;
+  });
+}
 
   // Functions to manage Practice Goals
   function addPracticeGoal() {
@@ -774,177 +777,6 @@
     practiceGoals.update(goals => goals.map((goal, i) => (i === index ? value : goal)));
   }
 
-  // Add this function
-  function updateDiagramData(index, newDiagramData) {
-    $selectedItems.update(items => {
-      const updatedItems = [...items];
-      updatedItems[index].diagram_data = newDiagramData;
-      return updatedItems;
-    });
-  }
-
-  // Update these functions for better group management
-  function getExistingGroups() {
-    const groups = new Map();
-    $selectedItems.forEach(item => {
-      if (item.parallel_group_id) {
-        if (!groups.has(item.parallel_group_id)) {
-          groups.set(item.parallel_group_id, {
-            id: item.parallel_group_id,
-            name: `Group ${groups.size + 1}`,
-            items: []
-          });
-        }
-        groups.get(item.parallel_group_id).items.push(item);
-      }
-    });
-    return Array.from(groups.values());
-  }
-
-  function createNewGroup() {
-    const groupId = `group_${Date.now()}`;
-    parallelGroups.update(groups => [...groups, { id: groupId, name: `Group ${groups.length + 1}`, items: [] }]);
-  }
-
-  function removeFromGroup(itemId) {
-    $selectedItems.update(items => removeFromParallelGroup(itemId, items));
-  }
-
-  // Add this helper function
-  function findClosestItemIndex(y) {
-    const itemElements = document.querySelectorAll('.timeline-item');
-    let closestIndex = -1;
-    let closestDistance = Infinity;
-    
-    itemElements.forEach((element, index) => {
-      const rect = element.getBoundingClientRect();
-      const distance = Math.abs(rect.top + rect.height/2 - y);
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = index;
-      }
-    });
-    
-    return closestIndex;
-  }
-
-  // Update the mergeIntoParallelGroup function
-  function mergeIntoParallelGroup(sourceIndex, targetIndex, items, timeline) {
-    const sourceItem = items[sourceIndex];
-    const targetItem = items[targetIndex];
-    
-    if (!sourceItem || !targetItem || sourceIndex === targetIndex) return items;
-    
-    const newItems = [...items];
-    
-    const sourceItemWithDrill = {
-        ...sourceItem,
-        id: sourceItem.drill?.id || sourceItem.id,
-        drill: sourceItem.drill || { id: sourceItem.id, name: sourceItem.name },
-        parallel_timeline: timeline
-    };
-    
-    // If target is already in a group, add source to that group
-    if (targetItem.parallel_group_id) {
-        const groupId = targetItem.parallel_group_id;
-        newItems[sourceIndex] = {
-            ...sourceItemWithDrill,
-            parallel_group_id: groupId,
-            parallel_timeline: timeline
-        };
-    } else {
-        // Create new group for both items
-        const groupId = `group_${Date.now()}`;
-        newItems[sourceIndex] = {
-            ...sourceItemWithDrill,
-            parallel_group_id: groupId,
-            parallel_timeline: timeline
-        };
-        newItems[targetIndex] = {
-            ...targetItem,
-            parallel_group_id: groupId,
-            parallel_timeline: timeline
-        };
-    }
-    
-    return newItems;
-  }
-
-  // Add timeline selection state
-  let selectedTimeline = null;
-
-  // Update handleParallelDragStart to include timeline selection
-  function handleParallelDragStart(e, index) {
-    const timelineSelector = document.createElement('div');
-    timelineSelector.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-4 rounded-lg shadow-lg z-50';
-    timelineSelector.innerHTML = `
-      <div class="text-center mb-2">Select Timeline</div>
-      <div class="flex gap-2">
-        ${Object.entries(PARALLEL_TIMELINES).map(([key, { name, color }]) => `
-          <button class="px-3 py-2 rounded ${color} text-white" data-timeline="${key}">
-            ${name}
-          </button>
-        `).join('')}
-      </div>
-    `;
-
-    document.body.appendChild(timelineSelector);
-
-    const buttons = timelineSelector.querySelectorAll('button');
-    buttons.forEach(button => {
-      button.addEventListener('click', () => {
-        selectedTimeline = button.dataset.timeline;
-        timelineSelector.remove();
-        startDrag(e, index);
-      });
-    });
-
-    e.preventDefault();
-  }
-
-  function startDrag(e, index) {
-    isDraggingForParallel = true;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    currentDragItem = $selectedItems[index];
-    
-    const handleMouseMove = (e) => {
-      if (!isDraggingForParallel) return;
-      
-      const deltaX = e.clientX - dragStartX;
-      const deltaY = e.clientY - dragStartY;
-      
-      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > dragThreshold) {
-        const targetIndex = findClosestItemIndex(e.clientY);
-        if (targetIndex !== -1 && targetIndex !== index) {
-          $selectedItems.update(items => 
-            mergeIntoParallelGroup(index, targetIndex, items, selectedTimeline)
-          );
-        }
-      }
-    };
-    
-    const handleMouseUp = () => {
-      isDraggingForParallel = false;
-      currentDragItem = null;
-      selectedTimeline = null;
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-    
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  }
-
-  function removeFromParallelGroup(itemId, items) {
-    return items.map(item => {
-      if (item.id === itemId) {
-        const { parallel_group_id, ...rest } = item;
-        return rest;
-      }
-      return item;
-    });
-  }
 
   // Replace the existing drag handling functions with these updated versions
   function handleDragStart(e, sectionIndex, itemIndex) {
@@ -1015,27 +847,6 @@
     dragOverPosition = null;
   }
 
-  // Add this new function to handle section drops
-  function handleItemIntoSectionDrop(e, sectionIndex) {
-    e.preventDefault();
-    if (!draggedItem) return;
-
-    sections.update(currentSections => {
-      const newSections = [...currentSections];
-      const sourceSection = newSections[draggedItem.sectionIndex];
-      const targetSection = newSections[sectionIndex];
-      
-      // Add the item to the end of the target section
-      const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
-      targetSection.items.push(movedItem);
-      
-      return newSections;
-    });
-
-    draggedItem = null;
-    dragOverItem = null;
-    dragOverPosition = null;
-  }
 
   // Update the handleUngroup function
   function handleUngroup(groupId) {
@@ -1083,24 +894,6 @@
     toast.push('Ungrouped parallel drills');
   }
 
-  // Add logging to your drill addition function
-  function addDrillToPlan(drill) {
-    logState('Adding drill to plan', drill);
-    $selectedItems.update(items => {
-      const newItems = [...items, {
-        id: drill.id,
-        type: 'drill',
-        name: drill.name,
-        drill: drill,
-        expanded: false,
-        selected_duration: 15, // default duration
-        diagram_data: null,
-        parallel_group_id: null
-      }];
-      logState('Updated selectedItems', newItems);
-      return newItems;
-    });
-  }
 
   // Make sure the drills are being rendered in the template
   $: logState('Current selectedItems in template', $selectedItems);
@@ -1128,79 +921,6 @@
     });
   }
 
-  // When updating selectedItems, use selectedItems.set() instead of direct assignment
-  function updateSelectedDrills(drills) {
-    selectedItems.set(drills.map(drill => ({
-      ...drill,
-      type: 'drill',
-      expanded: false
-    })));
-  }
-
-
-  function handleUpdateItems(event) {
-    const { type, sourceId, targetId, groupId, position, sourceSectionId, targetSectionId } = event.detail;
-
-    sections.update(currentSections => {
-      const newSections = [...currentSections];
-
-      if (type === 'group') {
-        // Handle grouping
-        newSections.forEach(section => {
-          section.items = section.items.map(item => {
-            if (item.id === sourceId || item.id === targetId) {
-              return {
-                ...item,
-                parallel_group_id: groupId
-              };
-            }
-            return item;
-          });
-        });
-      } else if (type === 'ungroup') {
-        // Handle ungrouping
-        newSections.forEach(section => {
-          section.items = section.items.map(item => {
-            if (item.parallel_group_id === groupId) {
-              const { parallel_group_id, ...rest } = item;
-              return rest;
-            }
-            return item;
-          });
-        });
-      } else if (type === 'move') {
-        // Handle moving/reordering
-        const sourceSection = newSections.find(s => s.id === sourceSectionId);
-        const targetSection = newSections.find(s => s.id === targetSectionId);
-        
-        if (sourceSection && targetSection) {
-          const [movedItem] = sourceSection.items.splice(
-            sourceSection.items.findIndex(item => item.id === sourceId),
-            1
-          );
-
-          const targetIndex = targetSection.items.findIndex(item => item.id === targetId);
-          const insertIndex = position === 'after' ? targetIndex + 1 : targetIndex;
-          
-          targetSection.items.splice(insertIndex, 0, movedItem);
-        }
-      }
-
-      return newSections;
-    });
-  }
-
-  // Update the isInGroup helper function to be more robust
-  function isInGroup(item, items, currentIndex) {
-    if (!item.parallel_group_id) return false;
-    
-    // Check if this item's group has already been started rendering
-    const firstGroupItemIndex = items.findIndex(i => 
-      i.parallel_group_id === item.parallel_group_id
-    );
-    
-    return firstGroupItemIndex !== -1 && firstGroupItemIndex < currentIndex;
-  }
 
   // Add this reactive statement near your other reactive statements
   $: {
@@ -1325,14 +1045,6 @@
     return normalized;
   }
 
-  // Add new helper function for break duration updates
-  function updateBreakDuration(index, duration) {
-    $selectedItems.update(items => {
-      const updatedItems = [...items];
-      updatedItems[index].duration = duration;
-      return updatedItems;
-    });
-  }
 
   // Add drill search functionality
   async function searchDrills(query) {

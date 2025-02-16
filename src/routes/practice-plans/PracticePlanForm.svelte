@@ -163,7 +163,12 @@
         order: section.order,
         goals: section.goals || [],
         notes: section.notes || '',
-        items: section.items.map(item => formatDrillItem(item, section.id))
+        items: section.items.map(item => {
+          const formattedItem = formatDrillItem(item, section.id);
+          // Log the formatted item for debugging
+          console.log('[DEBUG] Formatted item:', formattedItem);
+          return formattedItem;
+        })
       })));
 
       const allItems = practicePlan.sections.flatMap(section =>
@@ -283,11 +288,20 @@
         logState('DEBUG] Handling parallel group drop');
         const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
         const parallelGroupId = targetItem?.parallel_group_id || `group_${Date.now()}`;
+        
+        // Get groupTimelines from the target group or create new ones
+        const groupTimelines = targetItem?.groupTimelines || 
+          targetSection.items.find(i => i.parallel_group_id === parallelGroupId)?.groupTimelines ||
+          [targetTimeline];
+
         const updatedMovedItem = {
           ...movedItem,
           parallel_group_id: parallelGroupId,
-          parallel_timeline: targetTimeline || targetItem.parallel_timeline
+          parallel_timeline: targetTimeline || targetItem.parallel_timeline,
+          groupTimelines // Use the group's timeline configuration
         };
+
+        logState('DEBUG] Updated moved item:', updatedMovedItem);
 
         const groupItems = targetSection.items.filter(item => 
           item.parallel_group_id === parallelGroupId &&
@@ -318,36 +332,62 @@
 
   // Add this new function before the reactive statement
   function formatDrillItem(item, sectionId) {
-    if (item.type === 'drill') {
-      return {
-        id: item.drill?.id || item.id,
-        type: 'drill',
-        name: item.drill?.name || item.name,
-        duration: item.duration,
-        drill: item.drill,
-        selected_duration: item.duration,
-        parallel_group_id: item.parallel_group_id,
-        parallel_timeline: item.parallel_timeline,
-        diagram_data: item.diagram_data,
-        skill_level: item.drill?.skill_level || [],
-        skills_focused_on: item.drill?.skills_focused_on || [],
-        brief_description: item.drill?.brief_description || '',
-        video_link: item.drill?.video_link || null,
-        diagrams: item.drill?.diagrams || [],
-        section_id: sectionId  // Add section_id
-      };
+    logState('DEBUG] formatDrillItem - input item:', {
+      id: item.id,
+      parallel_group_id: item.parallel_group_id,
+      groupTimelines: item.groupTimelines
+    });
+
+    const base = {
+      id: item.drill?.id || item.id,
+      type: item.type,
+      name: item.drill?.name || item.name,
+      duration: item.duration,
+      drill: item.drill,
+      selected_duration: item.duration,
+      parallel_group_id: item.parallel_group_id,
+      parallel_timeline: item.parallel_timeline,
+      diagram_data: item.diagram_data,
+      skill_level: item.drill?.skill_level || [],
+      skills_focused_on: item.drill?.skills_focused_on || [],
+      brief_description: item.drill?.brief_description || '',
+      video_link: item.drill?.video_link || null,
+      diagrams: item.drill?.diagrams || [],
+      section_id: sectionId
+    };
+
+    if (item.parallel_group_id) {
+      // First try to use the groupTimelines from the API response
+      if (item.groupTimelines) {
+        base.groupTimelines = item.groupTimelines;
+        logState('DEBUG] formatDrillItem - using existing groupTimelines:', base.groupTimelines);
+      } else {
+        // Fall back to calculating from parallel_timeline values
+        const calculatedTimelines = [...new Set(
+          practicePlan?.sections
+            ?.find(s => s.id === sectionId)
+            ?.items
+            ?.filter(i => i.parallel_group_id === item.parallel_group_id)
+            ?.map(i => i.parallel_timeline)
+        )];
+        base.groupTimelines = calculatedTimelines;
+        logState('DEBUG] formatDrillItem - calculated groupTimelines:', {
+          sectionId,
+          parallel_group_id: item.parallel_group_id,
+          calculatedTimelines
+        });
+      }
     } else {
-      return {
-        id: item.id,
-        type: 'break',
-        name: 'Break',
-        duration: item.duration,
-        selected_duration: item.duration,
-        parallel_group_id: item.parallel_group_id,
-        parallel_timeline: item.parallel_timeline,
-        section_id: sectionId  // Add section_id
-      };
+      base.groupTimelines = null;
     }
+
+    logState('DEBUG] formatDrillItem - output base:', {
+      id: base.id,
+      parallel_group_id: base.parallel_group_id,
+      groupTimelines: base.groupTimelines
+    });
+
+    return base;
   }
 
   // Add this new function before the reactive statement
@@ -1317,17 +1357,21 @@
   // Add this function to create a parallel block
   function createParallelBlock() {
     if (!selectedSectionId) return;
-
+    console.log('[DEBUG] createParallelBlock - starting. Global selectedTimelines:', Array.from(selectedTimelines));
+    
     sections.update(currentSections => {
       const newSections = [...currentSections];
       const section = newSections.find(s => s.id === selectedSectionId);
-      
-      if (!section) return currentSections;
+      if (!section) {
+        console.log('[DEBUG] createParallelBlock - section not found for selectedSectionId:', selectedSectionId);
+        return currentSections;
+      }
 
-      // Create block ID and capture current timelines
       const parallelGroupId = `group_${Date.now()}`;
+      // Capture the timelines at this moment
       const groupTimelines = Array.from(selectedTimelines);
-      
+      console.log('[DEBUG] createParallelBlock - captured groupTimelines for new block:', groupTimelines);
+
       // Create placeholders with the block's timeline configuration
       const placeholderDrills = groupTimelines.map(timeline => ({
         id: `placeholder_${timeline}_${Date.now()}`,
@@ -1337,14 +1381,16 @@
         selected_duration: 15,
         parallel_group_id: parallelGroupId,
         parallel_timeline: timeline,
-        groupTimelines // Store timeline config with the block
+        groupTimelines // Only use camelCase version
       }));
       
+      console.log('[DEBUG] createParallelBlock - placeholderDrills to be added:', placeholderDrills);
       section.items = [...section.items, ...placeholderDrills];
       return newSections;
     });
 
     toast.push('Created parallel block. Drag drills into each timeline.');
+    console.log('[DEBUG] createParallelBlock - parallel block created in section:', selectedSectionId);
   }
 
   // Add timeline duration calculation function
@@ -1411,6 +1457,12 @@
         return section;
       })
     );
+  }
+
+  // (Optional) You can also add a helper function to log the rendering of timeline columns:
+  function logTimelineRender(timeline, groupTimelines) {
+    console.log('[DEBUG] Rendering timeline column:', timeline, 'with block-specific groupTimelines:', groupTimelines);
+    return timeline;
   }
 </script>
 
@@ -1505,7 +1557,7 @@
   </div>
 {/if}
 
-<!-- Add this before the closing </div> of the container -->
+<!-- Timeline Selector Modal -->
 {#if showTimelineSelector}
   <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
     <div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
@@ -1519,12 +1571,15 @@
                 type="checkbox"
                 checked={selectedTimelines.has(key)}
                 on:change={(e) => {
+                  console.log('[DEBUG] Timeline checkbox toggled:', key, 'is now', e.target.checked);
                   if (e.target.checked) {
                     selectedTimelines.add(key);
                   } else {
                     selectedTimelines.delete(key);
                   }
-                  selectedTimelines = selectedTimelines; // Trigger reactivity
+                  // Trigger reactivity by reassigning (this is a workaround in Svelte for Sets)
+                  selectedTimelines = selectedTimelines;
+                  console.log('[DEBUG] Global selectedTimelines updated:', Array.from(selectedTimelines));
                 }}
                 class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
@@ -1538,6 +1593,7 @@
           <button
             class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
             on:click={() => {
+              console.log('[DEBUG] Timeline selector cancelled.');
               showTimelineSelector = false;
               selectedSectionId = null;
             }}
@@ -1547,7 +1603,9 @@
           <button
             class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
             on:click={() => {
+              console.log('[DEBUG] Create Parallel Block button clicked. Global timelines are:', Array.from(selectedTimelines));
               if (selectedTimelines.size < 2) {
+                console.log('[DEBUG] Not enough timelines selected. Operation aborted.');
                 toast.push('Please select at least two timelines');
                 return;
               }
@@ -1726,6 +1784,12 @@
               {#if item.parallel_group_id}
                 <!-- Only render the group container for the first item in a group -->
                 {#if section.items.findIndex(i => i.parallel_group_id === item.parallel_group_id) === itemIndex}
+
+                  {console.log('[DEBUG] Rendering parallel block in section:', section.id, 
+                    'for parallel_group_id:', item.parallel_group_id,
+                    'groupTimelines:', item.groupTimelines, 
+                    'fallback selectedTimelines:', Array.from(selectedTimelines))}
+
                   <div 
                     class="parallel-group-container"
                     style="--timeline-count: {(item.groupTimelines ? item.groupTimelines.length : Array.from(selectedTimelines).length)}"
@@ -1737,8 +1801,10 @@
                       Ungroup
                     </button>
 
-                    <!-- Use block-specific timelines with fallback -->
                     {#each (item.groupTimelines || Array.from(selectedTimelines)).sort() as timeline}
+                      {console.log('[DEBUG] Rendering timeline column:', timeline, 
+                        'for parallel_group_id:', item.parallel_group_id, 
+                        'block-specific groupTimelines:', item.groupTimelines)}
                       <div 
                         class="timeline-column" 
                         data-timeline={timeline}

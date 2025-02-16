@@ -74,19 +74,23 @@
 
       if (item.parallel_group_id) {
         if (!parallelGroups[item.parallel_group_id]) {
-          parallelGroups[item.parallel_group_id] = duration;
-        } else {
-          parallelGroups[item.parallel_group_id] = Math.max(
-            parallelGroups[item.parallel_group_id],
-            duration
-          );
+          parallelGroups[item.parallel_group_id] = {};
         }
+        const timeline = item.parallel_timeline || 'CHASERS';
+        if (!parallelGroups[item.parallel_group_id][timeline]) {
+          parallelGroups[item.parallel_group_id][timeline] = 0;
+        }
+        parallelGroups[item.parallel_group_id][timeline] += duration;
       } else {
         totalDuration += duration;
       }
     });
 
-    totalDuration += Object.values(parallelGroups).reduce((sum, duration) => sum + duration, 0);
+    // Add the max duration from each parallel group's timelines
+    Object.values(parallelGroups).forEach(timelineGroups => {
+      const maxTimelineDuration = Math.max(...Object.values(timelineGroups));
+      totalDuration += maxTimelineDuration;
+    });
 
     return totalDuration;
   }

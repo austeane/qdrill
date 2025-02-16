@@ -35,7 +35,7 @@
   let brief_description = writable(drill.brief_description ?? '');
   let detailed_description = writable(drill.detailed_description ?? '');
   let skill_level = writable(drill.skill_level ?? []);
-  let complexity = writable(drill.complexity ?? '');
+  let complexity = writable((drill.complexity ?? '').toLowerCase());
   let suggested_length = writable(drill.suggested_length ?? '');
   let number_of_people_min = writable(drill.number_of_people_min ?? '');
   let number_of_people_max = writable(drill.number_of_people_max ?? '');
@@ -437,7 +437,7 @@
           brief_description: $brief_description,
           detailed_description: $detailed_description,
           skill_level: $skill_level,
-          complexity: $complexity,
+          complexity: $complexity.charAt(0).toUpperCase() + $complexity.slice(1),
           suggested_length: $suggested_length,
           number_of_people_min: $number_of_people_min,
           number_of_people_max: maxParticipants,
@@ -784,11 +784,15 @@
             <div class="flex flex-col">
               <label for="complexity" class="mb-1 text-sm font-medium text-gray-700">Complexity:</label>
               <p class="text-xs text-gray-500 mb-1">How difficult is it to get a team to do this drill correctly for the first time.</p>
-              <select id="complexity" bind:value={$complexity} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select 
+                id="complexity" 
+                bind:value={$complexity} 
+                class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
                 <option value="">Select Complexity</option>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
               </select>
             </div>
 

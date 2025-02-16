@@ -7,6 +7,7 @@
   import { page } from '$app/stores';
   // Add Editor import
   let Editor;
+  import ParallelGroup from '$components/practice-plans/ParallelGroup.svelte';
 
   // Add proper prop definitions with defaults
   export let practicePlan = null;
@@ -144,7 +145,7 @@
     console.log('[DEBUG] Initializing form with practice plan data', practicePlan);
     
     // Add detailed logging of raw data
-    console.log('[DEBUG] Raw practicePlan sections:', JSON.stringify(practicePlan.sections, null, 2));
+    rawLog('Raw practicePlan sections', practicePlan.sections);
     
     // Log items that should have parallel groups
     if (practicePlan.sections) {
@@ -194,49 +195,31 @@
             }
 
             if (Array.isArray(item.groupTimelines) && item.groupTimelines.length > 0) {
-              for (const t of item.groupTimelines) {
-                parallelGroups.get(item.parallel_group_id).add(t);
-              }
+              item.groupTimelines.forEach(t => parallelGroups.get(item.parallel_group_id).add(t));
             } else if (item.parallel_timeline) {
               parallelGroups.get(item.parallel_group_id).add(item.parallel_timeline);
             }
-
           }
         });
       });
 
-      // Now set the sections with the collected group timelines
+      // Now set the sections with transformed items
       sections.set(practicePlan.sections.map(section => ({
         id: section.id,
         name: section.name,
         order: section.order,
         goals: section.goals || [],
         notes: section.notes || '',
-        items: section.items.map(item => {
-          const formattedItem = {
-            ...formatDrillItem(item, section.id),
-            // If this item is part of a parallel group, ensure it has the group's timelines
-            ...(item.parallel_group_id && {
-              groupTimelines: Array.from(parallelGroups.get(item.parallel_group_id) || [])
-            })
-          };
-          console.log('[DEBUG] Formatted item with group timelines:', formattedItem);
-          return formattedItem;
-        })
-      })));
-
-      const allItems = practicePlan.sections.flatMap(section =>
-        section.items.map(item => ({
-          ...formatDrillItem(item, section.id),
+        items: transformToGroupStructure(section.items.map(item => ({
+          ...item,
+          // Ensure each grouped item has the complete set of timelines
           ...(item.parallel_group_id && {
             groupTimelines: Array.from(parallelGroups.get(item.parallel_group_id) || [])
           })
-        }))
-      );
-      selectedItems.set(allItems);
+        })))
+      })));
 
-      logState('DEBUG] Initialized sections', sections);
-      logState('DEBUG] Initialized selectedItems', selectedItems);
+      logState('DEBUG] Initialized sections with groups', $sections);
     }
 
     formInitialized = true;
@@ -313,80 +296,26 @@
   // ====================
   // Updated drop handler logging
   // ====================
-  function handleDrop(e, sectionIndex, itemIndex, targetTimeline = null) {
+  function handleDrop(e, sectionIndex, itemIndex) {
     e.preventDefault();
-    e.stopPropagation();
-
-    logState('DEBUG] Drop event starting', { 
-      sectionIndex, 
-      itemIndex, 
-      draggedItem,
-      dragOverPosition,
-      targetTimeline,
-      sectionsBeforeDrop: sections
-    });
-
-    if (!draggedItem) {
-      logState('DEBUG] No draggedItem, aborting drop');
-      return;
-    }
+    
+    if (!draggedItem) return;
 
     sections.update(currentSections => {
-      logState('DEBUG] Starting sections update');
       const newSections = [...currentSections];
       const sourceSection = newSections[draggedItem.sectionIndex];
       const targetSection = newSections[sectionIndex];
-
-      if (!sourceSection || !targetSection) {
-        logState('DEBUG] Missing source or target section, aborting');
-        return currentSections;
-      }
-
-      const targetItem = targetSection.items[itemIndex];
-
-      if (targetItem?.parallel_group_id || targetTimeline) {
-        logState('DEBUG] Handling parallel group drop');
-        const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
-        const parallelGroupId = targetItem?.parallel_group_id || `group_${Date.now()}`;
-        
-        // Get groupTimelines from the target group or create new ones
-        const groupTimelines = targetItem?.groupTimelines || 
-          targetSection.items.find(i => i.parallel_group_id === parallelGroupId)?.groupTimelines ||
-          [targetTimeline];
-
-        const updatedMovedItem = {
-          ...movedItem,
-          parallel_group_id: parallelGroupId,
-          parallel_timeline: targetTimeline || targetItem.parallel_timeline,
-          groupTimelines // Use the group's timeline configuration
-        };
-
-        logState('DEBUG] Updated moved item:', updatedMovedItem);
-
-        const groupItems = targetSection.items.filter(item => 
-          item.parallel_group_id === parallelGroupId &&
-          item.parallel_timeline === updatedMovedItem.parallel_timeline
-        );
-
-        const insertIndex = groupItems.length > 0 ? 
-          targetSection.items.indexOf(groupItems[groupItems.length - 1]) + 1 : 
-          itemIndex;
-        targetSection.items.splice(insertIndex, 0, updatedMovedItem);
-      } else {
-        logState('DEBUG] Handling regular item drop');
-        const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
-        const insertIndex = dragOverPosition === 'bottom' ? itemIndex + 1 : itemIndex;
-        targetSection.items.splice(insertIndex, 0, movedItem);
-      }
-
-      logState('DEBUG] Sections after drop update', newSections);
+      
+      // Move the item (whether it's a group or single drill)
+      const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
+      const insertIndex = dragOverPosition === 'bottom' ? itemIndex + 1 : itemIndex;
+      targetSection.items.splice(insertIndex, 0, movedItem);
+      
       return newSections;
     });
 
     draggedItem = null;
-    dragOverItem = null;
     dragOverPosition = null;
-    logState('DEBUG] Drop complete');
   }
 
 
@@ -470,7 +399,7 @@
     
     if (allTimelines.size > 0) {
       selectedTimelines = allTimelines;
-      console.log('[DEBUG] Initialized selectedTimelines from plan:', Array.from(selectedTimelines));
+      rawLog('Initialized selectedTimelines from plan', Array.from(selectedTimelines));
     }
   }
 
@@ -522,9 +451,9 @@
   let showEmptyCartModal = false;
 
   // Add these variables to track drag state
-  let draggedItem = null;
-  let dragOverItem = null;
-  let dragOverPosition = null; // 'top', 'middle', or 'bottom'
+  let draggedItem = null; // For single drills
+  let draggedGroup = null; // For parallel groups
+  let dragOverPosition = null;
 
   let draggedSection = null;
   let dragOverSection = null;
@@ -785,56 +714,14 @@
   function handleDragStart(e, sectionIndex, itemIndex) {
     draggedItem = { sectionIndex, itemIndex };
     e.dataTransfer.effectAllowed = 'move';
-    // Add some data to the drag event
-    e.dataTransfer.setData('text/plain', JSON.stringify({ sectionIndex, itemIndex }));
   }
 
   // Update handleDragOver to be more forgiving
   function handleDragOver(e, sectionIndex, itemIndex) {
     e.preventDefault();
-    e.stopPropagation();
-    
-    if (!draggedItem) return;
-
-    const targetElement = e.currentTarget;
-    const rect = targetElement.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
-    
-    // Clear previous drag indicators
-    targetElement.classList.remove(
-      'border-t-4', 'border-t-blue-500',
-      'border-b-4', 'border-b-blue-500',
-      'bg-blue-100', 'scale-95'
-    );
-    
-    // If we're in the same section, allow grouping in the middle zone
-    if (draggedItem.sectionIndex === sectionIndex) {
-      // Make the middle zone larger (40% of height)
-      const middleZoneStart = rect.height * 0.3;
-      const middleZoneEnd = rect.height * 0.7;
-      
-      if (y < middleZoneStart) {
-        dragOverPosition = 'top';
-        targetElement.classList.add('border-t-4', 'border-t-blue-500');
-      } else if (y > middleZoneEnd) {
-        dragOverPosition = 'bottom';
-        targetElement.classList.add('border-b-4', 'border-b-blue-500');
-      } else {
-        dragOverPosition = 'middle';
-        targetElement.classList.add('bg-blue-100', 'scale-95');
-      }
-    } else {
-      // For different sections, use a simpler top/bottom split
-      if (y < rect.height / 2) {
-        dragOverPosition = 'top';
-        targetElement.classList.add('border-t-4', 'border-t-blue-500');
-      } else {
-        dragOverPosition = 'bottom';
-        targetElement.classList.add('border-b-4', 'border-b-blue-500');
-      }
-    }
-    
-    dragOverItem = { sectionIndex, itemIndex };
+    dragOverPosition = y < rect.height / 2 ? 'top' : 'bottom';
   }
 
   function handleDragLeave(e) {
@@ -848,53 +735,6 @@
       'border-b-blue-500'
     );
     dragOverPosition = null;
-  }
-
-
-  // Update the handleUngroup function
-  function handleUngroup(groupId) {
-    logState('Starting ungroup for groupId', groupId);
-    
-    if (!groupId) {
-      logState('No groupId provided');
-      return;
-    }
-    
-    sections.update(currentSections => {
-      logState('Current sections', currentSections);
-      
-      return currentSections.map(section => {
-        // Find all items in this group
-        const groupItems = section.items.filter(item => 
-          item.parallel_group_id === groupId
-        );
-        
-        logState('Found group items count', groupItems.length);
-        
-        if (groupItems.length === 0) return section;
-
-        // Update all items in the section
-        const updatedItems = section.items.map(item => {
-          if (item.parallel_group_id === groupId) {
-            // Remove parallel group info but preserve drill information
-            const { parallel_group_id, parallel_timeline, ...rest } = item;
-            return {
-              ...rest,
-              id: item.drill?.id || item.id,
-              drill: item.drill || { id: item.id, name: item.name }
-            };
-          }
-          return item;
-        });
-
-        return {
-          ...section,
-          items: updatedItems
-        };
-      });
-    });
-
-    toast.push('Ungrouped parallel drills');
   }
 
 
@@ -1002,35 +842,30 @@
   }
 
   // Add the new normalizeItems helper function
-  function normalizeItems(items) {
+  function normalizeItems(sectionItems) {
     const normalized = [];
-    const processedGroups = new Set();
-
-    items.forEach(item => {
-      if (item.parallel_group_id) {
-        if (!processedGroups.has(item.parallel_group_id)) {
-          processedGroups.add(item.parallel_group_id);
-
-          // Get all items in the same group
-          const groupItems = items.filter(i => i.parallel_group_id === item.parallel_group_id);
-
-          // Add each item with its own duration
-          groupItems.forEach(groupItem => {
+    
+    for (const item of sectionItems) {
+      if (item.type === 'group') {
+        // Flatten group data into multiple items with parallel_group_id
+        const groupId = item.groupData.id;
+        item.groupData.timelines.forEach(timeline => {
+          timeline.drills.forEach(drill => {
             normalized.push({
-              id: groupItem.id,
-              type: groupItem.type,
-              name: groupItem.drill?.name || groupItem.name,
-              duration: parseInt(groupItem.selected_duration || groupItem.duration, 10),
-              drill_id: groupItem.drill?.id || groupItem.id,
-              diagram_data: groupItem.diagram_data || null,
-              parallel_group_id: groupItem.parallel_group_id,
-              parallel_timeline: groupItem.parallel_timeline || null,
-              groupTimelines: groupItem.groupTimelines
+              id: drill.id,
+              type: 'drill',
+              name: drill.name,
+              duration: parseInt(drill.selected_duration || drill.duration, 10),
+              drill_id: drill.drill?.id || drill.id,
+              diagram_data: drill.diagram_data || null,
+              parallel_group_id: groupId,
+              parallel_timeline: timeline.id,
+              groupTimelines: item.groupData.groupTimelines
             });
           });
-        }
+        });
       } else {
-        // Non-parallel items remain unchanged
+        // Handle single items (drills or breaks)
         normalized.push({
           id: item.drill?.id || item.id,
           type: item.type,
@@ -1042,7 +877,7 @@
           parallel_timeline: null
         });
       }
-    });
+    }
     return normalized;
   }
 
@@ -1146,7 +981,6 @@
   // Add this function to create a parallel block
   function createParallelBlock() {
     if (!selectedSectionId) return;
-    console.log('[DEBUG] createParallelBlock - starting. Global selectedTimelines:', Array.from(selectedTimelines));
     
     if (selectedTimelines.size < 2) {
       toast.push('Please select at least two timelines');
@@ -1154,37 +988,31 @@
     }
 
     sections.update(currentSections => {
-      const newSections = [...currentSections];
-      const section = newSections.find(s => s.id === selectedSectionId);
-      if (!section) {
-        console.log('[DEBUG] createParallelBlock - section not found for selectedSectionId:', selectedSectionId);
-        return currentSections;
-      }
+      const section = currentSections.find(s => s.id === selectedSectionId);
+      if (!section) return currentSections;
 
-      const parallelGroupId = `group_${Date.now()}`;
-      // Capture the timelines at this moment
+      const groupId = `group_${Date.now()}`;
       const groupTimelines = Array.from(selectedTimelines);
-      console.log('[DEBUG] createParallelBlock - captured groupTimelines for new block:', groupTimelines);
 
-      // Create placeholders with the block's timeline configuration
-      const placeholderDrills = groupTimelines.map(timeline => ({
-        id: `placeholder_${timeline}_${Date.now()}`,
-        type: 'break',
-        name: `${PARALLEL_TIMELINES[timeline].name} Drill`,
-        duration: 15,
-        selected_duration: 15,
-        parallel_group_id: parallelGroupId,
-        parallel_timeline: timeline,
-        groupTimelines // Store the block's timeline configuration
-      }));
+      // Create empty group with placeholders
+      const groupItem = {
+        id: groupId,
+        type: 'group',
+        groupData: {
+          id: groupId,
+          timelines: groupTimelines.map(timelineId => ({
+            id: timelineId,
+            drills: []
+          })),
+          groupTimelines
+        }
+      };
       
-      console.log('[DEBUG] createParallelBlock - placeholderDrills to be added:', placeholderDrills);
-      section.items = [...section.items, ...placeholderDrills];
-      return newSections;
+      section.items.push(groupItem);
+      return currentSections;
     });
 
     toast.push('Created parallel block. Drag drills into each timeline.');
-    console.log('[DEBUG] createParallelBlock - parallel block created in section:', selectedSectionId);
   }
 
   // Add this new function to update a block's timelines
@@ -1448,8 +1276,6 @@
 
   // Update the template to add timeline management buttons
 
-  // Add new state variable for group dragging
-  let draggedGroup = null;
 
   // Add these new group drag handler functions
   function handleGroupDragStart(e, sectionIndex, groupId) {
@@ -1548,27 +1374,354 @@
       const newSections = [...currentSections];
       const targetSection = newSections[sectionIndex];
       
-      if (draggedItem) {
+      if (draggedGroup) {
+        // Handle group movement
+        const sourceSection = newSections[draggedGroup.sectionIndex];
+        const [movedGroup] = sourceSection.items.splice(draggedGroup.itemIndex, 1);
+        const insertIndex = dragOverPosition === 'bottom' ? itemIndex + 1 : itemIndex;
+        targetSection.items.splice(insertIndex, 0, movedGroup);
+        draggedGroup = null;
+      } else {
+        // Handle single drill movement
         const sourceSection = newSections[draggedItem.sectionIndex];
         const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
-        targetSection.items.unshift(movedItem);
+        const insertIndex = dragOverPosition === 'bottom' ? itemIndex + 1 : itemIndex;
+        targetSection.items.splice(insertIndex, 0, movedItem);
         draggedItem = null;
-      } else if (draggedGroup) {
-        const sourceSection = newSections[draggedGroup.sectionIndex];
-        const groupItems = sourceSection.items.filter(
-          item => item.parallel_group_id === draggedGroup.groupId
-        );
-        sourceSection.items = sourceSection.items.filter(
-          item => item.parallel_group_id !== draggedGroup.groupId
-        );
-        targetSection.items.unshift(...groupItems);
-        draggedGroup = null;
       }
       
       return newSections;
     });
     
     dragOverPosition = null;
+  }
+
+  // New handler for internal group reordering
+  function handleGroupInternalReorder(sectionIndex, itemIndex, detail) {
+    logState('DEBUG] Group internal reorder:', { sectionIndex, itemIndex, detail });
+    sections.update(currentSections => {
+      const section = currentSections[sectionIndex];
+      const groupItem = section.items[itemIndex];
+      
+      // Find source and target timelines
+      const sourceTimeline = groupItem.groupData.timelines.find(t => t.id === detail.sourceTimeline);
+      const targetTimeline = groupItem.groupData.timelines.find(t => t.id === detail.targetTimeline);
+      
+      if (sourceTimeline && targetTimeline) {
+        // Remove from source
+        const [movedDrill] = sourceTimeline.drills.splice(detail.sourceDrillIndex, 1);
+        // Add to target
+        const insertIndex = detail.position === 'bottom' ? 
+          detail.targetDrillIndex + 1 : detail.targetDrillIndex;
+        targetTimeline.drills.splice(insertIndex, 0, movedDrill);
+      }
+      
+      return currentSections;
+    });
+  }
+
+  function formatGroupData(items, groupId) {
+    const groupItems = items.filter(item => item.parallel_group_id === groupId);
+    const timelines = [...new Set(groupItems.map(item => item.parallel_timeline))];
+    
+    return {
+      id: groupId,
+      timelines: timelines.map(timelineId => ({
+        id: timelineId,
+        drills: groupItems.filter(item => item.parallel_timeline === timelineId)
+      }))
+    };
+  }
+
+  function handleGroupDurationChange(sectionIndex, itemIndex, detail) {
+    logState('DEBUG] Group duration change:', { sectionIndex, itemIndex, detail });
+    sections.update(currentSections => {
+      const section = currentSections[sectionIndex];
+      const groupItem = section.items[itemIndex];
+      const timeline = groupItem.groupData.timelines.find(t => t.id === detail.timelineId);
+      
+      if (timeline && timeline.drills[detail.drillIndex]) {
+        timeline.drills[detail.drillIndex].selected_duration = detail.newDuration;
+      }
+      
+      return currentSections;
+    });
+  }
+
+  function handleGroupRemoveDrill(sectionIndex, itemIndex, detail) {
+    logState('DEBUG] Group remove drill:', { sectionIndex, itemIndex, detail });
+    sections.update(currentSections => {
+      const section = currentSections[sectionIndex];
+      const groupItem = section.items[itemIndex];
+      const timeline = groupItem.groupData.timelines.find(t => t.id === detail.timelineId);
+      
+      if (timeline) {
+        timeline.drills.splice(detail.drillIndex, 1);
+        
+        // If this was the last drill in the group, remove the group
+        const totalDrills = groupItem.groupData.timelines.reduce(
+          (sum, t) => sum + t.drills.length, 0
+        );
+        
+        if (totalDrills === 0) {
+          section.items.splice(itemIndex, 1);
+        }
+      }
+      
+      return currentSections;
+    });
+  }
+
+  // 1. Update transformToGroupStructure to properly create group items
+  function transformToGroupStructure(items) {
+    const groups = new Map();
+    const nonGroupItems = [];
+
+    // First pass: collect all items with parallel_group_id
+    items.forEach(item => {
+      if (item.parallel_group_id) {
+        if (!groups.has(item.parallel_group_id)) {
+          groups.set(item.parallel_group_id, {
+            timelines: new Map(),
+            groupTimelines: item.groupTimelines || []
+          });
+        }
+        
+        const group = groups.get(item.parallel_group_id);
+        const timelineId = item.parallel_timeline;
+        
+        if (!group.timelines.has(timelineId)) {
+          group.timelines.set(timelineId, []);
+        }
+        
+        // Format drill for the timeline
+        const formattedDrill = {
+          id: item.id,
+          type: 'drill',
+          name: item.name,
+          duration: item.duration,
+          selected_duration: item.selected_duration || item.duration,
+          drill: item.drill,
+          skill_level: item.skill_level || [],
+          skills_focused_on: item.skills_focused_on || [],
+          brief_description: item.brief_description || ''
+        };
+        
+        group.timelines.get(timelineId).push(formattedDrill);
+      } else {
+        nonGroupItems.push(item);
+      }
+    });
+
+    // Second pass: convert groups to proper format
+    const transformedItems = [...nonGroupItems];
+    
+    groups.forEach((groupData, groupId) => {
+      // Create the timeline array in the expected format
+      const timelines = Array.from(groupData.timelines.entries()).map(([timelineId, drills]) => ({
+        id: timelineId,
+        drills
+      }));
+
+      // Create the group item with proper groupData structure
+      const groupItem = {
+        id: groupId,
+        type: 'group',
+        groupData: {
+          id: groupId,
+          timelines,
+          groupTimelines: groupData.groupTimelines
+        }
+      };
+
+      transformedItems.push(groupItem);
+    });
+
+    return transformedItems;
+  }
+
+  // 2. Update the sections initialization to properly use transformToGroupStructure
+  $: if (practicePlan && !formInitialized) {
+    // ... existing initialization code ...
+
+    if (practicePlan.sections?.length) {
+      // First, collect all parallel groups and their timelines
+      const parallelGroups = new Map();
+      practicePlan.sections.forEach(section => {
+        section.items.forEach(item => {
+          if (item.parallel_group_id) {
+            if (!parallelGroups.has(item.parallel_group_id)) {
+              parallelGroups.set(item.parallel_group_id, new Set());
+            }
+
+            if (Array.isArray(item.groupTimelines) && item.groupTimelines.length > 0) {
+              item.groupTimelines.forEach(t => parallelGroups.get(item.parallel_group_id).add(t));
+            } else if (item.parallel_timeline) {
+              parallelGroups.get(item.parallel_group_id).add(item.parallel_timeline);
+            }
+          }
+        });
+      });
+
+      // Now set the sections with properly transformed items
+      sections.set(practicePlan.sections.map(section => ({
+        id: section.id,
+        name: section.name,
+        order: section.order,
+        goals: section.goals || [],
+        notes: section.notes || '',
+        items: transformToGroupStructure(section.items.map(item => ({
+          ...item,
+          // Ensure each grouped item has the complete set of timelines
+          ...(item.parallel_group_id && {
+            groupTimelines: Array.from(parallelGroups.get(item.parallel_group_id) || [])
+          })
+        })))
+      })));
+
+      logState('[DEBUG] Initialized sections with groups', $sections);
+    }
+
+    formInitialized = true;
+  }
+
+  // 3. Update the template section to properly handle group items
+  {#each section.items as item, itemIndex}
+    <li class="timeline-item">
+      {#if item.type === 'group'}
+        <ParallelGroup
+          groupData={item.groupData}
+          sectionId={section.id}
+          on:internalReorder={(e) => handleGroupInternalReorder(sectionIndex, itemIndex, e.detail)}
+          on:durationChange={(e) => handleGroupDurationChange(sectionIndex, itemIndex, e.detail)}
+          on:removeDrill={(e) => handleGroupRemoveDrill(sectionIndex, itemIndex, e.detail)}
+          on:ungroup={() => handleUngroup(sectionIndex, item.id)}
+        />
+      {:else}
+        <div class="bg-white p-4 rounded-lg shadow-sm border">
+          <div class="flex justify-between items-center">
+            <span>{item.name}</span>
+            <div class="flex items-center space-x-2">
+              <input
+                type="number"
+                min="1"
+                max="120"
+                class="w-16 px-2 py-1 border rounded"
+                value={item.selected_duration || item.duration}
+                on:blur={(e) => handleDurationChange(sectionIndex, itemIndex, parseInt(e.target.value))}
+              />
+              <button 
+                class="text-red-500 hover:text-red-700"
+                on:click={() => removeItem(sectionIndex, itemIndex)}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      {/if}
+    </li>
+  {/each}
+
+  // 4. Add helper to check for empty groups
+  function isGroupEmpty(groupData) {
+    return groupData.timelines.every(timeline => timeline.drills.length === 0);
+  }
+
+
+  // Update handleUngroup
+  function handleUngroup(sectionIndex, groupId) {
+    sections.update(currentSections => {
+      const section = currentSections[sectionIndex];
+      const groupIndex = section.items.findIndex(item => 
+        item.type === 'group' && item.id === groupId
+      );
+      
+      if (groupIndex === -1) return currentSections;
+
+      const groupItem = section.items[groupIndex];
+      const ungroupedItems = groupItem.groupData.timelines.flatMap(timeline =>
+        timeline.drills.map(drill => ({
+          ...drill,
+          type: 'drill',
+          parallel_group_id: undefined,
+          parallel_timeline: undefined
+        }))
+      );
+
+      section.items.splice(groupIndex, 1, ...ungroupedItems);
+      return currentSections;
+    });
+
+    toast.push('Ungrouped parallel drills');
+  }
+
+  // 3. Add new handler for external drops onto groups
+  function handleExternalDropOnGroup(event, sectionIndex, groupIndex) {
+    const { timelineId, position, drillIndex } = event.detail;
+    
+    if (!draggedItem) return;
+
+    sections.update(currentSections => {
+      const section = currentSections[sectionIndex];
+      const groupItem = section.items[groupIndex];
+      
+      if (groupItem.type !== 'group') return currentSections;
+
+      const sourceSection = currentSections[draggedItem.sectionIndex];
+      const [movedItem] = sourceSection.items.splice(draggedItem.itemIndex, 1);
+
+      const groupDrill = {
+        id: movedItem.id,
+        type: 'drill',
+        name: movedItem.name,
+        duration: movedItem.duration,
+        selected_duration: movedItem.selected_duration,
+        drill: movedItem.drill
+      };
+
+      const timeline = groupItem.groupData.timelines.find(t => t.id === timelineId);
+      if (timeline) {
+        const insertIndex = position === 'after' ? drillIndex + 1 : drillIndex;
+        timeline.drills.splice(insertIndex, 0, groupDrill);
+      }
+
+      return currentSections;
+    });
+
+    draggedItem = null;
+    dragOverPosition = null;
+  }
+
+  // Add new basic logging mechanism
+  function rawLog(message, data) {
+    try {
+      // Deep clone and filter out diagrams
+      const filterDiagrams = (obj) => {
+        if (!obj || typeof obj !== 'object') return obj;
+        
+        if (Array.isArray(obj)) {
+          return obj.map(filterDiagrams);
+        }
+        
+        const filtered = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (key !== 'diagrams') {
+            filtered[key] = filterDiagrams(value);
+          }
+        }
+        return filtered;
+      };
+
+      const filteredData = filterDiagrams(data);
+      console.log(`[RAW] ${message}:`, 
+        typeof filteredData === 'object' ? 
+          JSON.stringify(filteredData, null, 2) : 
+          filteredData
+      );
+    } catch (err) {
+      console.log(`[RAW] ${message}: [Unable to stringify data]`);
+    }
   }
 </script>
 
@@ -1885,207 +2038,42 @@
           on:dragover|preventDefault
           on:drop={(e) => section.items.length === 0 ? handleEmptySectionDrop(e, sectionIndex) : null}
         >
-          {#if section.items.length === 0}
-            <div 
-              class="empty-section-placeholder h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-500"
-              on:dragover|preventDefault
-              on:drop={(e) => handleEmptySectionDrop(e, sectionIndex)}
-            >
-              Drag drills here
-            </div>
-          {:else}
-            {#each section.items as item, itemIndex}
-              {#if item.parallel_group_id}
-                <!-- Only render the group container for the first item in a group -->
-                {#if section.items.findIndex(i => i.parallel_group_id === item.parallel_group_id) === itemIndex}
-                  <div 
-                    class="parallel-group-container relative"
-                    draggable="true"
-                    on:dragstart={(e) => handleGroupDragStart(e, sectionIndex, item.parallel_group_id)}
-                    on:dragover={(e) => handleGroupDragOver(e, sectionIndex, item.parallel_group_id)}
-                    on:drop={(e) => handleGroupDrop(e, sectionIndex)}
-                  >
-                    <!-- Add group drag handle -->
-                    <div class="group-drag-handle absolute -left-8 top-0 cursor-grab text-gray-500 hover:text-gray-700">
-                      ⋮⋮
-                    </div>
-
-                    <!-- Add top drop zone -->
-                    <div 
-                      class="h-2 -mt-2 mb-2"
-                      on:dragover|preventDefault
-                      on:drop={(e) => handleDropOnTop(e, sectionIndex)}
-                    ></div>
-
-                    {#if item.groupTimelines?.length > 0}
-                      {#each item.groupTimelines.sort() as timeline}
-                        <div 
-                          class="timeline-column" 
-                          data-timeline={timeline}
-                          on:dragover|preventDefault
-                          on:drop|preventDefault={(e) => {
-                            if (!draggedItem) return;
-                            handleDrop(e, sectionIndex, itemIndex, timeline);
-                          }}
-                        >
-                          <div class="timeline-column-header">
-                            <div class={`timeline-color ${PARALLEL_TIMELINES[timeline].color}`}></div>
-                            <div class="flex-1">
-                              <span>{PARALLEL_TIMELINES[timeline].name}</span>
-                              <span class="text-sm text-gray-500 ml-2">
-                                {section.items
-                                  .filter(i => i.parallel_group_id === item.parallel_group_id && i.parallel_timeline === timeline)
-                                  .reduce((total, i) => total + (i.selected_duration || i.duration), 0)}min
-                              </span>
-                            </div>
-                            {#if timeline === item.groupTimelines[0]}
-                              <div class="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                                Block: {getParallelBlockDuration(section.items, item.parallel_group_id)}min
-                              </div>
-                            {/if}
-                            {#if item.groupTimelines.length > 2}
-                              <button 
-                                class="ml-2 text-red-500 hover:text-red-700 text-sm"
-                                on:click={() => removeTimelineFromGroup(section.id, item.parallel_group_id, timeline)}
-                              >
-                                ×
-                              </button>
-                            {/if}
-                          </div>
-                          
-                          <!-- Render drills for this timeline -->
-                          {#each section.items.filter(i => 
-                            i.parallel_group_id === item.parallel_group_id && 
-                            i.parallel_timeline === timeline
-                          ) as timelineItem, timelineIndex}
-                            <div 
-                              class="timeline-item" 
-                              draggable="true"
-                              data-parallel-group={item.parallel_group_id}
-                              data-timeline={timeline}
-                              data-index={section.items.indexOf(timelineItem)}
-                              on:dragstart={(e) => {
-                                e.dataTransfer.effectAllowed = 'move';
-                                draggedItem = {
-                                  sectionIndex,
-                                  itemIndex: section.items.indexOf(timelineItem),
-                                  timeline
-                                };
-                              }}
-                              on:dragover={(e) => {
-                                e.preventDefault();
-                                e.currentTarget.classList.add('drag-over');
-                              }}
-                              on:dragleave={(e) => {
-                                e.currentTarget.classList.remove('drag-over');
-                              }}
-                              on:drop={(e) => {
-                                e.preventDefault();
-                                e.currentTarget.classList.remove('drag-over');
-                                handleDrop(e, sectionIndex, section.items.indexOf(timelineItem), timeline);
-                              }}
-                            >
-                              <div class="bg-white p-4 rounded-lg shadow-sm border transition-all duration-200 hover:shadow-md">
-                                <div class="flex justify-between items-center">
-                                  <div class="flex items-center">
-                                    <div class="mr-2 cursor-grab">⋮⋮</div>
-                                    <span>{timelineItem.name}</span>
-                                  </div>
-                                  <div class="flex items-center space-x-2">
-                                    <div class="flex items-center">
-                                      <input
-                                        type="number"
-                                        min="1"
-                                        max="120"
-                                        class="w-16 px-2 py-1 border rounded mr-2"
-                                        value={timelineItem.selected_duration || timelineItem.duration}
-                                        on:blur={(e) => handleDurationChange(
-                                          sectionIndex,
-                                          section.items.indexOf(timelineItem),
-                                          parseInt(e.target.value) || 15
-                                        )}
-                                      />
-                                      <span class="text-sm text-gray-600">min</span>
-                                    </div>
-                                    <button 
-                                      class="text-red-500 hover:text-red-700 text-sm"
-                                      on:click={() => removeItem(sectionIndex, section.items.indexOf(timelineItem))}
-                                    >
-                                      Remove
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          {/each}
-
-                          <!-- Add empty state for timeline -->
-                          {#if !section.items.some(i => 
-                            i.parallel_group_id === item.parallel_group_id && 
-                            i.parallel_timeline === timeline
-                          )}
-                            <div 
-                              class="empty-timeline-placeholder h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-500"
-                              on:dragover|preventDefault
-                              on:drop|preventDefault={(e) => {
-                                if (!draggedItem) return;
-                                handleDrop(e, sectionIndex, itemIndex, timeline);
-                              }}
-                            >
-                              Drag drills here
-                            </div>
-                          {/if}
-                        </div>
-                      {/each}
-                    {:else}
-                      <!-- Show a message when no timelines are configured -->
-                      <div class="text-center text-gray-500 py-4">
-                        No timelines configured. Click "Create Parallel Block" to add timelines.
-                      </div>
-                    {/if}
-                  </div>
-                {/if}
+          {#each section.items as item, itemIndex}
+            <li class="timeline-item">
+              {#if item.type === 'group'}
+                <ParallelGroup
+                  groupData={item.groupData}
+                  sectionId={section.id}
+                  on:internalReorder={(e) => handleGroupInternalReorder(sectionIndex, itemIndex, e.detail)}
+                  on:durationChange={(e) => handleGroupDurationChange(sectionIndex, itemIndex, e.detail)}
+                  on:removeDrill={(e) => handleGroupRemoveDrill(sectionIndex, itemIndex, e.detail)}
+                  on:ungroup={() => handleUngroup(sectionIndex, item.id)}
+                />
               {:else}
-                <!-- Render non-grouped items as before -->
-                <li class="timeline-item relative transition-all duration-200"
-                  draggable="true"
-                  on:dragstart={(e) => handleDragStart(e, sectionIndex, itemIndex)}
-                  on:dragover={(e) => handleDragOver(e, sectionIndex, itemIndex)}
-                  on:dragleave={handleDragLeave}
-                  on:drop={(e) => handleDrop(e, sectionIndex, itemIndex)}
-                >
-                  <!-- Item content -->
-                  <div class="bg-white p-4 rounded-lg shadow-sm border transition-all duration-200 hover:shadow-md">
-                    <div class="flex justify-between items-center">
-                      <div class="flex items-center">
-                        <div class="mr-2 cursor-grab">⋮⋮</div>
-                        <span>{item.name}</span>
-                      </div>
-                      <div class="flex items-center space-x-2">
-                        <div class="flex items-center">
-                          <input
-                            type="number"
-                            min="1"
-                            max="120"
-                            class="w-16 px-2 py-1 border rounded mr-2"
-                            value={item.selected_duration || item.duration}
-                            on:blur={(e) => handleDurationChange(sectionIndex, itemIndex, parseInt(e.target.value) || 15)}
-                          />
-                          <span class="text-sm text-gray-600">min</span>
-                        </div>
-                        <button 
-                          class="text-red-500 hover:text-red-700 text-sm"
-                          on:click={() => removeItem(sectionIndex, itemIndex)}
-                        >
-                          Remove
-                        </button>
-                      </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                  <div class="flex justify-between items-center">
+                    <span>{item.name}</span>
+                    <div class="flex items-center space-x-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="120"
+                        class="w-16 px-2 py-1 border rounded"
+                        value={item.selected_duration || item.duration}
+                        on:blur={(e) => handleDurationChange(sectionIndex, itemIndex, parseInt(e.target.value))}
+                      />
+                      <button 
+                        class="text-red-500 hover:text-red-700"
+                        on:click={() => removeItem(sectionIndex, itemIndex)}
+                      >
+                        Remove
+                      </button>
                     </div>
                   </div>
-                </li>
+                </div>
               {/if}
-            {/each}
-          {/if}
+            </li>
+          {/each}
         </ul>
       </div>
     {/each}
@@ -2166,6 +2154,7 @@
     {$isSubmitting ? (practicePlan ? 'Updating Plan...' : 'Creating Plan...') : (practicePlan ? 'Update Plan' : 'Create Plan')}
   </button>
 </div>
+
 
 <style>
   /* Add these new styles for parallel timelines */

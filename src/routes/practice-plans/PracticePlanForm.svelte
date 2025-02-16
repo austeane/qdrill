@@ -190,17 +190,17 @@
         section.items.forEach(item => {
           if (item.parallel_group_id) {
             if (!parallelGroups.has(item.parallel_group_id)) {
-              // If we have groupTimelines from the DB, use those
-              if (item.groupTimelines && item.groupTimelines.length > 0) {
-                parallelGroups.set(item.parallel_group_id, new Set(item.groupTimelines));
-              } else {
-                // Fallback to building from parallel_timeline
-                parallelGroups.set(item.parallel_group_id, new Set());
-                if (item.parallel_timeline) {
-                  parallelGroups.get(item.parallel_group_id).add(item.parallel_timeline);
-                }
-              }
+              parallelGroups.set(item.parallel_group_id, new Set());
             }
+
+            if (Array.isArray(item.groupTimelines) && item.groupTimelines.length > 0) {
+              for (const t of item.groupTimelines) {
+                parallelGroups.get(item.parallel_group_id).add(t);
+              }
+            } else if (item.parallel_timeline) {
+              parallelGroups.get(item.parallel_group_id).add(item.parallel_timeline);
+            }
+
           }
         });
       });
@@ -730,39 +730,42 @@
   }
 
   function handleDurationChange(sectionIndex, itemIndex, newDuration) {
-  logState('Updating duration', { sectionIndex, itemIndex, newDuration });
-  
-  sections.update(currentSections => {
-    const newSections = [...currentSections];
-    const section = newSections[sectionIndex];
-    const item = section.items[itemIndex];
+    logState('Updating duration', { sectionIndex, itemIndex, newDuration });
+    
+    // Validate the duration - allow empty string during editing
+    if (newDuration === '' || (newDuration >= 1 && newDuration <= 120)) {
+      sections.update(currentSections => {
+        const newSections = [...currentSections];
+        const section = newSections[sectionIndex];
+        const item = section.items[itemIndex];
 
-    if (item.type === 'break') {
-      // For breaks, update the duration directly
-      section.items[itemIndex] = {
-        ...item,
-        duration: newDuration,
-        selected_duration: newDuration
-      };
-    } else if (item.parallel_group_id) {
-      // For a drill in a parallel group, update only the current drill.
-      section.items[itemIndex] = {
-        ...item,
-        selected_duration: newDuration,
-        duration: newDuration
-      };
-    } else {
-      // For single drills, update normally.
-      section.items[itemIndex] = {
-        ...item,
-        selected_duration: newDuration,
-        duration: newDuration
-      };
+        if (item.type === 'break') {
+          // For breaks, update the duration directly
+          section.items[itemIndex] = {
+            ...item,
+            duration: newDuration || item.duration,
+            selected_duration: newDuration || item.duration
+          };
+        } else if (item.parallel_group_id) {
+          // For a drill in a parallel group, update only the current drill
+          section.items[itemIndex] = {
+            ...item,
+            selected_duration: newDuration || item.duration,
+            duration: newDuration || item.duration
+          };
+        } else {
+          // For single drills, update normally
+          section.items[itemIndex] = {
+            ...item,
+            selected_duration: newDuration || item.duration,
+            duration: newDuration || item.duration
+          };
+        }
+
+        return newSections;
+      });
     }
-
-    return newSections;
-  });
-}
+  }
 
   // Functions to manage Practice Goals
   function addPracticeGoal() {
@@ -1003,33 +1006,31 @@
     const normalized = [];
     const processedGroups = new Set();
 
-    // Loop over each item to check if it belongs to a parallel group
     items.forEach(item => {
       if (item.parallel_group_id) {
-        // If this is the first time we're seeing this group, process all items in the group
         if (!processedGroups.has(item.parallel_group_id)) {
           processedGroups.add(item.parallel_group_id);
 
           // Get all items in the same group
           const groupItems = items.filter(i => i.parallel_group_id === item.parallel_group_id);
-          const groupDuration = Math.max(...groupItems.map(i => parseInt(i.selected_duration || i.duration, 10)));
 
-          // Add all items in the group, with the shared duration
+          // Add each item with its own duration
           groupItems.forEach(groupItem => {
             normalized.push({
               id: groupItem.id,
               type: groupItem.type,
               name: groupItem.drill?.name || groupItem.name,
-              duration: groupDuration,
+              duration: parseInt(groupItem.selected_duration || groupItem.duration, 10),
               drill_id: groupItem.drill?.id || groupItem.id,
               diagram_data: groupItem.diagram_data || null,
               parallel_group_id: groupItem.parallel_group_id,
-              parallel_timeline: groupItem.parallel_timeline || null
+              parallel_timeline: groupItem.parallel_timeline || null,
+              groupTimelines: groupItem.groupTimelines
             });
           });
         }
       } else {
-        // For items that do not belong to a group, just push them as-is (with parsed duration)
+        // Non-parallel items remain unchanged
         normalized.push({
           id: item.drill?.id || item.id,
           type: item.type,
@@ -1045,6 +1046,27 @@
     return normalized;
   }
 
+  // Add a helper function to calculate block duration
+  function getParallelBlockDuration(items, groupId) {
+    if (!groupId) return 0;
+    
+    const groupItems = items.filter(item => item.parallel_group_id === groupId);
+    if (!groupItems.length) return 0;
+
+    // Get all unique timelines in this group
+    const timelines = new Set(groupItems.map(item => item.parallel_timeline));
+    
+    // Calculate total duration for each timeline
+    const timelineDurations = Array.from(timelines).map(timeline => {
+      const timelineItems = groupItems.filter(item => item.parallel_timeline === timeline);
+      return timelineItems.reduce((total, item) => 
+        total + (parseInt(item.selected_duration || item.duration, 10) || 0), 0
+      );
+    });
+
+    // Return the maximum duration across all timelines
+    return Math.max(...timelineDurations);
+  }
 
   // Add drill search functionality
   async function searchDrills(query) {
@@ -1785,16 +1807,22 @@
                         >
                           <div class="timeline-column-header">
                             <div class={`timeline-color ${PARALLEL_TIMELINES[timeline].color}`}></div>
-                            <span>{PARALLEL_TIMELINES[timeline].name}</span>
-                            <span class="timeline-duration">
-                              {section.items
-                                .filter(i => i.parallel_group_id === item.parallel_group_id && i.parallel_timeline === timeline)
-                                .reduce((total, i) => total + (i.selected_duration || i.duration), 0)}min
-                            </span>
-                            <!-- Add remove timeline button -->
+                            <div class="flex-1">
+                              <span>{PARALLEL_TIMELINES[timeline].name}</span>
+                              <span class="text-sm text-gray-500 ml-2">
+                                {section.items
+                                  .filter(i => i.parallel_group_id === item.parallel_group_id && i.parallel_timeline === timeline)
+                                  .reduce((total, i) => total + (i.selected_duration || i.duration), 0)}min
+                              </span>
+                            </div>
+                            {#if timeline === item.groupTimelines[0]}
+                              <div class="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                Block: {getParallelBlockDuration(section.items, item.parallel_group_id)}min
+                              </div>
+                            {/if}
                             {#if item.groupTimelines.length > 2}
                               <button 
-                                class="ml-auto text-red-500 hover:text-red-700 text-sm"
+                                class="ml-2 text-red-500 hover:text-red-700 text-sm"
                                 on:click={() => removeTimelineFromGroup(section.id, item.parallel_group_id, timeline)}
                               >
                                 ×
@@ -1848,7 +1876,7 @@
                                         max="120"
                                         class="w-16 px-2 py-1 border rounded mr-2"
                                         value={timelineItem.selected_duration || timelineItem.duration}
-                                        on:input={(e) => handleDurationChange(
+                                        on:blur={(e) => handleDurationChange(
                                           sectionIndex,
                                           section.items.indexOf(timelineItem),
                                           parseInt(e.target.value) || 15
@@ -1918,7 +1946,7 @@
                             max="120"
                             class="w-16 px-2 py-1 border rounded mr-2"
                             value={item.selected_duration || item.duration}
-                            on:input={(e) => handleDurationChange(sectionIndex, itemIndex, parseInt(e.target.value) || 15)}
+                            on:blur={(e) => handleDurationChange(sectionIndex, itemIndex, parseInt(e.target.value) || 15)}
                           />
                           <span class="text-sm text-gray-600">min</span>
                         </div>

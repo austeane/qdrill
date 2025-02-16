@@ -27,7 +27,7 @@
 
   // Calculate max duration across all timelines
   $: groupDuration = Math.max(...Object.values(timelineGroups).map(timelineItems => 
-    Math.max(...timelineItems.map(item => item.selected_duration || item.duration || 0))
+    timelineItems.reduce((sum, item) => sum + (item.selected_duration || item.duration || 0), 0)
   ));
 
   function ungroup() {

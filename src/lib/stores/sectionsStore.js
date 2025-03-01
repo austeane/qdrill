@@ -1,5 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { toast } from '@zerodevx/svelte-toast';
+import { addToHistory } from './historyStore';
 
 // Section counter for generating unique IDs
 let sectionCounter = 0;
@@ -190,6 +191,9 @@ export function initializeTimelinesFromPlan(plan) {
 
 // Section management functions
 export function addSection() {
+  // Create snapshot for history before changing state
+  addToHistory('ADD_SECTION', null, 'Added section');
+
   sections.update(currentSections => [
     ...currentSections,
     {
@@ -204,6 +208,12 @@ export function addSection() {
 }
 
 export function removeSection(sectionId) {
+  // Find the section before removing for history
+  const sectionToRemove = get(sections).find(s => s.id === sectionId);
+  
+  addToHistory('REMOVE_SECTION', { sectionId, section: sectionToRemove }, 
+               `Removed section "${sectionToRemove?.name || 'Section'}"`);
+
   sections.update(currentSections => {
     const filteredSections = currentSections.filter(s => s.id !== sectionId);
     // Reassign orders
@@ -213,6 +223,8 @@ export function removeSection(sectionId) {
 
 // Item management functions
 export function addBreak(sectionId) {
+  addToHistory('ADD_BREAK', { sectionId }, 'Added break');
+
   sections.update(currentSections => {
     const newSections = [...currentSections];
     const sectionIndex = newSections.findIndex(s => s.id === sectionId);
@@ -236,7 +248,43 @@ export function addBreak(sectionId) {
   });
 }
 
+export function addOneOffDrill(sectionId, name = 'Quick Activity') {
+  addToHistory('ADD_ONE_OFF_DRILL', { sectionId, name }, 'Added one-off drill');
+
+  sections.update(currentSections => {
+    const newSections = [...currentSections];
+    const sectionIndex = newSections.findIndex(s => s.id === sectionId);
+    if (sectionIndex === -1) return currentSections;
+    
+    const section = newSections[sectionIndex];
+    
+    // Create new one-off drill item
+    const oneOffDrillItem = {
+      id: `one-off-${Date.now()}`,
+      type: 'one-off',
+      name: name,
+      duration: 10,
+      selected_duration: 10
+    };
+    
+    // Add one-off drill to end of section
+    section.items.push(oneOffDrillItem);
+    
+    // Add success toast notification
+    toast.push(`Added "${name}" to ${section.name}`, {
+      theme: {
+        '--toastBackground': '#4CAF50',
+        '--toastColor': 'white'
+      }
+    });
+    
+    return newSections;
+  });
+}
+
 export function addDrillToPlan(drill, sectionId) {
+  addToHistory('ADD_DRILL', { drill, sectionId }, `Added "${drill.name}" to plan`);
+
   sections.update(currentSections => {
     const newSections = [...currentSections];
     const targetSection = newSections.find(s => s.id === sectionId);
@@ -267,6 +315,17 @@ export function addDrillToPlan(drill, sectionId) {
 }
 
 export function removeItem(sectionIndex, itemIndex) {
+  // Get the item before removing for history
+  const currentSections = get(sections);
+  const section = currentSections[sectionIndex];
+  const itemToRemove = section?.items[itemIndex];
+  
+  if (!itemToRemove) return;
+  
+  addToHistory('REMOVE_ITEM', 
+              { sectionIndex, itemIndex, item: itemToRemove }, 
+              `Removed "${itemToRemove.name || 'Item'}"`);
+
   sections.update(currentSections => {
     const newSections = [...currentSections];
     const section = newSections[sectionIndex];
@@ -306,6 +365,19 @@ export function handleDurationChange(sectionIndex, itemIndex, newDuration) {
   
   // Validate the duration - allow empty string during editing
   if (newDuration === '' || (newDuration >= 1 && newDuration <= 120)) {
+    // Get the item before changing for history
+    const currentSections = get(sections);
+    const section = currentSections[sectionIndex];
+    const item = section?.items[itemIndex];
+    
+    if (!item) return;
+    
+    const oldDuration = item.selected_duration || item.duration;
+    
+    addToHistory('CHANGE_DURATION', 
+                { sectionIndex, itemIndex, oldDuration, newDuration }, 
+                `Changed duration from ${oldDuration} to ${newDuration}`);
+
     sections.update(currentSections => {
       const newSections = [...currentSections];
       const section = newSections[sectionIndex];
@@ -347,6 +419,19 @@ export function handleUngroup(groupId) {
     console.log('[DEBUG] No groupId provided');
     return;
   }
+  
+  // Get group items before ungrouping for history
+  const currentSections = get(sections);
+  const groupItems = [];
+  
+  for (const section of currentSections) {
+    const sectionGroupItems = section.items.filter(item => item.parallel_group_id === groupId);
+    if (sectionGroupItems.length > 0) {
+      groupItems.push(...sectionGroupItems);
+    }
+  }
+  
+  addToHistory('UNGROUP', { groupId, groupItems }, 'Ungrouped parallel drills');
   
   sections.update(currentSections => {
     console.log('[DEBUG] Current sections', currentSections);

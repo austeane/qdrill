@@ -1,6 +1,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { FILTER_STATES } from '$lib/constants';
 import { toast } from '@zerodevx/svelte-toast';
+import { sections } from './sectionsStore';
 
 // Filter-related stores (existing)
 export const selectedPhaseOfSeason = writable({});
@@ -32,6 +33,64 @@ export const phaseOfSeasonOptions = [
   'Tournament tuneup',
   'End of season, peaking'
 ];
+
+// Time and duration utilities
+export function formatTime(timeStr) {
+  if (!timeStr) return '';
+  const [hours, minutes] = timeStr.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${ampm}`;
+}
+
+export function addMinutes(timeStr, minutes) {
+  const [hours, mins] = timeStr.split(':').map(Number);
+  const date = new Date();
+  date.setHours(hours, mins + minutes);
+  return date.getHours().toString().padStart(2, '0') + ':' + 
+         date.getMinutes().toString().padStart(2, '0');
+}
+
+// Create a derived store for total duration
+export const totalPlanDuration = derived(sections, ($sections) => {
+  let total = 0;
+  
+  for (const section of $sections) {
+    for (const item of section.items) {
+      // For parallel groups, only count the maximum duration per group
+      if (item.parallel_group_id) {
+        // Get all items in this group
+        const groupItems = section.items.filter(i => i.parallel_group_id === item.parallel_group_id);
+        // Group items by timeline
+        const timelineDurations = {};
+        groupItems.forEach(groupItem => {
+          const timeline = groupItem.parallel_timeline;
+          if (!timeline) return;
+          
+          if (!timelineDurations[timeline]) {
+            timelineDurations[timeline] = 0;
+          }
+          
+          timelineDurations[timeline] += parseInt(groupItem.selected_duration) || 0;
+        });
+        
+        // Find the max duration across timelines
+        const maxDuration = Math.max(...Object.values(timelineDurations), 0);
+        
+        // Only add to total once per group
+        if (item === groupItems[0]) {
+          total += maxDuration;
+        }
+      } else {
+        // For regular items, add the duration
+        total += parseInt(item.selected_duration) || 0;
+      }
+    }
+  }
+  
+  return total;
+});
 
 // Form validation
 export function validateForm() {

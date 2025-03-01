@@ -250,7 +250,8 @@ function normalizeItems(items) {
         groupItems.forEach(groupItem => {
           normalized.push({
             id: groupItem.id,
-            type: groupItem.type,
+            // Map 'one-off' type to 'drill' to conform to database constraints
+            type: groupItem.type === 'one-off' ? 'drill' : groupItem.type,
             name: groupItem.type === 'break' && !groupItem.name ? 'Break' : (groupItem.drill?.name || groupItem.name || ''),
             duration: parseInt(groupItem.selected_duration || groupItem.duration, 10),
             drill_id: groupItem.drill?.id || groupItem.id,
@@ -265,10 +266,11 @@ function normalizeItems(items) {
       // Non-parallel items remain unchanged
       normalized.push({
         id: item.drill?.id || item.id,
-        type: item.type,
+        // Map 'one-off' type to 'drill' to conform to database constraints
+        type: item.type === 'one-off' ? 'drill' : item.type,
         name: item.type === 'break' && !item.name ? 'Break' : (item.drill?.name || item.name || ''),
         duration: parseInt(item.selected_duration || item.duration, 10),
-        drill_id: item.type === 'drill' ? (item.drill?.id || item.id) : null,
+        drill_id: (item.type === 'drill' || item.type === 'one-off') ? (item.drill?.id || item.id) : null,
         diagram_data: item.diagram_data || null,
         parallel_group_id: null,
         parallel_timeline: null

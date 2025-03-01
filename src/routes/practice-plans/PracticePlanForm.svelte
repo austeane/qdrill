@@ -140,11 +140,6 @@
     // Add event listener for keyboard shortcuts
     window.addEventListener('keydown', handleKeydown);
     
-    // Clean up event listener on component destruction
-    return () => {
-      window.removeEventListener('keydown', handleKeydown);
-    };
-
     // Load TinyMCE Editor
     try {
       console.log('[DEBUG] Loading TinyMCE editor...');
@@ -154,6 +149,11 @@
     } catch (error) {
       console.log('[DEBUG] Error loading TinyMCE', error);
     }
+    // Clean up event listener on component destruction
+    return () => {
+      window.removeEventListener('keydown', handleKeydown);
+    };
+
   });
 </script>
 

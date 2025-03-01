@@ -1,5 +1,5 @@
 <script>
-  import { PARALLEL_TIMELINES, getParallelBlockDuration, removeTimelineFromGroup } from '$lib/stores/sectionsStore';
+  import { PARALLEL_TIMELINES, getParallelBlockDuration, removeTimelineFromGroup, removeItem } from '$lib/stores/sectionsStore';
   import DrillItem from './DrillItem.svelte';
   
   export let timeline;

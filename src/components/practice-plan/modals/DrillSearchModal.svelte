@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { addBreak, addDrillToPlan } from '$lib/stores/sectionsStore';
+  import { addBreak, addDrillToPlan, addOneOffDrill } from '$lib/stores/sectionsStore';
   import { toast } from '@zerodevx/svelte-toast';
   
   export let show = false;
@@ -10,11 +10,13 @@
   
   let searchQuery = '';
   let searchResults = [];
+  let oneOffName = 'Quick Activity';
 
   function close() {
     show = false;
     searchQuery = '';
     searchResults = [];
+    oneOffName = 'Quick Activity';
     dispatch('close');
   }
 
@@ -59,6 +61,21 @@
     addBreak(selectedSectionId);
     close();
   }
+
+  function handleAddOneOffDrill() {
+    if (!selectedSectionId) {
+      toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
+      return;
+    }
+    
+    if (!oneOffName.trim()) {
+      toast.push('Activity name cannot be empty', { theme: { '--toastBackground': 'red' } });
+      return;
+    }
+    
+    addOneOffDrill(selectedSectionId, oneOffName);
+    close();
+  }
 </script>
 
 {#if show}
@@ -68,7 +85,7 @@
         <h3 class="text-lg font-medium text-gray-900 mb-4">Add to Practice Plan</h3>
         
         <!-- Add Break option at the top -->
-        <div class="mb-6 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer"
+        <div class="mb-4 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer"
              on:click={handleAddBreak}>
           <div class="flex justify-between items-center">
             <div>
@@ -76,6 +93,30 @@
               <p class="text-sm text-gray-500">Add a timed break or transition period</p>
             </div>
             <span class="text-blue-500">+</span>
+          </div>
+        </div>
+
+        <!-- Add One-off Activity option -->
+        <div class="mb-4 p-4 border rounded-lg hover:bg-gray-50">
+          <div class="flex justify-between items-center mb-2">
+            <div>
+              <h4 class="font-medium">Add One-off Activity</h4>
+              <p class="text-sm text-gray-500">Quick activity with just a name and duration</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              bind:value={oneOffName}
+              placeholder="Activity name"
+              class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            />
+            <button
+              class="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              on:click={handleAddOneOffDrill}
+            >
+              Add
+            </button>
           </div>
         </div>
 

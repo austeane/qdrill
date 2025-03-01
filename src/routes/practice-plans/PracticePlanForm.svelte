@@ -4,6 +4,7 @@
   import { toast } from '@zerodevx/svelte-toast';
   import { page } from '$app/stores';
   import { cart } from '$lib/stores/cartStore';
+  import { undo, redo, canUndo, canRedo, initializeHistory } from '$lib/stores/historyStore';
   
   // Import stores
   import { 
@@ -22,7 +23,9 @@
     submitPracticePlan,
     addPracticeGoal,
     removePracticeGoal,
-    updatePracticeGoal
+    updatePracticeGoal,
+    totalPlanDuration,
+    formatTime
   } from '$lib/stores/practicePlanStore';
   
   import {
@@ -43,10 +46,10 @@
   
   // Import TinyMCE editor
   let Editor;
-  
+
   // Add proper prop definitions with defaults
   export let practicePlan = null;
-  
+
   // UI state
   let showEmptyCartModal = false;
   let showDrillSearch = false;
@@ -92,23 +95,55 @@
   
   // Component initialization
   onMount(async () => {
+    initializeHistory();
+    
     if ($cart.length === 0 && !practicePlan) {
-      showEmptyCartModal = true;
+        showEmptyCartModal = true;
     }
     
     if (!practicePlan) {
-      const cartItems = $cart.map(drill => ({
-        id: drill.id,
-        type: 'drill',
-        name: drill.name,
-        drill: drill,
-        expanded: false,
-        selected_duration: 15,
-        diagram_data: null,
-        parallel_group_id: null
-      }));
-      selectedItems.set(cartItems);
+        const cartItems = $cart.map(drill => ({
+            id: drill.id,
+            type: 'drill',
+            name: drill.name,
+            drill: drill,
+            expanded: false,
+            selected_duration: 15,
+            diagram_data: null,
+            parallel_group_id: null
+        }));
+        selectedItems.set(cartItems);
     }
+
+    // Add keyboard shortcuts
+    function handleKeydown(e) {
+      // Check if the active element is an input field or textarea
+      const isEditing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+      
+      // Only process shortcuts if we're not in an input field
+      if (!isEditing) {
+        // Undo: Ctrl/Cmd + Z
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+          e.preventDefault();
+          if ($canUndo) undo();
+        }
+        
+        // Redo: Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y
+        if (((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) || 
+            ((e.ctrlKey || e.metaKey) && e.key === 'y')) {
+          e.preventDefault();
+          if ($canRedo) redo();
+        }
+      }
+    }
+    
+    // Add event listener for keyboard shortcuts
+    window.addEventListener('keydown', handleKeydown);
+    
+    // Clean up event listener on component destruction
+    return () => {
+      window.removeEventListener('keydown', handleKeydown);
+    };
 
     // Load TinyMCE Editor
     try {
@@ -124,6 +159,46 @@
 
 <div class="container mx-auto p-4">
   <h1 class="text-2xl font-bold mb-4">{practicePlan ? 'Edit Practice Plan' : 'Create Practice Plan'}</h1>
+
+  <!-- Duration Summary -->
+  <div class="bg-blue-50 p-4 mb-6 rounded-lg shadow-sm">
+          <div class="flex justify-between items-center">
+            <div>
+        <h2 class="font-semibold text-blue-800">Practice Duration</h2>
+        <p class="text-blue-600">
+          Start: {formatTime($startTime)} • Total: {$totalPlanDuration} minutes
+        </p>
+        <p class="text-xs text-blue-500 mt-1">
+          Keyboard shortcuts: Ctrl+Z (Undo), Ctrl+Shift+Z (Redo)
+        </p>
+                  </div>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center space-x-2">
+          <button
+            class="p-2 rounded bg-white text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            on:click={undo}
+            disabled={!$canUndo}
+            title="Undo"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+          </button>
+          <button
+            class="p-2 rounded bg-white text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            on:click={redo}
+            disabled={!$canRedo}
+            title="Redo"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="text-3xl font-bold text-blue-700">{$totalPlanDuration}m</div>
+      </div>
+    </div>
+  </div>
 
   <!-- Basic form fields -->
   <div class="mb-4">

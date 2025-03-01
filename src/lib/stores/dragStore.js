@@ -1,5 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { sections } from './sectionsStore';
+import { addToHistory } from './historyStore';
 
 // Drag state stores
 export const draggedItem = writable(null);
@@ -97,6 +98,32 @@ export function handleDrop(e, sectionIndex, itemIndex, targetTimeline = null) {
   const draggedItemValue = get(draggedItem);
   if (!draggedItemValue) return;
 
+  // Create history snapshot before the move
+  const sourceSectionIndex = draggedItemValue.sectionIndex;
+  const sourceItemIndex = draggedItemValue.itemIndex;
+  
+  // Get the original item for history
+  const currentSections = get(sections);
+  const sourceSection = currentSections[sourceSectionIndex];
+  const movedItem = sourceSection?.items[sourceItemIndex];
+  
+  if (!movedItem) return;
+  
+  const targetSection = currentSections[sectionIndex];
+  const targetItem = targetSection?.items[itemIndex];
+  
+  // Add to history with relevant details
+  addToHistory('MOVE_ITEM', 
+              { 
+                sourceSectionIndex, 
+                sourceItemIndex, 
+                targetSectionIndex: sectionIndex, 
+                targetItemIndex: itemIndex,
+                movedItem, 
+                targetTimeline 
+              }, 
+              `Moved "${movedItem.name || 'Item'}" to ${targetTimeline ? `${targetTimeline} timeline` : 'new position'}`);
+
   sections.update(currentSections => {
     const newSections = [...currentSections];
     const sourceSection = newSections[draggedItemValue.sectionIndex];
@@ -185,6 +212,14 @@ export function handleSectionDrop(e, sectionIndex) {
 
   const draggedSectionValue = get(draggedSection);
   if (draggedSectionValue === null || draggedSectionValue === sectionIndex) return;
+
+  // Add to history before making the change
+  const currentSections = get(sections);
+  const sourceSection = currentSections[draggedSectionValue];
+  
+  addToHistory('MOVE_SECTION', 
+              { sourceIndex: draggedSectionValue, targetIndex: sectionIndex }, 
+              `Moved section "${sourceSection?.name || 'Section'}"`);
 
   sections.update(currentSections => {
     const newSections = [...currentSections];

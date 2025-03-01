@@ -28,8 +28,9 @@
       items: section.items?.map(item => ({
         id: item.id,
         name: item.name,
-        duration: item.duration,
-        selected_duration: item.selected_duration,
+        type: item.type,
+        isOneOff: item.type === 'one-off' || (item.type === 'drill' && item.drill_id === null),
+        duration: item.selected_duration || item.duration,
         drill: {
           name: item.drill?.name,
           duration: item.drill?.duration
@@ -42,6 +43,9 @@
     console.log('[Section] Full section data:', section);
     if (section.items?.length > 0) {
       console.log('[Section] First item in section:', section.items[0]);
+      if (section.items[0].type === 'one-off' || (section.items[0].type === 'drill' && section.items[0].drill_id === null)) {
+        console.log('[Section] First item is a one-off drill');
+      }
     }
   }
 

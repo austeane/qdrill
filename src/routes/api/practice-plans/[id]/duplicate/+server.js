@@ -84,10 +84,17 @@ export async function POST({ params, locals }) {
                     [
                         newPlanId,
                         newSectionId,
-                        drill.drill_id,
+                        // For one-off drills (either by type check or checking for negative IDs),
+                        // set drill_id to null
+                        drill.type === 'one-off' || 
+                        (typeof drill.id === 'number' && drill.id < 0) ||
+                        (drill.type === 'drill' && !drill.drill_id)
+                          ? null 
+                          : drill.drill_id,
                         drill.order_in_plan,
                         drill.duration,
-                        drill.type,
+                        // Map 'one-off' type to 'drill' to conform to database constraints
+                        drill.type === 'one-off' ? 'drill' : drill.type,
                         drill.diagram_data,
                         drill.parallel_group_id,
                         drill.parallel_timeline

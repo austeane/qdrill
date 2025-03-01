@@ -165,18 +165,36 @@ export const POST = async ({ request, locals }) => {
           for (const [index, item] of section.items.entries()) {
             await db.query(
               `INSERT INTO practice_plan_drills 
-               (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, diagram_data, parallel_group_id, parallel_timeline)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+               (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, diagram_data, parallel_group_id, parallel_timeline, name)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
               [
                 planId,
                 dbSectionId,
-                item.drill_id,
+                // Fix drill_id logic for different types of items
+                (() => {
+                  // For one-off items, use null
+                  if (item.type === 'one-off' || (typeof item.id === 'number' && item.id < 0)) {
+                    return null;
+                  }
+                  // For drills, use drill_id or drill.id if available
+                  if (item.type === 'drill') {
+                    return item.drill_id || (item.drill?.id || null);
+                  }
+                  // For other types (e.g., breaks), use null
+                  return null;
+                })(),
                 index,
                 item.duration,
-                item.type,
+                // Map 'one-off' type to 'drill' to conform to database constraints
+                item.type === 'one-off' ? 'drill' : item.type,
                 item.diagram_data,
                 item.parallel_group_id,
-                item.parallel_timeline
+                item.parallel_timeline,
+                // Save the name field - use item.name if it exists, otherwise use appropriate defaults
+                item.name || 
+                (item.type === 'drill' && item.drill?.name 
+                  ? item.drill.name 
+                  : (item.type === 'one-off' ? 'Quick Activity' : 'Break'))
               ]
             );
           }

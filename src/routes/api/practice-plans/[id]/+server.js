@@ -47,12 +47,13 @@ export async function GET({ params, locals }) {
         ppd.order_in_plan,
         ppd.duration AS item_duration,
         ppd.type,
+        ppd.name,
         ppd.parallel_group_id,
         ppd.parallel_timeline,
         ppd.diagram_data AS ppd_diagram_data,
         ppd.group_timelines::text[] AS "groupTimelines",
         d.id AS drill_id,
-        d.name,
+        d.name AS drill_name,
         d.brief_description,
         d.detailed_description,
         d.suggested_length,
@@ -113,9 +114,13 @@ export async function GET({ params, locals }) {
 
 // Helper function to format drill items
 function formatDrillItem(item) {
+  // Check if this is a one-off drill (when type is 'drill' but drill_id is null)
+  const isOneOff = item.type === 'drill' && item.drill_id === null;
+  
   if (item.type === 'drill') {
     return {
-      type: 'drill',
+      id: item.id,
+      type: isOneOff ? 'one-off' : 'drill',
       duration: item.item_duration,
       order_in_plan: item.order_in_plan,
       section_id: item.section_id,
@@ -123,9 +128,12 @@ function formatDrillItem(item) {
       parallel_timeline: item.parallel_timeline,
       groupTimelines: item.groupTimelines,
       diagram_data: item.ppd_diagram_data,
-      drill: {
+      // Use custom name from ppd.name column if available
+      name: item.name || (isOneOff ? "Quick Activity" : null),
+      // Only include drill object if this is not a one-off drill
+      drill: isOneOff ? null : {
         id: item.drill_id,
-        name: item.name,
+        name: item.drill_name, // Using the renamed column
         brief_description: item.brief_description,
         detailed_description: item.detailed_description,
         suggested_length: item.suggested_length,
@@ -141,10 +149,12 @@ function formatDrillItem(item) {
     };
   } else {
     return {
+      id: item.id,
       type: 'break',
       duration: item.item_duration,
       order_in_plan: item.order_in_plan,
       section_id: item.section_id,
+      name: item.name || 'Break',
       parallel_group_id: item.parallel_group_id,
       parallel_timeline: item.parallel_timeline,
       groupTimelines: item.groupTimelines
@@ -263,30 +273,48 @@ export const PUT = async ({ params, request, locals }) => {
                     const values = section.items.map((item, index) => ({
                         practice_plan_id: id,
                         section_id: section.id,
-                        drill_id: item.type === 'drill' ? (item.drill?.id || item.id) : null,
+                        drill_id: (() => {
+                            // For one-off items, use null
+                            if (item.type === 'one-off' || (typeof item.id === 'number' && item.id < 0)) {
+                                return null;
+                            }
+                            // For drills, use drill_id or drill.id if available
+                            if (item.type === 'drill') {
+                                return item.drill_id || (item.drill?.id || null);
+                            }
+                            // For other types (e.g., breaks), use null
+                            return null;
+                        })(),
                         order_in_plan: index,
                         duration: item.duration || item.selected_duration,
-                        type: item.type,
+                        // Map 'one-off' type to 'drill' to conform to database constraints
+                        type: item.type === 'one-off' ? 'drill' : item.type,
                         parallel_group_id: item.parallel_group_id,
                         parallel_timeline: item.parallel_timeline || null,
                         group_timelines: item.groupTimelines
                           ? `{${item.groupTimelines.join(',')}}`
-                          : null          
+                          : null,
+                        // Save the name field - use item.name, or if it's a drill with a drill object, use drill.name, otherwise use appropriate defaults
+                        name: item.name || 
+                              (item.type === 'drill' && item.drill?.name 
+                                ? item.drill.name 
+                                : (item.type === 'one-off' ? 'Quick Activity' : 'Break'))
                     }));
 
-                    // Update the SQL query to include parallel_timeline and group_timelines
+                    // Update the SQL query to include name field
                     const valueStrings = values.map((_, index) => 
-                        `($${index * 9 + 1}, $${index * 9 + 2}, $${index * 9 + 3}, $${index * 9 + 4}, $${index * 9 + 5}, $${index * 9 + 6}, $${index * 9 + 7}, $${index * 9 + 8}, $${index * 9 + 9})`
+                        `($${index * 10 + 1}, $${index * 10 + 2}, $${index * 10 + 3}, $${index * 10 + 4}, $${index * 10 + 5}, $${index * 10 + 6}, $${index * 10 + 7}, $${index * 10 + 8}, $${index * 10 + 9}, $${index * 10 + 10})`
                     );
                     
                     const flatValues = values.flatMap(v => [
                         v.practice_plan_id, v.section_id, v.drill_id, 
                         v.order_in_plan, v.duration, v.type, 
-                        v.parallel_group_id, v.parallel_timeline, v.group_timelines
+                        v.parallel_group_id, v.parallel_timeline, v.group_timelines,
+                        v.name
                     ]);
 
                     await client.query(
-                        `INSERT INTO practice_plan_drills (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, parallel_group_id, parallel_timeline, group_timelines)
+                        `INSERT INTO practice_plan_drills (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, parallel_group_id, parallel_timeline, group_timelines, name)
                          VALUES ${valueStrings.join(', ')}`,
                         flatValues
                     );

@@ -50,14 +50,24 @@ export const selectedSectionId = writable(null);
 export function formatDrillItem(item, sectionId) {
   console.log('[DEBUG] formatDrillItem - input item:', {
     id: item.id,
+    type: item.type,
+    drill_id: item.drill_id,
     parallel_group_id: item.parallel_group_id,
     parallel_timeline: item.parallel_timeline,
     groupTimelines: item.groupTimelines || item.group_timelines
   });
 
+  // Determine if this is a one-off drill
+  // One-off drills have either: 
+  // 1. type 'drill' with null drill_id and no drill object, or
+  // 2. A negative numeric ID (our new approach)
+  const isOneOff = (item.type === 'drill' && !item.drill && !item.drill_id) || 
+                   (typeof item.id === 'number' && item.id < 0);
+  
   const base = {
     id: item.drill?.id || item.id,
-    type: item.type,
+    // Convert to 'one-off' type if identified as such
+    type: isOneOff ? 'one-off' : item.type,
     name: item.type === 'break' && !item.name ? 'Break' : (item.drill?.name || item.name || ''),
     duration: item.duration,
     drill: item.drill,
@@ -94,6 +104,7 @@ export function formatDrillItem(item, sectionId) {
 
   console.log('[DEBUG] formatDrillItem - output base:', {
     id: base.id,
+    type: base.type,
     parallel_group_id: base.parallel_group_id,
     parallel_timeline: base.parallel_timeline,
     groupTimelines: base.groupTimelines
@@ -258,9 +269,10 @@ export function addOneOffDrill(sectionId, name = 'Quick Activity') {
     
     const section = newSections[sectionIndex];
     
-    // Create new one-off drill item
+    // Create new one-off drill item with a numeric ID (negative timestamp)
+    // This ensures it won't conflict with actual drill IDs but will be treated as an integer
     const oneOffDrillItem = {
-      id: `one-off-${Date.now()}`,
+      id: -Date.now(), // Use negative timestamp as ID (will be treated as an integer)
       type: 'one-off',
       name: name,
       duration: 10,

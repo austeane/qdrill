@@ -248,13 +248,37 @@ function normalizeItems(items) {
 
         // Add each item with its own duration
         groupItems.forEach(groupItem => {
+          // Ensure ID is numeric for database (either from drill.id or item.id)
+          const itemId = groupItem.drill?.id || groupItem.id;
+          // Convert string IDs to numbers if needed
+          const numericId = typeof itemId === 'string' && !isNaN(parseInt(itemId)) ? parseInt(itemId) : itemId;
+          
+          // Fix drill_id logic for different types of items
+          let drillId = null;
+          if (groupItem.type === 'one-off' || (typeof groupItem.id === 'number' && groupItem.id < 0)) {
+            drillId = null;
+          } else if (groupItem.type === 'drill') {
+            drillId = groupItem.drill_id || (groupItem.drill?.id || null);
+          }
+          
+          // Determine the name to use
+          let itemName = '';
+          if (groupItem.type === 'break') {
+            itemName = groupItem.name || 'Break';
+          } else if (groupItem.type === 'one-off') {
+            itemName = groupItem.name || 'Quick Activity';
+          } else {
+            itemName = groupItem.name || (groupItem.drill?.name || '');
+          }
+          
           normalized.push({
-            id: groupItem.id,
+            id: numericId,
             // Map 'one-off' type to 'drill' to conform to database constraints
             type: groupItem.type === 'one-off' ? 'drill' : groupItem.type,
-            name: groupItem.type === 'break' && !groupItem.name ? 'Break' : (groupItem.drill?.name || groupItem.name || ''),
+            name: itemName,
             duration: parseInt(groupItem.selected_duration || groupItem.duration, 10),
-            drill_id: groupItem.drill?.id || groupItem.id,
+            // Use the fixed drill_id logic
+            drill_id: drillId,
             diagram_data: groupItem.diagram_data || null,
             parallel_group_id: groupItem.parallel_group_id,
             parallel_timeline: groupItem.parallel_timeline || null,
@@ -264,13 +288,37 @@ function normalizeItems(items) {
       }
     } else {
       // Non-parallel items remain unchanged
+      // Ensure ID is numeric for database (either from drill.id or item.id)
+      const itemId = item.drill?.id || item.id;
+      // Convert string IDs to numbers if needed
+      const numericId = typeof itemId === 'string' && !isNaN(parseInt(itemId)) ? parseInt(itemId) : itemId;
+      
+      // Fix drill_id logic for different types of items
+      let drillId = null;
+      if (item.type === 'one-off' || (typeof item.id === 'number' && item.id < 0)) {
+        drillId = null;
+      } else if (item.type === 'drill') {
+        drillId = item.drill_id || (item.drill?.id || null);
+      }
+      
+      // Determine the name to use
+      let itemName = '';
+      if (item.type === 'break') {
+        itemName = item.name || 'Break';
+      } else if (item.type === 'one-off') {
+        itemName = item.name || 'Quick Activity';
+      } else {
+        itemName = item.name || (item.drill?.name || '');
+      }
+      
       normalized.push({
-        id: item.drill?.id || item.id,
+        id: numericId,
         // Map 'one-off' type to 'drill' to conform to database constraints
         type: item.type === 'one-off' ? 'drill' : item.type,
-        name: item.type === 'break' && !item.name ? 'Break' : (item.drill?.name || item.name || ''),
+        name: itemName,
         duration: parseInt(item.selected_duration || item.duration, 10),
-        drill_id: (item.type === 'drill' || item.type === 'one-off') ? (item.drill?.id || item.id) : null,
+        // Use the fixed drill_id logic
+        drill_id: drillId,
         diagram_data: item.diagram_data || null,
         parallel_group_id: null,
         parallel_timeline: null

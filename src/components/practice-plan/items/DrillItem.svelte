@@ -26,6 +26,13 @@
   
   $: isDropTarget = $dragState.targetSection === sectionIndex && 
                     $dragState.targetIndex === itemIndex;
+                    
+  // Only log when mounted in the DOM
+  import { onMount } from 'svelte';
+  
+  onMount(() => {
+    console.log(`[DrillItem] Mounted: ${item.name} (ID: ${itemId}) at section ${sectionIndex} index ${itemIndex}${item.parallel_timeline ? ` in ${item.parallel_timeline} timeline` : ''}`);
+  });
 </script>
 
 <li class="timeline-item relative transition-all duration-200 {isBeingDragged ? 'dragging' : ''}"

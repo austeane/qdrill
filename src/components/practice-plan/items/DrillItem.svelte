@@ -15,11 +15,14 @@
   export let sectionIndex;
   export let onRemove;
   
-  // Reactive drag states for this item
+  // Generate a stable unique identifier for this item based on its content
+  $: itemId = item.id;
+  
+  // Reactive drag states for this item - use ID instead of index
   $: isBeingDragged = $dragState.isDragging && 
                       $dragState.dragType === 'item' && 
                       $dragState.sourceSection === sectionIndex && 
-                      $dragState.sourceIndex === itemIndex;
+                      $dragState.itemId === itemId;
   
   $: isDropTarget = $dragState.targetSection === sectionIndex && 
                     $dragState.targetIndex === itemIndex;
@@ -27,7 +30,27 @@
 
 <li class="timeline-item relative transition-all duration-200 {isBeingDragged ? 'dragging' : ''}"
   draggable="true"
-  on:dragstart={(e) => startItemDrag(e, sectionIndex, itemIndex, item)}
+  data-item-id={itemId}
+  data-section-index={sectionIndex}
+  data-item-index={itemIndex}
+  data-item-name={item.name}
+  data-timeline={item.parallel_timeline}
+  data-group-id={item.parallel_group_id}
+  on:dragstart={(e) => {
+    // Make sure the ID is in the event dataset
+    if (e.currentTarget) {
+      // Force set all the data attributes on the element
+      e.currentTarget.dataset.itemId = itemId;
+      e.currentTarget.dataset.itemName = item.name;
+      e.currentTarget.dataset.sectionIndex = sectionIndex;
+      e.currentTarget.dataset.itemIndex = itemIndex;
+    }
+    
+    // Print what we're actually dragging
+    console.log(`[DRAGSTART] ${item.name} (ID: ${itemId}) from section ${sectionIndex} index ${itemIndex}`);
+    
+    startItemDrag(e, sectionIndex, itemIndex, item, itemId);
+  }}
   on:dragover={(e) => handleItemDragOver(e, sectionIndex, itemIndex, item, e.currentTarget)}
   on:dragleave={handleDragLeave}
   on:drop={handleDrop}

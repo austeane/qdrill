@@ -60,12 +60,18 @@
     // This ensures we don't lose critical drop target information
     const dragState = window.__dragManager ? window.__dragManager.get() : null;
     if (dragState && dragState.isDragging) {
+      // Create a flag to know if we're dropping in the same timeline
+      const isSameTimeline = dragState.sourceGroupId === parallelGroupId && 
+                           dragState.sourceTimeline === timeline &&
+                           dragState.sourceSection === sectionIndex;
+                           
       window.__dragManager.update(state => ({
         ...state,
         // Use nullish coalescing (??) instead of logical OR (||) to handle section index 0 correctly
         targetSection: targetSection !== null && !isNaN(targetSection) ? targetSection : sectionIndex,
         targetTimeline: targetTimeline || timeline,
         targetGroupId: targetGroupId || parallelGroupId,
+        isSameTimeline: isSameTimeline,
         dropPosition: 'inside'
       }));
     }
@@ -74,7 +80,8 @@
       sectionIndex,
       timeline,
       parallelGroupId,
-      fromAttrs: { targetSection, targetTimeline, targetGroupId }
+      timelineItems: timelineSpecificItems.length,
+      isSameTimeline: dragState?.sourceTimeline === timeline && dragState?.sourceGroupId === parallelGroupId
     });
     
     // Call the main drop handler
@@ -92,10 +99,13 @@
         Drag drills here
       </div>
     {:else}
-      {#each timelineSpecificItems as item, itemIndex}
+      {#each timelineSpecificItems as item, timelineItemIndex}
         <DrillItem 
           {item} 
-          itemIndex={timelineItems.indexOf(item)} 
+          itemIndex={timelineItems.indexOf(item)}
+          timelineItemIndex={timelineItemIndex} 
+          {timeline}
+          {parallelGroupId}
           {sectionIndex}
           onRemove={() => removeItem(sectionIndex, timelineItems.indexOf(item))} 
         />

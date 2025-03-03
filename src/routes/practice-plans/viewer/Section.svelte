@@ -225,7 +225,7 @@
 
   {#if !isCollapsed}
     <div class="section-content" transition:slide>
-      {#each groupedItems.singles as item (item.drill?.id || item.id)}
+      {#each groupedItems.singles as item (item.id)}
         <DrillCard 
           {item}
           {canEdit}

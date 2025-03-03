@@ -95,7 +95,7 @@
       {#each timelineSpecificItems as item, itemIndex}
         <DrillItem 
           {item} 
-          {itemIndex} 
+          itemIndex={timelineItems.indexOf(item)} 
           {sectionIndex}
           onRemove={() => removeItem(sectionIndex, timelineItems.indexOf(item))} 
         />

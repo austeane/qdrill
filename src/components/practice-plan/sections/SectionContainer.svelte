@@ -1,12 +1,13 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { 
-    handleSectionDragStart, 
+    startSectionDrag, 
     handleSectionDragOver, 
-    handleSectionDragLeave, 
-    handleSectionDrop,
-    handleEmptySectionDrop
-  } from '$lib/stores/dragStore';
+    handleDragLeave, 
+    handleDrop,
+    handleDragEnd,
+    handleEmptySectionDragOver
+  } from '$lib/stores/dragManager';
   import SectionHeader from './SectionHeader.svelte';
   import DrillItem from '../items/DrillItem.svelte';
   import ParallelGroup from '../items/ParallelGroup.svelte';
@@ -54,10 +55,11 @@
 <div 
   class="section-container bg-white rounded-lg shadow-sm p-4 mb-4"
   draggable="true"
-  on:dragstart={(e) => handleSectionDragStart(e, sectionIndex)}
-  on:dragover={(e) => handleSectionDragOver(e, sectionIndex)}
-  on:dragleave={handleSectionDragLeave}
-  on:drop={(e) => handleSectionDrop(e, sectionIndex)}
+  on:dragstart={(e) => startSectionDrag(e, sectionIndex)}
+  on:dragover={(e) => handleSectionDragOver(e, sectionIndex, e.currentTarget)}
+  on:dragleave={handleDragLeave}
+  on:drop={handleDrop}
+  on:dragend={handleDragEnd}
 >
   <SectionHeader 
     {section} 
@@ -69,13 +71,13 @@
   <ul 
     class="space-y-4 min-h-[50px]"
     on:dragover|preventDefault
-    on:drop={(e) => section.items.length === 0 ? handleEmptySectionDrop(e, sectionIndex) : null}
   >
     {#if section.items.length === 0}
       <div 
         class="empty-section-placeholder h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-500"
-        on:dragover|preventDefault
-        on:drop={(e) => handleEmptySectionDrop(e, sectionIndex)}
+        on:dragover={(e) => handleEmptySectionDragOver(e, sectionIndex, e.currentTarget)}
+        on:dragleave={handleDragLeave}
+        on:drop={handleDrop}
       >
         Drag drills here
       </div>
@@ -113,6 +115,12 @@
     color: theme('colors.blue.500');
   }
   
+  :global(.empty-section-target) {
+    border-color: #3b82f6;
+    border-width: 2px;
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+  
   .section-container {
     transition: border-color 0.2s ease;
     border: 2px solid transparent;
@@ -123,11 +131,35 @@
     cursor: grabbing;
   }
 
-  .section-container.border-t-4 {
-    border-top: 4px solid theme('colors.blue.500');
+  :global(.section-container.section-drop-before) {
+    position: relative;
   }
 
-  .section-container.border-b-4 {
-    border-bottom: 4px solid theme('colors.blue.500');
+  :global(.section-container.section-drop-before)::before {
+    content: '';
+    position: absolute;
+    top: -0.25rem;
+    left: 0;
+    right: 0;
+    height: 0.25rem;
+    background-color: #3b82f6;
+    border-radius: 999px;
+    z-index: 10;
+  }
+
+  :global(.section-container.section-drop-after) {
+    position: relative;
+  }
+
+  :global(.section-container.section-drop-after)::after {
+    content: '';
+    position: absolute;
+    bottom: -0.25rem;
+    left: 0;
+    right: 0;
+    height: 0.25rem;
+    background-color: #3b82f6;
+    border-radius: 999px;
+    z-index: 10;
   }
 </style> 

@@ -45,3 +45,61 @@ body {
   background-color: var(--color-theme-1);
   color: white;
 }
+
+/* Drag and Drop Styles */
+.drop-before,
+.section-drop-before {
+  position: relative;
+}
+
+.drop-before::before,
+.section-drop-before::before {
+  content: '';
+  position: absolute;
+  top: -0.25rem;
+  left: 0;
+  right: 0;
+  height: 0.25rem;
+  background-color: #3b82f6;
+  border-radius: 999px;
+  z-index: 10;
+}
+
+.drop-after,
+.section-drop-after {
+  position: relative;
+}
+
+.drop-after::after,
+.section-drop-after::after {
+  content: '';
+  position: absolute;
+  bottom: -0.25rem;
+  left: 0;
+  right: 0;
+  height: 0.25rem;
+  background-color: #3b82f6;
+  border-radius: 999px;
+  z-index: 10;
+}
+
+.timeline-drop-target {
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+  border-style: dashed;
+}
+
+.empty-section-target {
+  border-color: #3b82f6;
+  border-width: 2px;
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* Add the dragging class to the drag and drop styles */
+.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+  outline: 2px dashed #3b82f6;
+  background-color: rgba(59, 130, 246, 0.05);
+  z-index: 10;
+}

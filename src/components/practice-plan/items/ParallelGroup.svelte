@@ -1,12 +1,12 @@
 <script>
   import { 
-    handleParallelGroupDragStart,
-    handleParallelGroupDragOver,
-    handleParallelGroupDragLeave,
-    handleParallelGroupDrop,
+    startGroupDrag,
+    handleGroupDragOver,
+    handleDragLeave,
     handleDrop,
-    handleDropOnTop
-  } from '$lib/stores/dragStore';
+    handleDragEnd,
+    dragState
+  } from '$lib/stores/dragManager';
   import { 
     handleUngroup, 
     getParallelBlockDuration,
@@ -23,29 +23,60 @@
   $: firstGroupItem = items.find(item => item.parallel_group_id === groupId);
   $: groupTimelines = firstGroupItem?.groupTimelines || [];
   
-  // Calculate durations
-  $: durations = calculateTimelineDurations(items, groupId);
+  $: console.log('[DEBUG] ParallelGroup - groupTimelines:', {
+    groupId,
+    timelines: groupTimelines,
+    firstItem: firstGroupItem ? {
+      id: firstGroupItem.id,
+      name: firstGroupItem.name,
+      parallel_timeline: firstGroupItem.parallel_timeline,
+      groupTimelines: firstGroupItem.groupTimelines
+    } : null,
+    itemsCount: items.filter(item => item.parallel_group_id === groupId).length
+  });
+  
+  // Calculate durations - memoize to prevent multiple recalculations
+  let lastGroupItems = [];
+  let cachedDurations = {};
+  
+  $: {
+    // Only recalculate if the items actually changed
+    const groupItems = items.filter(item => item.parallel_group_id === groupId);
+    const itemsChanged = groupItems.length !== lastGroupItems.length || 
+                         JSON.stringify(groupItems.map(i => i.id)) !== 
+                         JSON.stringify(lastGroupItems.map(i => i.id));
+    
+    if (itemsChanged) {
+      cachedDurations = calculateTimelineDurations(items, groupId);
+      lastGroupItems = [...groupItems];
+    }
+  }
+  
+  $: durations = cachedDurations;
+  
+  // Reactive drag states for this group
+  $: isBeingDragged = $dragState.isDragging && 
+                      $dragState.dragType === 'group' && 
+                      $dragState.sourceSection === sectionIndex && 
+                      $dragState.sourceGroupId === groupId;
+  
+  $: isDropTarget = $dragState.targetSection === sectionIndex && 
+                    $dragState.targetGroupId === groupId;
 </script>
 
 <div 
-  class="parallel-group-container relative px-2 py-2 mb-2 bg-blue-50 border-l-4 border-blue-300 rounded"
+  class="parallel-group-container relative px-2 py-2 mb-2 bg-blue-50 border-l-4 border-blue-300 rounded {isBeingDragged ? 'dragging' : ''}"
   draggable="true"
-  on:dragstart={(e) => handleParallelGroupDragStart(e, sectionIndex, groupId)}
-  on:dragover={(e) => handleParallelGroupDragOver(e, sectionIndex)}
-  on:dragleave={handleParallelGroupDragLeave}
-  on:drop={(e) => handleParallelGroupDrop(e, sectionIndex)}
+  on:dragstart={(e) => startGroupDrag(e, sectionIndex, groupId)}
+  on:dragover={(e) => handleGroupDragOver(e, sectionIndex, groupId, e.currentTarget)}
+  on:dragleave={handleDragLeave}
+  on:drop={handleDrop}
+  on:dragend={handleDragEnd}
 >
   <div class="flex items-center justify-between">
     <div class="group-drag-handle">Drag Entire Block</div>
     <button on:click={() => handleUngroup(groupId)}>Ungroup</button>
   </div>
-
-  <!-- Add top drop zone -->
-  <div 
-    class="h-2 -mt-2 mb-2"
-    on:dragover|preventDefault
-    on:drop={(e) => handleDropOnTop(e, sectionIndex)}
-  ></div>
 
   {#if groupTimelines?.length > 0}
     <div 
@@ -78,14 +109,36 @@
     transition: transform 0.2s ease, outline 0.2s ease;
   }
 
-  .parallel-group-container.border-t-4 {
-    border-top: 4px solid theme('colors.blue.500');
-    margin-top: -4px;
+  :global(.parallel-group-container.drop-before) {
+    position: relative;
   }
 
-  .parallel-group-container.border-b-4 {
-    border-bottom: 4px solid theme('colors.blue.500');
-    margin-bottom: -4px;
+  :global(.parallel-group-container.drop-before)::before {
+    content: '';
+    position: absolute;
+    top: -0.25rem;
+    left: 0;
+    right: 0;
+    height: 0.25rem;
+    background-color: #3b82f6;
+    border-radius: 999px;
+    z-index: 10;
+  }
+
+  :global(.parallel-group-container.drop-after) {
+    position: relative;
+  }
+
+  :global(.parallel-group-container.drop-after)::after {
+    content: '';
+    position: absolute;
+    bottom: -0.25rem;
+    left: 0;
+    right: 0;
+    height: 0.25rem;
+    background-color: #3b82f6;
+    border-radius: 999px;
+    z-index: 10;
   }
 
   .group-drag-handle {
@@ -102,17 +155,6 @@
 
   .group-drag-handle:hover {
     border-color: #93c5fd;
-  }
-
-  /* Style for the top drop zone */
-  .parallel-group-container > .h-2 {
-    transition: height 0.2s ease;
-  }
-
-  .parallel-group-container > .h-2:hover,
-  .parallel-group-container > .h-2.drag-over {
-    height: 1rem;
-    background-color: rgba(59, 130, 246, 0.1);
   }
 
   /* Mobile layout */

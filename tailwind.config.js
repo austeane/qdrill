@@ -9,7 +9,10 @@ export default {
         'bg-0': 'rgb(202, 216, 228)',
         'bg-1': 'hsl(209, 36%, 86%)',
         'bg-2': 'hsl(224, 44%, 95%)',
-        'text': 'rgba(0, 0, 0, 0.7)'
+        'text': 'rgba(0, 0, 0, 0.7)',
+        'drag-indicator': '#3b82f6',
+        'drag-highlight': 'rgba(59, 130, 246, 0.05)',
+        'drag-border': '#3b82f6',
       },
       fontFamily: {
         'body': ['Arial', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Open Sans', 'Helvetica Neue', 'sans-serif'],
@@ -34,6 +37,15 @@ export default {
               listStyleType: 'disc',
             },
           },
+        },
+      },
+      animation: {
+        'pulse-border': 'pulse-border 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+      keyframes: {
+        'pulse-border': {
+          '0%, 100%': { borderColor: 'rgba(59, 130, 246, 0.7)' },
+          '50%': { borderColor: 'rgba(59, 130, 246, 0.3)' },
         },
       },
     }

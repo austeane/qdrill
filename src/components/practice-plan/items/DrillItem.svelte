@@ -1,24 +1,37 @@
 <script>
   import { 
-    handleDragStart,
-    handleDragOver,
+    startItemDrag,
+    handleItemDragOver,
     handleDragLeave,
-    handleDrop
-  } from '$lib/stores/dragStore';
+    handleDrop,
+    handleDragEnd,
+    dragState,
+    isItemDrag
+  } from '$lib/stores/dragManager';
   import { handleDurationChange } from '$lib/stores/sectionsStore';
   
   export let item;
   export let itemIndex;
   export let sectionIndex;
   export let onRemove;
+  
+  // Reactive drag states for this item
+  $: isBeingDragged = $dragState.isDragging && 
+                      $dragState.dragType === 'item' && 
+                      $dragState.sourceSection === sectionIndex && 
+                      $dragState.sourceIndex === itemIndex;
+  
+  $: isDropTarget = $dragState.targetSection === sectionIndex && 
+                    $dragState.targetIndex === itemIndex;
 </script>
 
-<li class="timeline-item relative transition-all duration-200"
+<li class="timeline-item relative transition-all duration-200 {isBeingDragged ? 'dragging' : ''}"
   draggable="true"
-  on:dragstart={(e) => handleDragStart(e, sectionIndex, itemIndex)}
-  on:dragover={(e) => handleDragOver(e, sectionIndex, itemIndex)}
+  on:dragstart={(e) => startItemDrag(e, sectionIndex, itemIndex, item)}
+  on:dragover={(e) => handleItemDragOver(e, sectionIndex, itemIndex, item, e.currentTarget)}
   on:dragleave={handleDragLeave}
-  on:drop={(e) => handleDrop(e, sectionIndex, itemIndex)}
+  on:drop={handleDrop}
+  on:dragend={handleDragEnd}
 >
   <!-- Item content -->
   <div class="bg-white p-4 rounded-lg shadow-sm border transition-all duration-200 hover:shadow-md">
@@ -77,11 +90,36 @@
     background: transparent;
   }
 
-  .timeline-item .border-t-4 {
-    border-top-style: dashed;
+  /* Drop indicators */
+  :global(.timeline-item.drop-before) {
+    position: relative;
   }
 
-  .timeline-item .border-b-4 {
-    border-bottom-style: dashed;
+  :global(.timeline-item.drop-before)::before {
+    content: '';
+    position: absolute;
+    top: -0.25rem;
+    left: 0;
+    right: 0;
+    height: 0.25rem;
+    background-color: #3b82f6;
+    border-radius: 999px;
+    z-index: 10;
+  }
+
+  :global(.timeline-item.drop-after) {
+    position: relative;
+  }
+
+  :global(.timeline-item.drop-after)::after {
+    content: '';
+    position: absolute;
+    bottom: -0.25rem;
+    left: 0;
+    right: 0;
+    height: 0.25rem;
+    background-color: #3b82f6;
+    border-radius: 999px;
+    z-index: 10;
   }
 </style> 

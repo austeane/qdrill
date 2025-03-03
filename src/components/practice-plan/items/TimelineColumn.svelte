@@ -36,9 +36,50 @@
 
 <div 
   class="timeline-column bg-white rounded-lg border border-gray-200 p-2 min-h-[150px] flex flex-col transition-all duration-200"
+  data-section-index={sectionIndex}
+  data-timeline={timeline}
+  data-group-id={parallelGroupId}
   on:dragover={(e) => handleTimelineDragOver(e, sectionIndex, timeline, parallelGroupId, e.currentTarget)}
   on:dragleave={handleDragLeave}
-  on:drop={handleDrop}
+  on:drop={(e) => {
+    // Ensure we capture the event parameters directly in the handler
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Force update the currentTarget if it's missing
+    if (!e.currentTarget) {
+      e.currentTarget = e.target.closest('.timeline-column');
+    }
+    
+    // Provide backup parameters from data attributes if needed
+    const targetSection = parseInt(e.currentTarget.getAttribute('data-section-index'));
+    const targetTimeline = e.currentTarget.getAttribute('data-timeline');
+    const targetGroupId = e.currentTarget.getAttribute('data-group-id');
+    
+    // Before calling handleDrop, explicitly update the dragState with correct values
+    // This ensures we don't lose critical drop target information
+    const dragState = window.__dragManager ? window.__dragManager.get() : null;
+    if (dragState && dragState.isDragging) {
+      window.__dragManager.update(state => ({
+        ...state,
+        // Use nullish coalescing (??) instead of logical OR (||) to handle section index 0 correctly
+        targetSection: targetSection !== null && !isNaN(targetSection) ? targetSection : sectionIndex,
+        targetTimeline: targetTimeline || timeline,
+        targetGroupId: targetGroupId || parallelGroupId,
+        dropPosition: 'inside'
+      }));
+    }
+    
+    console.log('[TIMELINE DROP] Direct handler with attributes:', {
+      sectionIndex,
+      timeline,
+      parallelGroupId,
+      fromAttrs: { targetSection, targetTimeline, targetGroupId }
+    });
+    
+    // Call the main drop handler
+    handleDrop(e);
+  }}
 >
   <div class="timeline-header bg-gray-100 rounded-lg p-2 mb-3 flex-shrink-0">
     <h4 class="font-semibold">{timeline}</h4>

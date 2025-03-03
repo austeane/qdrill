@@ -690,6 +690,9 @@ export function getParallelBlockDuration(items, groupId) {
   return Math.max(...timelineDurations);
 }
 
+// Cache for previous duration calculations to avoid duplicate warnings
+let lastDurationWarnings = new Map();
+
 export function calculateTimelineDurations(items, groupId) {
   if (!groupId) return {};
   
@@ -711,7 +714,7 @@ export function calculateTimelineDurations(items, groupId) {
   });
 
   // Find the maximum duration among the timelines in this group
-  const maxDuration = Math.max(...Object.values(durations));
+  const maxDuration = Math.max(...Object.values(durations), 0);
   
   // Check for mismatches only within this group's timelines
   const mismatches = [];
@@ -724,14 +727,24 @@ export function calculateTimelineDurations(items, groupId) {
     }
   });
 
-  // If there are mismatches, send a single consolidated warning for this group
-  if (mismatches.length > 0) {
+  // Create a unique warning signature for this group's mismatches
+  const warningSig = mismatches.map(m => `${m.timeline}:${m.difference}`).sort().join('|');
+  
+  // Only show warning if the signature has changed or hasn't been shown for this group
+  if (mismatches.length > 0 && 
+      (!lastDurationWarnings.has(groupId) || 
+       lastDurationWarnings.get(groupId) !== warningSig)) {
+    
     const warningMessage = mismatches
       .map(({ timeline, difference }) => 
         `${PARALLEL_TIMELINES[timeline].name} (${difference}min shorter)`
       )
       .join(', ');
 
+    // Store the current warning signature
+    lastDurationWarnings.set(groupId, warningSig);
+    
+    // Show the toast
     toast.push(`Timeline duration mismatch in group: ${warningMessage}`, {
       theme: {
         '--toastBackground': '#FFA500',

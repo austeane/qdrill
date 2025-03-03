@@ -118,6 +118,7 @@ function resetDragState() {
     dragType: null,
     sourceSection: null,
     sourceIndex: null,
+    sourceTimelineIndex: null,
     sourceGroupId: null,
     sourceTimeline: null,
     draggedElementId: null,
@@ -125,6 +126,7 @@ function resetDragState() {
     itemName: null,
     targetSection: null,
     targetIndex: null,
+    targetTimelineIndex: null,
     targetGroupId: null,
     targetTimeline: null,
     dropPosition: null,
@@ -258,7 +260,7 @@ if (typeof window !== 'undefined') {
 // ----------------------------------------
 // DRAG START HANDLERS
 // ----------------------------------------
-export function startItemDrag(event, sectionIndex, itemIndex, item, itemId) {
+export function startItemDrag(event, sectionIndex, itemIndex, item, itemId, timelineItemIndex = null) {
   try {
     if (!initializeDrag(event)) return;
     
@@ -277,6 +279,12 @@ export function startItemDrag(event, sectionIndex, itemIndex, item, itemId) {
       }
     }
     
+    // Try to get timeline position from dataset if not provided
+    if (timelineItemIndex === null && event.currentTarget?.dataset?.timelineIndex) {
+      timelineItemIndex = parseInt(event.currentTarget.dataset.timelineIndex);
+      console.log('[DEBUG] Recovered timelineItemIndex from dataset:', timelineItemIndex);
+    }
+    
     // Generate a unique ID for this element
     const draggedElementId = generateElementId('item', sectionIndex, itemIndex);
     
@@ -288,7 +296,10 @@ export function startItemDrag(event, sectionIndex, itemIndex, item, itemId) {
       name: item.name,
       id: actualItemId,
       sectionIndex,
-      itemIndex
+      itemIndex,
+      timelineItemIndex,
+      timeline: item.parallel_timeline,
+      groupId: item.parallel_group_id
     });
     
     // Set dataTransfer data for redundancy
@@ -299,12 +310,18 @@ export function startItemDrag(event, sectionIndex, itemIndex, item, itemId) {
         id: actualItemId,
         name: item.name,
         sectionIndex,
-        itemIndex
+        itemIndex,
+        timelineItemIndex,
+        timeline: item.parallel_timeline,
+        groupId: item.parallel_group_id
       }));
       
       // Store a direct reference to the item ID for easier access
       event.dataTransfer.setData('application/x-item-id', actualItemId.toString());
       event.dataTransfer.setData('application/x-item-name', item.name);
+      if (timelineItemIndex !== null) {
+        event.dataTransfer.setData('application/x-timeline-index', timelineItemIndex.toString());
+      }
     }
     
     // Store state without references to DOM elements, but with item ID
@@ -313,6 +330,7 @@ export function startItemDrag(event, sectionIndex, itemIndex, item, itemId) {
       dragType: 'item',
       sourceSection: sectionIndex,
       sourceIndex: itemIndex,
+      sourceTimelineIndex: timelineItemIndex,
       sourceGroupId: item.parallel_group_id,
       sourceTimeline: item.parallel_timeline,
       draggedElementId,
@@ -320,6 +338,7 @@ export function startItemDrag(event, sectionIndex, itemIndex, item, itemId) {
       itemName: item.name,  // Store item name for debugging
       targetSection: null,
       targetIndex: null,
+      targetTimelineIndex: null,
       targetGroupId: null,
       targetTimeline: null,
       dropPosition: null,
@@ -411,7 +430,7 @@ export function startSectionDrag(event, sectionIndex) {
 // ----------------------------------------
 // DRAG OVER HANDLERS
 // ----------------------------------------
-export function handleItemDragOver(event, sectionIndex, itemIndex, item, element) {
+export function handleItemDragOver(event, sectionIndex, itemIndex, item, element, timelineItemIndex = null) {
   try {
     event.preventDefault();
     event.stopPropagation();
@@ -441,12 +460,18 @@ export function handleItemDragOver(event, sectionIndex, itemIndex, item, element
       return;
     }
     
+    // Try to get timeline position from dataset if not provided
+    if (timelineItemIndex === null && element?.dataset?.timelineIndex) {
+      timelineItemIndex = parseInt(element.dataset.timelineIndex);
+    }
+    
     // Generate a unique ID for this element
     const dropTargetElementId = generateElementId('item', sectionIndex, itemIndex);
     
     // Check if we need to update the state (only update if something changed)
     const needsUpdate = state.targetSection !== sectionIndex || 
                         state.targetIndex !== itemIndex || 
+                        state.targetTimelineIndex !== timelineItemIndex ||
                         state.targetGroupId !== item.parallel_group_id || 
                         state.targetTimeline !== item.parallel_timeline ||
                         state.dropPosition !== dropPosition;
@@ -457,6 +482,7 @@ export function handleItemDragOver(event, sectionIndex, itemIndex, item, element
         ...current,
         targetSection: sectionIndex,
         targetIndex: itemIndex,
+        targetTimelineIndex: timelineItemIndex,
         targetGroupId: item.parallel_group_id,
         targetTimeline: item.parallel_timeline,
         dropPosition: dropPosition,
@@ -471,7 +497,9 @@ export function handleItemDragOver(event, sectionIndex, itemIndex, item, element
           state.sourceTimeline === item.parallel_timeline) {
         console.log('[DEBUG] Timeline item reordering:', {
           fromIndex: state.sourceIndex,
+          fromTimelineIndex: state.sourceTimelineIndex,
           toIndex: itemIndex,
+          toTimelineIndex: timelineItemIndex,
           position: dropPosition,
           timeline: item.parallel_timeline
         });
@@ -598,6 +626,11 @@ export function handleTimelineDragOver(event, sectionIndex, timelineName, groupI
       element.setAttribute('data-group-id', groupId);
     }
     
+    // Check if this is the same timeline as the source
+    const isSameTimeline = state.sourceSection === sectionIndex && 
+                          state.sourceGroupId === groupId && 
+                          state.sourceTimeline === timelineName;
+    
     // Check if we need to update the state (only update if something changed)
     const needsUpdate = state.targetSection !== sectionIndex || 
                        state.targetGroupId !== groupId || 
@@ -611,8 +644,10 @@ export function handleTimelineDragOver(event, sectionIndex, timelineName, groupI
         targetGroupId: groupId,
         targetTimeline: timelineName,
         targetIndex: null,
+        targetTimelineIndex: null,
         dropPosition: 'inside',
-        dropTargetElementId
+        dropTargetElementId,
+        isSameTimeline: isSameTimeline
       }));
       
       // Add visual indicators
@@ -624,6 +659,7 @@ export function handleTimelineDragOver(event, sectionIndex, timelineName, groupI
         sectionIndex, 
         timelineName, 
         groupId,
+        isSameTimeline,
         dragType: state.dragType
       });
     }
@@ -1063,40 +1099,71 @@ function handleTimelineDrop(state, movedItem, sourceItemIndex) {
           if (isSameTimeline && isDroppingOnItem) {
             console.log('[DEBUG] Reordering within same timeline at specific position');
             
-            // Get all remaining items in the timeline after removing the source item
-            const timelineItems = sectionItems.filter(item => 
+            // Get all items in the timeline before we made any modifications
+            const originalSectionItems = [...newSecs[state.sourceSection].items];
+            const originalTimelineItems = originalSectionItems.filter(item => 
               item.parallel_group_id === state.targetGroupId && 
               item.parallel_timeline === state.targetTimeline
             );
             
-            // Find the specific target item's absolute index in the section
+            // Look for target by timeline position if available
             let targetItemIndex = -1;
             
-            if (state.targetIndex < timelineItems.length) {
-              const targetItem = timelineItems[state.targetIndex];
-              targetItemIndex = sectionItems.indexOf(targetItem);
+            if (state.targetTimelineIndex !== null && state.targetTimelineIndex < originalTimelineItems.length) {
+              // We have the position within the timeline - use it directly
+              const targetItem = originalTimelineItems[state.targetTimelineIndex];
+              targetItemIndex = originalSectionItems.indexOf(targetItem);
+              console.log(`[DEBUG] Found target by timelineIndex: ${state.targetTimelineIndex}, absoluteIndex: ${targetItemIndex}`);
+            } 
+            else if (state.targetIndex !== null) {
+              // Fall back to using the absolute index
+              targetItemIndex = state.targetIndex;
+              console.log(`[DEBUG] Using absolute targetIndex: ${targetItemIndex}`);
+            }
+            
+            if (targetItemIndex === -1 || targetItemIndex >= originalSectionItems.length) {
+              console.error('Could not find target item or index is out of bounds');
+              // Fall back to appending to the end of the timeline
+              const sameTimelineItems = sectionItems.filter(item => 
+                item.parallel_group_id === state.targetGroupId && 
+                item.parallel_timeline === state.targetTimeline
+              );
               
-              if (targetItemIndex === -1) {
-                console.error('Could not find target item in section items');
-                // Fall back to appending to the end of the timeline
-                const sameTimelineItems = sectionItems.filter(item => 
-                  item.parallel_group_id === state.targetGroupId && 
-                  item.parallel_timeline === state.targetTimeline
-                );
-                
-                if (sameTimelineItems.length > 0) {
-                  const lastItem = sameTimelineItems[sameTimelineItems.length - 1];
-                  targetItemIndex = sectionItems.indexOf(lastItem);
-                }
+              if (sameTimelineItems.length > 0) {
+                const lastItem = sameTimelineItems[sameTimelineItems.length - 1];
+                targetItemIndex = sectionItems.indexOf(lastItem);
+                console.log(`[DEBUG] Falling back to end of timeline, found last item at index ${targetItemIndex}`);
               }
             }
             
             if (targetItemIndex !== -1) {
-              // Adjust index based on before/after position
-              const insertAt = state.dropPosition === 'after' ? targetItemIndex + 1 : targetItemIndex;
+              // For same timeline reordering, we need to adjust the position
+              // based on whether the source was before or after the target
+              const sourceIndexInSectionItems = finalSourceItemIndex;
+              let insertAt;
+              
+              if (state.dropPosition === 'before') {
+                // If dropping before the target
+                if (sourceIndexInSectionItems < targetItemIndex) {
+                  // Source was before target, so target index shifted down by one
+                  insertAt = targetItemIndex - 1;
+                } else {
+                  // Source was after target, target index unchanged
+                  insertAt = targetItemIndex;
+                }
+              } else { // 'after'
+                // If dropping after the target
+                if (sourceIndexInSectionItems <= targetItemIndex) {
+                  // Source was before or at target, target index shifted down by one
+                  insertAt = targetItemIndex;
+                } else {
+                  // Source was after target, target index unchanged + 1
+                  insertAt = targetItemIndex + 1;
+                }
+              }
               
               // Insert at the calculated position
-              console.log(`[DEBUG] Inserting at position ${insertAt} (${state.dropPosition} item at index ${targetItemIndex})`);
+              console.log(`[DEBUG] Inserting at position ${insertAt} (${state.dropPosition} item at original index ${targetItemIndex})`);
               sectionItems.splice(insertAt, 0, movedItem);
             } else {
               // If we couldn't find the target, append to the end of the timeline items

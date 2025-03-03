@@ -14,6 +14,9 @@
   export let itemIndex;
   export let sectionIndex;
   export let onRemove;
+  export let timelineItemIndex = null;
+  export let timeline = null;
+  export let parallelGroupId = null;
   
   // Generate a stable unique identifier for this item based on its content
   $: itemId = item.id;
@@ -31,7 +34,7 @@
   import { onMount } from 'svelte';
   
   onMount(() => {
-    console.log(`[DrillItem] Mounted: ${item.name} (ID: ${itemId}) at section ${sectionIndex} index ${itemIndex}${item.parallel_timeline ? ` in ${item.parallel_timeline} timeline` : ''}`);
+    console.log(`[DrillItem] Mounted: ${item.name} (ID: ${itemId}) at section ${sectionIndex} index ${itemIndex}${item.parallel_timeline ? ` in ${item.parallel_timeline} timeline (position ${timelineItemIndex})` : ''}`);
   });
 </script>
 
@@ -40,9 +43,10 @@
   data-item-id={itemId}
   data-section-index={sectionIndex}
   data-item-index={itemIndex}
+  data-timeline-index={timelineItemIndex}
   data-item-name={item.name}
-  data-timeline={item.parallel_timeline}
-  data-group-id={item.parallel_group_id}
+  data-timeline={timeline || item.parallel_timeline}
+  data-group-id={parallelGroupId || item.parallel_group_id}
   on:dragstart={(e) => {
     // Make sure the ID is in the event dataset
     if (e.currentTarget) {
@@ -51,14 +55,18 @@
       e.currentTarget.dataset.itemName = item.name;
       e.currentTarget.dataset.sectionIndex = sectionIndex;
       e.currentTarget.dataset.itemIndex = itemIndex;
+      e.currentTarget.dataset.timelineIndex = timelineItemIndex;
+      e.currentTarget.dataset.timeline = timeline || item.parallel_timeline;
+      e.currentTarget.dataset.groupId = parallelGroupId || item.parallel_group_id;
     }
     
     // Print what we're actually dragging
-    console.log(`[DRAGSTART] ${item.name} (ID: ${itemId}) from section ${sectionIndex} index ${itemIndex}`);
+    console.log(`[DRAGSTART] ${item.name} (ID: ${itemId}) from section ${sectionIndex} index ${itemIndex}${timelineItemIndex !== null ? ` timeline position ${timelineItemIndex}` : ''}`);
     
-    startItemDrag(e, sectionIndex, itemIndex, item, itemId);
+    // Pass additional timeline position info for better reordering
+    startItemDrag(e, sectionIndex, itemIndex, item, itemId, timelineItemIndex);
   }}
-  on:dragover={(e) => handleItemDragOver(e, sectionIndex, itemIndex, item, e.currentTarget)}
+  on:dragover={(e) => handleItemDragOver(e, sectionIndex, itemIndex, item, e.currentTarget, timelineItemIndex)}
   on:dragleave={handleDragLeave}
   on:drop={handleDrop}
   on:dragend={handleDragEnd}

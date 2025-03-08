@@ -264,23 +264,48 @@ Unit tests have been implemented for all service layer classes using Vitest:
    - Column validation and sort order tests
    - Array field normalization tests
    - Timestamp handling tests
+   - Error handling and transaction management tests
 
 2. **DrillService Tests**:
    - Data normalization tests
    - CRUD operations tests
    - Permission checking tests
    - Drill variation management tests
+   - Skill association tests
+   - Search and filtering tests
+   - User authorization tests
 
 3. **PracticePlanService Tests**:
    - Duration calculation tests with parallel timelines
    - Data formatting tests
    - Plan validation tests
+   - Section management tests
+   - Duplication logic tests
+   - Timeline organization tests
 
 4. **FormationService Tests**:
    - Data normalization tests
    - CRUD operations tests
+   - Diagram data validation tests
 
-All tests can be run using the `pnpm run test:unit:run` command.
+Additionally, API endpoint tests have been implemented to test the integration between API routes and the service layer:
+
+1. **Drill API Tests**:
+   - GET/POST/PUT/DELETE endpoint tests
+   - Search functionality tests
+   - Variation management tests
+   - Error handling tests
+
+2. **Practice Plan API Tests**:
+   - Plan creation and retrieval tests
+   - Plan update and deletion tests
+   - Plan duplication tests
+   - Permission and authorization tests
+
+All tests can be run using:
+- `pnpm run test:unit:run` - Run all unit tests
+- `pnpm run test:unit` - Run tests in watch mode
+- `pnpm run test:unit:coverage` - Run tests with coverage reporting
 
 ### Implementation Approach
 

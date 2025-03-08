@@ -14,6 +14,7 @@ This directory contains detailed technical documentation for the QDrill project.
 - **[Implementation](./implementation/)**: Technical details and implementation specifics
   - [Drag and Drop System](./implementation/drag-and-drop.md)
   - [Timeline Management](./implementation/timeline-management.md)
+  - [Service Layer Architecture](./implementation/service-layer.md)
   - Frontend implementation
   - Backend implementation
   - Testing strategy

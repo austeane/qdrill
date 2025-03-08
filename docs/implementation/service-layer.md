@@ -147,18 +147,33 @@ export async function GET({ url }) {
 
 #### DrillService
 
-**Implementation Steps:**
-1. Create DrillService class extending BaseEntityService
-2. Implement drill-specific methods:
+**Implementation Status: Completed**
+
+1. ✅ Created DrillService class extending BaseEntityService
+2. ✅ Implemented drill-specific methods:
    ```javascript
    async createDrill(drillData, userId)
    async updateDrill(id, drillData, userId) 
    async deleteDrill(id, userId)
    async getDrillWithVariations(id)
+   async createVariation(parentId, variationData, userId)
    async searchDrills(searchTerm, options)
+   async getFilteredDrills(filters, options)
+   async getDrillNames()
+   async setAsPrimaryVariant(drillId, userId)
+   async canUserEditDrill(drillId, userId)
+   async updateSkillCounts(skillsToAdd, skillsToRemove, drillId)
+   async updateSkills(skills, drillId)
    ```
-3. Move drill normalization code from API endpoints
-4. Refactor API endpoints to use service
+3. ✅ Implemented normalizeDrillData() with comprehensive validation
+4. ✅ Added transaction support for variant operations
+5. ✅ Added permission checks for edit/delete actions
+6. ✅ Exported singleton instance for use across API endpoints
+7. ✅ Added comprehensive unit tests with Vitest
+
+**Next Steps:**
+- Refactor API endpoints to use the service
+- Update SkillService to leverage this drill service implementation
 
 **Dependencies:**
 - BaseEntityService
@@ -166,20 +181,33 @@ export async function GET({ url }) {
 
 #### PracticePlanService
 
-**Implementation Steps:**
-1. Create PracticePlanService class extending BaseEntityService
-2. Create related services:
-   - SectionService
-   - TimelineService
-3. Implement practice plan-specific methods:
+**Implementation Status: Completed**
+
+1. ✅ Created PracticePlanService class extending BaseEntityService
+2. ✅ Implemented integrated section management rather than separate services
+3. ✅ Implemented practice plan-specific methods:
    ```javascript
+   async getAll(options)
    async createPracticePlan(planData, userId)
+   async getPracticePlanById(id, userId)
    async updatePracticePlan(id, planData, userId)
+   async deletePracticePlan(id, userId)
    async duplicatePracticePlan(id, userId)
-   async getSections(planId)
+   async validatePracticePlan(plan)
    ```
-4. Move timeline management logic into TimelineService
-5. Refactor API endpoints to use services
+4. ✅ Implemented helper methods for data formatting and calculations:
+   ```javascript
+   formatDrillItem(item)
+   calculateSectionDuration(items)
+   ```
+5. ✅ Added transaction support for section and drill management
+6. ✅ Added proper permission checks for view/edit/delete operations
+7. ✅ Exported singleton instance for use across API endpoints
+8. ✅ Refactored API endpoints to use the service
+9. ✅ Added comprehensive unit tests with Vitest
+
+**Next Steps:**
+- Further refine timeline management logic
 
 **Dependencies:**
 - BaseEntityService
@@ -226,6 +254,33 @@ export async function GET({ url }) {
 - **Edge Cases**: Better testing of validation and error handling
 - **Unit Tests**: Focused tests for service functions without API overhead
 - **Integration Tests**: Simpler setup with standardized service interfaces
+
+### Unit Testing Implementation
+
+Unit tests have been implemented for all service layer classes using Vitest:
+
+1. **BaseEntityService Tests**:
+   - Constructor and initialization tests
+   - Column validation and sort order tests
+   - Array field normalization tests
+   - Timestamp handling tests
+
+2. **DrillService Tests**:
+   - Data normalization tests
+   - CRUD operations tests
+   - Permission checking tests
+   - Drill variation management tests
+
+3. **PracticePlanService Tests**:
+   - Duration calculation tests with parallel timelines
+   - Data formatting tests
+   - Plan validation tests
+
+4. **FormationService Tests**:
+   - Data normalization tests
+   - CRUD operations tests
+
+All tests can be run using the `pnpm run test:unit:run` command.
 
 ### Implementation Approach
 

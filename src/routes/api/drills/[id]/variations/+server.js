@@ -1,107 +1,96 @@
 import { json } from '@sveltejs/kit';
-import { createClient } from '@vercel/postgres';
+import { drillService } from '$lib/server/services/drillService';
 
-const client = createClient();
-await client.connect();
+const ERROR_MESSAGES = {
+  NOT_FOUND: 'Drill not found',
+  PARENT_NOT_FOUND: 'Parent drill not found',
+  FETCH_FAILED: 'Failed to fetch variations',
+  CREATE_FAILED: 'Failed to create variation'
+};
 
-export async function GET({ params }) {
+// Helper function for consistent error responses
+function errorResponse(message, details = null, status = 500) {
+  console.error(`[Variations Error] ${message}`, details ? `: ${details}` : '');
+  return json({ 
+    error: message,
+    ...(details && { details: details.toString() })
+  }, { status });
+}
+
+export const GET = async ({ params }) => {
   const { id } = params;
   console.log('[Variations API] Fetching variations for drill:', id);
 
   try {
-    // First check if this is a parent drill
-    const parentCheck = await client.query(
-      `SELECT * FROM drills WHERE id = $1 AND parent_drill_id IS NULL`,
-      [id]
-    );
-    console.log('[Variations API] Parent check results:', parentCheck.rows);
-
-    if (parentCheck.rows.length > 0) {
-      // This is a parent drill, get its variations
-      const result = await client.query(
-        `SELECT * FROM drills WHERE parent_drill_id = $1 ORDER BY upvotes DESC`,
-        [id]
-      );
-      console.log('[Variations API] Parent drill variations:', result.rows);
-      return json([parentCheck.rows[0], ...result.rows]);
+    const drill = await drillService.getById(id);
+    
+    if (!drill) {
+      return errorResponse(ERROR_MESSAGES.NOT_FOUND, null, 404);
     }
-
-    // Check if this is a child drill
-    const childCheck = await client.query(
-      `SELECT parent_drill_id FROM drills WHERE id = $1 AND parent_drill_id IS NOT NULL`,
-      [id]
-    );
-    console.log('[Variations API] Child check results:', childCheck.rows);
-
-    if (childCheck.rows.length > 0) {
-      const parentId = childCheck.rows[0].parent_drill_id;
-      console.log('[Variations API] Found parent ID:', parentId);
+    
+    // Handle parent drill case
+    if (!drill.parent_drill_id) {
+      // This is a parent drill, get the full drill with variations
+      const drillWithVariations = await drillService.getDrillWithVariations(id);
       
-      const result = await client.query(
-        `SELECT * FROM drills 
-         WHERE id = $1 OR parent_drill_id = $1 
-         ORDER BY CASE WHEN id = $2 THEN 0 ELSE 1 END, upvotes DESC`,
-        [parentId, id]
-      );
-      console.log('[Variations API] Child drill variations:', result.rows);
-      return json(result.rows);
+      if (!drillWithVariations.variations) {
+        return json([drill]);
+      }
+      
+      return json([drill, ...drillWithVariations.variations]);
+    } 
+    
+    // Handle child drill case
+    const parentId = drill.parent_drill_id;
+    const parentDrill = await drillService.getById(parentId);
+    
+    if (!parentDrill) {
+      return json([drill]); // Return only this drill if parent not found
     }
-
-    console.log('[Variations API] No variations found');
-    return json([]);
+    
+    // Get all siblings
+    const drillWithVariations = await drillService.getDrillWithVariations(parentId);
+    
+    if (!drillWithVariations.variations) {
+      return json([parentDrill, drill]);
+    }
+    
+    // Reorder to put the current drill first after the parent
+    const reorderedVariations = drillWithVariations.variations.sort((a, b) => {
+      if (a.id === parseInt(id)) return -1;
+      if (b.id === parseInt(id)) return 1;
+      return b.upvotes - a.upvotes; // Then sort by upvotes
+    });
+    
+    return json([parentDrill, ...reorderedVariations]);
   } catch (error) {
-    console.error('[Variations API] Error:', error);
-    return json({ error: 'Failed to fetch variations' }, { status: 500 });
+    return errorResponse(ERROR_MESSAGES.FETCH_FAILED, error);
   }
 }
 
-export async function POST({ params, request }) {
+export const POST = async ({ params, request, locals }) => {
   const { id } = params;
-  const drillData = await request.json();
+  const session = await locals.getSession();
+  const userId = session?.user?.id || null;
 
   try {
-    // First fetch the parent drill
-    const parentResult = await client.query(
-      'SELECT * FROM drills WHERE id = $1',
-      [id]
-    );
-
-    if (parentResult.rows.length === 0) {
-      return json({ error: 'Parent drill not found' }, { status: 404 });
+    // Parse the request body
+    const drillData = await request.json();
+    
+    // Basic validation
+    if (!drillData.name) {
+      return errorResponse('Name is required', null, 400);
     }
-
-    const parentDrill = parentResult.rows[0];
-
-    // Create the variation
-    const result = await client.query(
-      `INSERT INTO drills (
-        name, brief_description, detailed_description, skill_level,
-        complexity, suggested_length, number_of_people_min,
-        number_of_people_max, skills_focused_on, positions_focused_on,
-        video_link, images, diagrams, parent_drill_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-      RETURNING *`,
-      [
-        drillData.name,
-        drillData.brief_description,
-        drillData.detailed_description,
-        parentDrill.skill_level,
-        parentDrill.complexity,
-        parentDrill.suggested_length,
-        parentDrill.number_of_people_min,
-        parentDrill.number_of_people_max,
-        parentDrill.skills_focused_on,
-        parentDrill.positions_focused_on,
-        drillData.video_link,
-        drillData.images,
-        drillData.diagrams,
-        id
-      ]
-    );
-
-    return json(result.rows[0]);
+    
+    // Create the variation using the DrillService
+    const variation = await drillService.createVariation(id, drillData, userId);
+    
+    return json(variation);
   } catch (error) {
-    console.error('Error creating variation:', error);
-    return json({ error: 'Failed to create variation' }, { status: 500 });
+    if (error.message === 'Parent drill not found') {
+      return errorResponse(ERROR_MESSAGES.PARENT_NOT_FOUND, null, 404);
+    }
+    
+    return errorResponse(ERROR_MESSAGES.CREATE_FAILED, error);
   }
-} 
+}

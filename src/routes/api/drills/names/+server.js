@@ -1,33 +1,38 @@
 import { json } from '@sveltejs/kit';
-import { createClient } from '@vercel/postgres';
-
-const client = createClient();
-await client.connect();
+import { drillService } from '$lib/server/services/drillService';
 
 export const GET = async (event) => {
   const session = await event.locals.getSession();
   const userId = session?.user?.id;
 
   try {
-    const result = await client.query(`
-      SELECT id, name, visibility, created_by, parent_drill_id
-      FROM drills
-    `);
+    // Get all drill names using the DrillService
+    const drills = await drillService.getFilteredDrills({}, {
+      all: true,
+      columns: ['id', 'name', 'visibility', 'created_by', 'parent_drill_id']
+    });
 
-    const drills = result.rows.filter(drill => {
-      if (drill.visibility === 'public') {
+    if (!drills || !drills.items) {
+      return json([]);
+    }
+
+    // Filter based on visibility and user permissions
+    const filteredDrills = drills.items.filter(drill => {
+      const visibility = drill.visibility || 'public'; // Default to public if not specified
+      
+      if (visibility === 'public') {
         return true;
-      } else if (drill.visibility === 'unlisted') {
+      } else if (visibility === 'unlisted') {
         return true;
-      } else if (drill.visibility === 'private') {
+      } else if (visibility === 'private') {
         return drill.created_by === userId;
       }
       return false;
     });
 
-    return json(drills);
+    return json(filteredDrills);
   } catch (error) {
-    console.error('Error fetching drill names:', error);
-    return json({ error: 'Failed to fetch drill names' }, { status: 500 });
+    console.error('[Names Error] Fetching drill names:', error);
+    return json({ error: 'Failed to fetch drill names', details: error.toString() }, { status: 500 });
   }
 };

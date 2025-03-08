@@ -69,9 +69,9 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 - **Backend**: Hosted on Vercel’s serverless functions or as a separate service if needed, handling API requests and database interactions.
 
 ### 7. Testing and Quality Assurance
-- **Jest**: Used for unit testing the frontend components.
-- **Pytest**: Used for testing backend functionality.
-- **Cypress**: Potentially used for end-to-end testing to ensure the entire user flow, from drill creation to practice plan publishing, works smoothly.
+- **Vitest**: Used for unit testing the service layer and other backend functionality.
+- **Playwright**: Used for end-to-end testing.
+- **Cypress**: Used for additional end-to-end testing to ensure the entire user flow, from drill creation to practice plan publishing, works smoothly.
 
 ### 8. UX and Design
 - **Design Aesthetic**: The design will follow a style similar to Figma, with a clean, minimalist look. The color scheme and fonts will be inspired by Figma, but with an emphasis on ensuring faster loading times and responsive filtering without noticeable delays.
@@ -117,6 +117,21 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 - **Run a specific test**:
   ```bash
   pnpm test -- tests/test.js
+  ```
+
+- **Run Vitest unit tests in watch mode**:
+  ```bash
+  pnpm run test:unit
+  ```
+
+- **Run Vitest unit tests once**:
+  ```bash
+  pnpm run test:unit:run
+  ```
+
+- **Run Vitest unit tests with coverage**:
+  ```bash
+  pnpm run test:unit:coverage
   ```
 
 ### Code Quality

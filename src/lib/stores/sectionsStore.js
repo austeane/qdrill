@@ -34,10 +34,47 @@ const DEFAULT_SECTIONS = [
 ];
 
 // Timeline constants
+export const DEFAULT_TIMELINE_NAMES = {
+  BEATERS: 'Beaters',
+  CHASERS: 'Chasers',
+  SEEKERS: 'Seekers'
+};
+
+export const DEFAULT_TIMELINE_COLORS = {
+  BEATERS: 'bg-gray-500',
+  CHASERS: 'bg-green-500',
+  SEEKERS: 'bg-yellow-500'
+};
+
+// Initialize PARALLEL_TIMELINES with default values
 export const PARALLEL_TIMELINES = {
-  BEATERS: { name: 'Beaters', color: 'bg-gray-500' },
-  CHASERS: { name: 'Chasers', color: 'bg-green-500' },
-  SEEKERS: { name: 'Seekers', color: 'bg-yellow-500' }
+  BEATERS: { name: DEFAULT_TIMELINE_NAMES.BEATERS, color: DEFAULT_TIMELINE_COLORS.BEATERS },
+  CHASERS: { name: DEFAULT_TIMELINE_NAMES.CHASERS, color: DEFAULT_TIMELINE_COLORS.CHASERS },
+  SEEKERS: { name: DEFAULT_TIMELINE_NAMES.SEEKERS, color: DEFAULT_TIMELINE_COLORS.SEEKERS }
+};
+
+// Available colors for timelines
+export const TIMELINE_COLORS = {
+  'bg-red-500': 'Red',
+  'bg-orange-500': 'Orange',
+  'bg-amber-500': 'Amber',
+  'bg-yellow-500': 'Yellow',
+  'bg-lime-500': 'Lime',
+  'bg-green-500': 'Green',
+  'bg-emerald-500': 'Emerald',
+  'bg-teal-500': 'Teal',
+  'bg-cyan-500': 'Cyan',
+  'bg-sky-500': 'Sky',
+  'bg-blue-500': 'Blue',
+  'bg-indigo-500': 'Indigo',
+  'bg-violet-500': 'Violet',
+  'bg-purple-500': 'Purple',
+  'bg-fuchsia-500': 'Fuchsia',
+  'bg-pink-500': 'Pink',
+  'bg-rose-500': 'Rose',
+  'bg-gray-500': 'Gray',
+  'bg-slate-500': 'Slate',
+  'bg-zinc-500': 'Zinc'
 };
 
 // Create the sections store
@@ -45,6 +82,93 @@ export const sections = writable(DEFAULT_SECTIONS);
 export const selectedItems = writable([]);
 export const selectedTimelines = writable(new Set(['BEATERS', 'CHASERS']));
 export const selectedSectionId = writable(null);
+export const customTimelineColors = writable({});
+export const customTimelineNames = writable({});
+
+// Helper function to get a timeline's color (custom or default)
+export function getTimelineColor(timeline) {
+  const customColors = get(customTimelineColors);
+  if (customColors[timeline]) {
+    return customColors[timeline];
+  }
+  return DEFAULT_TIMELINE_COLORS[timeline] || 'bg-gray-500';
+}
+
+// Helper function to get a timeline's name (custom or default)
+export function getTimelineName(timeline) {
+  const customNames = get(customTimelineNames);
+  if (customNames[timeline]) {
+    return customNames[timeline];
+  }
+  return DEFAULT_TIMELINE_NAMES[timeline] || timeline;
+}
+
+// Helper function to update a timeline's name
+export function updateTimelineName(timeline, name) {
+  if (!name || name.trim() === '') {
+    console.warn(`Cannot use empty name for timeline "${timeline}". Using default instead.`);
+    name = DEFAULT_TIMELINE_NAMES[timeline] || timeline;
+  }
+  
+  // Update the customTimelineNames store
+  customTimelineNames.update(names => {
+    return { ...names, [timeline]: name };
+  });
+  
+  // Update the PARALLEL_TIMELINES for compatibility with existing code
+  if (PARALLEL_TIMELINES[timeline]) {
+    PARALLEL_TIMELINES[timeline] = {
+      ...PARALLEL_TIMELINES[timeline],
+      name: name
+    };
+  }
+}
+
+// Helper function to update a timeline's color
+export function updateTimelineColor(timeline, color) {
+  // Validate that the color is a valid Tailwind color class
+  if (!Object.keys(TIMELINE_COLORS).includes(color)) {
+    console.warn(`Invalid color class "${color}" for timeline "${timeline}". Must be one of: ${Object.keys(TIMELINE_COLORS).join(', ')}. Using default bg-gray-500 instead.`);
+    // Use a safe default color if invalid
+    color = 'bg-gray-500';
+  }
+
+  // Update the customTimelineColors store
+  customTimelineColors.update(colors => {
+    return { ...colors, [timeline]: color };
+  });
+  
+  // Also update all items with this timeline in the sections store
+  sections.update(currentSections => {
+    return currentSections.map(section => {
+      const updatedItems = section.items.map(item => {
+        if (item.parallel_timeline === timeline) {
+          return {
+            ...item,
+            timeline_color: color
+          };
+        }
+        return item;
+      });
+      
+      return {
+        ...section,
+        items: updatedItems
+      };
+    });
+  });
+  
+  // Update the PARALLEL_TIMELINES for compatibility with existing code
+  if (PARALLEL_TIMELINES[timeline]) {
+    PARALLEL_TIMELINES[timeline] = {
+      ...PARALLEL_TIMELINES[timeline],
+      color: color
+    };
+  }
+  
+  // Update DEFAULT_TIMELINE_COLORS for future use
+  DEFAULT_TIMELINE_COLORS[timeline] = color;
+}
 
 // Helper function to format drill items
 export function formatDrillItem(item, sectionId) {
@@ -80,7 +204,12 @@ export function formatDrillItem(item, sectionId) {
     brief_description: item.drill?.brief_description || '',
     video_link: item.drill?.video_link || null,
     diagrams: item.drill?.diagrams || [],
-    section_id: sectionId
+    section_id: sectionId,
+    // Preserve the group name
+    group_name: item.groupName || item.group_name,
+    // Preserve the timeline color and name
+    timeline_color: item.timeline_color,
+    timeline_name: item.timeline_name
   };
 
   if (item.parallel_group_id) {
@@ -107,7 +236,10 @@ export function formatDrillItem(item, sectionId) {
     type: base.type,
     parallel_group_id: base.parallel_group_id,
     parallel_timeline: base.parallel_timeline,
-    groupTimelines: base.groupTimelines
+    groupTimelines: base.groupTimelines,
+    group_name: base.group_name,
+    timeline_color: base.timeline_color,
+    timeline_name: base.timeline_name
   });
 
   return base;
@@ -177,11 +309,23 @@ export function initializeTimelinesFromPlan(plan) {
   if (!plan?.sections) return;
   
   const allTimelines = new Set();
+  const colors = {};
+  const names = {};
+  
   plan.sections.forEach(section => {
     section.items.forEach(item => {
       // Add parallel_timeline if it exists
       if (item.parallel_timeline) {
         allTimelines.add(item.parallel_timeline);
+        
+        // Check for custom colors and names
+        if (item.timeline_color) {
+          colors[item.parallel_timeline] = item.timeline_color;
+        }
+        
+        if (item.timeline_name) {
+          names[item.parallel_timeline] = item.timeline_name;
+        }
       }
       // Add all timelines from groupTimelines if they exist
       if (Array.isArray(item.groupTimelines)) {
@@ -197,6 +341,28 @@ export function initializeTimelinesFromPlan(plan) {
   if (allTimelines.size > 0) {
     selectedTimelines.set(allTimelines);
     console.log('[DEBUG] Initialized selectedTimelines from plan:', Array.from(allTimelines));
+  }
+  
+  // Initialize custom colors if any were found
+  if (Object.keys(colors).length > 0) {
+    customTimelineColors.set(colors);
+    console.log('[DEBUG] Initialized customTimelineColors from plan:', colors);
+  }
+  
+  // Initialize custom names if any were found
+  if (Object.keys(names).length > 0) {
+    customTimelineNames.set(names);
+    console.log('[DEBUG] Initialized customTimelineNames from plan:', names);
+    
+    // Update PARALLEL_TIMELINES for compatibility
+    Object.entries(names).forEach(([timeline, name]) => {
+      if (PARALLEL_TIMELINES[timeline]) {
+        PARALLEL_TIMELINES[timeline] = {
+          ...PARALLEL_TIMELINES[timeline],
+          name: name
+        };
+      }
+    });
   }
 }
 
@@ -461,12 +627,18 @@ export function handleUngroup(groupId) {
       // Update all items in the section
       const updatedItems = section.items.map(item => {
         if (item.parallel_group_id === groupId) {
-          // Remove parallel group info but preserve drill information
-          const { parallel_group_id, parallel_timeline, ...rest } = item;
+          // Remove parallel group info but preserve drill information and important properties
+          const { parallel_group_id, parallel_timeline, groupTimelines, ...rest } = item;
           return {
             ...rest,
             id: item.drill?.id || item.id,
-            drill: item.drill || { id: item.id, name: item.name }
+            drill: item.drill || { id: item.id, name: item.name },
+            // Preserve these properties when ungrouping with prefixes
+            // This allows us to potentially recover them if the item is grouped again
+            // without interfering with the normal item structure
+            _previous_timeline: parallel_timeline,
+            _previous_color: item.timeline_color,
+            _previous_group_name: item.group_name
           };
         }
         return item;
@@ -504,18 +676,24 @@ export function createParallelBlock() {
     const parallelGroupId = `group_${Date.now()}`;
     // Capture the timelines at this moment
     const groupTimelines = Array.from(get(selectedTimelines));
+    // Get the selected parallel group name
+    const groupName = get(parallelGroupName);
+    
     console.log('[DEBUG] createParallelBlock - captured groupTimelines for new block:', groupTimelines);
 
     // Create placeholders with the block's timeline configuration
     const placeholderDrills = groupTimelines.map(timeline => ({
       id: `placeholder_${timeline}_${Date.now()}`,
       type: 'break',
-      name: `${PARALLEL_TIMELINES[timeline].name} Drill`,
+      name: `${getTimelineName(timeline)} Drill`,
       duration: 15,
       selected_duration: 15,
       parallel_group_id: parallelGroupId,
       parallel_timeline: timeline,
-      groupTimelines // Store the block's timeline configuration
+      groupTimelines, // Store the block's timeline configuration
+      group_name: 'Parallel Activities', // Fixed group name
+      timeline_color: get(customTimelineColors)[timeline] || DEFAULT_TIMELINE_COLORS[timeline] || 'bg-gray-500',
+      timeline_name: get(customTimelineNames)[timeline] || DEFAULT_TIMELINE_NAMES[timeline]
     }));
     
     console.log('[DEBUG] createParallelBlock - placeholderDrills to be added:', placeholderDrills);
@@ -537,6 +715,9 @@ export function updateParallelBlockTimelines(sectionId, parallelGroupId, newTime
         item.parallel_group_id === parallelGroupId
       );
 
+      // Get the existing group name (simplified approach - always use 'Parallel Activities')
+      const groupName = 'Parallel Activities';
+
       // Get timelines that are being removed
       const removedTimelines = groupItems
         .map(item => item.parallel_timeline)
@@ -555,7 +736,10 @@ export function updateParallelBlockTimelines(sectionId, parallelGroupId, newTime
         if (item.parallel_group_id === parallelGroupId) {
           return {
             ...item,
-            groupTimelines: newTimelines
+            groupTimelines: newTimelines,
+            group_name: groupName,
+            timeline_color: get(customTimelineColors)[item.parallel_timeline] || DEFAULT_TIMELINE_COLORS[item.parallel_timeline] || 'bg-gray-500',
+            timeline_name: get(customTimelineNames)[item.parallel_timeline] || DEFAULT_TIMELINE_NAMES[item.parallel_timeline]
           };
         }
         return item;
@@ -568,12 +752,15 @@ export function updateParallelBlockTimelines(sectionId, parallelGroupId, newTime
       const newPlaceholders = newTimelinesToAdd.map(timeline => ({
         id: `placeholder_${timeline}_${Date.now()}`,
         type: 'break',
-        name: `${PARALLEL_TIMELINES[timeline].name} Drill`,
+        name: `${getTimelineName(timeline)} Drill`,
         duration: 15,
         selected_duration: 15,
         parallel_group_id: parallelGroupId,
         parallel_timeline: timeline,
-        groupTimelines: newTimelines
+        groupTimelines: newTimelines,
+        group_name: groupName,
+        timeline_color: get(customTimelineColors)[timeline] || DEFAULT_TIMELINE_COLORS[timeline] || 'bg-gray-500',
+        timeline_name: get(customTimelineNames)[timeline] || DEFAULT_TIMELINE_NAMES[timeline]
       }));
 
       return {
@@ -593,6 +780,8 @@ export function handleTimelineSelect(sectionId, parallelGroupId) {
   if (blockItem?.groupTimelines) {
     selectedTimelines.set(new Set(blockItem.groupTimelines));
   }
+  
+  // We don't need to set the group name since we're using a fixed group name
   
   return true; // Return true to indicate the modal should be shown
 }
@@ -640,7 +829,15 @@ export function removeTimelineFromGroup(sectionId, parallelGroupId, timeline) {
         items: s.items.map(item => {
           if (item.parallel_group_id === parallelGroupId) {
             const { parallel_group_id, parallel_timeline, groupTimelines, ...rest } = item;
-            return rest;
+            return {
+              ...rest,
+              // Preserve these properties when ungrouping with prefixes
+              // This allows us to potentially recover them if the item is grouped again
+              // without interfering with the normal item structure
+              _previous_timeline: parallel_timeline,
+              _previous_color: item.timeline_color,
+              _previous_group_name: item.group_name
+            };
           }
           return item;
         })
@@ -657,7 +854,9 @@ export function removeTimelineFromGroup(sectionId, parallelGroupId, timeline) {
         if (item.parallel_group_id === parallelGroupId) {
           return {
             ...item,
-            groupTimelines: item.groupTimelines.filter(t => t !== timeline)
+            groupTimelines: item.groupTimelines.filter(t => t !== timeline),
+            // Preserve the group name and color when removing a timeline
+            group_name: item.group_name
           };
         }
         return item;

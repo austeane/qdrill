@@ -19,18 +19,21 @@
   export let sectionIndex;
   export let sectionId;
   
-  // Get group timelines
+  // Get group timelines and name
   $: firstGroupItem = items.find(item => item.parallel_group_id === groupId);
   $: groupTimelines = firstGroupItem?.groupTimelines || [];
+  $: groupName = firstGroupItem?.group_name || 'Parallel Activities';
   
   $: console.log('[DEBUG] ParallelGroup - groupTimelines:', {
     groupId,
+    groupName,
     timelines: groupTimelines,
     firstItem: firstGroupItem ? {
       id: firstGroupItem.id,
       name: firstGroupItem.name,
       parallel_timeline: firstGroupItem.parallel_timeline,
-      groupTimelines: firstGroupItem.groupTimelines
+      groupTimelines: firstGroupItem.groupTimelines,
+      group_name: firstGroupItem.group_name
     } : null,
     itemsCount: items.filter(item => item.parallel_group_id === groupId).length
   });
@@ -74,7 +77,10 @@
   on:dragend={handleDragEnd}
 >
   <div class="flex items-center justify-between">
-    <div class="group-drag-handle">Drag Entire Block</div>
+    <div class="flex items-center gap-2">
+      <div class="group-drag-handle">Drag Entire Block</div>
+      <h3 class="text-md font-medium">{groupName}</h3>
+    </div>
     <button on:click={() => handleUngroup(groupId)}>Ungroup</button>
   </div>
 

@@ -18,6 +18,17 @@ export class BaseEntityService {
     this.defaultColumns = defaultColumns;
     this.allowedColumns = [...allowedColumns, primaryKey];
     this.columnTypes = columnTypes;
+    
+    // Track if this entity uses common permissions model
+    this.useStandardPermissions = false;
+  }
+  
+  /**
+   * Enable standard permissions model
+   * This assumes the entity has created_by and is_editable_by_others columns
+   */
+  enableStandardPermissions() {
+    this.useStandardPermissions = true;
   }
 
   /**
@@ -436,5 +447,120 @@ export class BaseEntityService {
       console.error(`Error in ${this.tableName}.search():`, error);
       throw error;
     }
+  }
+  
+  /**
+   * Execute a function within a database transaction
+   * @param {Function} callback - Async function to execute within transaction
+   * @returns {Promise<any>} - Result of the callback function
+   */
+  async withTransaction(callback) {
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const result = await callback(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error(`Transaction error in ${this.tableName}:`, error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  
+  /**
+   * Check if a user can edit an entity
+   * Requires that the entity has created_by and is_editable_by_others columns
+   * @param {number|string} entityId - Entity ID
+   * @param {number|null} userId - User ID attempting edit
+   * @returns {Promise<boolean>} - True if user can edit
+   */
+  async canUserEdit(entityId, userId) {
+    if (!this.useStandardPermissions) {
+      console.warn(`Standard permissions not enabled for ${this.tableName} service`);
+      return true;
+    }
+    
+    const entity = await this.getById(entityId);
+    if (!entity) {
+      return false;
+    }
+    
+    // Can edit if:
+    // 1. User created the entity
+    // 2. Entity is editable by others
+    // 3. Entity has no creator (created_by is null)
+    return entity.created_by === userId || 
+           entity.is_editable_by_others === true || 
+           entity.created_by === null;
+  }
+  
+  /**
+   * Check if user has permission to view entity
+   * @param {Object} entity - The entity to check
+   * @param {number|null} userId - User ID requesting access
+   * @returns {boolean} - True if user can view
+   */
+  canUserView(entity, userId) {
+    if (!this.useStandardPermissions || !entity) {
+      return true;
+    }
+    
+    // Public entities can be viewed by anyone
+    if (entity.visibility === 'public' || entity.visibility === 'unlisted') {
+      return true;
+    }
+    
+    // Private entities can only be viewed by creator
+    return entity.created_by === userId;
+  }
+  
+  /**
+   * Normalize array fields in data
+   * @param {Object} data - Raw data with potential arrays
+   * @param {Array<string>} arrayFields - Fields to ensure are arrays
+   * @returns {Object} - Data with normalized arrays
+   */
+  normalizeArrayFields(data, arrayFields) {
+    const normalized = { ...data };
+    
+    arrayFields.forEach(field => {
+      // Skip if field is not in data
+      if (!(field in normalized)) {
+        return;
+      }
+      
+      // Convert string to array if needed
+      if (typeof normalized[field] === 'string') {
+        normalized[field] = [normalized[field]];
+      }
+      
+      // Ensure field is an array
+      if (!Array.isArray(normalized[field])) {
+        normalized[field] = normalized[field] ? [normalized[field]] : [];
+      }
+    });
+    
+    return normalized;
+  }
+  
+  /**
+   * Add timestamp fields to entity data
+   * @param {Object} data - Entity data
+   * @param {boolean} isNew - Whether this is a new entity
+   * @returns {Object} - Data with timestamps
+   */
+  addTimestamps(data, isNew = true) {
+    const now = new Date();
+    const result = { ...data };
+    
+    if (isNew) {
+      result.created_at = now;
+    }
+    
+    result.updated_at = now;
+    return result;
   }
 }

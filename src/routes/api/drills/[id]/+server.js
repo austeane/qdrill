@@ -1,9 +1,7 @@
 import { json } from '@sveltejs/kit';
-import { createClient } from '@vercel/postgres';
+import { drillService } from '$lib/server/services/drillService';
 import { dev } from '$app/environment';
-
-const client = createClient();
-await client.connect();
+import * as db from '$lib/server/db';
 
 const ERROR_MESSAGES = {
     NOT_FOUND: (id) => `Drill with ID ${id} not found`,
@@ -27,19 +25,17 @@ export async function GET({ params, locals, url }) {
     }
 
     try {
-        // First fetch the main drill
-        const drillResult = await client.query(
-            `SELECT d.* 
-             FROM drills d 
-             WHERE d.id = $1`,
-            [id]
-        );
-
-        if (drillResult.rows.length === 0) {
-            return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
+        // Get the drill with or without variations
+        let drill;
+        if (includeVariants) {
+            drill = await drillService.getDrillWithVariations(id);
+        } else {
+            drill = await drillService.getById(id);
         }
 
-        const drill = drillResult.rows[0];
+        if (!drill) {
+            return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
+        }
 
         // Check visibility and ownership (skip in development)
         if (!dev && drill.visibility === 'private') {
@@ -52,28 +48,34 @@ export async function GET({ params, locals, url }) {
             }
         }
 
-        // Only fetch variants if requested
-        if (includeVariants) {
-            // Add variations data separately
-            if (!drill.parent_drill_id) {
-                // This is a parent drill - get its variations
-                const variationsResult = await client.query(
-                    `SELECT d.*, u.name as creator_name
-                     FROM drills d
-                     LEFT JOIN users u ON d.created_by = u.id
-                     WHERE d.parent_drill_id = $1
-                     ORDER BY d.upvotes DESC`,
-                    [id]
+        // Add creator name if variations are included
+        if (includeVariants && drill.variations && drill.variations.length > 0) {
+            const userIds = [...new Set(drill.variations.map(v => v.created_by).filter(id => id))];
+            
+            if (userIds.length > 0) {
+                const usersResult = await db.query(
+                    `SELECT id, name FROM users WHERE id = ANY($1)`,
+                    [userIds]
                 );
-                drill.variations = variationsResult.rows;
-                drill.variation_count = variationsResult.rows.length;
-            } else {
-                // This is a variation - get parent name and siblings
-                const parentResult = await client.query(
-                    `SELECT name FROM drills WHERE id = $1`,
-                    [drill.parent_drill_id]
-                );
-                drill.parent_drill_name = parentResult.rows[0]?.name;
+                
+                const userMap = {};
+                usersResult.rows.forEach(user => {
+                    userMap[user.id] = user.name;
+                });
+                
+                drill.variations.forEach(variation => {
+                    if (variation.created_by) {
+                        variation.creator_name = userMap[variation.created_by];
+                    }
+                });
+            }
+        }
+
+        // If this is a variation, get the parent name
+        if (drill.parent_drill_id && !drill.variations) {
+            const parentDrill = await drillService.getById(drill.parent_drill_id);
+            if (parentDrill) {
+                drill.parent_drill_name = parentDrill.name;
             }
         }
 
@@ -86,108 +88,100 @@ export async function GET({ params, locals, url }) {
 
 export async function PUT({ params, request, locals }) {
     const { id } = params;
+    const session = await locals.getSession();
+    const userId = session?.user?.id;
+    
+    if (!userId) {
+        return json({ error: 'Authentication required' }, { status: 401 });
+    }
     
     try {
-        const drill = await request.json();
+        const drillData = await request.json();
         
         // Basic input validation
-        if (!drill.name || !drill.drill_type) {
+        if (!drillData.name || !drillData.drill_type) {
             return errorResponse('Required fields missing', 400);
         }
 
-        await client.query('BEGIN');
-
+        // Add ID to drill data
+        drillData.id = parseInt(id);
+        
+        // Use DrillService to update the drill
+        const updatedDrill = await drillService.updateDrill(id, drillData, userId);
+        
+        // Update the name in votes table if it exists (this isn't in the service since it's crossing domains)
+        const client = await db.getClient();
         try {
-            // Update the drill
-            const result = await client.query(
-                `UPDATE drills SET 
-                name = $1, brief_description = $2, detailed_description = $3, 
-                skill_level = $4, complexity = $5, suggested_length = $6, 
-                number_of_people_min = $7, number_of_people_max = $8, 
-                skills_focused_on = $9, positions_focused_on = $10, 
-                video_link = $11, images = $12, diagrams = $13, drill_type = $14,
-                is_editable_by_others = $15, visibility = $16
-                WHERE id = $17 RETURNING *`,
-                [
-                    drill.name,
-                    drill.brief_description,
-                    drill.detailed_description,
-                    drill.skill_level,
-                    drill.complexity,
-                    drill.suggested_length,
-                    drill.number_of_people_min,
-                    drill.number_of_people_max,
-                    drill.skills_focused_on,
-                    drill.positions_focused_on,
-                    drill.video_link,
-                    drill.images,
-                    drill.diagrams,
-                    drill.drill_type,
-                    drill.is_editable_by_others,
-                    drill.visibility,
-                    id
-                ]
-            );
-
-            // Update the name in votes table if it exists
             await client.query(
-                `UPDATE votes 
-                 SET item_name = $1 
-                 WHERE drill_id = $2`,
-                [drill.name, id]
+                `UPDATE votes SET item_name = $1 WHERE drill_id = $2`,
+                [drillData.name, id]
             );
-
-            await client.query('COMMIT');
-            return json(result.rows[0]);
-        } catch (error) {
-            await client.query('ROLLBACK');
-            throw error; // Re-throw to be caught by outer catch
+        } finally {
+            client.release();
         }
+        
+        return json(updatedDrill);
     } catch (error) {
         console.error(`[Update Error] Drill ${id}:`, error);
-        return errorResponse(
-            error.code === '23505' ? 'Duplicate entry found' : ERROR_MESSAGES.DB_ERROR
-        );
+        
+        // Handle specific errors
+        if (error.message === 'Unauthorized to edit this drill') {
+            return errorResponse(ERROR_MESSAGES.UNAUTHORIZED, 403);
+        } else if (error.message.includes('not found')) {
+            return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
+        } else if (error.code === '23505') {
+            return errorResponse('Duplicate entry found', 400);
+        }
+        
+        return errorResponse(ERROR_MESSAGES.DB_ERROR);
     }
 }
 
 export async function DELETE({ params, locals }) {
     const { id } = params;
+    const session = await locals.getSession();
+    const userId = session?.user?.id;
+    
+    if (!userId && !dev) {
+        return json({ error: 'Authentication required' }, { status: 401 });
+    }
     
     try {
-        await client.query('BEGIN');
-
-        try {
-            // Check if user owns the drill (skip in development)
-            if (!dev) {
-                const checkResult = await client.query(
-                    'SELECT created_by FROM drills WHERE id = $1',
-                    [id]
-                );
-
-                if (checkResult.rows.length === 0) {
-                    return json({ error: 'Drill not found' }, { status: 404 });
-                }
-
-                if (checkResult.rows[0].created_by !== locals.userId) {
-                    return json({ error: 'Unauthorized' }, { status: 403 });
-                }
+        // In dev mode, we need to handle the case properly without breaking auth checks
+        if (dev && !userId) {
+            // In dev mode, get the drill first to check it exists
+            const drill = await drillService.getById(id);
+            if (!drill) {
+                return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
             }
-
-            // Delete the drill
-            await client.query('DELETE FROM drills WHERE id = $1', [id]);
             
-            await client.query('COMMIT');
-            return json({ success: true });
-        } catch (error) {
-            await client.query('ROLLBACK');
-            throw error;
+            // For dev mode, directly use db to delete without auth check
+            const client = await db.getClient();
+            try {
+                await client.query('DELETE FROM drills WHERE id = $1', [id]);
+                return json({ success: true });
+            } finally {
+                client.release();
+            }
         }
+        
+        // Normal flow with auth check
+        const result = await drillService.deleteDrill(id, userId);
+        
+        if (!result) {
+            return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
+        }
+        
+        return json({ success: true });
     } catch (error) {
         console.error(`[Delete Error] Drill ${id}:`, error);
-        return errorResponse(
-            error.code === '23503' ? 'Cannot delete: drill is referenced by other items' : 
-            ERROR_MESSAGES.DB_ERROR
-        );
+        
+        if (error.message === 'Unauthorized to delete this drill') {
+            return errorResponse(ERROR_MESSAGES.UNAUTHORIZED, 403);
+        } else if (error.code === '23503') {
+            return errorResponse('Cannot delete: drill is referenced by other items', 400);
+        }
+        
+        return errorResponse(ERROR_MESSAGES.DB_ERROR);
     }
 }

@@ -177,3 +177,11 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 - Follow best practices for Svelte documentation
 - Add implementation notes to `/docs/implementation/` for technical patterns
 - **README Updates**: Always update the README.md file after completing substantial code edits to reflect the latest changes, features, and usage instructions
+
+## Version Control Guidelines
+- **Commit Message Standards**: Write clear, descriptive commit messages explaining what changes were made and why
+- **Atomic Commits**: Keep commits focused on a single logical change
+- **Pull Request Format**: Include clear descriptions of changes, impact, and testing performed
+- **Code Reviews**: Request code reviews for substantial changes
+- **No Automatic Commits**: Never commit changes without explicitly being asked to do so
+- **Testing Before Commit**: Always run relevant tests before creating a commit

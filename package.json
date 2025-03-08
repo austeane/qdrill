@@ -10,7 +10,7 @@
 		"test": "playwright test",
 		"test:unit": "vitest",
 		"test:unit:run": "vitest run",
-		"test:unit:coverage": "c8 --include=src/lib/server/services/,src/routes/api/ --reporter=text --reporter=lcov --reporter=html pnpm run test:unit:run",
+		"test:unit:coverage": "vitest run --coverage",
 		"lint": "prettier --plugin-search-dir . --check . && eslint .",
 		"format": "prettier --plugin-search-dir . --write .",
 		"deploy": "vercel --prod",

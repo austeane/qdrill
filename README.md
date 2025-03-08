@@ -1,17 +1,18 @@
-# QDrill: Detailed Specification
-This is starting from a boilerplate svelte app on vercel, and will become the following
+# QDrill
+
+A comprehensive web-based application for sports drill management and practice planning.
 
 ## Overview
-QDrill is a web-based application designed to be a sports drill bank and practice planning tool for a niche sport. The application will allow users to create, manage, and share drills, as well as plan practices. The user experience (UX) is a high priority, with an emphasis on smooth, responsive interactions and a modern design. The application is expected to handle up to a few hundred concurrent users and will be built with a combination of SvelteKit (frontend) and SvelteKit (backend). The project uses `sveltekit`, `vercel`, and `vercel dev` for development and deployment.
+
+QDrill is a web-based application designed to be a sports drill bank and practice planning tool for a niche sport. The application allows users to create, manage, and share drills, as well as plan practices. The user experience (UX) is a high priority, with an emphasis on smooth, responsive interactions and a modern design. The application is expected to handle up to a few hundred concurrent users and is built with SvelteKit for both frontend and backend.
 
 ## Technology Stack
 - **Frontend**: Svelte with SvelteKit
 - **Backend**: SvelteKit
-- **Database**: Vercel Postgres
-- **Deployment**: Hosted on Vercel with a custom domain (e.g., qdrill.app)
-- **Testing**: 
-  - **Frontend**: Jest for unit testing, with potential use of Cypress for end-to-end testing.
-  - **Backend**: Pytest for unit testing.
+- **Database**: Neon (PostgreSQL)
+- **Deployment**: Hosted on Vercel
+- **CSS**: Tailwind CSS
+- **Testing**: Playwright and Cypress for end-to-end testing
 
 ## Core Features
 
@@ -74,13 +75,13 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 ### 8. UX and Design
 - **Design Aesthetic**: The design will follow a style similar to Figma, with a clean, minimalist look. The color scheme and fonts will be inspired by Figma, but with an emphasis on ensuring faster loading times and responsive filtering without noticeable delays.
 
-## Running Locally
+## Development
 
-### Backend Setup
+### Getting Started
 
 1. **Install dependencies**:
    ```bash
-   npm install
+   pnpm install
    ```
 
 2. **Run the development server**:
@@ -88,53 +89,94 @@ QDrill is a web-based application designed to be a sports drill bank and practic
    vercel dev
    ```
 
-3. **Build the application**:
+3. **Check TypeScript + SvelteKit sync**:
    ```bash
-   npm run build
+   pnpm run check
    ```
 
-### Database Setup
+### Package Management
 
-1. **Install Vercel CLI**:
-   ```bash
-   npm install -g vercel
-   ```
+- **Install dependencies**:
+  ```bash
+  pnpm install
+  ```
 
-2. **Login to Vercel**:
-   ```bash
-   vercel login
-   ```
+- **Add a package**:
+  ```bash
+  pnpm add <package>
+  ```
 
-3. **Link your project**:
-   ```bash
-   vercel link
-   ```
+### Testing
 
-4. **Add Vercel Postgres**:
-   ```bash
-   vercel addons create postgres
-   ```
+- **Run Playwright tests**:
+  ```bash
+  pnpm run test
+  ```
 
-5. **Get the connection string**:
-   ```bash
-   vercel env pull .env
-   ```
+- **Run a specific test**:
+  ```bash
+  pnpm test -- tests/test.js
+  ```
 
-6. **Run database migrations**:
-   ```bash
-   vercel postgres migrate
-   ```
+### Code Quality
+
+- **Run linting checks**:
+  ```bash
+  pnpm run lint
+  ```
+
+- **Fix formatting issues**:
+  ```bash
+  pnpm run format
+  ```
 
 ### Deployment
 
-1. **Deploy to Vercel**:
-   ```bash
-   vercel --prod
-   ```
+Deployment is automatic from the GitHub main branch to Vercel.
 
-### Building the Application
+## Documentation
 
-1. **Build the application using SvelteKit**:
-   ```bash
-   npm run build
-   ```
+Project documentation is organized in two main locations:
+
+1. **[CLAUDE.md](./CLAUDE.md)**: Project overview, architecture, and development guidelines
+   - Core features and technology stack
+   - Development workflow and commands 
+   - Code style guidelines
+   - Areas for improvement
+
+2. **[docs/](./docs/)**: Detailed technical documentation
+   - **[Architecture](./docs/architecture/)**: System design, patterns, and architectural decisions
+   - **[Implementation](./docs/implementation/)**: Technical details and implementation specifics
+     - **[Drag and Drop System](./docs/implementation/drag-and-drop.md)**: Detailed explanation of the drag and drop implementation
+     - **[Timeline Management](./docs/implementation/timeline-management.md)**: Timeline configuration and duration calculations
+
+### Documentation Workflow
+
+When making changes to the codebase:
+
+1. First examine `/docs/index.md` to understand the documentation structure
+2. Navigate to the appropriate subdirectory based on the nature of your changes:
+   - `/docs/architecture/` for architectural changes or patterns
+   - `/docs/implementation/` for implementation details and technical references
+3. Update existing documentation files or create new ones as needed
+4. Update index files to reference any new documentation
+
+### Documentation Requirements
+
+- Create/update documentation when modifying .js/.svelte files
+- Document component descriptions, usage instructions, and relationships
+- Maintain documentation consistency for directory structure
+- Consider component interdependencies when making changes
+- Follow best practices for Svelte documentation
+
+## Code Style Guidelines
+
+- **AI-Readability**: Add clear comments to make code easily understood by future AI systems
+- **Comments**: Include purpose explanations, input/output expectations, and logic clarifications
+- **Imports**: Group imports by source (svelte, lib, components)
+- **Components**: Use Svelte components with script/markup/style structure
+- **Stores**: Use reactive declarations with $ prefix for store values
+- **Error Handling**: Use try/catch with specific error messages
+- **API Endpoints**: Return standardized JSON responses with proper status codes
+- **Database**: Use parameterized queries to prevent SQL injection
+- **Naming**: Use descriptive camelCase for variables/functions, PascalCase for components

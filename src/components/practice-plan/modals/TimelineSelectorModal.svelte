@@ -10,7 +10,8 @@
     getTimelineName,
     updateTimelineColor,
     updateTimelineName,
-    customTimelineNames
+    customTimelineNames,
+    debugTimelineNames
   } from '$lib/stores/sectionsStore';
   
   export let show = false;
@@ -34,17 +35,31 @@
   let showNameEditor = false;
   let editingName = '';
   
-  // Local map of timeline names being edited
-  let timelineNames = {};
+  // Subscribe to customTimelineNames to make the component reactive to changes
+  // Use a local variable for the custom timeline names store
+  let timelineNamesStore;
+  $: timelineNamesStore = $customTimelineNames;
   
-  // Initialize timeline names from store
-  $: {
-    // When selectedTimelines changes, ensure we have name entries for each
-    Array.from($selectedTimelines).forEach(timeline => {
-      if (!timelineNames[timeline]) {
-        timelineNames[timeline] = getTimelineName(timeline);
-      }
-    });
+  // Force component updates when customTimelineNames changes
+  $: console.log("[DEBUG] customTimelineNames changed:", timelineNamesStore);
+  
+  // Track if we need to refresh timeline names
+  let timelineNamesCache = {};
+  
+  // Refresh timeline names whenever show changes to true (modal opens)
+  $: if (show) {
+    console.log("[DEBUG] Modal opened, refreshing timeline names from store");
+    // Force a refresh of the PARALLEL_TIMELINES when the modal opens
+    for (const [key, _] of Object.entries(PARALLEL_TIMELINES)) {
+      // Update the name in PARALLEL_TIMELINES from custom or default
+      const currentName = getTimelineName(key);
+      PARALLEL_TIMELINES[key] = {
+        ...PARALLEL_TIMELINES[key],
+        name: currentName
+      };
+      // Update our cache for comparison
+      timelineNamesCache[key] = currentName;
+    }
   }
 
   function openColorPicker(timeline) {
@@ -55,17 +70,41 @@
 
   function openNameEditor(timeline) {
     activeTimeline = timeline;
+    
+    // Always get the freshest name from the store using getTimelineName
+    // This ensures we get current custom names from customTimelineNames store
     editingName = getTimelineName(timeline);
+    console.log(`[DEBUG] Opening name editor for ${timeline} with current name: ${editingName}`);
+    
     showNameEditor = true;
     showColorPicker = false;
   }
 
   function saveTimelineName() {
     if (activeTimeline && editingName) {
+      console.log('[DEBUG] TimelineSelectorModal - saving timeline name:', { timeline: activeTimeline, name: editingName });
       updateTimelineName(activeTimeline, editingName);
-      timelineNames[activeTimeline] = editingName;
       showNameEditor = false;
-      activeTimeline = null;
+      
+      // Debug the current state of timeline names
+      debugTimelineNames();
+      
+      // Update the cached timeline name
+      timelineNamesCache[activeTimeline] = editingName;
+      
+      // Force update of the PARALLEL_TIMELINES object for this component
+      PARALLEL_TIMELINES[activeTimeline] = {
+        ...PARALLEL_TIMELINES[activeTimeline],
+        name: editingName
+      };
+      
+      // Force component to update by creating a minimal delay
+      setTimeout(() => {
+        console.log('[DEBUG] Forcing component update after name change');
+        // Create a temporary copy to trigger reactivity
+        timelineNamesStore = { ...timelineNamesStore };
+        activeTimeline = null;
+      }, 50);
     }
   }
 
@@ -110,7 +149,7 @@
                   }}
                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <span class="text-gray-700">{getTimelineName(key)}</span>
+                <span class="text-gray-700">{timelineNamesStore ? getTimelineName(key) : PARALLEL_TIMELINES[key].name}</span>
               </label>
               
               <!-- Color preview and edit buttons -->
@@ -121,7 +160,7 @@
                     <button 
                       on:click={() => openNameEditor(key)}
                       class="text-sm text-blue-600 hover:text-blue-800"
-                      title="Rename Timeline"
+                      title={`Rename from '${timelineNamesStore ? getTimelineName(key) : PARALLEL_TIMELINES[key].name}'`}
                     >
                       Rename
                     </button>
@@ -142,7 +181,7 @@
         <!-- Name editor dialog -->
         {#if showNameEditor}
           <div class="mt-4 p-3 border rounded bg-gray-50">
-            <h5 class="text-sm font-medium mb-2">Rename {DEFAULT_TIMELINE_NAMES[activeTimeline]} Timeline</h5>
+            <h5 class="text-sm font-medium mb-2">Rename Timeline: {activeTimeline ? (timelineNamesStore ? getTimelineName(activeTimeline) : PARALLEL_TIMELINES[activeTimeline]?.name || activeTimeline) : ''}</h5>
             <div class="flex items-center">
               <input 
                 type="text" 
@@ -163,7 +202,7 @@
         <!-- Color picker dialog -->
         {#if showColorPicker}
           <div class="mt-4 p-3 border rounded bg-gray-50">
-            <h5 class="text-sm font-medium mb-2">Select Color for {getTimelineName(activeTimeline)} Timeline</h5>
+            <h5 class="text-sm font-medium mb-2">Select Color for {activeTimeline ? (timelineNamesStore ? getTimelineName(activeTimeline) : PARALLEL_TIMELINES[activeTimeline]?.name || activeTimeline) : ''} Timeline</h5>
             <div class="grid grid-cols-5 gap-2">
               {#each Object.entries(TIMELINE_COLORS) as [colorClass, colorName]}
                 <button 

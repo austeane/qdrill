@@ -47,6 +47,7 @@ export const DEFAULT_TIMELINE_COLORS = {
 };
 
 // Initialize PARALLEL_TIMELINES with default values
+// This will be updated by updateTimelineName() to keep in sync with customTimelineNames
 export const PARALLEL_TIMELINES = {
   BEATERS: { name: DEFAULT_TIMELINE_NAMES.BEATERS, color: DEFAULT_TIMELINE_COLORS.BEATERS },
   CHASERS: { name: DEFAULT_TIMELINE_NAMES.CHASERS, color: DEFAULT_TIMELINE_COLORS.CHASERS },
@@ -96,15 +97,35 @@ export function getTimelineColor(timeline) {
 
 // Helper function to get a timeline's name (custom or default)
 export function getTimelineName(timeline) {
+  if (!timeline) {
+    console.warn('[DEBUG] getTimelineName called with undefined timeline');
+    return '';
+  }
+  
+  // Always get a fresh copy of the store
   const customNames = get(customTimelineNames);
-  if (customNames[timeline]) {
+  
+  // Check if there's a custom name for this timeline
+  if (customNames && customNames[timeline]) {
+    console.log(`[DEBUG] Using custom name for ${timeline}: ${customNames[timeline]}`);
     return customNames[timeline];
   }
-  return DEFAULT_TIMELINE_NAMES[timeline] || timeline;
+  
+  // Check if there's a default name
+  if (DEFAULT_TIMELINE_NAMES[timeline]) {
+    console.log(`[DEBUG] Using default name for ${timeline}: ${DEFAULT_TIMELINE_NAMES[timeline]}`);
+    return DEFAULT_TIMELINE_NAMES[timeline];
+  }
+  
+  // If all else fails, use the timeline key
+  console.log(`[DEBUG] No name found for ${timeline}, using key as name`);
+  return timeline;
 }
 
 // Helper function to update a timeline's name
 export function updateTimelineName(timeline, name) {
+  console.log('[DEBUG] updateTimelineName called with:', { timeline, name });
+  
   if (!name || name.trim() === '') {
     console.warn(`Cannot use empty name for timeline "${timeline}". Using default instead.`);
     name = DEFAULT_TIMELINE_NAMES[timeline] || timeline;
@@ -112,7 +133,9 @@ export function updateTimelineName(timeline, name) {
   
   // Update the customTimelineNames store
   customTimelineNames.update(names => {
-    return { ...names, [timeline]: name };
+    const updatedNames = { ...names, [timeline]: name };
+    console.log('[DEBUG] Updated customTimelineNames:', updatedNames);
+    return updatedNames;
   });
   
   // Update the PARALLEL_TIMELINES for compatibility with existing code
@@ -121,7 +144,34 @@ export function updateTimelineName(timeline, name) {
       ...PARALLEL_TIMELINES[timeline],
       name: name
     };
+    console.log('[DEBUG] Updated PARALLEL_TIMELINES entry:', PARALLEL_TIMELINES[timeline]);
+  } else {
+    console.warn(`[DEBUG] Could not update PARALLEL_TIMELINES for ${timeline} - entry not found`);
   }
+  
+  // Log the result of getting the timeline name to verify it works
+  console.log('[DEBUG] getTimelineName result after update:', getTimelineName(timeline));
+  
+  // Update all section items that use this timeline to ensure reactivity
+  sections.update(currentSections => {
+    return currentSections.map(section => {
+      // Update the timeline_name property on all items with this timeline
+      const updatedItems = section.items.map(item => {
+        if (item.parallel_timeline === timeline) {
+          return {
+            ...item,
+            timeline_name: name
+          };
+        }
+        return item;
+      });
+      
+      return {
+        ...section,
+        items: updatedItems
+      };
+    });
+  });
 }
 
 // Helper function to update a timeline's color
@@ -676,25 +726,31 @@ export function createParallelBlock() {
     const parallelGroupId = `group_${Date.now()}`;
     // Capture the timelines at this moment
     const groupTimelines = Array.from(get(selectedTimelines));
-    // Get the selected parallel group name
-    const groupName = get(parallelGroupName);
+    // Use a fixed group name now
+    const groupName = 'Parallel Activities';
     
     console.log('[DEBUG] createParallelBlock - captured groupTimelines for new block:', groupTimelines);
 
     // Create placeholders with the block's timeline configuration
-    const placeholderDrills = groupTimelines.map(timeline => ({
-      id: `placeholder_${timeline}_${Date.now()}`,
-      type: 'break',
-      name: `${getTimelineName(timeline)} Drill`,
-      duration: 15,
-      selected_duration: 15,
-      parallel_group_id: parallelGroupId,
-      parallel_timeline: timeline,
-      groupTimelines, // Store the block's timeline configuration
-      group_name: 'Parallel Activities', // Fixed group name
-      timeline_color: get(customTimelineColors)[timeline] || DEFAULT_TIMELINE_COLORS[timeline] || 'bg-gray-500',
-      timeline_name: get(customTimelineNames)[timeline] || DEFAULT_TIMELINE_NAMES[timeline]
-    }));
+    const placeholderDrills = groupTimelines.map(timeline => {
+      // Debug the timeline name that will be used 
+      const timelineName = getTimelineName(timeline);
+      console.log(`[DEBUG] Creating placeholder for ${timeline}, using name: ${timelineName}`);
+      
+      return {
+        id: `placeholder_${timeline}_${Date.now()}`,
+        type: 'break',
+        name: `${timelineName} Drill`,
+        duration: 15,
+        selected_duration: 15,
+        parallel_group_id: parallelGroupId,
+        parallel_timeline: timeline,
+        groupTimelines, // Store the block's timeline configuration
+        group_name: 'Parallel Activities', // Fixed group name
+        timeline_color: get(customTimelineColors)[timeline] || DEFAULT_TIMELINE_COLORS[timeline] || 'bg-gray-500',
+        timeline_name: timelineName // Store the name directly
+      };
+    });
     
     console.log('[DEBUG] createParallelBlock - placeholderDrills to be added:', placeholderDrills);
     section.items = [...section.items, ...placeholderDrills];
@@ -749,19 +805,25 @@ export function updateParallelBlockTimelines(sectionId, parallelGroupId, newTime
       const existingTimelines = groupItems.map(item => item.parallel_timeline);
       const newTimelinesToAdd = newTimelines.filter(t => !existingTimelines.includes(t));
 
-      const newPlaceholders = newTimelinesToAdd.map(timeline => ({
-        id: `placeholder_${timeline}_${Date.now()}`,
-        type: 'break',
-        name: `${getTimelineName(timeline)} Drill`,
-        duration: 15,
-        selected_duration: 15,
-        parallel_group_id: parallelGroupId,
-        parallel_timeline: timeline,
-        groupTimelines: newTimelines,
-        group_name: groupName,
-        timeline_color: get(customTimelineColors)[timeline] || DEFAULT_TIMELINE_COLORS[timeline] || 'bg-gray-500',
-        timeline_name: get(customTimelineNames)[timeline] || DEFAULT_TIMELINE_NAMES[timeline]
-      }));
+      const newPlaceholders = newTimelinesToAdd.map(timeline => {
+        // Debug the timeline name that will be used
+        const timelineName = getTimelineName(timeline);
+        console.log(`[DEBUG] Creating placeholder in updateParallelBlockTimelines for ${timeline}, using name: ${timelineName}`);
+        
+        return {
+          id: `placeholder_${timeline}_${Date.now()}`,
+          type: 'break',
+          name: `${timelineName} Drill`,
+          duration: 15,
+          selected_duration: 15,
+          parallel_group_id: parallelGroupId,
+          parallel_timeline: timeline,
+          groupTimelines: newTimelines,
+          group_name: groupName,
+          timeline_color: get(customTimelineColors)[timeline] || DEFAULT_TIMELINE_COLORS[timeline] || 'bg-gray-500',
+          timeline_name: timelineName // Store the name directly
+        };
+      });
 
       return {
         ...section,
@@ -864,7 +926,7 @@ export function removeTimelineFromGroup(sectionId, parallelGroupId, timeline) {
     }));
   });
 
-  toast.push(`Removed ${PARALLEL_TIMELINES[timeline].name} timeline`);
+  toast.push(`Removed ${getTimelineName(timeline)} timeline`);
 }
 
 // Timeline duration calculation
@@ -936,7 +998,7 @@ export function calculateTimelineDurations(items, groupId) {
     
     const warningMessage = mismatches
       .map(({ timeline, difference }) => 
-        `${PARALLEL_TIMELINES[timeline].name} (${difference}min shorter)`
+        `${getTimelineName(timeline)} (${difference}min shorter)`
       )
       .join(', ');
 
@@ -953,4 +1015,18 @@ export function calculateTimelineDurations(items, groupId) {
   }
 
   return durations;
+}
+
+// DEBUG function to check the state of the timeline names
+export function debugTimelineNames() {
+  const customNames = get(customTimelineNames);
+  console.log('[DEBUG] Current custom timeline names:', customNames);
+  
+  console.log('[DEBUG] Current PARALLEL_TIMELINES:', JSON.stringify(PARALLEL_TIMELINES, null, 2));
+  
+  Object.keys(DEFAULT_TIMELINE_NAMES).forEach(key => {
+    console.log(`[DEBUG] Timeline ${key} name:`, getTimelineName(key));
+  });
+  
+  return customNames;
 } 

@@ -6,7 +6,7 @@
     handleDragEnd
   } from '$lib/stores/dragManager';
   import DrillItem from './DrillItem.svelte';
-  import { removeItem } from '$lib/stores/sectionsStore';
+  import { removeItem, getTimelineName, customTimelineNames } from '$lib/stores/sectionsStore';
   
   export let timeline;
   export let groupTimelines;
@@ -15,6 +15,13 @@
   export let sectionId;
   export let parallelGroupId;
   export let totalDuration = 0;
+  
+  // Subscribe to customTimelineNames to make component reactive to name changes
+  let timelineNamesStore;
+  $: timelineNamesStore = $customTimelineNames;
+  
+  // Get the timeline name reactively
+  $: timelineName = getTimelineName(timeline);
   
   // Filter items for this specific timeline
   $: timelineSpecificItems = timelineItems.filter(
@@ -89,7 +96,7 @@
   }}
 >
   <div class="timeline-header bg-gray-100 rounded-lg p-2 mb-3 flex-shrink-0">
-    <h4 class="font-semibold">{timeline}</h4>
+    <h4 class="font-semibold">{timelineName}</h4>
     <div class="text-sm text-gray-500">{totalDuration}min</div>
   </div>
   

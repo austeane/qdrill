@@ -16,7 +16,7 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 
 ## Core Features
 
-### 1. Drill Creation and Management
+### 1. Drill and Formation Management
 - **Form-Based Drill Creation**: Users can create new drills via a form interface. Each drill will have the following attributes:
   - Name (required)
   - Brief description (required)
@@ -32,10 +32,11 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 - **Dynamic URL Generation**: Each drill will automatically be assigned a unique URL upon creation, allowing users to share and access drills directly.
 - **Public vs. Private Drills**: Users can choose to make drills public or private. Public drills are accessible by all, while private drills require a specific link. Users can also create public versions of private drills with a different description.
 
-### 2. Drill Filtering and Viewing
-- **Client-Side Filtering**: All drills will be sent to the client side, where filtering will occur. This approach ensures fast, responsive filtering without the need for server-side requests, especially given that the total number of drills is unlikely to exceed a couple of thousand.
-- **Drill Listing View**: The main view will display a list of drills, showing their name, attributes, brief description, and indications of any media (pictures/videos).
-- **Drill Detail Page**: Each drill will have a dedicated page showing all of its details. Users can comment on drills, upvote them, or create variations. Variations will maintain the same attributes but allow for a different description.
+### 2. Drill and Formation Filtering and Viewing
+- **Client-Side Filtering**: All drills and formations will be sent to the client side, where filtering will occur. This approach ensures fast, responsive filtering without the need for server-side requests, especially given that the total number of items is unlikely to exceed a couple of thousand.
+- **Listing Views**: The main views will display lists of drills or formations, showing their name, attributes, brief description, and indications of any media (pictures/videos).
+- **Detail Pages**: Each drill and formation will have a dedicated page showing all of its details. Users can comment on drills, upvote them, or create variations.
+- **Formations**: A specialized system for static player positions that can be created, shared, and viewed separately from the dynamic drills.
 
 ### 3. Practice Plan Creation and Management
 - **Form-Based Practice Planning**: Users can create practice plans by selecting drills based on the number of players, skill levels, practice duration, and skills to focus on.
@@ -149,6 +150,7 @@ Project documentation is organized in two main locations:
    - **[Implementation](./docs/implementation/)**: Technical details and implementation specifics
      - **[Drag and Drop System](./docs/implementation/drag-and-drop.md)**: Detailed explanation of the drag and drop implementation
      - **[Timeline Management](./docs/implementation/timeline-management.md)**: Timeline configuration and duration calculations
+     - **[Service Layer Architecture](./docs/implementation/service-layer.md)**: Service layer pattern and implementation plan for applying it to other parts of the codebase
 
 ### Documentation Workflow
 

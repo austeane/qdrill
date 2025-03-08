@@ -10,7 +10,8 @@ This section provides technical details and implementation specifics for the QDr
 - Deployment Process
 - Code Patterns
 - [Drag and Drop System](./drag-and-drop.md)
-- Timeline Management
+- [Timeline Management](./timeline-management.md)
+- [Service Layer Architecture](./service-layer.md) - Including implementation plan
 
 ## Frontend Implementation
 

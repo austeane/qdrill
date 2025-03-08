@@ -81,6 +81,14 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 - Transaction support for complex operations
 - Normalized schema design
 
+#### Database Connection
+- **Connection String**: Stored in ~/.zshrc as NEON_DB_URL environment variable
+- **Connection Command**: `psql "$NEON_DB_URL"`
+- **Project ID**: morning-mountain-82887088
+- **Database Name**: verceldb
+- **Tables**: drills, practice_plans, practice_plan_sections, practice_plan_drills, users, comments, votes, etc.
+- **Query Example**: `psql "$NEON_DB_URL" -c "SELECT COUNT(*) FROM drills;"`
+
 ## Key Systems
 
 ### Authentication

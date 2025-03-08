@@ -1,13 +1,22 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import DrillCard from './DrillCard.svelte';
-  import { getTimelineColor, getTimelineName } from '$lib/stores/sectionsStore';
+  import { 
+    getTimelineColor, 
+    getTimelineName, 
+    customTimelineNames,
+    DEFAULT_TIMELINE_NAMES 
+  } from '$lib/stores/sectionsStore';
   
   export let items = [];
   export let canEdit = false;
   export let startTime = null;
 
   const dispatch = createEventDispatcher();
+  
+  // Subscribe to customTimelineNames to make component reactive to name changes
+  let timelineNamesStore;
+  $: timelineNamesStore = $customTimelineNames;
 
   // Group items by timeline
   $: timelineGroups = items.reduce((acc, item) => {
@@ -60,7 +69,7 @@
     {#each Object.entries(timelineGroups) as [timeline, timelineItems]}
       <div class="timeline-column" class:single-timeline={Object.keys(timelineGroups).length === 1}>
         <div class="timeline-header {getTimelineColor(timeline)}">
-          {getTimelineName(timeline)}
+          {timelineNamesStore ? getTimelineName(timeline) : DEFAULT_TIMELINE_NAMES?.[timeline] || timeline}
         </div>
         <div class="timeline-items">
           {#each timelineItems as item (item.drill?.id || item.id || crypto.randomUUID())}

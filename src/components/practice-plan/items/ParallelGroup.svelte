@@ -10,7 +10,9 @@
   import { 
     handleUngroup, 
     getParallelBlockDuration,
-    calculateTimelineDurations
+    calculateTimelineDurations,
+    getTimelineName,
+    customTimelineNames
   } from '$lib/stores/sectionsStore';
   import TimelineColumn from './TimelineColumn.svelte';
   
@@ -19,10 +21,38 @@
   export let sectionIndex;
   export let sectionId;
   
+  // Subscribe to customTimelineNames store to make the component reactive
+  let timelineNamesStore;
+  $: timelineNamesStore = $customTimelineNames;
+  
   // Get group timelines and name
   $: firstGroupItem = items.find(item => item.parallel_group_id === groupId);
   $: groupTimelines = firstGroupItem?.groupTimelines || [];
-  $: groupName = firstGroupItem?.group_name || 'Parallel Activities';
+  
+  // Try to create a better group name based on included timelines
+  $: groupName = (() => {
+    // If there's an explicit group name, use it
+    if (firstGroupItem?.group_name && firstGroupItem.group_name !== 'Parallel Activities') {
+      return firstGroupItem.group_name;
+    }
+    
+    // Otherwise, construct a name from the timelines
+    if (groupTimelines && groupTimelines.length) {
+      // Get each timeline's custom name
+      const timelineNames = groupTimelines.map(t => getTimelineName(t));
+      
+      // For more than 2 timelines, use a generic name
+      if (timelineNames.length > 2) {
+        return "Multiple Timelines";
+      }
+      
+      // For 1-2 timelines, show their names
+      return timelineNames.join(' & ');
+    }
+    
+    // Fallback name
+    return 'Parallel Activities';
+  })();
   
   $: console.log('[DEBUG] ParallelGroup - groupTimelines:', {
     groupId,

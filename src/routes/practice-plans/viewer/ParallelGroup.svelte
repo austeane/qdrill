@@ -1,19 +1,13 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import DrillCard from './DrillCard.svelte';
+  import { getTimelineColor, getTimelineName } from '$lib/stores/sectionsStore';
   
   export let items = [];
   export let canEdit = false;
   export let startTime = null;
 
   const dispatch = createEventDispatcher();
-
-  // Define timeline constants
-  const PARALLEL_TIMELINES = {
-    BEATERS: { name: 'Beaters', color: 'bg-gray-500' },
-    CHASERS: { name: 'Chasers', color: 'bg-green-500' },
-    SEEKERS: { name: 'Seekers', color: 'bg-yellow-500' }
-  };
 
   // Group items by timeline
   $: timelineGroups = items.reduce((acc, item) => {
@@ -30,6 +24,9 @@
     timelineItems.reduce((sum, item) => sum + (item.selected_duration || item.duration || 0), 0)
   ));
 
+  // Get the group name from the first item in the group
+  $: groupName = items[0]?.group_name || 'Parallel Activities';
+
   function ungroup() {
     dispatch('ungroup', { 
       groupId: items[0]?.parallel_group_id 
@@ -39,7 +36,7 @@
 
 <div class="parallel-group">
   <div class="group-header">
-    <div class="parallel-indicator">Parallel Activities</div>
+    <div class="parallel-indicator">{groupName}</div>
     <div class="group-actions">
       <div class="group-duration">
         {#if startTime}
@@ -62,8 +59,8 @@
   <div class="group-content">
     {#each Object.entries(timelineGroups) as [timeline, timelineItems]}
       <div class="timeline-column" class:single-timeline={Object.keys(timelineGroups).length === 1}>
-        <div class="timeline-header {PARALLEL_TIMELINES[timeline]?.color || 'bg-gray-200'}">
-          {PARALLEL_TIMELINES[timeline]?.name || timeline}
+        <div class="timeline-header {getTimelineColor(timeline)}">
+          {getTimelineName(timeline)}
         </div>
         <div class="timeline-items">
           {#each timelineItems as item (item.drill?.id || item.id || crypto.randomUUID())}

@@ -112,6 +112,31 @@
             diagram_data: null,
             parallel_group_id: null
         }));
+        
+        // Add cart items to sections
+        if (cartItems.length > 0 && $sections.length > 0) {
+          sections.update(currentSections => {
+            const newSections = [...currentSections];
+            
+            // Add all drills to the "Skill Building" section (index 1)
+            const skillBuildingIndex = 1;
+            
+            // Add all drills to the Skill Building section
+            cartItems.forEach(item => {
+              newSections[skillBuildingIndex].items.push({
+                id: item.id,
+                type: 'drill',
+                name: item.name,
+                drill: item.drill,
+                duration: 15,
+                selected_duration: 15
+              });
+            });
+            
+            return newSections;
+          });
+        }
+        
         selectedItems.set(cartItems);
     }
 

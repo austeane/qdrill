@@ -40,6 +40,7 @@
 
 <li class="timeline-item relative transition-all duration-200 {isBeingDragged ? 'dragging' : ''}"
   draggable="true"
+  data-testid="drill-item"
   data-item-id={itemId}
   data-section-index={sectionIndex}
   data-item-index={itemIndex}

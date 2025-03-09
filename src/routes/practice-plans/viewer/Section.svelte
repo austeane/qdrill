@@ -225,25 +225,30 @@
 
   {#if !isCollapsed}
     <div class="section-content" transition:slide>
-      {#each groupedItems.singles as item (item.id)}
-        <DrillCard 
-          {item}
-          {canEdit}
-          startTime={item.startTime}
-          on:edit={handleEdit}
-          on:durationChange={handleDurationChange}
-        />
-      {/each}
-
-      {#each Object.entries(groupedItems.parallelGroups) as [groupId, items]}
-        <ParallelGroup
-          {items}
-          {canEdit}
-          startTime={items[0]?.startTime}
-          on:edit={handleEdit}
-          on:durationChange={handleDurationChange}
-          on:ungroup={handleUngroup}
-        />
+      <!-- Render items in their original order -->
+      {#each section.items as item, itemIndex (item.id)}
+        {#if item.parallel_group_id}
+          <!-- Only render the parallel group once per group ID -->
+          {#if !section.items.slice(0, itemIndex).some(prevItem => prevItem.parallel_group_id === item.parallel_group_id)}
+            <ParallelGroup
+              items={section.items.filter(i => i.parallel_group_id === item.parallel_group_id)}
+              {canEdit}
+              startTime={item.startTime}
+              on:edit={handleEdit}
+              on:durationChange={handleDurationChange}
+              on:ungroup={handleUngroup}
+            />
+          {/if}
+        {:else}
+          <!-- Render regular drill items -->
+          <DrillCard 
+            {item}
+            {canEdit}
+            startTime={item.startTime}
+            on:edit={handleEdit}
+            on:durationChange={handleDurationChange}
+          />
+        {/if}
       {/each}
     </div>
   {/if}

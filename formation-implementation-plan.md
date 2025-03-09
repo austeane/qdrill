@@ -1,153 +1,164 @@
-# Formation Implementation Plan
+# Service Layer Implementation Plan
 
 ## Overview
-Add a new "Formations" feature to QDrill. Formations are similar to drills but simpler, focusing only on player positions without timeline or practice plan integration.
+Building on the success of the Formations feature, this document outlines the plan for continuing the implementation of the service layer architecture for QDrill, focusing on enhancing existing services, creating new ones, and refactoring API endpoints.
 
-Key differences from drills:
-- Simpler data model (fewer fields)
-- Cannot be included in practice plans
-- Focus on static positions rather than dynamic movements
-- Examples: '2-2', 'marked defence', 'kite formation', etc.
+## Implementation Status
 
-## Implementation Approach
+### Completed Services
 
-After analyzing the codebase, I recommend a **shared service layer approach** that:
-1. Creates a base service for common CRUD operations
-2. Implements formation-specific endpoints following RESTful patterns similar to drills
-3. Reuses authentication and database connection logic
+1. **BaseEntityService**
+   - ✅ Generic CRUD operations with pagination and filtering
+   - ✅ Standard permission model
+   - ✅ Data normalization utilities
+   - ✅ Transaction support
+   - ✅ Comprehensive test coverage
 
-## Database Schema
+2. **FormationService**
+   - ✅ Formation-specific methods (create, update, search)
+   - ✅ API integration
+   - ✅ Test coverage
 
-Create a new `formations` table with these fields:
-- `id` (SERIAL, primary key)
-- `name` (VARCHAR(255)) - Formation name
-- `brief_description` (TEXT) - Short description
-- `detailed_description` (TEXT) - Full description
-- `diagrams` (JSONB[]) - JSON data for Excalidraw diagrams
-- `created_by` (INTEGER, REFERENCES users(id))
-- `is_editable_by_others` (BOOLEAN, DEFAULT false)
-- `visibility` (VARCHAR(50), DEFAULT 'public') - public/private/unlisted
-- `created_at` (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP)
-- `updated_at` (TIMESTAMP, DEFAULT CURRENT_TIMESTAMP)
-- `tags` (VARCHAR[]) - Array of formation tags
+3. **DrillService**
+   - ✅ Core implementation
+   - ✅ Test coverage
+   - ⚠️ Partial API integration (some endpoints still use direct DB access)
 
-## Implementation Summary
+4. **PracticePlanService**
+   - ✅ Core implementation
+   - ✅ Complex timeline management
+   - ✅ API integration
+   - ✅ Test coverage
 
-### Service Layer Implementation
+### New Services
 
-✅ Created a shared service architecture:
+5. **UserService**
+   - ✅ Initial implementation
+   - ✅ Profile management
+   - ✅ Permission checking
+   - ✅ Test coverage
+   - ⚠️ Partial API integration (profile endpoint only)
 
-1. **Base Entity Service** (`/src/lib/server/services/baseEntityService.js`)
-   - Implemented generic CRUD operations (getAll, getById, create, update, delete)
-   - Added pagination and filtering support
+### Planned Services
+
+6. **SkillService**
+   - ⚠️ Not yet implemented
+
+7. **CommentService**
+   - ⚠️ Not yet implemented
+
+8. **VoteService**
+   - ⚠️ Not yet implemented
+
+## Implementation Plan
+
+### Phase 1: Complete Existing Service Integration (Current)
+
+#### 1.1 Complete DrillService API Integration
+
+**Priority: High**
+**Effort: 1-2 days**
+
+- ✅ Added DrillService methods:
+  - `toggleUpvote()` - For handling drill upvoting functionality
+  - `setVariant()` - For setting variant relationships
+
+- ✅ Refactored API endpoints to use DrillService:
+  - ✅ `/api/drills/[id]/upvote/+server.js` - Using toggleUpvote() method
+  - ✅ `/api/drills/[id]/set-variant/+server.js` - Using setVariant() method
+
+- Refactor remaining drill API endpoints:
+  - `/api/drills/associate/+server.js`
+  - `/api/drills/filter-options/+server.js`
+  - `/api/drills/bulk-upload/+server.js`
+  - `/api/drills/import/+server.js`
+  - `/api/drills/migrate-diagrams/+server.js`
+
+#### 1.2 Complete UserService API Integration
+
+**Priority: High**
+**Effort: 1 day**
+
+- Update authentication-related endpoints to use UserService
+- Centralize permission checks across all API endpoints
+
+### Phase 2: New Service Implementation
+
+#### 2.1 Implement SkillService
+
+**Priority: Medium**
+**Effort: 1-2 days**
+
+- Create SkillService class with methods for:
+  - Skill tracking
+  - Usage statistics
+  - Recommendations
+- Update DrillService to use SkillService
+- Refactor skill-related API endpoints
+
+#### 2.2 BaseEntityService Enhancements
+
+**Priority: Medium**
+**Effort: 1-2 days**
+
+- Add caching support
+- Enhance filtering capabilities
+- Implement event system
+- Improve transaction management
+- Add additional helper methods
+
+### Phase 3: Additional Services
+
+#### 3.1 Implement CommentService
+
+**Priority: Medium-Low**
+**Effort: 1-2 days**
+
+- Add support for comments on drills, plans, formations
+- Standardize comment operations
+- Implement comment moderation features
+
+#### 3.2 Implement VoteService
+
+**Priority: Low**
+**Effort: 1 day**
+
+- Standardize voting operations
+- Add race condition protection
+- Implement voting statistics
+
+## Benefits of Current Implementation
+
+1. **Improved Architecture**
+   - Clear separation of concerns between API and data layers
+   - Consistent patterns across service implementations
+   - Better organization of business logic
+
+2. **Code Quality**
+   - Reduced duplication
+   - Enhanced maintainability
    - Standardized error handling
-   - Parameterized query handling for security
+   - Comprehensive test coverage
 
-2. **Formation Service** (`/src/lib/server/services/formationService.js`)
-   - Extended base service for formation-specific functionality
-   - Implemented data normalization for consistent storage
-   - Added specialized search and filtering methods
-   - Created user-specific retrieval methods
+3. **Developer Experience**
+   - Easier to understand and modify business logic
+   - Simplified API endpoint implementations
+   - Better testability
+   - More consistent patterns
 
-### Database Setup
+4. **Performance**
+   - Transaction support for complex operations
+   - Foundation for adding caching
+   - Optimized database interactions
 
-✅ Created and executed SQL migration:
+## Next Steps
 
-1. **Table Creation** (`/migrations/create_formations_table.sql`)
-   - Created formations table with all specified fields
-   - Added appropriate indexes for name, created_by, visibility, and created_at
-   - Added documentation comments for table and columns
+1. Continue refactoring API endpoints to use existing services
+2. Implement SkillService following established patterns
+3. Create pull request with the UserService implementation
+4. Update documentation to reflect service layer architecture
+5. Add caching support to high-traffic services
 
-2. **Database Execution**
-   - Successfully ran the migration script against the Neon PostgreSQL database
-   - Verified table and indexes were created correctly
+## Conclusion
 
-### API Implementation
-
-✅ Created REST endpoints:
-
-1. **List/Create Formations** (`/src/routes/api/formations/+server.js`)
-   - GET: List formations with pagination and filtering
-   - POST: Create new formations with validation
-
-2. **Single Formation Operations** (`/src/routes/api/formations/[id]/+server.js`)
-   - GET: Retrieve formation by ID
-   - DELETE: Remove formation with permission checks
-
-3. **Search Functionality** (`/src/routes/api/formations/search/+server.js`)
-   - GET: Search formations by name and description
-
-4. **Authentication Integration**
-   - Added authGuard to protected routes
-   - Implemented proper permission checking for edit/delete operations
-
-### Store Implementation
-
-✅ Created client-side state management:
-
-1. **Formations Store** (`/src/lib/stores/formationsStore.js`)
-   - Implemented pagination with currentPage and totalPages
-   - Added filtering capabilities with derived stores
-   - Created data fetching functions for API integration
-   - Simplified from drillsStore.js to focus on formation-specific needs
-
-### Frontend Implementation
-
-✅ Created frontend components:
-
-1. **Formation Form** (`/src/routes/formations/FormationForm.svelte`)
-   - Adapted from DrillForm.svelte with simplified fields
-   - Retained diagram functionality with ExcalidrawWrapper
-   - Added tag management
-   - Implemented validation and error handling
-
-2. **Formation Pages**
-   - List page (`/src/routes/formations/+page.svelte`)
-   - Create page (`/src/routes/formations/create/+page.svelte`)
-   - View page (`/src/routes/formations/[id]/+page.svelte`)
-   - Edit page (`/src/routes/formations/[id]/edit/+page.svelte`)
-
-3. **Navigation**
-   - Added formation links to main navigation menu
-   - Added mobile navigation links
-   - Ensured consistent styling with existing navigation
-
-### Documentation Updates
-
-✅ Updated documentation:
-
-1. **Service Layer Documentation** (`/docs/implementation/service-layer.md`)
-   - Detailed the service layer architecture
-   - Provided implementation examples
-   - Explained benefits and best practices
-
-2. **README Updates**
-   - Added formations to feature list
-   - Updated documentation links
-   - Integrated with existing documentation structure
-
-3. **Implementation Index** (`/docs/implementation/index.md`)
-   - Added service layer documentation link
-
-## Results and Benefits
-
-The formations feature has been successfully implemented with the following benefits:
-
-1. **Reduced Code Duplication**: The shared service layer centralizes common operations
-2. **Improved Architecture**: Cleaner separation of concerns between API and data layers
-3. **Consistent API Design**: Formation endpoints follow the same patterns as drill endpoints
-4. **Improved Maintainability**: Business logic is centralized in service classes
-5. **Enhanced Extensibility**: Framework for adding additional entity types in the future
-6. **Better Error Handling**: Standardized approach to error handling and responses
-
-## Future Improvements
-
-Based on this implementation, future improvements could include:
-
-1. **Refactor Drill API**: Migrate drill API endpoints to use the service layer pattern
-2. **Add Transaction Support**: Enhance the service layer with transaction management
-3. **Create User Service**: Implement user management using the service layer pattern
-4. **Implement Caching**: Add caching for frequently accessed data
-5. **Test Coverage**: Add unit tests for the service layer classes
-
-The formation feature implementation provides both immediate value to users and a blueprint for architectural improvements throughout the codebase.
+The service layer implementation has significantly improved the QDrill codebase, making it more maintainable, testable, and consistent. The next phases will build on this foundation to deliver even more benefits, particularly around performance and developer experience.

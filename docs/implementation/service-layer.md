@@ -143,7 +143,7 @@ export async function GET({ url }) {
    - Effort: 1-2 days
    - Key benefits: Handles race conditions, standardizes voting operations
 
-### Implementation Details
+### Implementation Status
 
 #### DrillService
 
@@ -172,8 +172,14 @@ export async function GET({ url }) {
 7. ✅ Added comprehensive unit tests with Vitest
 
 **Next Steps:**
-- Refactor API endpoints to use the service
-- Update SkillService to leverage this drill service implementation
+- Refactor remaining API endpoints to use the service:
+  - `/api/drills/[id]/upvote/+server.js`
+  - `/api/drills/[id]/set-variant/+server.js`
+  - `/api/drills/associate/+server.js`
+  - `/api/drills/filter-options/+server.js`
+  - `/api/drills/bulk-upload/+server.js`
+  - `/api/drills/import/+server.js`
+  - `/api/drills/migrate-diagrams/+server.js`
 
 **Dependencies:**
 - BaseEntityService
@@ -213,19 +219,46 @@ export async function GET({ url }) {
 - BaseEntityService
 - DrillService (for drill references)
 
+#### FormationService
+
+**Implementation Status: Completed**
+
+1. ✅ Created FormationService class extending BaseEntityService
+2. ✅ Implemented formation-specific methods:
+   ```javascript
+   async createFormation(formationData, userId)
+   async updateFormation(id, formationData)
+   async searchFormations(searchTerm, options)
+   async getFormationsByUser(userId, options)
+   ```
+3. ✅ Implemented normalizeFormationData() with validation
+4. ✅ Exported singleton instance for use across API endpoints
+5. ✅ Refactored API endpoints to use the service
+6. ✅ Added unit tests for formation operations
+
+**Dependencies:**
+- BaseEntityService
+
 #### UserService
 
-**Implementation Steps:**
+**Implementation Status: Planned**
+
 1. Create UserService class extending BaseEntityService
 2. Implement user-specific methods:
    ```javascript
+   async getUserByEmail(email)
    async getUserProfile(userId)
-   async updateUserProfile(userId, profileData)
-   async getUserPermissions(userId)
-   async canUserEditEntity(entityType, entityId, userId)
+   async isAdmin(userId)
+   async canUserPerformAction(userId, actionType, entityType, entityId)
    ```
 3. Create integration with Auth.js
-4. Refactor API endpoints to use service
+4. Refactor user-related API endpoints to use service
+
+**Implementation Details:**
+- Use Auth.js users table structure
+- Build methods for retrieving user-created content
+- Add admin role checking
+- Create centralized permission management
 
 **Dependencies:**
 - BaseEntityService
@@ -233,7 +266,8 @@ export async function GET({ url }) {
 
 #### SkillService
 
-**Implementation Steps:**
+**Implementation Status: Planned**
+
 1. Create SkillService class extending BaseEntityService
 2. Implement skill-specific methods:
    ```javascript
@@ -243,6 +277,11 @@ export async function GET({ url }) {
    async getMostUsedSkills(limit)
    ```
 3. Refactor drill-related skill operations to use this service
+
+**Implementation Details:**
+- Centralize skill management across drill operations
+- Create methods for tracking usage statistics
+- Add skill filtering and recommendation functionality
 
 **Dependencies:**
 - BaseEntityService
@@ -324,11 +363,54 @@ All tests can be run using:
    - Ensure proper rollback on errors
    - Consider adding transaction management to BaseEntityService
 
+## Immediate Next Steps
+
+### 1. Complete DrillService API Integration
+
+**Priority: High**
+**Effort: 1-2 days**
+
+- Refactor remaining drill API endpoints to use DrillService
+- Focus on endpoints in `/api/drills/` that still use direct DB access
+- Prioritize high-traffic endpoints (upvote, search, filter)
+- Ensure consistent error handling across all endpoints
+
+### 2. Implement UserService
+
+**Priority: High**
+**Effort: 2-3 days**
+
+- Create UserService based on Auth.js integration
+- Implement profile management functionality
+- Create centralized permission checking methods
+- Refactor user-related API endpoints
+
+### 3. Implement SkillService
+
+**Priority: Medium**
+**Effort: 1-2 days**
+
+- Create SkillService with skill management methods
+- Refactor DrillService to use SkillService
+- Implement skill statistics and recommendations
+
+### 4. Enhance BaseEntityService 
+
+**Priority: Medium**
+**Effort: 1-2 days**
+
+- Add caching support for frequently accessed data
+- Implement advanced filtering capabilities
+- Add event emitters for entity lifecycle events
+- Improve transaction management
+
 ## Future Improvements
 
 1. **Caching Layer**: Implement caching for frequently accessed data
 2. **Advanced Filtering**: Enhance query building for complex filter conditions
 3. **Event System**: Add event emitters for entity lifecycle events (create, update, delete)
+4. **API Documentation**: Generate OpenAPI documentation from service definitions
+5. **Performance Optimization**: Add database indexing strategy and query optimization
 
 ## Best Practices
 
@@ -339,3 +421,5 @@ When using the service layer:
 3. **Maintain Singleton Instances**: Create a single instance of each service for better resource management
 4. **Normalize Data**: Use service methods to normalize data before storing/returning
 5. **Comprehensive Error Handling**: Handle and transform database errors into appropriate API responses
+6. **Consistent Response Format**: Return standardized objects with pagination, metadata, and data
+7. **Testable Units**: Design services to be easily testable with mock dependencies

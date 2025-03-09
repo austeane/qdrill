@@ -39,6 +39,11 @@ export async function query(text, params) {
   }
 }
 
+// Add a getClient function to support transactions
+export async function getClient() {
+  return getPool().connect();
+}
+
 // Add a new cleanup function for handling request-specific cleanup
 export async function cleanup() {
     // This is a no-op function since we want to keep the pool alive

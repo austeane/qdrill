@@ -1,76 +1,44 @@
 import { json } from '@sveltejs/kit';
-import { createClient } from '@vercel/postgres';
-
-const client = createClient();
-await client.connect();
+import { drillService } from '$lib/server/services/drillService';
 
 export async function PUT({ params, request }) {
-    const { id } = params;
+    const drillId = parseInt(params.id);
     const { parentDrillId } = await request.json();
+    
+    // Validate drill ID
+    if (!drillId || isNaN(drillId)) {
+        return json({ error: 'Invalid drill ID' }, { status: 400 });
+    }
 
     try {
-        await client.query('BEGIN');
-
-        // Check if the current drill exists and get its details
-        const drillResult = await client.query(
-            `SELECT d.*, 
-                    (SELECT COUNT(*) FROM drills WHERE parent_drill_id = d.id) as child_count
-             FROM drills d 
-             WHERE d.id = $1`,
-            [id]
-        );
-
-        if (drillResult.rows.length === 0) {
-            await client.query('ROLLBACK');
+        // Use the drillService to handle setting the variant relationship
+        const result = await drillService.setVariant(drillId, parentDrillId);
+        
+        return json(result);
+    } catch (err) {
+        console.error('Error setting variant relationship:', err);
+        
+        // Handle specific errors with appropriate status codes
+        if (err.message === 'Drill not found') {
             return json({ error: 'Drill not found' }, { status: 404 });
         }
-
-        const currentDrill = drillResult.rows[0];
-
-        if (parentDrillId) {
-            // Check if the parent drill exists and is valid
-            const parentResult = await client.query(
-                `SELECT d.*, 
-                        (SELECT COUNT(*) FROM drills WHERE parent_drill_id = d.id) as child_count
-                 FROM drills d 
-                 WHERE d.id = $1`,
-                [parentDrillId]
-            );
-
-            if (parentResult.rows.length === 0) {
-                await client.query('ROLLBACK');
-                return json({ error: 'Parent drill not found' }, { status: 404 });
-            }
-
-            const parentDrill = parentResult.rows[0];
-
-            // Validate constraints
-            if (currentDrill.child_count > 0) {
-                await client.query('ROLLBACK');
-                return json({ error: 'Cannot make a parent drill into a variant' }, { status: 400 });
-            }
-
-            if (parentDrill.parent_drill_id) {
-                await client.query('ROLLBACK');
-                return json({ error: 'Cannot set a variant as a parent' }, { status: 400 });
-            }
+        
+        if (err.message === 'Parent drill not found') {
+            return json({ error: 'Parent drill not found' }, { status: 404 });
         }
-
-        // Update the parent_drill_id
-        const result = await client.query(
-            `UPDATE drills 
-             SET parent_drill_id = $1 
-             WHERE id = $2 
-             RETURNING *, 
-               (SELECT name FROM drills WHERE id = $1) as parent_drill_name`,
-            [parentDrillId, id]
-        );
-
-        await client.query('COMMIT');
-        return json(result.rows[0]);
-    } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('Error setting variant relationship:', error);
+        
+        if (err.message === 'Cannot make a parent drill into a variant') {
+            return json({ error: 'Cannot make a parent drill into a variant' }, { status: 400 });
+        }
+        
+        if (err.message === 'Cannot set a variant as a parent') {
+            return json({ error: 'Cannot set a variant as a parent' }, { status: 400 });
+        }
+        
+        if (err.message === 'Drill cannot be its own parent') {
+            return json({ error: 'Drill cannot be its own parent' }, { status: 400 });
+        }
+        
         return json({ error: 'Failed to set variant relationship' }, { status: 500 });
     }
-} 
+}

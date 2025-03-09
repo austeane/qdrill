@@ -59,9 +59,10 @@ export class PracticePlanService extends BaseEntityService {
    * @param {Object} planData - Practice plan data
    * @param {number|null} userId - User ID creating the plan (null if anonymous)
    * @returns {Promise<Object>} - The created practice plan with ID
+   * @throws {Error} If validation fails
    */
   async createPracticePlan(planData, userId = null) {
-    // Validate the practice plan
+    // Validate the practice plan - this will throw if invalid
     this.validatePracticePlan(planData);
     
     // If user is not logged in, force public visibility and editable by others
@@ -72,7 +73,7 @@ export class PracticePlanService extends BaseEntityService {
 
     // Validate visibility
     const validVisibilities = ['public', 'unlisted', 'private'];
-    if (!validVisibilities.includes(planData.visibility)) {
+    if (!planData.visibility || !validVisibilities.includes(planData.visibility)) {
       throw new Error('Invalid visibility setting');
     }
 
@@ -706,5 +707,5 @@ export class PracticePlanService extends BaseEntityService {
   }
 }
 
-// Export a singleton instance of the service
+// Create and export an instance of the service
 export const practicePlanService = new PracticePlanService();

@@ -51,6 +51,7 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 - `pnpm run test:unit` - Run Vitest unit tests in watch mode
 - `pnpm run test:unit:run` - Run Vitest unit tests once
 - `pnpm run test:unit:coverage` - Run Vitest unit tests with coverage
+- `pnpm run test:unit --run <file-path>` - Run specific Vitest tests once (e.g., `pnpm run test:unit --run src/lib/stores/__tests__/dragManager.test.js`)
 
 ## Code Quality
 - `pnpm run lint` - Run linting checks

@@ -82,24 +82,27 @@
         Drag drills here
       </div>
     {:else}
-      <!-- First render parallel groups -->
-      {#each Object.entries(groupedItems.groups) as [groupId, items]}
-        <ParallelGroup 
-          {groupId} 
-          {items} 
-          {sectionIndex} 
-          sectionId={section.id}
-        />
-      {/each}
-      
-      <!-- Then render non-grouped items -->
-      {#each groupedItems.singles as item, itemIndex}
-        <DrillItem 
-          {item} 
-          {itemIndex} 
-          {sectionIndex}
-          onRemove={() => removeItem(sectionIndex, section.items.indexOf(item))} 
-        />
+      <!-- Render all items while preserving original order -->
+      {#each section.items as item, itemIndex}
+        {#if item.parallel_group_id}
+          <!-- Render group header when we find the first item of that group -->
+          {#if !section.items.slice(0, itemIndex).some(prevItem => prevItem.parallel_group_id === item.parallel_group_id)}
+            <ParallelGroup 
+              groupId={item.parallel_group_id} 
+              items={section.items} 
+              {sectionIndex} 
+              sectionId={section.id}
+            />
+          {/if}
+        {:else}
+          <!-- Render regular drill items -->
+          <DrillItem 
+            {item} 
+            {itemIndex} 
+            {sectionIndex}
+            onRemove={() => removeItem(sectionIndex, itemIndex)} 
+          />
+        {/if}
       {/each}
     {/if}
   </ul>

@@ -148,7 +148,7 @@ export async function DELETE({ params, locals }) {
     
     try {
         // In dev mode, we need to handle the case properly without breaking auth checks
-        if (dev && !userId) {
+        if (dev) {
             // In dev mode, get the drill first to check it exists
             const drill = await drillService.getById(id);
             if (!drill) {

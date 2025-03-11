@@ -56,8 +56,12 @@
 	  <!-- Right Side: Image -->
 	  <div class="lg:w-1/2 flex justify-center">
 		<img 
-		  src="/images/drill.png" 
-		  alt="Head Coach Chris Radojewski explaining a drill. Photo credit Quadball Canada." 
+		  src="/images/homepage-hero.jpg"
+			  width="1200"
+			  height="900"
+			  loading="eager"
+			  decoding="async" 
+		  alt="Emma Sherwood asking a question at a Team Canada practice. Photo credit Soleil Heaney." 
 		  class="w-full max-w-md h-auto object-contain"
 		/>
 	  </div>

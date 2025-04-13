@@ -285,10 +285,11 @@
 
     try {
       const method = formation.id ? 'PUT' : 'POST';
-      const url = formation.id ? `/api/formations/${formation.id}` : '/api/formations';
+      // Always use the /api/formations endpoint for both POST and PUT
+      const url = '/api/formations'; 
       
       const requestBody = {
-        id: formation.id,
+        id: formation.id, // The ID is included in the body for PUT requests
         name: $name,
         brief_description: $brief_description,
         detailed_description: $detailed_description,

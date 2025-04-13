@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import ExcalidrawWrapper from '../../../components/ExcalidrawWrapper.svelte';
+  import { dev } from '$app/environment';
   
   export let data;
   
@@ -88,7 +89,7 @@
         </button>
       </div>
       
-      {#if $page.data.session && $page.data.session.user.id === formation.created_by || formation.is_editable_by_others}
+      {#if dev || ($page.data.session && $page.data.session.user.id === formation.created_by) || formation.is_editable_by_others}
         <div class="flex space-x-4">
           <button 
             class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -96,7 +97,7 @@
           >
             Edit
           </button>
-          {#if $page.data.session && $page.data.session.user.id === formation.created_by}
+          {#if dev || ($page.data.session && $page.data.session.user.id === formation.created_by)}
             <button 
               class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
               on:click={handleDelete}

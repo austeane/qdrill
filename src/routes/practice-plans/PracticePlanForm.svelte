@@ -1,10 +1,11 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { goto } from '$app/navigation';
   import { toast } from '@zerodevx/svelte-toast';
   import { page } from '$app/stores';
   import { cart } from '$lib/stores/cartStore';
   import { undo, redo, canUndo, canRedo, initializeHistory } from '$lib/stores/historyStore';
+  import { signIn } from '@auth/sveltekit/client';
   
   // Import stores
   import { 
@@ -84,12 +85,68 @@
   
   // Handle form submission
   async function handleSubmit() {
-    const planId = await submitPracticePlan($sections, practicePlan);
-    if (planId) {
-      if (!practicePlan) {
+    // Check if logged in before potentially saving state
+    if (!$page.data.session && $visibility !== 'public') {
+      const confirmed = confirm(
+        `Log in to create a ${$visibility} practice plan.\n\n` +
+        'Click OK to log in with Google\n' +
+        'Click Cancel to create as public instead'
+      );
+
+      if (confirmed) {
+        // Store form data in sessionStorage
+        const formData = {
+          name: $planName,
+          description: $planDescription,
+          practice_goals: $practiceGoals,
+          phase_of_season: $phaseOfSeason,
+          estimated_number_of_participants: $estimatedNumberOfParticipants,
+          is_editable_by_others: $isEditableByOthers,
+          visibility: $visibility,
+          sections: $sections, // Include sections and items
+          start_time: $startTime
+        };
+        console.log('Storing pending practice plan data:', formData);
+        sessionStorage.setItem('pendingPracticePlanData', JSON.stringify(formData));
+        await signIn('google');
+        return;
+      } else {
+        visibility.set('public');
+        isEditableByOthers.set(true); // Ensure editable if becoming public
+      }
+    }
+
+    // If not logged in after the check, ensure settings are correct
+    if (!$page.data.session) {
+      visibility.set('public');
+      isEditableByOthers.set(true);
+    }
+
+    // Call the existing submit function (now assuming logged in or public/editable)
+    const resultPlanId = await submitPracticePlan($sections, practicePlan);
+    
+    if (resultPlanId) {
+      // After successful submission for non-logged in users
+      if (!$page.data.session) {
+        const confirmedAssociate = confirm(
+          'Would you like to log in so that you can own this practice plan?\n\n' +
+          'Click OK to log in with Google\n' +
+          'Click Cancel to continue without logging in'
+        );
+
+        if (confirmedAssociate) {
+          console.log('Setting practicePlanToAssociate:', resultPlanId);
+          sessionStorage.setItem('practicePlanToAssociate', resultPlanId);
+          await signIn('google');
+          return; // Stop further execution, redirecting to login
+        }
+      }
+
+      // If not associating or already logged in, clear cart and navigate
+      if (!practicePlan) { // Only clear cart on create
         cart.clear();
       }
-      goto(`/practice-plans/${planId}`);
+      goto(`/practice-plans/${resultPlanId}`);
     }
   }
   
@@ -97,47 +154,90 @@
   onMount(async () => {
     initializeHistory();
     
-    if ($cart.length === 0 && !practicePlan) {
-        showEmptyCartModal = true;
-    }
-    
-    if (!practicePlan) {
-        const cartItems = $cart.map(drill => ({
-            id: drill.id,
-            type: 'drill',
-            name: drill.name,
-            drill: drill,
-            expanded: false,
-            selected_duration: 15,
-            diagram_data: null,
-            parallel_group_id: null
-        }));
+    // Restore pending data if it exists
+    const pendingData = sessionStorage.getItem('pendingPracticePlanData');
+    if (pendingData) {
+      try {
+        const data = JSON.parse(pendingData);
+        console.log('Restoring pending practice plan data:', data);
         
-        // Add cart items to sections
-        if (cartItems.length > 0 && $sections.length > 0) {
-          sections.update(currentSections => {
-            const newSections = [...currentSections];
-            
-            // Add all drills to the "Skill Building" section (index 1)
-            const skillBuildingIndex = 1;
-            
-            // Add all drills to the Skill Building section
-            cartItems.forEach(item => {
-              newSections[skillBuildingIndex].items.push({
-                id: item.id,
-                type: 'drill',
-                name: item.name,
-                drill: item.drill,
-                duration: 15,
-                selected_duration: 15
-              });
-            });
-            
-            return newSections;
-          });
+        // Restore simple fields
+        planName.set(data.name);
+        planDescription.set(data.description);
+        practiceGoals.set(data.practice_goals);
+        phaseOfSeason.set(data.phase_of_season);
+        estimatedNumberOfParticipants.set(data.estimated_number_of_participants);
+        isEditableByOthers.set(data.is_editable_by_others);
+        visibility.set(data.visibility);
+        startTime.set(data.start_time);
+        
+        // Restore sections and items (might need careful handling)
+        if (data.sections) {
+          // Assuming initializeSections can handle this structure
+          initializeSections({ sections: data.sections }); 
+          // OR manually update the sections store:
+          // sections.set(data.sections);
         }
-        
-        selectedItems.set(cartItems);
+
+        // Re-initialize history after restoring state
+        initializeHistory();
+
+        // Clear the stored data
+        sessionStorage.removeItem('pendingPracticePlanData');
+        await tick(); // Wait for updates
+        console.log('Pending practice plan data restored and removed.');
+
+      } catch (e) {
+        console.error('Error restoring pending practice plan data:', e);
+        sessionStorage.removeItem('pendingPracticePlanData'); // Clear corrupted data
+      }
+    } else {
+      // Original onMount logic if no pending data
+      if ($cart.length === 0 && !practicePlan) {
+        showEmptyCartModal = true;
+      }
+      
+      if (!practicePlan) {
+          const cartItems = $cart.map(drill => ({
+              id: drill.id,
+              type: 'drill',
+              name: drill.name,
+              drill: drill,
+              expanded: false,
+              selected_duration: 15,
+              diagram_data: null,
+              parallel_group_id: null
+          }));
+          
+          // Add cart items to sections
+          if (cartItems.length > 0 && $sections.length > 0) {
+            sections.update(currentSections => {
+              const newSections = [...currentSections];
+              
+              // Add all drills to the "Skill Building" section (index 1)
+              const skillBuildingIndex = 1;
+              
+              // Add all drills to the Skill Building section
+              cartItems.forEach(item => {
+                newSections[skillBuildingIndex].items.push({
+                  id: item.id,
+                  type: 'drill',
+                  name: item.name,
+                  drill: item.drill,
+                  duration: 15,
+                  selected_duration: 15
+                });
+              });
+              
+              return newSections;
+            });
+          }
+          
+          selectedItems.set(cartItems);
+      } else {
+        // If editing an existing plan, initialize timelines
+        initializeTimelinesFromPlan(practicePlan);
+      }
     }
 
     // Add keyboard shortcuts

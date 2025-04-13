@@ -1,0 +1,3 @@
+ignoredBuiltDependencies:
+  - '@sveltejs/kit'
+  - '@vercel/speed-insights'

@@ -11,7 +11,7 @@ export class UserService extends BaseEntityService {
    */
   constructor() {
     super('users', 'id', ['*'], [
-      'id', 'name', 'email', 'image', 'email_verified'
+      'id', 'name', 'email', 'image', 'emailVerified'
     ]);
   }
 
@@ -44,7 +44,7 @@ export class UserService extends BaseEntityService {
     return this.withTransaction(async (client) => {
       // Get user basic data
       const userQuery = `
-        SELECT id, name, email, image, email_verified 
+        SELECT id, name, email, image, emailVerified 
         FROM users 
         WHERE id = $1
       `;

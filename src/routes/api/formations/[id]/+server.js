@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { formationService } from '$lib/server/services/formationService.js';
 import { authGuard } from '$lib/server/authGuard';
+import { dev } from '$app/environment';
 
 /**
  * GET handler for retrieving a specific formation
@@ -42,8 +43,8 @@ export const DELETE = authGuard(async ({ params, locals }) => {
       return json({ error: 'Formation not found' }, { status: 404 });
     }
     
-    // Only allow deletion if the user created the formation
-    if (formation.created_by !== userId) {
+    // Only allow deletion if the user created the formation OR if in dev mode
+    if (!dev && formation.created_by !== userId) {
       return json({ error: 'Unauthorized' }, { status: 403 });
     }
     

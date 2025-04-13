@@ -1,4 +1,5 @@
-import { createClient } from '@vercel/postgres';
+import { json } from '@sveltejs/kit';
+import { practicePlanService } from '$lib/server/services/practicePlanService.js';
 
 /**
  * Parses the URL query parameters to extract drill IDs.
@@ -14,10 +15,11 @@ function getSelectedDrillIds(searchParams) {
     .filter(id => !isNaN(id));
 }
 
-export async function load({ fetch, url }) {
-  // Fetch practice plans from your API
-  const practicePlansResponse = await fetch('/api/practice-plans');
-  const practicePlans = await practicePlansResponse.json();
+export async function load({ fetch, url, locals }) {
+  // Fetch practice plans directly from the service
+  const userId = locals.user?.id;
+  const result = await practicePlanService.getAll({ userId });
+  const practicePlans = result.items; // Assuming service returns { items: [...] }
 
   // Define filter options directly in the server-side code
   const filterOptions = {

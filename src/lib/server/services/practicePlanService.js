@@ -705,6 +705,30 @@ export class PracticePlanService extends BaseEntityService {
 
     return totalDuration;
   }
+
+  /**
+   * Associate an anonymously created practice plan with a user
+   * @param {number} id - Practice Plan ID
+   * @param {number} userId - User ID to associate with
+   * @returns {Promise<Object>} - The updated practice plan
+   * @throws {Error} - If plan not found or already owned
+   */
+  async associatePracticePlan(id, userId) {
+    const plan = await this.getById(id);
+
+    if (!plan) {
+      throw new Error('Practice plan not found');
+    }
+
+    // Check if already owned
+    if (plan.created_by !== null) {
+      // Return existing plan if already owned
+      return plan;
+    }
+
+    // Update the created_by field
+    return await this.update(id, { created_by: userId });
+  }
 }
 
 // Create and export an instance of the service

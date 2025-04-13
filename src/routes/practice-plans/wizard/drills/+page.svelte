@@ -312,9 +312,19 @@
                         >
                             <h4 class="text-sm font-medium text-gray-900">{drill.name}</h4>
                             <p class="mt-1 text-xs text-gray-500">{drill.brief_description}</p>
-                            <div class="mt-2 flex items-center text-xs text-gray-500">
-                                <span class="mr-2">⏱️ {drill.duration}min</span>
-                                <span>👥 {drill.min_participants}-{drill.max_participants} players</span>
+                            <div class="mt-2 flex items-center text-xs text-gray-500 space-x-2">
+                                {#if drill.suggested_length}
+                                    <span>⏱️ {drill.suggested_length}min</span>
+                                {/if}
+                                {#if drill.number_of_people_min || drill.number_of_people_max}
+                                <span>👥 
+                                    {#if drill.number_of_people_min}{drill.number_of_people_min}{/if}
+                                    {#if drill.number_of_people_min && drill.number_of_people_max}-{/if}
+                                    {#if drill.number_of_people_max}{drill.number_of_people_max}{/if}
+                                    {#if !drill.number_of_people_min && !drill.number_of_people_max}Any{/if}
+                                     players
+                                </span>
+                                {/if}
                             </div>
                         </button>
                     {/each}

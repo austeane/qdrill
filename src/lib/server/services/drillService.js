@@ -216,27 +216,203 @@ export class DrillService extends BaseEntityService {
   }
   
   /**
-   * Get drills with advanced filtering
-   * @param {Object} filters - Filter criteria
-   * @param {Object} options - Additional options like pagination
-   * @returns {Promise<Object>} - Filtered drills with pagination
+   * Get drills with advanced filtering, sorting, and pagination
+   * Overrides base getAll functionality for complex drill filtering
+   * @param {Object} [filters={}] - Filters object
+   * @param {string[]} [filters.skill_level] - Skill levels to filter by (match any)
+   * @param {string} [filters.complexity] - Complexity level
+   * @param {string[]} [filters.skills_focused_on] - Skills to filter by (match any)
+   * @param {string[]} [filters.positions_focused_on] - Positions to filter by (match any)
+   * @param {string[]} [filters.drill_type] - Drill types to filter by (match any)
+   * @param {number} [filters.number_of_people_min] - Minimum number of people
+   * @param {number} [filters.number_of_people_max] - Maximum number of people
+   * @param {number} [filters.suggested_length_min] - Minimum suggested length (e.g., minutes)
+   * @param {number} [filters.suggested_length_max] - Maximum suggested length (e.g., minutes)
+   * @param {boolean} [filters.hasVideo] - Filter by presence of video
+   * @param {boolean} [filters.hasDiagrams] - Filter by presence of diagrams
+   * @param {boolean} [filters.hasImages] - Filter by presence of images
+   * @param {string} [filters.searchQuery] - Text search query (searches name, descriptions)
+   * @param {Object} [options={}] - Sorting and pagination options
+   * @param {string} [options.sortBy='date_created'] - Column to sort by (e.g., 'name', 'date_created')
+   * @param {'asc'|'desc'} [options.sortOrder='desc'] - Sort order
+   * @param {number} [options.page=1] - Page number
+   * @param {number} [options.limit=10] - Items per page
+   * @param {string[]} [options.columns] - Columns to include in the result
+   * @returns {Promise<Object>} - Object containing `items` array and `pagination` info
    */
   async getFilteredDrills(filters = {}, options = {}) {
-    // Transform any array-based filter parameters
-    const transformedFilters = { ...filters };
-    
-    // Get drills with filter parameters
-    const results = await this.getAll({
-      ...options,
-      filters: transformedFilters
-    });
-    
-    // Add variation counts if there are results
-    if (results && results.items && results.items.length > 0) {
-      await this._addVariationCounts(results.items);
+    const { 
+      skill_level, complexity, skills_focused_on, positions_focused_on, 
+      drill_type, number_of_people_min, number_of_people_max, 
+      suggested_length_min, suggested_length_max, hasVideo, 
+      hasDiagrams, hasImages, searchQuery,
+      userId // Added userId filter
+    } = filters;
+    const { sortBy = 'date_created', sortOrder = 'desc', page = 1, limit = 10, columns = ['*'] } = options;
+
+    // Validate sort column and order
+    // Added columns based on indexes from performance.md for potential sorting
+    const allowedSortColumns = [
+      'name', 'date_created', 'complexity', 'suggested_length', 
+      'number_of_people_min', 'number_of_people_max', 
+      // Cannot easily sort by hasVideo/hasDiagrams/hasImages as they rely on expressions/partial indexes
+      // Cannot easily sort by array fields (skill_level, etc.) without complex queries
+    ]; 
+    const validSortBy = allowedSortColumns.includes(sortBy) ? sortBy : 'date_created';
+    const validSortOrder = this.validateSortOrder(sortOrder);
+
+    const conditions = [];
+    const queryParams = [];
+    let paramIndex = 1;
+
+    // Array filters (using ANY operator - @@ GIN operator might be better? Checking ANY first)
+    const addArrayFilter = (field, values) => {
+      if (values && Array.isArray(values) && values.length > 0) {
+        // Check if ANY value in the filter array is present in the column array
+        conditions.push(`${field} && $${paramIndex++}`); // && is the array overlap operator
+        queryParams.push(values);
+      }
+    };
+    addArrayFilter('skill_level', skill_level);
+    addArrayFilter('skills_focused_on', skills_focused_on);
+    addArrayFilter('positions_focused_on', positions_focused_on);
+    addArrayFilter('drill_type', drill_type);
+
+    // Simple equality filters
+    if (complexity) {
+      conditions.push(`complexity = $${paramIndex++}`);
+      queryParams.push(complexity);
     }
+
+    // Range filters
+    if (number_of_people_min !== undefined) {
+      // Find drills where *some* overlap exists with the requested range
+      // A drill range [min_drill, max_drill] overlaps [min_filter, max_filter] if:
+      // min_drill <= max_filter AND max_drill >= min_filter
+      // Assuming number_of_people_min/max define the *required* range for participants
+      // We want drills where the drill's min <= required_min AND drill's max >= required_min
+      // OR drills where drill's min <= required_max AND drill's max >= required_max
+      // OR drills where drill's min >= required_min AND drill's max <= required_max
+      // Simpler: Find drills where the drill range is *compatible* with the filter range
+      // A drill [d_min, d_max] can accommodate f_min people if d_min <= f_min <= d_max
+      // A drill [d_min, d_max] can accommodate f_max people if d_min <= f_max <= d_max
+      // If both f_min and f_max are provided, we need a drill that can handle *at least* f_min and *at most* f_max?
+      // Let's interpret as: find drills whose [min, max] range *overlaps* with the filter range [minPeople, maxPeople].
+      // This seems complex. Let's simplify: find drills where *at least* minPeople can participate.
+      // And if maxPeople is given, find drills where *at most* maxPeople can participate.
+      // This means: drill.min <= minPeople AND drill.max >= minPeople (can handle min requirement)
+      // AND drill.min <= maxPeople AND drill.max >= maxPeople (can handle max requirement)
+      // Let's refine: Find drills where number_of_people_min <= filter_min
+      conditions.push(`number_of_people_min <= $${paramIndex++}`);
+      queryParams.push(number_of_people_min);
+    }
+    if (number_of_people_max !== undefined) {
+       // And number_of_people_max >= filter_max (if max is not null)
+      conditions.push(`(number_of_people_max IS NULL OR number_of_people_max >= $${paramIndex++})`);
+      queryParams.push(number_of_people_max);
+    }
+
+    // Similar logic for suggested length
+    if (suggested_length_min !== undefined) {
+      conditions.push(`suggested_length >= $${paramIndex++}`);
+      queryParams.push(suggested_length_min);
+    }
+    if (suggested_length_max !== undefined) {
+      conditions.push(`suggested_length <= $${paramIndex++}`);
+      queryParams.push(suggested_length_max);
+    }
+
+    // Boolean filters based on index conditions from performance.md
+    if (hasVideo === true) {
+      conditions.push(`(video_link IS NOT NULL AND video_link != '')`);
+    } else if (hasVideo === false) {
+      conditions.push(`(video_link IS NULL OR video_link = '')`);
+    }
+
+    if (hasDiagrams === true) {
+      conditions.push(`(jsonb_array_length(diagrams) > 0)`); // Match index expression
+    } else if (hasDiagrams === false) {
+      conditions.push(`(diagrams IS NULL OR jsonb_array_length(diagrams) = 0)`);
+    }
+
+    if (hasImages === true) {
+      conditions.push(`(jsonb_array_length(images) > 0)`); // Match index expression
+    } else if (hasImages === false) {
+      conditions.push(`(images IS NULL OR jsonb_array_length(images) = 0)`);
+    }
+
+    // Search query
+    if (searchQuery) {
+      const searchPattern = `%${searchQuery.toLowerCase()}%`;
+      conditions.push(`(
+        LOWER(name) ILIKE $${paramIndex} OR 
+        LOWER(brief_description) ILIKE $${paramIndex} OR 
+        LOWER(detailed_description) ILIKE $${paramIndex}
+      )`);
+      queryParams.push(searchPattern);
+      paramIndex++;
+    }
+
+    // Visibility filter (apply default logic unless overridden by specific filters)
+    // Allows public, unlisted, or private if created_by matches userId
+    const visibilityConditions = [
+      "(visibility = 'public' OR visibility IS NULL)", // Treat NULL as public
+      "visibility = 'unlisted'"
+    ];
+    if (userId) {
+      visibilityConditions.push(`(visibility = 'private' AND created_by = $${paramIndex++})`);
+      queryParams.push(userId);
+    }
+    conditions.push(`(${visibilityConditions.join(' OR ')})`);
     
-    return results;
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const orderByClause = `ORDER BY ${validSortBy} ${validSortOrder}, ${this.primaryKey} ${validSortOrder}`;
+    const offset = (page - 1) * limit;
+
+    try {
+      // Get total count for pagination
+      const countQuery = `SELECT COUNT(*) FROM ${this.tableName} ${whereClause}`;
+      const countResult = await db.query(countQuery, queryParams);
+      const totalItems = parseInt(countResult.rows[0].count);
+      const totalPages = Math.ceil(totalItems / limit);
+
+      // Get the actual items
+      // Build the SELECT clause based on requested columns
+      let safeColumns = '*'; // Default to selecting all columns
+      // Check if 'columns' is provided, is an array, has elements, and isn't just ['*']
+      if (Array.isArray(columns) && columns.length > 0 && !(columns.length === 1 && columns[0] === '*')) {
+        // If specific columns are requested, quote them properly for SQL
+        // Escape any internal double quotes within column names (though unlikely)
+        safeColumns = columns.map(col => `"${col.replace(/"/g, '""' )}"`).join(', '); 
+      }
+      
+      const itemsQuery = `
+        SELECT ${safeColumns}
+        FROM ${this.tableName}
+        ${whereClause}
+        ${orderByClause}
+        LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+      `;
+      const itemsResult = await db.query(itemsQuery, [...queryParams, limit, offset]);
+      const items = itemsResult.rows;
+
+      // Add variation counts
+      await this._addVariationCounts(items);
+
+      return {
+        items,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalItems,
+          totalPages
+        }
+      };
+    } catch (error) {
+      console.error(`Error in DrillService.getFilteredDrills:`, error);
+      // Consider re-throwing or returning a specific error structure
+      throw error; 
+    }
   }
   
   /**

@@ -10,28 +10,64 @@ export class SkillService extends BaseEntityService {
    * Creates a new SkillService
    */
   constructor() {
-    super('skills', 'id', ['*'], [
-      'skill', 'drills_used_in', 'usage_count'
-    ]);
+    // Table name is 'skills', primary key is 'skill' (assuming skill name is unique)
+    // Selectable columns: skill, usage_count, drills_used_in
+    // Writable columns: skill (only on create)
+    super('skills', 'skill', ['skill', 'usage_count', 'drills_used_in'], ['skill']); 
   }
 
   /**
-   * Get all skills with usage statistics
-   * @param {Object} options - Query options
-   * @returns {Promise<Object>} - Skills with usage statistics
+   * Get all skills, ordered by usage count descending, then by name
+   * @returns {Promise<Array<Object>>} - List of skill objects { skill: string, usage_count: number, drills_used_in: number }
    */
-  async getAllSkills(options = {}) {
+  async getAllSkills() {
     try {
-      const result = await this.getAll({
-        ...options,
-        sortBy: options.sortBy || 'usage_count',
-        sortOrder: options.sortOrder || 'desc'
-      });
-      
-      return result;
+      const query = `
+        SELECT skill, usage_count, drills_used_in 
+        FROM skills 
+        ORDER BY usage_count DESC, skill ASC
+      `;
+      const result = await db.query(query);
+      return result.rows;
     } catch (error) {
-      console.error('Error in getAllSkills:', error);
-      throw error;
+      console.error('Error fetching all skills:', error);
+      throw new Error('Failed to fetch skills');
+    }
+  }
+
+  /**
+   * Add a new skill or increment its usage count if it exists.
+   * Handles the logic previously in DrillForm.svelte's addSkill function.
+   * @param {string} skillName - The name of the skill to add.
+   * @returns {Promise<Object>} - The created or updated skill object.
+   */
+  async addOrIncrementSkill(skillName) {
+    if (!skillName || typeof skillName !== 'string') {
+      throw new Error('Invalid skill name provided');
+    }
+    const trimmedSkill = skillName.trim();
+    if (trimmedSkill === '') {
+      throw new Error('Skill name cannot be empty');
+    }
+
+    try {
+      // Use ON CONFLICT to handle existing skills
+      const query = `
+        INSERT INTO skills (skill, usage_count, drills_used_in)
+        VALUES ($1, 1, 0) 
+        ON CONFLICT (skill) DO UPDATE SET
+          usage_count = skills.usage_count + 1
+        RETURNING skill, usage_count, drills_used_in;
+      `;
+      const result = await db.query(query, [trimmedSkill]);
+      if (result.rows.length === 0) {
+        throw new Error('Failed to add or update skill in database');
+      }
+      return result.rows[0];
+    } catch (error) {
+      console.error(`Error adding or incrementing skill "${trimmedSkill}":`, error);
+      // Check for specific DB errors if needed (e.g., constraints)
+      throw new Error('Database error while saving skill');
     }
   }
 

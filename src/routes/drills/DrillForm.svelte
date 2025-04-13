@@ -1,36 +1,22 @@
 <script>
-  import { onMount, tick } from 'svelte';
-  import { writable } from 'svelte/store';
+  import { onMount, tick, createEventDispatcher } from 'svelte';
+  import { writable, derived } from 'svelte/store';
   import { goto } from '$app/navigation';
   import ExcalidrawWrapper from '../../components/ExcalidrawWrapper.svelte';
   import { dndzone } from 'svelte-dnd-action';
   import { PREDEFINED_SKILLS } from '$lib/constants/skills';
-  import { allSkills, sortedSkills } from '$lib/stores/drillsStore';
   import { page } from '$app/stores';
   import { signIn } from '@auth/sveltekit/client';
   import { toast } from '@zerodevx/svelte-toast'
 
-  // Initialize stores
-  export let drill = {
-    id: null,
-    name: '',
-    brief_description: '',
-    detailed_description: '',
-    skill_level: [],
-    complexity: '',
-    suggested_length: '',
-    number_of_people_min: '',
-    number_of_people_max: '',
-    skills_focused_on: [],
-    positions_focused_on: [],
-    video_link: '',
-    images: [],
-    diagrams: [],
-    drill_type: [],
-    is_editable_by_others: false,
-    visibility: 'public'
-  };
+  const dispatch = createEventDispatcher();
 
+  // Component Props
+  export let drill = {};
+  export let allSkills = [];
+  export let allDrillNames = [];
+
+  // Initialize stores based on props
   let name = writable(drill.name ?? '');
   let brief_description = writable(drill.brief_description ?? '');
   let detailed_description = writable(drill.detailed_description ?? '');
@@ -39,11 +25,10 @@
   let suggested_length = writable(drill.suggested_length ?? '');
   let number_of_people_min = writable(drill.number_of_people_min ?? '');
   let number_of_people_max = writable(drill.number_of_people_max ?? '');
-  let skills_focused_on = writable(drill.skills_focused_on ?? []);
   let selectedSkills = writable(drill.skills_focused_on ?? []);
   let newSkill = writable('');
   let skillSuggestions = writable([]);
-  let skillSearchTerm = writable('');  // Add this line
+  let skillSearchTerm = writable('');
   let positions_focused_on = writable(drill.positions_focused_on ?? []);
   let video_link = writable(drill.video_link ?? '');
   let images = writable(drill.images?.map((image, index) => ({
@@ -70,21 +55,43 @@
   let fileInput;
   let showSkillsModal = false;
   let modalSkillSearchTerm = writable('');
-  let modalSkillSuggestions = writable([]);
 
-  let isVariation = writable(false);
-  let parentDrillId = writable(null);
-  let parentDrills = writable([]);
+  let isVariation = writable(!!drill.parent_drill_id);
+  let parentDrillId = writable(drill.parent_drill_id ?? null);
 
-  $: filteredSkills = $allSkills.filter(skill => 
-    typeof skill.skill === 'string' && skill.skill.toLowerCase().includes($skillSearchTerm.toLowerCase()) && 
+  $: availableSkills = allSkills.filter(skill => 
     !$selectedSkills.includes(skill.skill)
   );
 
+  $: skillSuggestionsDerived = derived(
+    [availableSkills, skillSearchTerm],
+    ([$availableSkills, $skillSearchTerm]) => {
+      const input = $skillSearchTerm.toLowerCase().trim();
+      if (!input) return [];
+      return $availableSkills.filter(skill => 
+        skill.skill.toLowerCase().includes(input)
+      ).slice(0, 10);
+    }
+  );
+
+  $: modalSkillSuggestionsDerived = derived(
+    [availableSkills, modalSkillSearchTerm],
+    ([$availableSkills, $modalSkillSearchTerm]) => {
+      const input = $modalSkillSearchTerm.toLowerCase().trim();
+      if (!input) return $availableSkills;
+      return $availableSkills.filter(skill => 
+        skill.skill.toLowerCase().includes(input)
+      ).slice(0, 20);
+    }
+  );
+  
+  $: parentDrillOptions = derived(allDrillNames, ($allDrillNames) => {
+    const currentDrillId = drill?.id;
+    return $allDrillNames.filter(d => d.id !== currentDrillId);
+  });
 
   let diagramRefs = [];
 
-  // List of available drill types
   const drillTypeOptions = [
     'Competitive', 
     'Skill-focus', 
@@ -100,22 +107,16 @@
   let selectedTemplate = 'blank';
 
   function addDiagram() {
-    // Save the current diagram if it exists
     if (diagramRefs.length > 0) {
       const lastDiagramRef = diagramRefs[diagramRefs.length - 1];
       if (lastDiagramRef) {
         lastDiagramRef.saveDiagram();
       }
     }
-
     diagrams.update(d => [...d, {
       template: selectedTemplate,
       elements: [],
-      appState: {
-        viewBackgroundColor: '#ffffff',
-        gridSize: 20,
-        collaborators: []
-      },
+      appState: { viewBackgroundColor: '#ffffff', gridSize: 20, collaborators: [] },
       files: {}
     }]);
     diagramKey++;
@@ -142,17 +143,11 @@
 
   function handleDiagramSave(event, index) {
     const diagramData = event.detail;
-    
-    // Ensure proper structure when saving
     const processedData = {
       elements: diagramData.elements || [],
-      appState: {
-        ...(diagramData.appState || {}),
-        collaborators: Array.isArray(diagramData.appState?.collaborators) ? diagramData.appState.collaborators : []
-      },
+      appState: { ...(diagramData.appState || {}), collaborators: Array.isArray(diagramData.appState?.collaborators) ? diagramData.appState.collaborators : [] },
       files: diagramData.files || {}
     };
-    
     diagrams.update(d => {
       const newDiagrams = [...d];
       newDiagrams[index] = processedData;
@@ -160,32 +155,15 @@
     });
   }
 
-  function handleMoveUp(index) {
-    moveDiagram(index, -1);
-  }
-
-  function handleMoveDown(index) {
-    moveDiagram(index, 1);
-  }
+  function handleMoveUp(index) { moveDiagram(index, -1); }
+  function handleMoveDown(index) { moveDiagram(index, 1); }
 
   onMount(async () => {
-    const response = await fetch('/api/skills');
-    const data = await response.json();
-    allSkills.set([...PREDEFINED_SKILLS, ...data.filter(skill => !PREDEFINED_SKILLS.includes(skill))]);
     mounted = true;
 
-    // Fetch skills with usage count
-    const skillsResponse = await fetch('/api/skills');
-    if (skillsResponse.ok) {
-      const skillsData = await skillsResponse.json();
-      allSkills.set(skillsData);
-    }
-
-    // Add this section to restore form data after login
     const pendingData = sessionStorage.getItem('pendingDrillData');
     if (pendingData) {
       const data = JSON.parse(pendingData);
-      // Restore all the form values
       name.set(data.name);
       brief_description.set(data.brief_description);
       detailed_description.set(data.detailed_description);
@@ -200,108 +178,64 @@
       images.set(data.images);
       diagrams.set(data.diagrams?.length > 0 ? data.diagrams : [{
         elements: [],
-        appState: {
-          viewBackgroundColor: '#ffffff',
-          gridSize: 20,
-          collaborators: []
-        },
+        appState: { viewBackgroundColor: '#ffffff', gridSize: 20, collaborators: [] },
         files: {}
       }]);
       drill_type.set(data.drill_type);
       is_editable_by_others.set(data.is_editable_by_others);
       visibility.set(data.visibility);
-      // Restore variation state if needed
       isVariation.set(!!data.parent_drill_id);
       if (data.parent_drill_id) {
         parentDrillId.set(data.parent_drill_id);
       }
-
-      // Clear the stored data
       sessionStorage.removeItem('pendingDrillData');
-      console.log('Restored pending drill data after login.');
-
-      // Force component updates if needed
       await tick(); 
-      diagramKey++; // Force diagram re-render
+      diagramKey++;
     }
   });
 
   function handleSkillInput() {
-    const input = $newSkill.toLowerCase().trim();
-    if (input.length > 0) {
-      // Filter existing skills for suggestions, ensuring we handle the skill property correctly
-      skillSuggestions.set($allSkills.filter(skill => 
-        typeof skill.skill === 'string' && 
-        skill.skill.toLowerCase().includes(input) && 
-        !$selectedSkills.includes(skill.skill)
-      ));
-    } else {
-      skillSuggestions.set([]);
-    }
-    skillSearchTerm.set(input);
+    skillSearchTerm.set($newSkill);
   }
 
   async function addSkill() {
     const rawSkill = $newSkill.trim();
     if (!rawSkill) return;
 
-    // Standardize the skill case
     const skillToAdd = rawSkill.toLowerCase().split(' ').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
 
+    if ($selectedSkills.some(s => s.toLowerCase() === skillToAdd.toLowerCase())) {
+      toast.push('This skill is already added');
+      return;
+    }
+    
+    selectedSkills.update(skills => [...skills, skillToAdd]);
+    newSkill.set('');
+    skillSearchTerm.set('');
+
     try {
-      // Check if skill already exists in selected skills (case-insensitive)
-      if ($selectedSkills.some(s => s.toLowerCase() === skillToAdd.toLowerCase())) {
-        toast.push('This skill is already added');
-        return;
-      }
-
-      // Check if skill exists in allSkills (case-insensitive)
-      const existingSkill = $allSkills.find(s => 
-        s.skill.toLowerCase() === skillToAdd.toLowerCase()
-      );
-
-      if (existingSkill) {
-        // If skill exists, use the existing case/formatting
-        selectSkill(existingSkill);
-        return;
-      }
-
-      // Add to selected skills immediately for UI responsiveness
-      selectedSkills.update(skills => [...skills, skillToAdd]);
-
-      // Add new skill to database
       const response = await fetch('/api/skills', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ skill: skillToAdd })
       });
 
-      if (!response.ok) throw new Error('Failed to add new skill');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to add skill' }));
+        throw new Error(errorData.error || 'Server error adding skill');
+      }
 
-      // Add to allSkills store
-      allSkills.update(skills => [...skills, { 
-        skill: skillToAdd, 
-        usage_count: 1, 
-        isPredefined: false 
-      }]);
-
-      toast.push('New skill added successfully');
+      const addedSkill = await response.json();
       
-      // Clear input and suggestions
-      newSkill.set('');
-      skillSuggestions.set([]);
+      toast.push('Skill added successfully');
 
     } catch (error) {
       console.error('Error adding skill:', error);
-      toast.push('Failed to add skill', {
-        theme: {
-          '--toastBackground': '#F56565',
-          '--toastColor': 'white',
-        }
+      toast.push(`Failed to add skill: ${error.message}`, {
+        theme: { '--toastBackground': '#F56565', '--toastColor': 'white' }
       });
-      // Remove from selected skills if server request failed
       selectedSkills.update(skills => skills.filter(s => s !== skillToAdd));
     }
   }
@@ -310,63 +244,44 @@
     if (event.key === 'Enter') {
       event.preventDefault();
       const skillToAdd = $newSkill.trim();
-      
-      // If a suggestion is highlighted/selected, use that
-      const matchingSuggestion = $skillSuggestions[0];
-      if (matchingSuggestion) {
-        selectSkill(matchingSuggestion);
+      const firstSuggestion = $skillSuggestionsDerived[0];
+
+      if (firstSuggestion) {
+        selectSkill(firstSuggestion);
       } else if (skillToAdd) {
-        // Otherwise add the typed skill
         addSkill();
       }
     }
   }
 
-  // Update the selectSkill function to handle skill objects consistently
   function selectSkill(skill) {
     const skillText = skill.skill || skill;
     if (!$selectedSkills.includes(skillText)) {
       selectedSkills.update(skills => [...skills, skillText]);
       newSkill.set('');
-      skillSuggestions.set([]);
+      skillSearchTerm.set('');
     }
   }
 
   function handleModalSkillInput() {
-    const input = $modalSkillSearchTerm.toLowerCase();
-    if (input.length > 0) {
-      modalSkillSuggestions.set($allSkills.filter(skill => 
-        typeof skill.skill === 'string' && skill.skill.toLowerCase().includes(input) && 
-        !$selectedSkills.includes(skill.skill)
-      ));
-    } else {
-      modalSkillSuggestions.set($allSkills.filter(skill => !$selectedSkills.includes(skill.skill)));
-    }
+    modalSkillSearchTerm.set($modalSkillSearchTerm);
   }
-
-  $: handleModalSkillInput();
 
   function openSkillsModal() {
     showSkillsModal = true;
     modalSkillSearchTerm.set('');
-    modalSkillSuggestions.set($allSkills.filter(skill => !$selectedSkills.includes(skill)));
   }
 
   function closeSkillsModal() {
     showSkillsModal = false;
-    modalSkillSearchTerm.set('');
-    modalSkillSuggestions.set([]);
   }
 
   function selectSkillFromModal(skill) {
-    if (!$selectedSkills.includes(skill.skill)) {
-      selectedSkills.update(skills => [...skills, skill.skill]);
-    }
+    selectSkill(skill);
   }
 
   function validateNumber(value, field) {
     if (value === '') {
-      // For max participants, empty string is valid
       if (field === 'number_of_people_max') {
         numberWarnings[field] = '';
         return;
@@ -391,11 +306,9 @@
     if ($positions_focused_on.length === 0) newErrors.positions_focused_on = 'Positions focused on are required';
     if ($drill_type.length === 0) newErrors.drill_type = 'At least one drill type is required';
     
-    // Add validation for number fields
     if ($number_of_people_min && !Number.isInteger(Number($number_of_people_min))) {
       newErrors.number_of_people_min = 'Min number of people must be a whole number';
     }
-    // Only validate max if it's not empty string and not "0"
     if ($number_of_people_max !== '' && $number_of_people_max !== '0' && !Number.isInteger(Number($number_of_people_max))) {
       newErrors.number_of_people_max = 'Max number of people must be a whole number';
     }
@@ -409,20 +322,16 @@
   }
 
   async function handleSubmit() {
-    // Save all diagrams before submitting
-    // Trigger saveDiagram on each component to dispatch 'save' events
     diagramRefs.forEach(ref => {
       if (ref && typeof ref.saveDiagram === 'function') {
-        ref.saveDiagram(); // This dispatches the event handled by handleDiagramSave
+        ref.saveDiagram();
       }
     });
 
-    // Wait for Svelte store updates triggered by handleDiagramSave to complete
     await tick();
 
     if (!validateForm()) return;
 
-    // If not logged in and trying to create private/unlisted drill
     if (!$page.data.session && $visibility !== 'public') {
       const confirmed = confirm(
         `Log in to create a ${$visibility} drill.\n\n` +
@@ -431,7 +340,6 @@
       );
       
       if (confirmed) {
-        // Store form data in sessionStorage
         const formData = {
           name: $name,
           brief_description: $brief_description,
@@ -444,7 +352,7 @@
           skills_focused_on: $selectedSkills,
           positions_focused_on: $positions_focused_on,
           video_link: $video_link,
-          diagrams: $diagrams, // Store the current diagrams state
+          diagrams: $diagrams,
           drill_type: $drill_type,
           visibility: $visibility,
           is_editable_by_others: $is_editable_by_others,
@@ -455,20 +363,18 @@
         await signIn('google');
         return;
       } else {
-        visibility.set('public'); // Update store value directly
+        visibility.set('public');
       }
     }
 
-    // If not logged in, force is_editable_by_others to true
     if (!$page.data.session) {
-      is_editable_by_others.set(true); // Update store value directly
+      is_editable_by_others.set(true);
     }
 
     try {
       const method = drill.id ? 'PUT' : 'POST';
       const url = drill.id ? `/api/drills/${drill.id}` : '/api/drills';
       
-      // Convert empty string or "0" to null for max participants
       const maxParticipants = ($number_of_people_max === '' || $number_of_people_max === '0') ? null : Number($number_of_people_max);
       
       const requestBody = {
@@ -477,21 +383,20 @@
         brief_description: $brief_description,
         detailed_description: $detailed_description,
         skill_level: $skill_level,
-        complexity: $complexity ? ($complexity.charAt(0).toUpperCase() + $complexity.slice(1)) : null, // Handle empty complexity
+        complexity: $complexity ? ($complexity.charAt(0).toUpperCase() + $complexity.slice(1)) : null,
         suggested_length: $suggested_length,
-        number_of_people_min: $number_of_people_min || null, // Ensure null if empty
+        number_of_people_min: $number_of_people_min || null,
         number_of_people_max: maxParticipants,
         skills_focused_on: $selectedSkills,
         positions_focused_on: $positions_focused_on,
         video_link: $video_link || null,
-        diagrams: $diagrams, // Send current diagrams state
+        diagrams: $diagrams,
         drill_type: $drill_type,
         is_editable_by_others: $is_editable_by_others,
         visibility: $visibility,
-        parent_drill_id: $isVariation ? $parentDrillId : null // Add parent_drill_id
+        parent_drill_id: $isVariation ? $parentDrillId : null
       };
 
-      // Log the data being sent, excluding the potentially large diagrams array
       const { diagrams: _, ...loggableData } = requestBody;
       console.log('Submitting drill data:', loggableData);
 
@@ -509,7 +414,6 @@
 
       const result = await response.json();
 
-      // After successful submission for non-logged in users
       if (!$page.data.session) {
         const confirmed = confirm(
           'Would you like to log in so that you can own this drill?\n\n' +
@@ -575,146 +479,62 @@
     fileInput.click();
   }
 
-  $: if (mounted) {
-    if (typeof window !== 'undefined') {
-      const skillLevelButtons = document.querySelectorAll('.skill-level-button');
-      skillLevelButtons.forEach(button => {
-        if ($skill_level.includes(button.textContent.toLowerCase())) {
-          button.classList.add('selected');
-        } else {
-          button.classList.remove('selected');
-        }
-      });
-
-      const positionButtons = document.querySelectorAll('.position-button');
-      positionButtons.forEach(button => {
-        if ($positions_focused_on.includes(button.textContent)) {
-          button.classList.add('selected');
-        } else {
-          button.classList.remove('selected');
-        }
-      });
-    }
-  }
-
   function duplicateDiagram(index) {
     if (diagramRefs[index]) {
-      // Save the current state of the diagram being duplicated
       diagramRefs[index].saveDiagram();
     }
 
     diagrams.update(d => {
       const diagramToDuplicate = d[index];
-      // Create a deep copy of the diagram, ensuring new IDs for elements
       const duplicatedDiagram = {
         elements: diagramToDuplicate.elements?.map(element => ({
           ...element,
-          id: crypto.randomUUID(), // Generate new IDs for each element
-          groupIds: element.groupIds?.map(() => crypto.randomUUID()) // Generate new group IDs
+          id: crypto.randomUUID(),
+          groupIds: element.groupIds?.map(() => crypto.randomUUID())
         })) || [],
         appState: { ...diagramToDuplicate.appState },
         files: { ...diagramToDuplicate.files }
       };
       
-      // Insert the duplicate after the original
       const newDiagrams = [...d];
       newDiagrams.splice(index + 1, 0, duplicatedDiagram);
       return newDiagrams;
     });
     
-    diagramKey++; // Force re-render of diagrams
+    diagramKey++;
   }
 
-  $: {
-    if (drill?.id) {
-      name.set(drill.name ?? '');
-      brief_description.set(drill.brief_description ?? '');
-      detailed_description.set(drill.detailed_description ?? '');
-      skill_level.set(drill.skill_level ?? []);
-      complexity.set(drill.complexity ?? '');
-      suggested_length.set(drill.suggested_length ?? '');
-      number_of_people_min.set(drill.number_of_people_min ?? '');
-      number_of_people_max.set(drill.number_of_people_max ?? '');
-      skills_focused_on.set(drill.skills_focused_on ?? []);
-      selectedSkills.set(drill.skills_focused_on ?? []);
-      positions_focused_on.set(drill.positions_focused_on ?? []);
-      video_link.set(drill.video_link ?? '');
-      images.set(drill.images?.map((image, index) => ({
-        id: `image-${index}`,
-        file: image
-      })) ?? []);
-      diagrams.set(drill.diagrams ?? [{
-        elements: [],
-        appState: {
-          viewBackgroundColor: '#ffffff',
-          gridSize: 20,
-          collaborators: []
-        },
-        files: {}
-      }]);
-      drill_type.set(drill.drill_type ?? []);
-      is_editable_by_others.set(drill.is_editable_by_others ?? false);
-      visibility.set(drill.visibility ?? 'public');
-    }
-  }
-
-  onMount(() => {
-  });
-
-  // Add new function to fetch parent drills when needed
-  async function fetchParentDrills() {
-    const response = await fetch('/api/drills/names');  // New endpoint we'll create
-    if (response.ok) {
-      const drills = await response.json();
-      parentDrills.set(drills.filter(d => !d.parent_drill_id));
-    }
-  }
-
-  // Modify the isVariation store subscription
-  $: if ($isVariation) {
-    fetchParentDrills();
-  }
-
-  // Update the Editor initialization and handling
   function handleDescriptionChange(e) {
     detailed_description.set(e.detail.content);
   }
 
-  // Modify the Editor import and initialization
+  function removeSkill(skillToRemove) {
+    selectedSkills.update(skills => skills.filter(skill => skill !== skillToRemove));
+  }
+
   let Editor;
   onMount(async () => {
     try {
-      console.log('Attempting to load TinyMCE module...');
       const module = await import('@tinymce/tinymce-svelte');
-      console.log('Module loaded:', module);
       Editor = module.default;
-      console.log('Editor component assigned:', Editor);
     } catch (error) {
       console.error('Error loading TinyMCE:', error);
     }
   });
-
-  // Add this function to remove skills
-  function removeSkill(skillToRemove) {
-    selectedSkills.update(skills => skills.filter(skill => skill !== skillToRemove));
-  }
 </script>
 
 <svelte:head>
-  <title>{drill.id ? 'Edit Drill' : 'Create Drill'}</title>
-  <meta name="description" content={drill.id ? 'Edit an existing drill' : 'Create a new drill'} />
+  <title>{drill?.id ? 'Edit Drill' : 'Create Drill'}</title>
+  <meta name="description" content={drill?.id ? 'Edit an existing drill' : 'Create a new drill'} />
 </svelte:head>
 
 <section class="container mx-auto md:p-4 h-screen overflow-y-auto">
-  <!-- Wrap everything in a flex column for mobile -->
   <div class="flex flex-col h-full">
-    <!-- Two column container -->
     <div class="flex flex-col md:flex-row flex-grow gap-4 transition-all duration-300 ease-in-out">
-      <!-- Left Column: Form (without submit button) -->
       <div class="flex-1 min-w-0 md:p-4 border rounded-md transition-all duration-300 ease-in-out">
         <div class="max-w-lg mx-auto md:mx-auto p-4 md:p-0">
-          <h1 class="text-2xl font-bold text-center mb-6">{drill.id ? 'Edit Drill' : 'Create Drill'}</h1>
-          <form on:submit|preventDefault={handleSubmit} class="space-y-6">
+          <h1 class="text-2xl font-bold text-center mb-6">{drill?.id ? 'Edit Drill' : 'Create Drill'}</h1>
+          <form on:submit|preventDefault={handleSubmit} class="space-y-6" method="POST">
             <div class="flex flex-col">
               <label for="name" class="mb-1 text-sm font-medium text-gray-700">Drill Name:</label>
               <input id="name" bind:value={$name} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -769,7 +589,6 @@
               {/if}
             </div>
 
-            <!-- Moved Drill Type Field -->
             <div class="flex flex-col">
               <label class="mb-1 text-sm font-medium text-gray-700">Drill Type:</label>
               <p class="text-xs text-gray-500 mb-1">Select one or more drill types.</p>
@@ -870,64 +689,53 @@
 
             <div class="flex flex-col">
               <label for="skills_focused_on" class="mb-1 text-sm font-medium text-gray-700">Skills Focused On:</label>
-              <div class="relative">
-                <input
-                  id="skills_focused_on"
-                  bind:value={$newSkill}
-                  on:input={handleSkillInput}
-                  on:keydown={handleSkillKeydown}
-                  placeholder="Type to search or add new skills"
-                  class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {#if $skillSuggestions.length > 0}
-                  <ul class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto">
-                    {#each $skillSuggestions as suggestion}
-                      <li>
-                        <button
-                          type="button"
-                          on:click={() => selectSkill(suggestion)}
-                          class="w-full text-left px-3 py-2 hover:bg-gray-100"
-                        >
-                          {suggestion.skill}
-                          {#if suggestion.isPredefined}
-                            <span class="text-xs text-gray-500 ml-2">(predefined)</span>
-                          {/if}
-                        </button>
-                      </li>
-                    {/each}
-                  </ul>
-                {:else if $newSkill.trim().length > 0 && !$allSkills.some(s => s.skill.toLowerCase() === $newSkill.toLowerCase())}
-                  <div class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 p-2">
-                    <button
-                      type="button"
-                      on:click={addSkill}
-                      class="w-full text-left text-blue-600 hover:text-blue-800"
-                    >
-                      Add "{$newSkill}" as new skill
-                    </button>
-                  </div>
-                {/if}
-              </div>
-              
-              <!-- Selected skills display -->
-              <div class="flex flex-wrap gap-2 mt-2">
-                {#each $selectedSkills as skill}
-                  <span class="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full flex items-center">
+              <div class="flex flex-wrap gap-2 mb-2">
+                {#each $selectedSkills as skill (skill)}
+                  <span class="flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
                     {skill}
-                    <button
-                      type="button"
-                      class="ml-1 text-blue-600 hover:text-blue-800"
-                      on:click={() => removeSkill(skill)}
-                    >
-                      ×
-                    </button>
+                    <button type="button" on:click={() => removeSkill(skill)} class="ml-1 text-blue-600 hover:text-blue-800">&times;</button>
                   </span>
                 {/each}
               </div>
+              <div class="flex items-center space-x-2 relative">
+                <input 
+                  type="text" 
+                  bind:value={$newSkill}
+                  on:input={handleSkillInput}
+                  on:keydown={handleSkillKeydown}
+                  placeholder="Type to add or find skill..."
+                  class="flex-grow p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button 
+                  type="button" 
+                  on:click={addSkill} 
+                  disabled={!$newSkill.trim()}
+                  class="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+                >Add</button>
+                <button 
+                  type="button" 
+                  on:click={openSkillsModal} 
+                  class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                >Browse</button>
+                
+                {#if $skillSuggestionsDerived.length > 0}
+                  <div class="absolute top-full left-0 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
+                    {#each $skillSuggestionsDerived as suggestion (suggestion.skill)}
+                      <button 
+                        type="button"
+                        class="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100"
+                        on:click={() => selectSkill(suggestion)}
+                      >
+                        {suggestion.skill}
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+               {#if $errors.skills_focused_on}
+                <p class="text-red-500 text-sm mt-1">{$errors.skills_focused_on}</p>
+              {/if}
             </div>
-            {#if $errors.skills_focused_on}
-              <p class="text-red-500 text-sm mt-1">{$errors.skills_focused_on}</p>
-            {/if}
 
             <div class="flex flex-col">
               <label for="positions_focused_on" class="mb-1 text-sm font-medium text-gray-700">Positions Focused On:</label>
@@ -947,7 +755,6 @@
               <input id="video_link" bind:value={$video_link} class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
-            <!-- Visibility Field -->
             <div class="flex flex-col">
               <label class="mb-1 text-sm font-medium text-gray-700">Visibility:</label>
               <select 
@@ -965,7 +772,6 @@
               {/if}
             </div>
 
-            <!-- Is Editable by Others Field -->
             <div class="flex items-center">
               <input
                 id="editable_by_others"
@@ -1005,8 +811,8 @@
                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                 >
                   <option value="">Select a parent drill</option>
-                  {#each $parentDrills as drill}
-                    <option value={drill.id}>{drill.name}</option>
+                  {#each $parentDrillOptions as parent (parent.id)}
+                    <option value={parent.id}>{parent.name}</option>
                   {/each}
                 </select>
                 {#if $errors.parentDrillId}
@@ -1018,197 +824,88 @@
         </div>
       </div>
 
-      <!-- Right Column: Diagrams and Images -->
-      <div class="flex-1 min-w-0 md:p-4 p-4 border rounded-md transition-all duration-300 ease-in-out">
-        <h2 class="text-xl font-semibold mb-4">Diagrams and Images</h2>
-        <div class="mt-6">
-          <h3 class="text-lg font-semibold mb-2">Diagrams</h3>
-          <p class="text-sm text-gray-600 mb-4">💡 Tip: Click the "Fullscreen" button in the top-right corner of each diagram for the best editing experience. If user interface elements are getting in your way, you can scroll the whole diagram canvas.</p>
-          <div class="space-y-4">
-            {#each $diagrams as diagram, index (index + '-' + diagramKey)}
-              <div class="border p-4 rounded">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-lg font-semibold">Diagram {index + 1}</span>
-                  <div class="flex gap-2">
-                    {#if index > 0}
-                      <button type="button" class="text-blue-600 hover:text-blue-800" on:click={() => handleMoveUp(index)}>↑</button>
-                    {/if}
-                    {#if index < $diagrams.length - 1}
-                      <button type="button" class="text-blue-600 hover:text-blue-800" on:click={() => handleMoveDown(index)}>↓</button>
-                    {/if}
-                    <button 
-                      type="button" 
-                      class="text-green-600 hover:text-green-800" 
-                      on:click={() => duplicateDiagram(index)}
-                    >
-                      Duplicate
-                    </button>
-                    <button type="button" class="text-red-600 hover:text-red-800" on:click={() => deleteDiagram(index)}>Delete</button>
-                  </div>
-                </div>
-                <ExcalidrawWrapper 
-                  bind:this={diagramRefs[index]}
-                  on:save={(event) => handleDiagramSave(event, index)} 
-                  id={`diagram-canvas-${index}`} 
-                  data={diagram} 
-                  index={index} 
-                  showSaveButton={true}
-                  template={diagram.template} 
-                />
-              </div>
-            {/each}
-          </div>
-          {#if showAddDiagramModal}
-            <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-              <div class="bg-white rounded-lg p-6 w-96">
-                <h2 class="text-xl font-semibold mb-4">Choose a Template</h2>
-                <div class="flex flex-col space-y-2">
-                  <label class="flex items-center space-x-2">
-                    <input type="radio" bind:group={selectedTemplate} value="blank" />
-                    <span>Blank</span>
-                  </label>
-                  <label class="flex items-center space-x-2">
-                    <input type="radio" bind:group={selectedTemplate} value="halfCourt" />
-                    <span>Half Court</span>
-                  </label>
-                  <label class="flex items-center space-x-2">
-                    <input type="radio" bind:group={selectedTemplate} value="fullCourt" />
-                    <span>Full Court</span>
-                  </label>
-                </div>
-                <div class="mt-4 flex justify-end space-x-2">
-                  <button 
-                    on:click={() => showAddDiagramModal = false}
-                    class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    on:click={addDiagram}
-                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Add Diagram
-                  </button>
-                </div>
-              </div>
-            </div>
-          {/if}
+      <div class="w-full md:w-64 flex-shrink-0 md:p-4">
+        <div class="sticky top-4 bg-white p-4 border rounded-md shadow-sm">
+          <h2 class="text-lg font-semibold mb-4">Actions</h2>
+          <button 
+            type="submit" 
+            on:click={handleSubmit} 
+            class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mb-3"
+          >
+            {drill?.id ? 'Save Changes' : 'Create Drill'}
+          </button>
           <button 
             type="button" 
-            on:click={() => showAddDiagramModal = true}
-            class="mt-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            on:click={() => goto(drill?.id ? `/drills/${drill.id}` : '/drills')}
+            class="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
           >
-            Add New Diagram
+            Cancel
           </button>
-        </div>
-
-        <!-- Images Section -->
-        <div class="mt-6">
-          <h3 class="text-lg font-semibold mb-2">Images</h3>
-          
-          <!-- Drag and drop zone for images -->
-          <div use:dndzone={{items: $images}} on:consider={handleDndConsider} on:finalize={handleDndFinalize}
-               class="grid grid-cols-2 md:grid-cols-3 gap-4 min-h-[100px] p-4 border-2 border-dashed border-gray-300 rounded-md">
-            {#each $images as image (image.id)}
-              <div class="relative group bg-white border rounded-md overflow-hidden">
-                <img src={URL.createObjectURL(image.file)} alt={`Image ${image.id}`} 
-                     class="w-full h-32 object-cover" />
-                <div class="absolute top-0 left-0 right-0 flex justify-between items-center p-2 bg-black bg-opacity-50 text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span class="text-sm cursor-move">Drag to reorder</span>
-                  <button
-                    type="button"
-                    on:click={() => removeImage(image.id)}
-                    class="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            {:else}
-              <p class="text-gray-600 col-span-full text-center">No images uploaded. Drag and drop images here or use the button below to add.</p>
-            {/each}
-          </div>
-
-          <!-- Image upload button and hidden file input -->
-          <div class="mt-4 flex items-center">
-            <button
-              type="button"
-              on:click={triggerFileInput}
-              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Add Images
-            </button>
-            <input
-              bind:this={fileInput}
-              type="file"
-              multiple
-              accept="image/*"
-              on:change={handleFileSelect}
-              class="hidden"
-            />
-            <span class="ml-4 text-sm text-gray-600">or drag and drop images above</span>
-          </div>
         </div>
       </div>
     </div>
-
-    <!-- Submit button container - always at bottom -->
-    <div class="mt-6 px-4 md:px-0">
-      <button
-        type="submit"
-        on:click={handleSubmit}
-        class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      >
-        {drill.id ? 'Update Drill' : 'Create Drill'}
-      </button>
-    </div>
   </div>
-</section>
 
-<!-- Skills Modal -->
-{#if showSkillsModal}
-  <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" on:click|self={closeSkillsModal}>
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-      <div class="mt-3 text-center">
-        <h3 class="text-lg leading-6 font-medium text-gray-900">Select Skills</h3>
-        <div class="mt-2">
-          <input
-            type="text"
-            bind:value={$modalSkillSearchTerm}
+  {#if showSkillsModal}
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50 p-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
+        <div class="p-4 border-b flex justify-between items-center">
+          <h3 class="text-lg font-medium">Browse Skills</h3>
+          <button on:click={closeSkillsModal} class="text-gray-500 hover:text-gray-700">&times;</button>
+        </div>
+        <div class="p-4">
+          <input 
+            type="text" 
             placeholder="Search skills..."
-            class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            bind:value={$modalSkillSearchTerm}
+            on:input={handleModalSkillInput}
+            class="w-full p-2 border border-gray-300 rounded-md mb-4"
           />
-          <div class="mt-2 max-h-60 overflow-y-auto">
-            {#each $modalSkillSuggestions as skill}
-              <button
-                class="w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer"
+        </div>
+        <div class="overflow-y-auto flex-grow p-4 pt-0">
+          <div class="flex flex-wrap gap-2">
+            {#each $modalSkillSuggestionsDerived as skill (skill.skill)}
+              <button 
                 on:click={() => selectSkillFromModal(skill)}
+                class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full hover:bg-blue-200"
               >
-                {skill.skill}
+                {skill.skill} ({skill.usage_count})
               </button>
             {/each}
-            {#if $modalSkillSuggestions.length === 0}
-              <p class="text-gray-500">No skills found.</p>
-            {/if}
+             {#if $modalSkillSuggestionsDerived.length === 0}
+                <p class="text-gray-500 text-sm w-full text-center">No matching skills found.</p>
+             {/if}
           </div>
         </div>
-        <div class="mt-4">
-          <button
-            on:click={closeSkillsModal}
-            class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-          >
-            Close
-          </button>
+        <div class="p-4 border-t text-right">
+          <button on:click={closeSkillsModal} class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Close</button>
         </div>
       </div>
     </div>
-  </div>
-{/if}
-
-<div class="toastContainer" />
+  {/if}
+  
+  {#if showAddDiagramModal}
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50">
+       <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
+         <h3 class="text-lg font-medium mb-4">Add Diagram</h3>
+         <div class="mb-4">
+           <label for="template-select" class="block text-sm font-medium text-gray-700 mb-1">Choose a template:</label>
+           <select id="template-select" bind:value={selectedTemplate} class="w-full p-2 border border-gray-300 rounded-md">
+             <option value="blank">Blank Canvas</option>
+             <option value="fullCourt">Full Court</option>
+             <option value="halfCourt">Half Court</option>
+           </select>
+         </div>
+         <div class="flex justify-end space-x-3">
+           <button on:click={() => showAddDiagramModal = false} class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+           <button on:click={addDiagram} class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">Add</button>
+         </div>
+       </div>
+    </div>
+  {/if}
+</section>
 
 <style>
-  /* Optional: Customize scrollbar for better UX */
   ::-webkit-scrollbar {
     width: 8px;
   }
@@ -1222,15 +919,13 @@
     background-color: rgba(100, 100, 100, 0.7);
   }
 
-  /* Optional: Highlight selected buttons */
   .selected {
-    background-color: #3b82f6; /* Tailwind's blue-500 */
+    background-color: #3b82f6;
     color: white;
   }
 
-  /* Optional: Add some styling for drag and drop */
   :global(.dndzone.dropzone) {
-    background-color: rgba(59, 130, 246, 0.1); /* Light blue background when dragging over */
+    background-color: rgba(59, 130, 246, 0.1);
   }
 
   textarea {
@@ -1240,7 +935,6 @@
     transition: height 0.1s ease-out;
   }
 
-  /* Add toast container styles */
   :global(.toastContainer) {
     position: fixed;
     top: 1rem;

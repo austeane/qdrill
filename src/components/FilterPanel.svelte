@@ -105,55 +105,49 @@
   
     // Function to handle toggling filters
     function toggleFilter(filterName) {
-      closeAllFilters();
+      console.log(`[FilterPanel] toggleFilter called with: ${filterName}`);
+      
+      let isCurrentlyOpen = false;
+      // Check the current state of the filter being toggled
       switch (filterName) {
-        case 'skillLevels':
-          showSkillLevels = true;
-          break;
-        case 'drillComplexity':
-          showDrillComplexity = true;
-          break;
-        case 'skillsFocusedOn':
-          showSkillsFocusedOn = true;
-          break;
-        case 'positionsFocusedOn':
-          showPositionsFocusedOn = true;
-          break;
-        case 'numberOfPeople':
-          showNumberOfPeople = true;
-          break;
-        case 'suggestedLengths':
-          showSuggestedLengths = true;
-          break;
-        case 'hasImages':
-          showHasImages = true;
-          break;
-        case 'drillTypes':
-          showDrillTypes = true;
-          break;
-        case 'phaseOfSeason':
-          if (filterType === 'practice-plans') {
-            showPhaseOfSeason = true;
-          }
-          break;
-        case 'practiceGoals':
-          if (filterType === 'practice-plans') {
-            showPracticeGoals = true;
-          }
-          break;
-        case 'estimatedParticipants':
-          if (filterType === 'practice-plans') {
-            showEstimatedParticipants = true;
-          }
-          break;
-        case 'containsDrill':
-          if (filterType === 'practice-plans') {
-            showContainsDrill = true;
-          }
-          break;
-        default:
-          break;
+        case 'skillLevels': isCurrentlyOpen = showSkillLevels; break;
+        case 'drillComplexity': isCurrentlyOpen = showDrillComplexity; break;
+        case 'skillsFocusedOn': isCurrentlyOpen = showSkillsFocusedOn; break;
+        case 'positionsFocusedOn': isCurrentlyOpen = showPositionsFocusedOn; break;
+        case 'numberOfPeople': isCurrentlyOpen = showNumberOfPeople; break;
+        case 'suggestedLengths': isCurrentlyOpen = showSuggestedLengths; break;
+        case 'hasImages': isCurrentlyOpen = showHasImages; break;
+        case 'drillTypes': isCurrentlyOpen = showDrillTypes; break;
+        case 'phaseOfSeason': if (filterType === 'practice-plans') isCurrentlyOpen = showPhaseOfSeason; break;
+        case 'practiceGoals': if (filterType === 'practice-plans') isCurrentlyOpen = showPracticeGoals; break;
+        case 'estimatedParticipants': if (filterType === 'practice-plans') isCurrentlyOpen = showEstimatedParticipants; break;
+        case 'containsDrill': if (filterType === 'practice-plans') isCurrentlyOpen = showContainsDrill; break;
       }
+
+      console.log(`[FilterPanel] isCurrentlyOpen before: ${isCurrentlyOpen}, showSkillLevels before: ${showSkillLevels}`);
+      // Always close all filters first
+      closeAllFilters();
+      console.log(`[FilterPanel] After closeAllFilters, showSkillLevels: ${showSkillLevels}`);
+
+      // If the target filter wasn't the one that was open, open it now.
+      if (!isCurrentlyOpen) {
+        switch (filterName) {
+          case 'skillLevels': showSkillLevels = true; break;
+          case 'drillComplexity': showDrillComplexity = true; break;
+          case 'skillsFocusedOn': showSkillsFocusedOn = true; break;
+          case 'positionsFocusedOn': showPositionsFocusedOn = true; break;
+          case 'numberOfPeople': showNumberOfPeople = true; break;
+          case 'suggestedLengths': showSuggestedLengths = true; break;
+          case 'hasImages': showHasImages = true; break;
+          case 'drillTypes': showDrillTypes = true; break;
+          case 'phaseOfSeason': if (filterType === 'practice-plans') showPhaseOfSeason = true; break;
+          case 'practiceGoals': if (filterType === 'practice-plans') showPracticeGoals = true; break;
+          case 'estimatedParticipants': if (filterType === 'practice-plans') showEstimatedParticipants = true; break;
+          case 'containsDrill': if (filterType === 'practice-plans') showContainsDrill = true; break;
+        }
+      }
+      console.log(`[FilterPanel] At end of toggleFilter, showSkillLevels: ${showSkillLevels}`);
+      // If it *was* open, closeAllFilters() already handled closing it.
     }
   
     function closeAllFilters() {
@@ -271,13 +265,25 @@
                 } else {
                     updated[value] = newState;
                 }
+                console.log(`[FilterPanel] selectedSkillLevels updated. New state:`, JSON.stringify(updated)); // Log new state
                 return updated;
             });
         };
     }
   
     // Create update handlers for each filter type
-    const updateSkillLevel = updateFilterState(selectedSkillLevels);
+    const updateSkillLevel = (value, newState) => {
+        selectedSkillLevels.update(current => {
+            const updated = { ...current };
+            if (newState === FILTER_STATES.NEUTRAL) {
+                delete updated[value];
+            } else {
+                updated[value] = newState;
+            }
+            console.log(`[FilterPanel] selectedSkillLevels updated. New state:`, JSON.stringify(updated)); // Log new state
+            return updated;
+        });
+    };
     const updateComplexity = updateFilterState(selectedComplexities);
     const updateSkillsFocused = (value, newState) => {
         console.log(`[FilterPanel] Updating skill: ${value} to state: ${newState}`);
@@ -331,7 +337,11 @@
     onMount(() => {
       // Initialize the updateFilters function
       const updateFilters = debounce(async () => {
-        if (!browser) return; // Only run on client side
+        console.log(`[FilterPanel] Debounced updateFilters executing.`); // Log execution start
+        if (!browser) {
+            console.log("[FilterPanel] updateFilters skipped (not browser).");
+            return;
+        } 
         
         // Start with a fresh URLSearchParams, keeping only pagination and sort
         const params = new URLSearchParams();
@@ -349,7 +359,8 @@
           // Add selected filters
           Object.entries($selectedSkillLevels).forEach(([level, state]) => {
             if (state === FILTER_STATES.REQUIRED) {
-              params.append('skillLevel[]', level);
+              params.append('skillLevel[]', level); 
+              console.log(`[FilterPanel] Appending skillLevel[] = ${level}`); // Log appended param
             }
           });
 
@@ -372,18 +383,18 @@
           });
 
           // Add number of people parameters
-          if ($selectedNumberOfPeopleMin > numberOfPeopleOptions.min) {
+          if ($selectedNumberOfPeopleMin !== null && $selectedNumberOfPeopleMin > numberOfPeopleOptions.min) {
             params.set('numberOfPeopleMin', $selectedNumberOfPeopleMin.toString());
           }
-          if ($selectedNumberOfPeopleMax < numberOfPeopleOptions.max) {
+          if ($selectedNumberOfPeopleMax !== null && $selectedNumberOfPeopleMax < numberOfPeopleOptions.max) {
             params.set('numberOfPeopleMax', $selectedNumberOfPeopleMax.toString());
           }
 
           // Add suggested lengths parameters
-          if ($selectedSuggestedLengthsMin > suggestedLengths.min) {
+          if ($selectedSuggestedLengthsMin !== null && $selectedSuggestedLengthsMin > suggestedLengths.min) {
             params.set('suggestedLengthsMin', $selectedSuggestedLengthsMin.toString());
           }
-          if ($selectedSuggestedLengthsMax < suggestedLengths.max) {
+          if ($selectedSuggestedLengthsMax !== null && $selectedSuggestedLengthsMax < suggestedLengths.max) {
             params.set('suggestedLengthsMax', $selectedSuggestedLengthsMax.toString());
           }
 
@@ -415,8 +426,15 @@
         // Common parameters
         if ($searchQuery) params.set('search', $searchQuery);
 
-        // Navigate with new parameters
-        await goto(`?${params.toString()}`, { replaceState: true });
+        const finalParams = params.toString();
+        console.log(`[FilterPanel] Navigating to: /drills?${finalParams}`); // Log target URL
+        
+        try {
+            await goto(`/drills?${finalParams}`, { replaceState: true, keepFocus: true, noScroll: true });
+            console.log("[FilterPanel] goto call completed.");
+        } catch (error) {
+            console.error("[FilterPanel] Error during goto navigation:", error);
+        }
       }, 300);
 
       // Set up the reactive statement with appropriate stores based on filter type
@@ -482,6 +500,7 @@
                 on:click={() => toggleFilter('skillLevels')}
                 aria-expanded={showSkillLevels}
                 aria-controls="skillLevels-content"
+                data-testid="filter-category-skillLevels"
             >
                 Skill Levels
                 {#if $selectedSkillLevels.length > 0}

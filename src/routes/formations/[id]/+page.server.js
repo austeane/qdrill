@@ -4,15 +4,25 @@ import { formationService } from '$lib/server/services/formationService.js';
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ params }) {
   try {
-    const formation = await formationService.getById(params.id);
+    const formationId = parseInt(params.id);
+    if (isNaN(formationId)) {
+      throw error(400, 'Invalid Formation ID');
+    }
+
+    const formation = await formationService.getById(formationId);
     
     if (!formation) {
       throw error(404, 'Formation not found');
     }
-    
-    return { formation };
+
+    return {
+      formation,
+    };
   } catch (err) {
     console.error('Error loading formation:', err);
-    throw error(500, 'Error loading formation');
+    if (err.status) {
+      throw error(err.status, err.body?.message || 'Error loading data');
+    }
+    throw error(500, err.message || 'Error loading formation data');
   }
 }

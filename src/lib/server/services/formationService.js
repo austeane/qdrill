@@ -1,4 +1,5 @@
 import { BaseEntityService } from './baseEntityService.js';
+import * as db from '$lib/server/db';
 
 /**
  * Service for managing formations
@@ -158,6 +159,7 @@ export class FormationService extends BaseEntityService {
    * @param {Object} [filters={}] - Filters object
    * @param {string[]} [filters.tags] - Tags to filter by (match any)
    * @param {string} [filters.formation_type] - Formation type to filter by
+   * @param {string} [filters.userId] - User ID for visibility filtering
    * @param {string} [filters.searchQuery] - Text search query (searches name, description)
    * @param {Object} [sortOptions={}] - Sorting options
    * @param {string} [sortOptions.sortBy='created_at'] - Column to sort by (e.g., 'name', 'created_at')
@@ -165,12 +167,13 @@ export class FormationService extends BaseEntityService {
    * @param {Object} [paginationOptions={}] - Pagination options
    * @param {number} [paginationOptions.page=1] - Page number
    * @param {number} [paginationOptions.limit=10] - Items per page
+   * @param {string[]} [paginationOptions.columns=['*']] - Columns to select
    * @returns {Promise<Object>} - Object containing `items` array and `pagination` info
    */
   async getFilteredFormations(filters = {}, sortOptions = {}, paginationOptions = {}) {
-    const { tags, formation_type, searchQuery } = filters;
+    const { tags, formation_type, searchQuery, userId } = filters;
     const { sortBy = 'created_at', sortOrder = 'desc' } = sortOptions;
-    const { page = 1, limit = 10 } = paginationOptions;
+    const { page = 1, limit = 10, columns = ['*'] } = paginationOptions;
 
     const allowedSortColumns = ['name', 'created_at', 'updated_at', 'formation_type'];
     const validSortBy = allowedSortColumns.includes(sortBy) ? sortBy : 'created_at';
@@ -204,8 +207,16 @@ export class FormationService extends BaseEntityService {
       paramIndex++;
     }
 
-    // Default visibility filter (adjust if needed, e.g., for user-specific views)
-    conditions.push(`visibility = 'public'`);
+    // Visibility filter (similar to drillService)
+    const visibilityConditions = [
+      "(visibility = 'public' OR visibility IS NULL)", // Treat NULL as public
+      "visibility = 'unlisted'"
+    ];
+    if (userId) {
+      visibilityConditions.push(`(visibility = 'private' AND created_by = $${paramIndex++})`);
+      queryParams.push(userId);
+    }
+    conditions.push(`(${visibilityConditions.join(' OR ')})`);
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const orderByClause = `ORDER BY ${validSortBy} ${validSortOrder}, ${this.primaryKey} ${validSortOrder}`;
@@ -219,8 +230,9 @@ export class FormationService extends BaseEntityService {
       const totalPages = Math.ceil(totalItems / limit);
 
       // Get the actual items
+      const safeColumns = Array.isArray(columns) && columns.length > 0 ? columns.map(col => `"${col}"`).join(', ') : '*';
       const itemsQuery = `
-        SELECT * 
+        SELECT ${safeColumns}
         FROM ${this.tableName}
         ${whereClause}
         ${orderByClause}

@@ -1,12 +1,11 @@
 import { json } from '@sveltejs/kit';
 import { formationService } from '$lib/server/services/formationService.js';
-import { getSession } from '@auth/sveltekit'; // Assuming you're using Auth.js
 
 /**
  * @type {import('./$types').RequestHandler}
  */
 export async function POST({ params, request, locals }) {
-  const session = await getSession({ request }); // Or however you get session/user data
+  const session = await locals.getSession();
 
   if (!session?.user?.id) {
     return json({ error: 'Unauthorized' }, { status: 401 });

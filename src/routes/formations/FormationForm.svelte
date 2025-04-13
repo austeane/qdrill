@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { writable } from 'svelte/store';
   import { goto } from '$app/navigation';
   import ExcalidrawWrapper from '../../components/ExcalidrawWrapper.svelte';
@@ -238,18 +238,15 @@
 
   // Handle form submission
   async function handleSubmit() {
-    // Save all diagrams before submitting
-    const savedDiagrams = await Promise.all(
-      diagramRefs.map(ref => {
-        if (ref && typeof ref.saveDiagram === 'function') {
-          return ref.saveDiagram();
-        }
-        return null;
-      })
-    );
+    // Trigger saveDiagram on each component to dispatch 'save' events
+    diagramRefs.forEach(ref => {
+      if (ref && typeof ref.saveDiagram === 'function') {
+        ref.saveDiagram(); // This dispatches the event handled by handleDiagramSave
+      }
+    });
 
-    // Update diagrams store with latest data
-    diagrams.set(savedDiagrams.filter(d => d !== null));
+    // Wait for Svelte store updates triggered by handleDiagramSave to complete
+    await tick();
 
     if (!validateForm()) return;
 

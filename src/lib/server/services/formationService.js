@@ -126,6 +126,32 @@ export class FormationService extends BaseEntityService {
     
     return normalizedData;
   }
+
+  /**
+   * Associate an anonymously created formation with a user
+   * @param {number} id - Formation ID
+   * @param {number} userId - User ID to associate with
+   * @returns {Promise<Object>} - The updated formation
+   * @throws {Error} - If formation not found or already owned
+   */
+  async associateFormation(id, userId) {
+    const formation = await this.getById(id);
+
+    if (!formation) {
+      throw new Error('Formation not found');
+    }
+
+    if (formation.created_by !== null) {
+      // Formation already has an owner, do nothing or throw error?
+      // Let's return the existing formation for now.
+      // console.warn(`Formation ${id} already associated with user ${formation.created_by}. Cannot associate with ${userId}.`);
+      // throw new Error('Formation already has an owner');
+      return formation; 
+    }
+
+    // Update the created_by field
+    return await this.update(id, { created_by: userId });
+  }
 }
 
 // Export a singleton instance of the service

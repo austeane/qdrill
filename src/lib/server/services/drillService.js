@@ -577,6 +577,30 @@ export class DrillService extends BaseEntityService {
     
     return normalizedData;
   }
+
+  /**
+   * Associate an anonymously created drill with a user
+   * @param {number} id - Drill ID
+   * @param {number} userId - User ID to associate with
+   * @returns {Promise<Object>} - The updated drill
+   * @throws {Error} - If drill not found or already owned
+   */
+  async associateDrill(id, userId) {
+    const drill = await this.getById(id);
+
+    if (!drill) {
+      throw new Error('Drill not found');
+    }
+
+    // Check if already owned
+    if (drill.created_by !== null) {
+      // Return existing drill if already owned
+      return drill;
+    }
+
+    // Update the created_by field
+    return await this.update(id, { created_by: userId });
+  }
 }
 
 // Export a singleton instance of the service

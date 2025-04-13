@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { writable } from 'svelte/store';
   import { goto } from '$app/navigation';
   import ExcalidrawWrapper from '../../components/ExcalidrawWrapper.svelte';
@@ -179,6 +179,50 @@
     if (skillsResponse.ok) {
       const skillsData = await skillsResponse.json();
       allSkills.set(skillsData);
+    }
+
+    // Add this section to restore form data after login
+    const pendingData = sessionStorage.getItem('pendingDrillData');
+    if (pendingData) {
+      const data = JSON.parse(pendingData);
+      // Restore all the form values
+      name.set(data.name);
+      brief_description.set(data.brief_description);
+      detailed_description.set(data.detailed_description);
+      skill_level.set(data.skill_level);
+      complexity.set(data.complexity);
+      suggested_length.set(data.suggested_length);
+      number_of_people_min.set(data.number_of_people_min);
+      number_of_people_max.set(data.number_of_people_max);
+      selectedSkills.set(data.skills_focused_on);
+      positions_focused_on.set(data.positions_focused_on);
+      video_link.set(data.video_link);
+      images.set(data.images);
+      diagrams.set(data.diagrams?.length > 0 ? data.diagrams : [{
+        elements: [],
+        appState: {
+          viewBackgroundColor: '#ffffff',
+          gridSize: 20,
+          collaborators: []
+        },
+        files: {}
+      }]);
+      drill_type.set(data.drill_type);
+      is_editable_by_others.set(data.is_editable_by_others);
+      visibility.set(data.visibility);
+      // Restore variation state if needed
+      isVariation.set(!!data.parent_drill_id);
+      if (data.parent_drill_id) {
+        parentDrillId.set(data.parent_drill_id);
+      }
+
+      // Clear the stored data
+      sessionStorage.removeItem('pendingDrillData');
+      console.log('Restored pending drill data after login.');
+
+      // Force component updates if needed
+      await tick(); 
+      diagramKey++; // Force diagram re-render
     }
   });
 
@@ -366,17 +410,15 @@
 
   async function handleSubmit() {
     // Save all diagrams before submitting
-    const savedDiagrams = await Promise.all(
-      diagramRefs.map(ref => {
-        if (ref && typeof ref.saveDiagram === 'function') {
-          return ref.saveDiagram();
-        }
-        return null;
-      })
-    );
+    // Trigger saveDiagram on each component to dispatch 'save' events
+    diagramRefs.forEach(ref => {
+      if (ref && typeof ref.saveDiagram === 'function') {
+        ref.saveDiagram(); // This dispatches the event handled by handleDiagramSave
+      }
+    });
 
-    // Update diagrams store with latest data
-    diagrams.set(savedDiagrams.filter(d => d !== null));
+    // Wait for Svelte store updates triggered by handleDiagramSave to complete
+    await tick();
 
     if (!validateForm()) return;
 
@@ -402,23 +444,24 @@
           skills_focused_on: $selectedSkills,
           positions_focused_on: $positions_focused_on,
           video_link: $video_link,
-          diagrams: $diagrams,
+          diagrams: $diagrams, // Store the current diagrams state
           drill_type: $drill_type,
           visibility: $visibility,
           is_editable_by_others: $is_editable_by_others,
           parent_drill_id: $isVariation ? $parentDrillId : null
         };
+        console.log('Storing pending drill data:', formData);
         sessionStorage.setItem('pendingDrillData', JSON.stringify(formData));
         await signIn('google');
         return;
       } else {
-        $visibility = 'public';
+        visibility.set('public'); // Update store value directly
       }
     }
 
     // If not logged in, force is_editable_by_others to true
     if (!$page.data.session) {
-      $is_editable_by_others = true;
+      is_editable_by_others.set(true); // Update store value directly
     }
 
     try {
@@ -426,33 +469,42 @@
       const url = drill.id ? `/api/drills/${drill.id}` : '/api/drills';
       
       // Convert empty string or "0" to null for max participants
-      const maxParticipants = $number_of_people_max === '' || $number_of_people_max === '0' ? null : Number($number_of_people_max);
+      const maxParticipants = ($number_of_people_max === '' || $number_of_people_max === '0') ? null : Number($number_of_people_max);
       
+      const requestBody = {
+        id: drill.id,
+        name: $name,
+        brief_description: $brief_description,
+        detailed_description: $detailed_description,
+        skill_level: $skill_level,
+        complexity: $complexity ? ($complexity.charAt(0).toUpperCase() + $complexity.slice(1)) : null, // Handle empty complexity
+        suggested_length: $suggested_length,
+        number_of_people_min: $number_of_people_min || null, // Ensure null if empty
+        number_of_people_max: maxParticipants,
+        skills_focused_on: $selectedSkills,
+        positions_focused_on: $positions_focused_on,
+        video_link: $video_link || null,
+        diagrams: $diagrams, // Send current diagrams state
+        drill_type: $drill_type,
+        is_editable_by_others: $is_editable_by_others,
+        visibility: $visibility,
+        parent_drill_id: $isVariation ? $parentDrillId : null // Add parent_drill_id
+      };
+
+      // Log the data being sent, excluding the potentially large diagrams array
+      const { diagrams: _, ...loggableData } = requestBody;
+      console.log('Submitting drill data:', loggableData);
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: drill.id,
-          name: $name,
-          brief_description: $brief_description,
-          detailed_description: $detailed_description,
-          skill_level: $skill_level,
-          complexity: $complexity.charAt(0).toUpperCase() + $complexity.slice(1),
-          suggested_length: $suggested_length,
-          number_of_people_min: $number_of_people_min,
-          number_of_people_max: maxParticipants,
-          skills_focused_on: $selectedSkills,
-          positions_focused_on: $positions_focused_on,
-          video_link: $video_link,
-          diagrams: $diagrams,
-          drill_type: $drill_type,
-          is_editable_by_others: $is_editable_by_others,
-          visibility: $visibility
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(errorText || 'Server error');
       }
 
       const result = await response.json();
@@ -466,6 +518,7 @@
         );
 
         if (confirmed) {
+          console.log('Setting drillToAssociate:', result.id);
           sessionStorage.setItem('drillToAssociate', result.id);
           await signIn('google');
           return;
@@ -476,7 +529,7 @@
       goto(`/drills/${result.id}`);
     } catch (error) {
       console.error('Error submitting drill:', error);
-      toast.push('Error saving drill. Please try again.', {
+      toast.push(`Error saving drill: ${error.message}. Please try again.`, {
         theme: {
           '--toastBackground': '#F56565',
           '--toastColor': 'white',
@@ -484,34 +537,6 @@
       });
     }
   }
-
-  // Add this to restore form data after login
-  onMount(() => {
-    const pendingData = sessionStorage.getItem('pendingDrillData');
-    if (pendingData) {
-      const data = JSON.parse(pendingData);
-      // Restore all the form values
-      name.set(data.name);
-      brief_description.set(data.brief_description);
-      detailed_description.set(data.detailed_description);
-      skill_level.set(data.skill_level);
-      complexity.set(data.complexity);
-      suggested_length.set(data.suggested_length);
-      number_of_people_min.set(data.number_of_people_min);
-      number_of_people_max.set(data.number_of_people_max);
-      selectedSkills.set(data.skills_focused_on);
-      positions_focused_on.set(data.positions_focused_on);
-      video_link.set(data.video_link);
-      images.set(data.images);
-      diagrams.set(data.diagrams);
-      drill_type.set(data.drill_type);
-      is_editable_by_others.set(data.is_editable_by_others);
-      visibility.set(data.visibility);
-
-      // Clear the stored data
-      sessionStorage.removeItem('pendingDrillData');
-    }
-  });
 
   function toggleSelection(store, value) {
     store.update(selected => {

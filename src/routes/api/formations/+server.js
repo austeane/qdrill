@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { formationService } from '$lib/server/services/formationService.js';
 import { authGuard } from '$lib/server/authGuard';
+import { dev } from '$app/environment';
 
 /**
  * GET handler for formations
@@ -81,16 +82,19 @@ export const PUT = authGuard(async ({ request, locals }) => {
   const { id } = formationData;
   
   try {
-    // Check if the formation exists and if the user has permission to update it
+    // Check if the formation exists
     const formation = await formationService.getById(id);
     
     if (!formation) {
       return json({ error: 'Formation not found' }, { status: 404 });
     }
     
-    // Check authorization: allow edit if user created the formation or if it's editable by others
-    if (formation.created_by !== userId && !formation.is_editable_by_others && formation.created_by !== null) {
-      return json({ error: 'Unauthorized' }, { status: 403 });
+    // Check authorization only if not in dev mode
+    if (!dev) {
+      // Allow edit if user created the formation or if it's editable by others
+      if (formation.created_by !== userId && !formation.is_editable_by_others && formation.created_by !== null) {
+        return json({ error: 'Unauthorized' }, { status: 403 });
+      }
     }
     
     // If formation has no creator, assign it to the current user

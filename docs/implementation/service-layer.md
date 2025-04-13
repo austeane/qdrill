@@ -2,6 +2,8 @@
 
 This document describes the service layer architecture implemented for QDrill. The service layer provides a clean separation between API endpoints and database operations, improving code organization, reusability, and maintainability.
 
+*(Note: A [recent code review](../code-review/holistic-summary.md) evaluated the service layer implementation. Key findings include limitations in the `BaseEntityService`'s filtering capabilities and permission model rigidity, leading to inheriting services often bypassing it with direct DB calls or complex overrides. Some services contain highly complex logic (`DrillService`, `PracticePlanService`), potential normalization inconsistencies (e.g., JSON handling), and performance concerns (`UserService.getUserProfile`). The hardcoded admin check in `UserService` and its redundant permission logic were also noted. While the pattern provides benefits, addressing these limitations and ensuring consistent usage across all entities is recommended.)*
+
 ## Overview
 
 The service layer pattern centralizes business logic and data access in specialized service classes, separating these concerns from the API routes. This architecture was first implemented with the Formations feature and provides a blueprint for future development.

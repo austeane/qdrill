@@ -2,6 +2,8 @@
 
 This document details the implementation of timeline features in the QDrill practice plan system, focusing on timeline configuration, color management, and duration calculations.
 
+*(Note: A [recent code review](../code-review/holistic-summary.md) highlighted the complexity inherent in managing parallel timelines, particularly within `sectionsStore.js`. Issues related to state synchronization, especially in the `TimelineSelectorModal`, were noted, suggesting potential challenges with the current reactivity model or state update patterns. The components involved, `ParallelGroup` and `TimelineColumn`, are tightly coupled to `sectionsStore`, impacting reusability for features like the Practice Plan Wizard.)*
+
 ## Timeline Architecture
 
 The timeline system organizes drills into parallel activity streams for different positions within a practice plan.

@@ -5,13 +5,21 @@ This section provides technical details and implementation specifics for the QDr
 ## Contents
 
 - Frontend Implementation
+  - Svelte and SvelteKit
+  - CSS Implementation
+  - State Management
 - Backend Implementation
+  - API Structure
+  - Authentication System
+  - Database Operations
+  - Service Layer ([See Separate Document](./service-layer.md))
 - Testing Strategy
 - Deployment Process
 - Code Patterns
 - [Drag and Drop System](./drag-and-drop.md)
 - [Timeline Management](./timeline-management.md)
-- [Service Layer Architecture](./service-layer.md) - Including implementation plan
+
+*(Note: A recent [code review](../code-review/holistic-summary.md) assessed the overall implementation. Key findings related to implementation include state management complexity, API scalability/authorization issues, and opportunities for component refactoring. Refer to the code review notes for detailed recommendations.)*
 
 ## Frontend Implementation
 
@@ -84,7 +92,9 @@ export function startItemDrag(event, sectionIndex, itemIndex, item, itemId) {
 
 ### State Management
 
-The application uses Svelte's store pattern extensively:
+The application uses Svelte's store pattern extensively.
+
+*(Note: Refer to the [State Management section in Architecture](./../architecture/index.md#state-management) for discussion on store complexity, coupling, and duplication issues identified during the code review.)*
 
 #### Store Implementation
 
@@ -101,7 +111,9 @@ The application uses Svelte's store pattern extensively:
 
 ### API Structure
 
-SvelteKit's endpoint handlers provide RESTful API functionality:
+SvelteKit's endpoint handlers provide RESTful API functionality.
+
+*(Note: Refer to the [API Design section in Architecture](./../architecture/index.md#api-design) for discussion on scalability, error handling, and authorization issues identified during the code review.)*
 
 #### Implementation Pattern
 

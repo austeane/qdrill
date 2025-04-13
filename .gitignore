@@ -16,3 +16,7 @@ vite.config.ts.timestamp-*
 .env*.local
 /coverage
 .nyc_output
+tests/__pycache__
+tests/_pycache
+cypress/downloads
+cypress/screenshots

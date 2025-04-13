@@ -2,6 +2,12 @@
 
 This directory contains detailed technical documentation for the QDrill project. For project overview, architecture, and development guidelines, see [CLAUDE.md](../CLAUDE.md) in the project root.
 
+## Overview
+
+This documentation provides detailed information about the QDrill project, covering its architecture, implementation details, and development guidelines.
+
+A comprehensive code review was recently conducted to assess the codebase and identify areas for improvement. The findings and recommendations are documented in the `code-review/` directory at the root of the project. See [`code-review/holistic-summary.md`](../code-review/holistic-summary.md) for a high-level overview.
+
 ## Documentation Structure
 
 - **[Architecture](./architecture/)**: System design, patterns, and architectural decisions

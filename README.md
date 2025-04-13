@@ -10,9 +10,12 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 - **Frontend**: Svelte with SvelteKit
 - **Backend**: SvelteKit
 - **Database**: Neon (PostgreSQL)
+- **Authentication**: Auth.js (using Google OAuth)
+- **Diagramming**: Excalidraw (via `@excalidraw/excalidraw`, note: includes React dependency)
+- **Rich Text Editing**: TinyMCE
 - **Deployment**: Hosted on Vercel
 - **CSS**: Tailwind CSS
-- **Testing**: Playwright and Cypress for end-to-end testing
+- **Testing**: Vitest (unit), Playwright and Cypress (end-to-end)
 
 ## Core Features
 
@@ -33,13 +36,13 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 - **Public vs. Private Drills**: Users can choose to make drills public or private. Public drills are accessible by all, while private drills require a specific link. Users can also create public versions of private drills with a different description.
 
 ### 2. Drill and Formation Filtering and Viewing
-- **Client-Side Filtering**: All drills and formations will be sent to the client side, where filtering will occur. This approach ensures fast, responsive filtering without the need for server-side requests, especially given that the total number of items is unlikely to exceed a couple of thousand.
+- **Client-Side Filtering**: Drills and formations are currently fetched to the client-side, where filtering occurs. While this provides a responsive feel for smaller datasets, it has been identified as a scalability limitation for larger numbers of items (code review notes).
 - **Listing Views**: The main views will display lists of drills or formations, showing their name, attributes, brief description, and indications of any media (pictures/videos).
 - **Detail Pages**: Each drill and formation will have a dedicated page showing all of its details. Users can comment on drills, upvote them, or create variations.
 - **Formations**: A specialized system for static player positions that can be created, shared, and viewed separately from the dynamic drills.
 
 ### 3. Practice Plan Creation and Management
-- **Form-Based Practice Planning**: Users can create practice plans by selecting drills based on the number of players, skill levels, practice duration, and skills to focus on.
+- **Form-Based Practice Planning**: Users can create practice plans by selecting drills based on the number of players, skill levels, practice duration, and skills to focus on. Two primary methods exist: a cart-based approach (adding drills to a cart first) and a step-by-step wizard.
 - **Plan Customization**: After selecting drills, users can define additional practice details, including:
   - Practice name
   - Practice goals
@@ -175,18 +178,13 @@ Deployment is automatic from the GitHub main branch to Vercel.
 
 Project documentation is organized in two main locations:
 
-1. **[CLAUDE.md](./CLAUDE.md)**: Project overview, architecture, and development guidelines
-   - Core features and technology stack
-   - Development workflow and commands 
-   - Code style guidelines
-   - Areas for improvement
-
-2. **[docs/](./docs/)**: Detailed technical documentation
-   - **[Architecture](./docs/architecture/)**: System design, patterns, and architectural decisions
-   - **[Implementation](./docs/implementation/)**: Technical details and implementation specifics
-     - **[Drag and Drop System](./docs/implementation/drag-and-drop.md)**: Detailed explanation of the drag and drop implementation
-     - **[Timeline Management](./docs/implementation/timeline-management.md)**: Timeline configuration and duration calculations
-     - **[Service Layer Architecture](./docs/implementation/service-layer.md)**: Service layer pattern and implementation plan for applying it to other parts of the codebase
+1. **`docs/`**: Detailed technical documentation
+   - **`Architecture`**: System design, patterns, and architectural decisions
+   - **`Implementation`**: Technical details and implementation specifics
+     - Drag and Drop System
+     - Timeline Management
+     - Service Layer Architecture
+2. **`code-review/`**: Contains detailed findings and notes from a comprehensive code review conducted to assess codebase health, identify areas for improvement, and align with professional development standards. See `code-review/holistic-summary.md` for an overview.
 
 ### Documentation Workflow
 

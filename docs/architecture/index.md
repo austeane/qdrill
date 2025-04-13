@@ -16,6 +16,8 @@ The QDrill application is built using a modular component architecture focused o
 
 ### Key Components
 
+*(Note: A recent code review identified several components, such as `ExcalidrawWrapper` and `PracticePlanForm`, as having high complexity and handling multiple concerns. The use of `ExcalidrawWrapper` also introduces a React dependency into the Svelte project. Refactoring these into smaller, focused components is recommended. See `code-review/` for details.)*
+
 #### Base Components
 - **Breadcrumb**: Navigation breadcrumb component for site navigation
 - **Cart**: Manages selected drills for practice plan creation
@@ -81,6 +83,8 @@ The application follows a unidirectional data flow pattern with Svelte's reactiv
 
 QDrill uses Svelte's store pattern for state management with specialized stores for different application concerns.
 
+*(Note: The code review identified significant complexity and tight coupling in several key stores, particularly `sectionsStore` and `practicePlanStore`. State duplication exists between the practice plan wizard (`wizardStore`) and the main form/cart (`practicePlanStore`, `sectionsStore`), leading to maintenance challenges. Components are often tightly coupled to specific store implementations, hindering reusability. The `dragStore` appears unused. Refactoring state management for better separation of concerns, reduced coupling, and eliminating duplication is a key recommendation. See `code-review/` for details.)*
+
 ### Key Stores
 
 - **cartStore**: Manages selected drills using localStorage for persistence
@@ -104,6 +108,8 @@ QDrill uses Svelte's store pattern for state management with specialized stores 
 ## API Design
 
 QDrill implements a RESTful API structure with consistent patterns for operations.
+
+*(Note: The code review highlighted several areas for improvement in the API design and implementation. Key findings include scalability bottlenecks due to reliance on client-side filtering/sorting for major entities (drills, practice plans), inconsistent error handling approaches across different endpoints, missing or inconsistent authorization checks (including risky `dev` mode bypasses), some non-standard REST conventions, and instances where API routes bypass the service layer or shared database connection pool. Addressing these issues, particularly implementing server-side pagination/filtering/sorting and strengthening authorization, is crucial for scalability and security. See `code-review/` for details.)*
 
 ### API Endpoints Structure
 

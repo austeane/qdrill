@@ -2,6 +2,8 @@
 
 The drag and drop system in QDrill provides a sophisticated, intuitive interface for organizing drills within practice plans. This document details the technical implementation and design patterns used.
 
+*(Note: A [recent code review](../code-review/holistic-summary.md) identified the `dragManager.js` store as the core of this system and noted its high complexity and tight coupling to `sectionsStore`. The reliance on mixed identifiers (indices, IDs, data attributes) and potential state synchronization issues (indicated by `window.__dragManager` usage in `TimelineColumn.svelte`) were also highlighted. Refactoring for simplification and decoupling is recommended. The `dragStore.js` file appears unused.)*
+
 ## Architecture Overview
 
 The drag and drop system is built on several coordinated components:

@@ -6,16 +6,16 @@
 
 This phase focuses on modifying the server-side code to handle data fetching efficiently.
 
-1.  **Optimize Formation Detail Payload (`formationService` & API)**
-    *   **File:** `src/lib/server/services/formationService.js` (or equivalent)
-    *   **Action:** Modify the `getById` method (or the underlying database query).
-        *   Change the SQL query (using `pg` from `src/lib/server/db.js`) to fetch **only** the necessary fields for the `Formation` entity itself using `SELECT col1, col2 FROM formations ...`.
+1.  **Optimize Formation Detail Payload (`formationService` & API)** **[VERIFIED - NO ACTION NEEDED]**
+    *   **File:** `src/lib/server/services/formationService.js`
     *   **File:** `src/routes/api/formations/[id]/+server.js`
-    *   **Action:** No changes likely needed here *if* the change is made purely within `formationService.getById`. However, verify it returns the slimmer payload.
+    *   **Status:** Verified that `formationService.getById` (inherited from `BaseEntityService`) and the API route `GET /api/formations/[id]` only fetch the core formation data. They do **not** currently fetch associated drills. Optimizing the initial load of formation details (without drills) will be handled in Phase 2 (frontend).
+    *   ~~**Action:** Modify the `getById` method (or the underlying database query).~~ (Not required)
+    *   ~~**Action:** No changes likely needed here *if* the change is made purely within `formationService.getById`. However, verify it returns the slimmer payload.~~ (Verified)
     *   **Considerations:**
-        *   Identify how drills are currently included (likely via SQL `JOIN`). Modify the query to remove or limit the join.
+        *   The mechanism for fetching drills for a specific formation needs to be identified (likely in `/formations/[id]/+page.server.js` or `/formations/[id]/+page.svelte`) and potentially optimized or deferred in Phase 2.
     *   **Risks:**
-        *   The frontend component (`/formations/[id]/+page.svelte`) will break if it expects the full list of detailed drills immediately. This requires coordinated changes in Phase 2.
+        *   The frontend component (`/formations/[id]/+page.svelte`) currently expects the full list of detailed drills immediately. This requires coordinated changes in Phase 2.
 
 2.  **Implement Backend Filtering/Sorting for Formations**
     *   **File:** `src/lib/server/services/formationService.js` (or equivalent)
@@ -24,7 +24,7 @@ This phase focuses on modifying the server-side code to handle data fetching eff
             *   `filters`: `tags` (array), `formation_type` (string), `searchQuery` (string).
             *   `sortOptions`: `sortBy` (string, e.g., 'name', 'created_at'), `sortOrder` ('asc' | 'desc').
             *   `paginationOptions`: `page` (number), `limit` (number).
-        *   Translate these parameters into an efficient SQL query using `WHERE`, `ORDER BY`, `LIMIT`, `OFFSET` clauses. **Consider using a query builder like `knex`** to construct this SQL dynamically and safely before executing it with the `query` function from `src/lib/server/db.js`.
+        *   Translate these parameters into an efficient SQL query using `WHERE`, `ORDER BY`, `LIMIT`, `OFFSET` clauses. **Consider using a query builder** (like `knex`, though not strictly necessary if queries remain simple) to construct this SQL dynamically and safely before executing it with the `query` function from `src/lib/server/db.js`.
     *   **File:** `src/routes/api/formations/+server.js`
     *   **Action:** Modify the `GET` handler.
         *   Remove the `all=true` parameter handling.
@@ -33,9 +33,11 @@ This phase focuses on modifying the server-side code to handle data fetching eff
         *   Return the results (`{ items: ..., pagination: ... }`) as JSON.
     *   **Considerations:**
         *   Define clear query parameter names (e.g., `tags=tag1,tag2`, `type=offense`, `q=searchterm`, `sort=name`, `order=asc`, `page=2`, `limit=20`).
-        *   Ensure database indexes exist for fields used in filtering (tags, formation_type, name) and sorting (name, created_at). **Create necessary SQL migration files** to add these indexes (e.g., `CREATE INDEX idx_formations_name ON formations (name);`).
+        *   Ensure database indexes exist for fields used in filtering (tags, formation_type, name) and sorting (name, created_at). **Create necessary SQL migration files** using `node-pg-migrate` to add these indexes. **[COMPLETED]**
+            *   **Status:** Completed via migration `1744527001396_add-performance-indexes.js`.
+            *   **Added indexes:** `formations_tags_index` (GIN on `tags`), `formations_formation_type_index` (B-tree on `formation_type`). Verified existing `idx_formations_name` and `idx_formations_created_at`.
     *   **Risks:**
-        *   SQL query construction can become complex, especially with multiple filters. `knex` can help manage this.
+        *   SQL query construction can become complex, especially with multiple filters. A query builder could help manage this.
         *   Performance heavily depends on database schema and indexing.
         *   Changes the API contract, requiring frontend updates (Phase 2).
 
@@ -43,7 +45,7 @@ This phase focuses on modifying the server-side code to handle data fetching eff
     *   **File:** `src/lib/server/services/drillService.js` (or equivalent)
     *   **Action:** Verify and enhance the existing `getFilteredDrills(filters, options)` method.
         *   Ensure it accepts *all* necessary filter parameters in the `filters` object (skill levels, complexity, skills focused, positions focused, drill types, number of people range, suggested length range, hasVideo, hasDiagrams, hasImages, searchQuery).
-        *   Ensure it correctly applies these filters using efficient SQL query clauses (`WHERE`, potentially involving array checks or range queries). **Consider using a query builder like `knex`** to construct this SQL dynamically and safely.
+        *   Ensure it correctly applies these filters using efficient SQL query clauses (`WHERE`, potentially involving array checks or range queries). **Consider using a query builder** (like `knex`, though not strictly necessary if queries remain simple) to construct this SQL dynamically and safely.
         *   Ensure `options.sortBy`, `options.sortOrder`, `options.page`, `options.limit` are correctly translated to `ORDER BY`, `LIMIT`, `OFFSET`.
         *   Remove any logic that bypasses filtering/pagination when `all=true` was passed (this parameter should no longer be used).
     *   **File:** `src/routes/api/drills/+server.js`
@@ -55,7 +57,10 @@ This phase focuses on modifying the server-side code to handle data fetching eff
         *   Return the paginated results.
     *   **Considerations:**
         *   Define how array-like filters (e.g., skills, positions) are passed via URL (e.g., comma-separated `skills=passing,shooting` or repeated params `skill=passing&skill=shooting`). Choose one and be consistent. Handle array parameters appropriately in SQL (e.g., `WHERE skill = ANY($1::text[])`).
-        *   Database indexing is critical for performance across all filterable/sortable fields. **Create necessary SQL migration files** to add these indexes.
+        *   Database indexing is critical for performance across all filterable/sortable fields. **Create necessary SQL migration files** using `node-pg-migrate` to add these indexes. **[COMPLETED]**
+            *   **Status:** Completed via migration `1744527001396_add-performance-indexes.js`.
+            *   **Added indexes:** `drills_name_index` (B-tree on `name`), `drills_date_created_index` (B-tree on `date_created`), `drills_number_of_people_min_index`, `drills_number_of_people_max_index` (B-tree for range filtering), `idx_drills_has_video` (Partial on `video_link`), `idx_drills_has_images` (Expression on `images`), `idx_drills_has_diagrams` (Expression on `diagrams`).
+            *   **Verified existing indexes:** `idx_drills_complexity`, `idx_drills_drill_type` (GIN), `idx_drills_positions_focused_on` (GIN), `idx_drills_skill_level` (GIN), `idx_drills_suggested_length`.
         *   Search implementation (`LIKE`/`ILIKE` or full-text search).
     *   **Risks:**
         *   Very complex SQL query building logic might be required in the service layer, especially without a query builder.
@@ -120,7 +125,7 @@ This phase adapts the frontend to work with the optimized backend.
     *   **Database Query Performance:** Profile the new database queries under load using tools like `EXPLAIN ANALYZE`.
     *   **UI Testing:** Ensure filtering, sorting, pagination, and detail page interactions work correctly.
     *   **Performance Benchmarking:** Measure load times before and after using browser dev tools and HAR analysis.
-*   **Database Indexing:** Re-evaluate and add necessary database indexes for all fields used in filtering and sorting via **SQL migration files**. This is *critical* for backend performance.
+*   **Database Indexing:** Re-evaluate and add necessary database indexes for all fields used in filtering and sorting via **SQL migration files** using `node-pg-migrate`. This is *critical* for backend performance. **[COMPLETED]**
 *   **API Contract:** Clearly document the new query parameters for the updated API endpoints.
 *   **Effort:** This is a non-trivial refactoring effort involving both backend and frontend changes.
 *   **Team Coordination:** If multiple developers are involved, clear communication is needed due to the tight coupling between backend API changes and frontend consumption.

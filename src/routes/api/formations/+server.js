@@ -8,32 +8,41 @@ import { dev } from '$app/environment';
  * Supports filtering, pagination, and getting all formations
  */
 export async function GET({ url }) {
-  const page = parseInt(url.searchParams.get('page')) || 1;
-  const limit = parseInt(url.searchParams.get('limit')) || 10;
-  const all = url.searchParams.get('all') === 'true';
-  const sortBy = url.searchParams.get('sort');
-  const sortOrder = url.searchParams.get('order') || 'desc';
-  const tag = url.searchParams.get('tag');
-  const formation_type = url.searchParams.get('formation_type');
+  // Pagination
+  const page = parseInt(url.searchParams.get('page') || '1');
+  const limit = parseInt(url.searchParams.get('limit') || '10');
   
-  // Build filter conditions
+  // Sorting
+  const sortBy = url.searchParams.get('sort'); // e.g., 'name', 'created_at'
+  const sortOrder = url.searchParams.get('order'); // 'asc' or 'desc'
+  
+  // Filters
+  const tagsParam = url.searchParams.get('tags'); // Comma-separated
+  const formation_type = url.searchParams.get('type');
+  const searchQuery = url.searchParams.get('q');
+
+  // Parse tags
+  const tags = tagsParam ? tagsParam.split(',').map(t => t.trim()).filter(t => t) : undefined;
+
+  // Build options objects for the service
   const filters = {};
-  if (tag) {
-    filters.tag = tag;
-  }
-  if (formation_type) {
-    filters.formation_type = formation_type;
-  }
+  if (tags) filters.tags = tags;
+  if (formation_type) filters.formation_type = formation_type;
+  if (searchQuery) filters.searchQuery = searchQuery;
+
+  const sortOptions = {};
+  if (sortBy) sortOptions.sortBy = sortBy;
+  if (sortOrder) sortOptions.sortOrder = sortOrder;
+
+  const paginationOptions = { page, limit };
   
   try {
-    const result = await formationService.getAll({
-      page,
-      limit,
-      all,
-      sortBy,
-      sortOrder,
-      filters
-    });
+    // Call the new service method
+    const result = await formationService.getFilteredFormations(
+      filters,
+      sortOptions,
+      paginationOptions
+    );
     
     return json(result);
   } catch (error) {

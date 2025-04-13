@@ -66,7 +66,7 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 
 ### 6. Deployment and Hosting
 - **Frontend**: Hosted on Vercel with the custom domain (e.g., qdrill.app).
-- **Backend**: Hosted on Vercel’s serverless functions or as a separate service if needed, handling API requests and database interactions.
+- **Backend**: Hosted on Vercel's serverless functions or as a separate service if needed, handling API requests and database interactions.
 
 ### 7. Testing and Quality Assurance
 - **Vitest**: Used for unit testing the service layer and other backend functionality.
@@ -144,6 +144,27 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 - **Fix formatting issues**:
   ```bash
   pnpm run format
+  ```
+
+### Database Migrations
+
+Database schema changes are managed using `node-pg-migrate`.
+
+- **Create a new migration**:
+  ```bash
+  npx node-pg-migrate create <migration_name>
+  ```
+  Replace `<migration_name>` with a descriptive name (e.g., `add_user_email_column`).
+
+- **Run migrations**:
+  ```bash
+  npx node-pg-migrate up
+  ```
+  This applies all pending migrations. Make sure your `DATABASE_URL` environment variable is set correctly (e.g., in `.env.local` or your shell environment).
+
+- **Rollback the last migration**:
+  ```bash
+  npx node-pg-migrate down
   ```
 
 ### Deployment

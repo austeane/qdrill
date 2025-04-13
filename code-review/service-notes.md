@@ -56,4 +56,9 @@ This section reviews common services and the base service class.
 
 **Files Pending Review:**
 
-*(List remaining files)* 
+*(List remaining files)*
+
+## Miscellaneous API Routes
+
+- `src/routes/api/skills/+server.js`:
+- `src/routes/api/users/me/+server.js`: 

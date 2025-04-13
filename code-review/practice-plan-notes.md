@@ -131,3 +131,10 @@ This section reviews the code related to browsing, creating, viewing, and editin
 **Files Pending Review:**
 
 *(List remaining files)* 
+
+## Practice Plan Viewer Components
+
+- `src/routes/practice-plans/viewer/DrillCard.svelte`:
+- `src/routes/practice-plans/viewer/ParallelGroup.svelte`:
+- `src/routes/practice-plans/viewer/Section.svelte`:
+- `src/routes/practice-plans/viewer/Timeline.svelte`: 

@@ -287,20 +287,26 @@
       const method = formation.id ? 'PUT' : 'POST';
       const url = formation.id ? `/api/formations/${formation.id}` : '/api/formations';
       
+      const requestBody = {
+        id: formation.id,
+        name: $name,
+        brief_description: $brief_description,
+        detailed_description: $detailed_description,
+        diagrams: $diagrams,
+        tags: $tags,
+        is_editable_by_others: $is_editable_by_others,
+        visibility: $visibility,
+        formation_type: $formation_type
+      };
+
+      // Log the data being sent, excluding the potentially large diagrams array
+      const { diagrams: _, ...loggableData } = requestBody;
+      console.log('Submitting formation data:', loggableData);
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: formation.id,
-          name: $name,
-          brief_description: $brief_description,
-          detailed_description: $detailed_description,
-          diagrams: $diagrams,
-          tags: $tags,
-          is_editable_by_others: $is_editable_by_others,
-          visibility: $visibility,
-          formation_type: $formation_type
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {

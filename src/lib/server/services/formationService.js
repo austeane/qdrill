@@ -9,7 +9,22 @@ export class FormationService extends BaseEntityService {
    * Creates a new FormationService
    */
   constructor() {
-    super('formations', 'id', ['*'], [], { 
+    // Define allowed columns for the formations table
+    const allowedFormationColumns = [
+      'name',
+      'brief_description',
+      'detailed_description',
+      'diagrams',
+      'tags',
+      'is_editable_by_others',
+      'visibility',
+      'formation_type',
+      'created_by',
+      'created_at',
+      'updated_at'
+    ];
+    
+    super('formations', 'id', ['*'], allowedFormationColumns, { 
       diagrams: 'json', 
       tags: 'array' 
     });

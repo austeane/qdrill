@@ -1,12 +1,11 @@
 import { json } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService.js';
-import { getSession } from '@auth/sveltekit';
 
 /**
  * @type {import('./$types').RequestHandler}
  */
 export async function POST({ params, request, locals }) {
-  const session = await getSession({ request });
+  const session = await locals.getSession();
 
   if (!session?.user?.id) {
     return json({ error: 'Unauthorized' }, { status: 401 });

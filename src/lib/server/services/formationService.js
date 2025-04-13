@@ -152,6 +152,96 @@ export class FormationService extends BaseEntityService {
     // Update the created_by field
     return await this.update(id, { created_by: userId });
   }
+
+  /**
+   * Get formations with advanced filtering, sorting, and pagination
+   * @param {Object} [filters={}] - Filters object
+   * @param {string[]} [filters.tags] - Tags to filter by (match any)
+   * @param {string} [filters.formation_type] - Formation type to filter by
+   * @param {string} [filters.searchQuery] - Text search query (searches name, description)
+   * @param {Object} [sortOptions={}] - Sorting options
+   * @param {string} [sortOptions.sortBy='created_at'] - Column to sort by (e.g., 'name', 'created_at')
+   * @param {'asc'|'desc'} [sortOptions.sortOrder='desc'] - Sort order
+   * @param {Object} [paginationOptions={}] - Pagination options
+   * @param {number} [paginationOptions.page=1] - Page number
+   * @param {number} [paginationOptions.limit=10] - Items per page
+   * @returns {Promise<Object>} - Object containing `items` array and `pagination` info
+   */
+  async getFilteredFormations(filters = {}, sortOptions = {}, paginationOptions = {}) {
+    const { tags, formation_type, searchQuery } = filters;
+    const { sortBy = 'created_at', sortOrder = 'desc' } = sortOptions;
+    const { page = 1, limit = 10 } = paginationOptions;
+
+    const allowedSortColumns = ['name', 'created_at', 'updated_at', 'formation_type'];
+    const validSortBy = allowedSortColumns.includes(sortBy) ? sortBy : 'created_at';
+    const validSortOrder = this.validateSortOrder(sortOrder); // Use base class validator
+
+    const conditions = [];
+    const queryParams = [];
+    let paramIndex = 1;
+
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      // Assumes tags is an array of strings
+      // Use && operator (contains all) instead of ANY (contains any)? Let's use ANY for now.
+      // GIN index on 'tags' supports this well.
+      conditions.push(`tags @> $${paramIndex++}`); // Use @> for contains operator
+      queryParams.push(tags);
+    }
+
+    if (formation_type) {
+      conditions.push(`formation_type = $${paramIndex++}`);
+      queryParams.push(formation_type);
+    }
+
+    if (searchQuery) {
+      const searchPattern = `%${searchQuery.toLowerCase()}%`;
+      conditions.push(`(
+        LOWER(name) ILIKE $${paramIndex} OR 
+        LOWER(brief_description) ILIKE $${paramIndex} OR 
+        LOWER(detailed_description) ILIKE $${paramIndex}
+      )`);
+      queryParams.push(searchPattern);
+      paramIndex++;
+    }
+
+    // Default visibility filter (adjust if needed, e.g., for user-specific views)
+    conditions.push(`visibility = 'public'`);
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const orderByClause = `ORDER BY ${validSortBy} ${validSortOrder}, ${this.primaryKey} ${validSortOrder}`;
+    const offset = (page - 1) * limit;
+
+    try {
+      // Get total count for pagination
+      const countQuery = `SELECT COUNT(*) FROM ${this.tableName} ${whereClause}`;
+      const countResult = await db.query(countQuery, queryParams);
+      const totalItems = parseInt(countResult.rows[0].count);
+      const totalPages = Math.ceil(totalItems / limit);
+
+      // Get the actual items
+      const itemsQuery = `
+        SELECT * 
+        FROM ${this.tableName}
+        ${whereClause}
+        ${orderByClause}
+        LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+      `;
+      const itemsResult = await db.query(itemsQuery, [...queryParams, limit, offset]);
+
+      return {
+        items: itemsResult.rows,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalItems,
+          totalPages
+        }
+      };
+    } catch (error) {
+      console.error(`Error in FormationService.getFilteredFormations:`, error);
+      throw error;
+    }
+  }
 }
 
 // Export a singleton instance of the service

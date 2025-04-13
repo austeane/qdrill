@@ -7,7 +7,12 @@ import { dev } from '$app/environment';
  * GET handler for formations
  * Supports filtering, pagination, and getting all formations
  */
-export async function GET({ url }) {
+export async function GET({ url, locals }) {
+  // Get session info to pass userId for filtering
+  // Note: This assumes you have configured session handling in hooks.server.js
+  const session = await locals.getSession(); // Need locals passed to GET
+  const userId = session?.user?.id;
+  
   // Pagination
   const page = parseInt(url.searchParams.get('page') || '1');
   const limit = parseInt(url.searchParams.get('limit') || '10');
@@ -34,7 +39,14 @@ export async function GET({ url }) {
   if (sortBy) sortOptions.sortBy = sortBy;
   if (sortOrder) sortOptions.sortOrder = sortOrder;
 
-  const paginationOptions = { page, limit };
+  const paginationOptions = { 
+    page, 
+    limit, 
+    columns: ['id', 'name', 'brief_description', 'tags', 'formation_type', 'created_at'] 
+  };
+  
+  // Pass userId to filters (assuming null if not logged in, handled by service)
+  filters.userId = userId; // Uncomment if locals and session are available
   
   try {
     // Call the new service method

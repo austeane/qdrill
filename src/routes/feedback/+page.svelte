@@ -1,20 +1,23 @@
 <script>
-    import { feedbackList } from '$lib/stores/feedbackStore';
+    // import { feedbackList } from '$lib/stores/feedbackStore'; // Store not used directly for list
     import { onMount } from 'svelte';
+    import { invalidate } from '$app/navigation'; // Import invalidate
 
-    let feedbackEntries = [];
+    export let data; // Accept data from load function
+
+    // Initialize feedbackEntries from server-side data
+    let feedbackEntries = data.feedbackEntries || [];
+    let isDev = data.isDev || false; // Get dev status from load
+
     let filterType = 'all';
     let sortBy = 'date';
 
-    async function fetchFeedback() {
-        const response = await fetch('/api/feedback');
-        if (response.ok) {
-            feedbackEntries = await response.json();
-        } else {
-            alert('Failed to load feedback.');
-        }
+    // Function to invalidate feedback data
+    function invalidateFeedbackData() {
+        invalidate('app:feedback');
     }
 
+    // Filtering and sorting remain client-side for now
     $: filteredFeedback = feedbackEntries.filter(entry => 
         filterType === 'all' || entry.feedback_type === filterType
     );
@@ -30,10 +33,12 @@
     async function upvoteFeedback(id) {
         const response = await fetch(`/api/feedback/${id}/upvote`, { method: 'POST' });
         if (response.ok) {
-            const updatedFeedback = await response.json();
-            feedbackEntries = feedbackEntries.map(entry => 
-                entry.id === updatedFeedback.id ? { ...entry, upvotes: updatedFeedback.upvotes } : entry
-            );
+            // Invalidate data instead of manual update
+            invalidateFeedbackData();
+            // const updatedFeedback = await response.json();
+            // feedbackEntries = feedbackEntries.map(entry => 
+            //     entry.id === updatedFeedback.id ? { ...entry, upvotes: updatedFeedback.upvotes } : entry
+            // );
         } else {
             alert('Failed to upvote feedback.');
         }
@@ -44,15 +49,19 @@
         
         const response = await fetch(`/api/feedback/${id}/delete`, { method: 'DELETE' });
         if (response.ok) {
-            feedbackEntries = feedbackEntries.filter(entry => entry.id !== id);
+            // Invalidate data
+            invalidateFeedbackData();
+            // feedbackEntries = feedbackEntries.filter(entry => entry.id !== id);
         } else {
             alert('Failed to delete feedback.');
         }
     }
 
-    onMount(() => {
-        fetchFeedback();
-    });
+    // Re-initialize feedbackEntries when data prop changes (after invalidation)
+    $: if (data.feedbackEntries) {
+        feedbackEntries = data.feedbackEntries || [];
+    }
+    $: isDev = data.isDev || false;
 
     let newFeedback = '';
     let newFeedbackType = 'general';
@@ -80,7 +89,7 @@
             newFeedbackType = 'general';
             name = '';
             email = '';
-            fetchFeedback();
+            invalidateFeedbackData(); // Invalidate data to refresh list
             alert('Feedback submitted successfully.');
         } else {
             alert('Failed to submit feedback.');
@@ -95,6 +104,9 @@
 
 <div class="container mx-auto p-6">
     <h1 class="text-2xl font-bold mb-4">Feedback</h1>
+    {#if data.loadError}
+         <p class="text-red-500 bg-red-100 p-3 rounded mb-4">{data.loadError}</p>
+    {/if}
 
     <section class="mb-8">
         <h2 class="text-xl font-semibold mb-2">Submit Your Feedback</h2>
@@ -128,6 +140,7 @@
         <button
             on:click={submitDetailedFeedback}
             class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+            disabled={!newFeedback.trim()}
         >
             Submit Feedback
         </button>
@@ -152,7 +165,7 @@
         </div>
         {#if sortedFeedback.length > 0}
             <ul class="space-y-4">
-                {#each sortedFeedback as entry}
+                {#each sortedFeedback as entry (entry.id)} <!-- Added key -->
                     <li class="p-4 border rounded shadow">
                         <p>{entry.feedback}</p>
                         <div class="mt-2 text-sm text-gray-600">
@@ -165,7 +178,8 @@
                             >
                                 Upvote
                             </button>
-                            {#if window.location.hostname === 'localhost'}
+                            <!-- Use isDev prop passed from server -->
+                            {#if isDev}
                                 <button
                                     on:click={() => deleteFeedback(entry.id)}
                                     class="ml-2 px-2 py-1 bg-red-500 text-white rounded text-xs"
@@ -178,7 +192,7 @@
                 {/each}
             </ul>
         {:else}
-            <p>No feedback available.</p>
+            <p>No feedback available matching the current filters.</p>
         {/if}
     </section>
 </div>

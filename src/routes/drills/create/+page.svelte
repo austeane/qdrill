@@ -1,5 +1,6 @@
 <script>
   import DrillForm from '../DrillForm.svelte';
+  export let data; // Accept data from load function
 </script>
 
 <svelte:head>
@@ -7,4 +8,5 @@
   <meta name="description" content="Create a new drill" />
 </svelte:head>
 
-<DrillForm />
+<!-- Pass the loaded data as props to DrillForm -->
+<DrillForm allSkills={data.allSkills} allDrillNames={data.allDrillNames} />

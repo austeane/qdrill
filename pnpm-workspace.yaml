@@ -1,5 +1,11 @@
 packages:
-  - '.'
+  - .
+
 ignoredBuiltDependencies:
   - '@sveltejs/kit'
   - '@vercel/speed-insights'
+  - aws-sdk
+  - bufferutil
+  - canvas
+  - cypress
+  - esbuild

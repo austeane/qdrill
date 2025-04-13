@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { practicePlanService } from '$lib/server/services/practicePlanService.js';
+import { drillService } from '$lib/server/services/drillService.js';
 
 /**
  * Parses the URL query parameters to extract drill IDs.
@@ -42,10 +43,36 @@ export async function load({ fetch, url, locals }) {
 
   // Extract selectedDrillIds from URL query parameters
   const selectedDrillIds = getSelectedDrillIds(url.searchParams);
+  let initialSelectedDrills = [];
+
+  // If there are drill IDs in the URL, fetch their names server-side
+  if (selectedDrillIds.length > 0) {
+    try {
+      // Assuming drillService has a method to get multiple drills by ID
+      // or we fetch them individually (less efficient but works)
+      initialSelectedDrills = await Promise.all(
+        selectedDrillIds.map(async (id) => {
+          try {
+            const drill = await drillService.getById(id, ['id', 'name']); // Fetch only id and name
+            return drill ? { id: drill.id, name: drill.name } : null;
+          } catch (drillError) {
+            console.warn(`Failed to fetch drill name for ID ${id}:`, drillError);
+            return null; // Return null if a specific drill fetch fails
+          }
+        })
+      );
+      // Filter out any null results from failed fetches
+      initialSelectedDrills = initialSelectedDrills.filter(drill => drill !== null);
+    } catch (error) {
+      console.error('Error fetching initial selected drill names:', error);
+      // Handle error, maybe return empty array or log
+      initialSelectedDrills = []; 
+    }
+  }
 
   return {
     practicePlans,
     filterOptions,
-    selectedDrillIds
+    initialSelectedDrills
   };
 }

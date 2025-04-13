@@ -2,72 +2,45 @@
 <script>
   import FilterPanel from '$components/FilterPanel.svelte';
   import { cart } from '$lib/stores/cartStore';
-  import { tick } from 'svelte';
   import { onMount } from 'svelte';
-  import { get } from 'svelte/store';
   import { SvelteToast, toast } from '@zerodevx/svelte-toast';
-  import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
+  import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore.js';
   import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
   import { dev } from '$app/environment';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
+  import { navigating } from '$app/stores';
   
   // Import stores
   import {
     drills,
     currentPage,
     totalPages,
+    totalItems,
     drillsPerPage,
-    isLoading,
-    fetchDrills,
     searchQuery,
-    allDrills,
-    allDrillsLoaded,
-    fetchAllDrills,
-    filteredDrills
+    initializeDrills,
+    selectedSkillLevels,
+    selectedComplexities,
+    selectedSkillsFocusedOn,
+    selectedPositionsFocusedOn,
+    selectedNumberOfPeopleMin,
+    selectedNumberOfPeopleMax,
+    selectedSuggestedLengthsMin,
+    selectedSuggestedLengthsMax,
+    selectedHasVideo,
+    selectedHasDiagrams,
+    selectedHasImages,
+    selectedDrillTypes
   } from '$lib/stores/drillsStore';
 
   export let data;
 
-  // Initialize drills data
-  $: {
-    if (data.drills && !$allDrillsLoaded) {
-      drills.set(data.drills);
-      currentPage.set(data.pagination?.page || 1);
-      totalPages.set(data.pagination?.totalPages || 1);
-    }
-  }
+  // Initialize drills data from load function result
+  $: initializeDrills(data);
 
-  // Calculate displayed drills based on current page
-  $: displayedDrills = $allDrillsLoaded
-    ? $filteredDrills.slice(($currentPage - 1) * $drillsPerPage, $currentPage * $drillsPerPage)
-    : $drills;
-
-  // Update total pages when filtered drills change, but only if we're using filtered drills
-  $: if ($allDrillsLoaded && $filteredDrills) {
-    const newTotalPages = Math.ceil($filteredDrills.length / $drillsPerPage);
-    if (get(totalPages) !== newTotalPages) {
-      totalPages.set(newTotalPages);
-    }
-  }
-
-  onMount(() => {
-    // Only fetch all drills if we haven't already
-    if (!$allDrillsLoaded) {
-      fetchAllDrills();
-    }
-  });
-
-  // Available filter options from load
-  const {
-    skillLevels,
-    complexities,
-    skillsFocusedOn,
-    positionsFocusedOn,
-    numberOfPeopleOptions,
-    suggestedLengths,
-    drillTypes
-  } = data.filterOptions || {};
+  // Filter options from load (ensure keys match what FilterPanel expects)
+  const filterOptions = data.filterOptions || {};
 
   // Object to hold temporary button states ('added', 'removed', or null)
   let buttonStates = {};
@@ -77,33 +50,113 @@
 
   // Initialize buttonStates
   $: {
-    if (displayedDrills) {
-      buttonStates = displayedDrills.reduce((acc, drill) => {
+    if ($drills) {
+      buttonStates = $drills.reduce((acc, drill) => {
         acc[drill.id] = drillsInCart.has(drill.id) ? 'in-cart' : null;
         return acc;
-      }, {...buttonStates}); // Keep preserving existing states
+      }, {...buttonStates});
     }
   }
 
   // Functions to navigate pages
-  async function nextPage() {
+  let debounceTimer;
+  function debounce(func, delay = 300) {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(func, delay);
+  }
+
+  function applyFiltersAndNavigate({ resetPage = false } = {}) {
+    const params = new URLSearchParams(window.location.search);
+
+    // Pagination
+    const pageToNavigate = resetPage ? 1 : $currentPage;
+    params.set('page', pageToNavigate.toString());
+    params.set('limit', $drillsPerPage.toString());
+
+    // Sorting - Update or remove existing
+    if ($selectedSortOption) {
+        params.set('sort', $selectedSortOption);
+    } else {
+        params.delete('sort');
+    }
+    if ($selectedSortOrder) {
+        params.set('order', $selectedSortOrder);
+    } else {
+        params.delete('order');
+    }
+
+    // Filters - Update or remove existing
+    // Helper to set/delete params for comma-separated values from filter store objects
+    const updateCommaSeparatedParam = (paramName, storeValue) => {
+        // Adjust this logic based on how FilterPanel sets the state (e.g., true/false, REQUIRED/EXCLUDED)
+        const values = Object.entries(storeValue || {})
+            .filter(([, state]) => state === true || state === 'REQUIRED') // Example: only include 'true' or 'REQUIRED' states
+            .map(([key]) => key);
+        if (values.length > 0) {
+            params.set(paramName, values.join(','));
+        } else {
+            params.delete(paramName);
+        }
+    };
+
+    // Helper to set/delete params for simple values (null check)
+    const updateSimpleParam = (paramName, value) => {
+        if (value !== null && value !== undefined && value !== '') {
+            params.set(paramName, value.toString());
+        } else {
+            params.delete(paramName);
+        }
+    };
+    
+    updateCommaSeparatedParam('skillLevel', $selectedSkillLevels);
+    updateCommaSeparatedParam('complexity', $selectedComplexities);
+    updateCommaSeparatedParam('skills', $selectedSkillsFocusedOn);
+    updateCommaSeparatedParam('positions', $selectedPositionsFocusedOn);
+    updateCommaSeparatedParam('types', $selectedDrillTypes);
+
+    updateSimpleParam('minPeople', $selectedNumberOfPeopleMin);
+    updateSimpleParam('maxPeople', $selectedNumberOfPeopleMax);
+    updateSimpleParam('minLength', $selectedSuggestedLengthsMin);
+    updateSimpleParam('maxLength', $selectedSuggestedLengthsMax);
+    updateSimpleParam('hasVideo', $selectedHasVideo);
+    updateSimpleParam('hasDiagrams', $selectedHasDiagrams);
+    updateSimpleParam('hasImages', $selectedHasImages);
+    updateSimpleParam('q', $searchQuery);
+    
+    // Remove empty query param if search is cleared
+    if (!$searchQuery) {
+        params.delete('q');
+    }
+
+    goto(`/drills?${params.toString()}`, { keepFocus: true, noScroll: true });
+  }
+
+  function nextPage() {
     if ($currentPage < $totalPages) {
-      if ($allDrillsLoaded) {
-        currentPage.update(p => p + 1);
-      } else {
-        await goto(`?page=${$currentPage + 1}`);
-      }
+      currentPage.update(p => p + 1);
+      applyFiltersAndNavigate();
     }
   }
 
-  async function prevPage() {
+  function prevPage() {
     if ($currentPage > 1) {
-      if ($allDrillsLoaded) {
-        currentPage.update(p => p - 1);
-      } else {
-        await goto(`?page=${$currentPage - 1}`);
-      }
+      currentPage.update(p => p - 1);
+      applyFiltersAndNavigate();
     }
+  }
+  
+  function handleSearchInput() {
+     debounce(() => applyFiltersAndNavigate({ resetPage: true }));
+  }
+  
+  function handleSortChange(event) {
+    selectedSortOption.set(event.target.value);
+    applyFiltersAndNavigate({ resetPage: true });
+  }
+
+  function toggleSortOrder() {
+    selectedSortOrder.update(order => order === 'asc' ? 'desc' : 'asc');
+    applyFiltersAndNavigate({ resetPage: true });
   }
 
   // Function to handle adding/removing drills from the cart
@@ -116,18 +169,9 @@
       cart.addDrill(drill);
       buttonStates = { ...buttonStates, [drill.id]: 'added' };
     }
-
-    // Keep the force reactive update
     buttonStates = { ...buttonStates };
-
-    await tick();
-
     setTimeout(() => {
-      buttonStates = { 
-        ...buttonStates, 
-        [drill.id]: isInCart ? null : 'in-cart' 
-      };
-      // Keep the force reactive update
+      buttonStates = { ...buttonStates, [drill.id]: isInCart ? null : 'in-cart' };
       buttonStates = { ...buttonStates };
     }, 500);
   }
@@ -156,14 +200,6 @@
     showSortOptions = !showSortOptions;
   }
 
-  function handleSortChange(event) {
-    selectedSortOption.set(event.target.value);
-  }
-
-  function toggleSortOrder() {
-    selectedSortOrder.update(order => order === 'asc' ? 'desc' : 'asc');
-  }
-
   async function deleteDrill(drillId, event) {
     event.stopPropagation();
     
@@ -177,7 +213,8 @@
         });
 
         if (!response.ok) {
-            throw new Error('Failed to delete drill');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to delete drill');
         }
 
         // Remove the drill from the store
@@ -188,9 +225,12 @@
         toast.push('Drill deleted successfully', {
             theme: { '--toastBackground': '#48bb78', '--toastColor': '#fff' }
         });
+
+        // Refresh the current view by re-applying filters/pagination
+        applyFiltersAndNavigate();
     } catch (error) {
         console.error('Error deleting drill:', error);
-        toast.push('Failed to delete drill', {
+        toast.push(`Failed to delete drill: ${error.message}`, {
             theme: { '--toastBackground': '#f56565', '--toastColor': '#fff' }
         });
     }
@@ -198,11 +238,10 @@
 
   // Define sort options for drills
   const sortOptions = [
-    { value: '', label: 'Default' },
+    { value: 'date_created', label: 'Date Created' },
     { value: 'name', label: 'Name' },
     { value: 'complexity', label: 'Complexity' },
     { value: 'suggested_length', label: 'Suggested Length' },
-    { value: 'date_created', label: 'Date Created' }
   ];
 </script>
 
@@ -228,14 +267,26 @@
   <FilterPanel
     customClass="mb-6"
     filterType="drills"
-    {skillLevels}
-    {complexities}
-    {skillsFocusedOn}
-    {positionsFocusedOn}
-    {numberOfPeopleOptions}
-    {suggestedLengths}
-    {drillTypes}
-    {sortOptions}
+    skillLevels={filterOptions.skillLevels}
+    complexities={filterOptions.complexities}
+    skillsFocusedOn={filterOptions.skillsFocusedOn}
+    positionsFocusedOn={filterOptions.positionsFocusedOn}
+    numberOfPeopleOptions={filterOptions.numberOfPeopleOptions}
+    suggestedLengths={filterOptions.suggestedLengths}
+    drillTypes={filterOptions.drillTypes}
+    bind:selectedSkillLevels={$selectedSkillLevels}
+    bind:selectedComplexities={$selectedComplexities}
+    bind:selectedSkillsFocusedOn={$selectedSkillsFocusedOn}
+    bind:selectedPositionsFocusedOn={$selectedPositionsFocusedOn}
+    bind:selectedNumberOfPeopleMin={$selectedNumberOfPeopleMin}
+    bind:selectedNumberOfPeopleMax={$selectedNumberOfPeopleMax}
+    bind:selectedSuggestedLengthsMin={$selectedSuggestedLengthsMin}
+    bind:selectedSuggestedLengthsMax={$selectedSuggestedLengthsMax}
+    bind:selectedHasVideo={$selectedHasVideo}
+    bind:selectedHasDiagrams={$selectedHasDiagrams}
+    bind:selectedHasImages={$selectedHasImages}
+    bind:selectedDrillTypes={$selectedDrillTypes}
+    on:filterChange={() => applyFiltersAndNavigate({ resetPage: true })}
   />
 
   <!-- Sorting Section and Search Input -->
@@ -259,6 +310,7 @@
               class="p-2 border border-gray-300 rounded-md bg-white"
               on:change={handleSortChange}
               value={$selectedSortOption}
+              data-testid="sort-select"
             >
               {#each sortOptions as option}
                 <option value={option.value}>{option.label}</option>
@@ -267,6 +319,7 @@
             <button
               class="px-4 py-2 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors duration-300"
               on:click={toggleSortOrder}
+              data-testid="sort-order-toggle"
             >
               {$selectedSortOrder === 'asc' ? '↑ Ascending' : '↓ Descending'}
             </button>
@@ -280,20 +333,25 @@
       placeholder="Search drills..."
       class="flex-grow p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       bind:value={$searchQuery}
+      on:input={handleSearchInput}
       aria-label="Search drills"
+      data-testid="search-input"
     />
   </div>
 
   <!-- Loading and Empty States -->
-  {#if $isLoading && !$allDrillsLoaded}
-    <p class="text-center text-gray-500">Loading drills...</p>
-  {:else if !displayedDrills || displayedDrills.length === 0}
-    <p class="text-center text-gray-500">No drills match your criteria.</p>
+  {#if $navigating}
+    <p class="text-center text-gray-500 py-10">Loading drills...</p>
+  {:else if !$drills || $drills.length === 0}
+    <p class="text-center text-gray-500 py-10">No drills match your criteria.</p>
   {:else}
     <!-- Drills Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {#each displayedDrills as drill}
-        <div class="border border-gray-200 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 hover:shadow-lg">
+      {#each $drills as drill (drill.id)}
+        <div 
+          class="border border-gray-200 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 hover:shadow-lg flex flex-col"
+          data-testid="drill-card"
+        >
           <div class="p-6 flex flex-col h-full relative">
             <!-- Variation badges -->
             {#if drill.variation_count > 0}
@@ -311,23 +369,23 @@
             {/if}
 
             <!-- Main content area -->
-            <div class="flex-grow">
+            <div class="flex-grow mb-4">
               <!-- Title and description -->
               <div class="flex justify-between items-start mb-4">
-                <div class="flex-grow">
-                  <h2 class="text-xl font-bold text-gray-800">
+                <div class="flex-grow mr-2">
+                  <h2 class="text-xl font-bold text-gray-800 break-words" data-testid="drill-card-name">
                     <a href="/drills/{drill.id}" class="hover:text-blue-600">
                       {drill.name}
                     </a>
                   </h2>
-                  <div class="prose prose-sm mt-2 text-gray-600">
+                  <div class="prose prose-sm mt-2 text-gray-600 max-h-24 overflow-hidden">
                     {@html drill.brief_description}
                   </div>
                 </div>
                 {#if dev || drill.created_by === $page.data.session?.user?.id}
                     <button
                         on:click={(e) => deleteDrill(drill.id, e)}
-                        class="text-gray-500 hover:text-red-500 transition-colors duration-300"
+                        class="text-gray-500 hover:text-red-500 transition-colors duration-300 flex-shrink-0"
                         title="Delete drill"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -338,9 +396,9 @@
               </div>
 
               <!-- Drill details -->
-              {#if drill.skill_level}
+              {#if drill.skill_level && drill.skill_level.length > 0}
                 <p class="text-sm text-gray-500 mt-2">
-                  <span class="font-medium">Skill Level:</span> {drill.skill_level}
+                  <span class="font-medium">Skill:</span> {drill.skill_level.join(', ')}
                 </p>
               {/if}
               {#if drill.complexity}
@@ -349,35 +407,42 @@
                 </p>
               {/if}
               {#if drill.suggested_length}
-                <p class="text-sm text-gray-500 mt-1">
+                <p class="text-sm text-gray-500 mt-1" data-testid="drill-card-date">
                   <span class="font-medium">Duration:</span> {drill.suggested_length} mins
+                </p>
+              {/if}
+              {#if drill.number_of_people_min}
+                <p class="text-sm text-gray-500 mt-1">
+                  <span class="font-medium">People:</span> 
+                  {drill.number_of_people_min}
+                  {#if drill.number_of_people_max && drill.number_of_people_max !== drill.number_of_people_min}
+                   - {drill.number_of_people_max}
+                  {:else if !drill.number_of_people_max}
+                   +
+                  {/if}
                 </p>
               {/if}
             </div>
 
             <!-- Add to Practice Plan button -->
-            <button
-              class="w-full py-2 px-4 rounded-md font-semibold text-white transition-colors duration-300 mt-4"
-              class:bg-green-500={buttonStates[drill.id] === 'added'}
-              class:hover:bg-green-600={buttonStates[drill.id] === 'added'}
-              class:bg-red-500={buttonStates[drill.id] === 'removed' || buttonStates[drill.id] === 'in-cart'}
-              class:hover:bg-red-600={buttonStates[drill.id] === 'removed' || buttonStates[drill.id] === 'in-cart'}
-              class:bg-blue-500={!drillsInCart.has(drill.id) && buttonStates[drill.id] === null}
-              class:hover:bg-blue-600={!drillsInCart.has(drill.id) && buttonStates[drill.id] === null}
-              on:click|stopPropagation={() => toggleDrillInCart(drill)}
-            >
-              {#if buttonStates[drill.id] === undefined}
-                <span class="opacity-0">Loading...</span>
-              {:else if buttonStates[drill.id] === 'added'}
-                Added
-              {:else if buttonStates[drill.id] === 'removed'}
-                Removed
-              {:else if buttonStates[drill.id] === 'in-cart'}
-                Remove from Practice Plan
-              {:else}
-                Add to Practice Plan
-              {/if}
-            </button>
+            <div class="mt-auto">
+              <button
+                class="w-full py-2 px-4 rounded-md font-semibold text-white transition-colors duration-300"
+                class:bg-green-500={buttonStates[drill.id] === 'added'}
+                class:hover:bg-green-600={buttonStates[drill.id] === 'added'}
+                class:bg-red-500={buttonStates[drill.id] === 'removed' || buttonStates[drill.id] === 'in-cart'}
+                class:hover:bg-red-600={buttonStates[drill.id] === 'removed' || buttonStates[drill.id] === 'in-cart'}
+                class:bg-blue-500={!drillsInCart.has(drill.id) && buttonStates[drill.id] !== 'added' && buttonStates[drill.id] !== 'removed' && buttonStates[drill.id] !== 'in-cart'}
+                class:hover:bg-blue-600={!drillsInCart.has(drill.id) && buttonStates[drill.id] !== 'added' && buttonStates[drill.id] !== 'removed' && buttonStates[drill.id] !== 'in-cart'}
+                on:click|stopPropagation={() => toggleDrillInCart(drill)}
+              >
+                {#if buttonStates[drill.id] === 'added'} Added
+                {:else if buttonStates[drill.id] === 'removed'} Removed
+                {:else if buttonStates[drill.id] === 'in-cart'} Remove from Plan
+                {:else} Add to Plan
+                {/if}
+              </button>
+            </div>
           </div>
         </div>
       {/each}
@@ -385,19 +450,21 @@
 
     <!-- Pagination Controls -->
     {#if $totalPages > 1}
-      <div class="flex justify-center items-center mt-6 space-x-4">
+      <div class="flex justify-center items-center mt-8 space-x-4" data-testid="pagination-controls">
         <button
           on:click={prevPage}
-          disabled={$currentPage === 1}
-          class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-400 transition-colors duration-300"
+          disabled={$currentPage === 1 || $navigating}
+          class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors duration-300"
+          data-testid="pagination-prev-button"
         >
           Previous
         </button>
-        <span class="text-gray-700">Page {$currentPage} of {$totalPages}</span>
+        <span class="text-gray-700" data-testid="pagination-current-page">Page {$currentPage} of {$totalPages}</span>
         <button
           on:click={nextPage}
-          disabled={$currentPage === $totalPages}
-          class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-400 transition-colors duration-300"
+          disabled={$currentPage === $totalPages || $navigating}
+          class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors duration-300"
+          data-testid="pagination-next-button"
         >
           Next
         </button>
@@ -407,3 +474,4 @@
 </div>
 <!-- Toast Notifications -->
 <SvelteToast />
+

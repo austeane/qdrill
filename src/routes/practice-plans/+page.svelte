@@ -33,36 +33,8 @@
     let searchQuery = '';
 
     // Selected drills for 'Contains drill' filter
-    let selectedDrills = []; // Array of { id: number, name: string }
-
-    // Initial selected drill IDs from server (URL params)
-    let initialSelectedDrillIds = data.selectedDrillIds || [];
-
-    // Fetch drill details for initial selected drill IDs
-    onMount(async () => {
-        if (initialSelectedDrillIds.length > 0) {
-            for (let drillId of initialSelectedDrillIds) {
-                await fetchDrillById(drillId);
-            }
-        }
-    });
-
-    // Function to fetch a drill by ID and add it to selected drills
-    async function fetchDrillById(drillId) {
-        try {
-            const res = await fetch(`/api/drills/${drillId}`);
-            if (!res.ok) {
-                throw new Error(`Failed to fetch drill with ID ${drillId}`);
-            }
-            const drill = await res.json();
-            // Avoid duplicate entries
-            if (!selectedDrills.find(d => d.id === drill.id)) {
-                selectedDrills = [...selectedDrills, { id: drill.id, name: drill.name }];
-            }
-        } catch (error) {
-            console.error(error);
-        }
-    }
+    // Initialize directly from server-provided data
+    let selectedDrills = data.initialSelectedDrills || [];
 
     function handleDrillSelect(drill) {
         if (!selectedDrills.find(d => d.id === drill.id)) {
@@ -76,17 +48,18 @@
         updateUrlWithSelectedDrills();
     }
 
-    // Function to update the URL with selected drill IDs
+    // Debounced version of URL update to avoid rapid history changes
+    const debouncedUpdateUrl = debounce(updateUrlWithSelectedDrills, 300);
+
     function updateUrlWithSelectedDrills() {
         const url = new URL(window.location);
         url.searchParams.delete('drillId');
         selectedDrills.forEach(drill => {
             url.searchParams.append('drillId', drill.id);
         });
+        // Use replaceState to avoid adding multiple history entries during selection
         history.replaceState({}, '', url);
-        // Optionally, you can avoid using location.reload() to prevent full page reload
-        // Instead, update the filteredPlans reactively
-        // location.reload();
+        // No reload needed, reactive filtering handles the update
     }
 
     // Helper functions for normalization
@@ -263,6 +236,11 @@
       let aValue = a[$selectedSortOption];
       let bValue = b[$selectedSortOption];
       
+      // Handle potential null/undefined values during sorting
+      if (aValue == null && bValue == null) return 0;
+      if (aValue == null) return $selectedSortOrder === 'asc' ? -1 : 1; // Sort nulls first or last based on order
+      if (bValue == null) return $selectedSortOrder === 'asc' ? 1 : -1;
+
       if (typeof aValue === 'string') aValue = aValue.toLowerCase();
       if (typeof bValue === 'string') bValue = bValue.toLowerCase();
       
@@ -270,6 +248,15 @@
       if (aValue > bValue) return $selectedSortOrder === 'asc' ? 1 : -1;
       return 0;
     });
+
+    // Update practicePlans when data prop changes (e.g., after navigation)
+    $: if (data.practicePlans) {
+        practicePlans = Array.isArray(data.practicePlans) ? data.practicePlans : [];
+    }
+    // Update selectedDrills when data prop changes (e.g., after navigation)
+    $: if (data.initialSelectedDrills) {
+        selectedDrills = data.initialSelectedDrills || [];
+    }
 </script>
 
 <!-- Add this modal at the beginning of your template -->
@@ -320,10 +307,11 @@
         filterType="practice-plans"
         phaseOfSeasonOptions={phaseOfSeason}
         practiceGoalsOptions={practiceGoals}
-        {selectedDrills}
+        bind:selectedDrills={selectedDrills}
         onDrillSelect={handleDrillSelect}
         onDrillRemove={handleDrillRemove}
         {sortOptions}
+        onFilterChange={debouncedUpdateUrl}
     />
 
     <!-- Search input -->
@@ -336,7 +324,7 @@
 
     <!-- Practice Plans Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {#each sortedPlans as plan}
+        {#each sortedPlans as plan (plan.id)}
             <div class="border border-gray-200 p-6 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 cursor-pointer">
                 <!-- Header section with title and voting -->
                 <div class="relative flex justify-between items-start mb-4">
@@ -380,7 +368,7 @@
                         planId={plan.id} 
                         createdBy={plan.created_by}
                         onDelete={() => {
-                            sortedPlans = sortedPlans.filter(p => p.id !== plan.id);
+                            practicePlans = practicePlans.filter(p => p.id !== plan.id);
                         }}
                     />
                 </div>

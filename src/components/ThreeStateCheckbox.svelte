@@ -18,9 +18,13 @@
     }
 </script>
 
-<label class="flex items-center mt-2 text-gray-700 hover:bg-gray-100 p-1 rounded cursor-pointer">
+<label 
+    class="flex items-center mt-2 text-gray-700 hover:bg-gray-100 p-1 rounded cursor-pointer"
+    data-testid={`filter-skill-level-${value.toLowerCase()}`}
+>
     <div 
         class="w-5 h-5 border rounded mr-2 flex items-center justify-center"
+        data-testid={`checkbox-control-${value.toLowerCase()}`}
         class:bg-blue-500={state === FILTER_STATES.REQUIRED}
         class:bg-red-500={state === FILTER_STATES.EXCLUDED}
         class:border-gray-300={state === FILTER_STATES.NEUTRAL}

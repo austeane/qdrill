@@ -6,31 +6,23 @@ export const GET = async (event) => {
   const userId = session?.user?.id;
 
   try {
-    // Get all drill names using the DrillService
-    const drills = await drillService.getFilteredDrills({}, {
-      all: true,
-      columns: ['id', 'name', 'visibility', 'created_by', 'parent_drill_id']
+    // Get drill names, filtered by visibility in the service
+    const result = await drillService.getFilteredDrills({
+      userId: userId // Pass userId for filtering
+    }, {
+      limit: 1000, // Fetch a large number, consider pagination if this grows
+      sortBy: 'name', // Sort alphabetically by name
+      sortOrder: 'asc',
+      // Select only necessary columns (handled by service now)
+      columns: ['id', 'name']
     });
 
-    if (!drills || !drills.items) {
+    if (!result || !result.items) {
       return json([]);
     }
 
-    // Filter based on visibility and user permissions
-    const filteredDrills = drills.items.filter(drill => {
-      const visibility = drill.visibility || 'public'; // Default to public if not specified
-      
-      if (visibility === 'public') {
-        return true;
-      } else if (visibility === 'unlisted') {
-        return true;
-      } else if (visibility === 'private') {
-        return drill.created_by === userId;
-      }
-      return false;
-    });
-
-    return json(filteredDrills);
+    // Return the items directly as they only contain id and name
+    return json(result.items);
   } catch (error) {
     console.error('[Names Error] Fetching drill names:', error);
     return json({ error: 'Failed to fetch drill names', details: error.toString() }, { status: 500 });

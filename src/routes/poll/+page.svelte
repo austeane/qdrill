@@ -2,11 +2,14 @@
     import { onMount } from 'svelte';
     import { toast } from '@zerodevx/svelte-toast';
     import { dev } from '$app/environment';
+    import { invalidate } from '$app/navigation';
 
-    let pollOptions = [];
+    export let data;
+
+    let pollOptions = data.pollOptions || [];
+    let allDrillNames = data.allDrillNames || [];
     let drillOptions = [];
     let newDescription = '';
-    let isLoading = true;
     let isSubmitting = false;
     let sortBy = 'votes'; // 'votes' or 'date'
     let editingId = null;
@@ -14,22 +17,7 @@
     let selectedDrill = null;
     let isLoadingDrills = false;
 
-    async function loadPollOptions() {
-        try {
-            const response = await fetch('/api/poll/options');
-            if (!response.ok) throw new Error('Failed to load poll options');
-            const data = await response.json();
-            pollOptions = data.options;
-            sortOptions(sortBy);
-        } catch (error) {
-            console.error('Error:', error);
-            toast.push('Failed to load poll options', { theme: { '--toastBackground': '#F56565' } });
-        } finally {
-            isLoading = false;
-        }
-    }
-
-    async function searchDrills() {
+    function searchDrills() {
         if (!searchTerm) {
             drillOptions = [];
             return;
@@ -37,16 +25,12 @@
         
         isLoadingDrills = true;
         try {
-            const response = await fetch('/api/drills/names');
-            if (!response.ok) throw new Error('Failed to fetch drills');
-            
-            const drills = await response.json();
-            drillOptions = drills
+            drillOptions = allDrillNames
                 .filter(drill => drill.name.toLowerCase().includes(searchTerm.toLowerCase()))
                 .slice(0, 10); // Limit to 10 results
         } catch (error) {
-            console.error('Error:', error);
-            toast.push('Failed to load drills', { theme: { '--toastBackground': '#F56565' } });
+            console.error('Error filtering drills:', error);
+            toast.push('Error filtering drills', { theme: { '--toastBackground': '#F56565' } });
         } finally {
             isLoadingDrills = false;
         }
@@ -61,6 +45,10 @@
                 return new Date(b.created_at) - new Date(a.created_at);
             }
         });
+    }
+
+    function invalidatePollData() {
+        invalidate('app:poll');
     }
 
     async function addOption(event) {
@@ -80,9 +68,7 @@
                 throw new Error(data.error || 'Failed to add option');
             }
 
-            const newOption = await response.json();
-            pollOptions = [...pollOptions, newOption];
-            sortOptions(sortBy);
+            invalidatePollData();
             newDescription = '';
             toast.push('Successfully added suggestion!', { theme: { '--toastBackground': '#48BB78' } });
         } catch (error) {
@@ -105,7 +91,7 @@
 
             if (!response.ok) throw new Error('Failed to delete suggestion');
             
-            pollOptions = pollOptions.filter(option => option.id !== id);
+            invalidatePollData();
             toast.push('Suggestion deleted!', { theme: { '--toastBackground': '#48BB78' } });
         } catch (error) {
             console.error('Error:', error);
@@ -129,10 +115,7 @@
 
             if (!response.ok) throw new Error('Failed to update drill link');
             
-            const updatedOption = await response.json();
-            pollOptions = pollOptions.map(option => 
-                option.id === id ? updatedOption : option
-            );
+            invalidatePollData();
             editingId = null;
             searchTerm = '';
             selectedDrill = null;
@@ -163,11 +146,7 @@
 
             if (!response.ok) throw new Error('Failed to vote');
             
-            const updatedOption = await response.json();
-            pollOptions = pollOptions.map(option => 
-                option.id === optionId ? updatedOption : option
-            );
-            sortOptions(sortBy);
+            invalidatePollData();
             voteDebounce.set(optionId, Date.now());
             toast.push('Vote recorded!', { theme: { '--toastBackground': '#48BB78' } });
         } catch (error) {
@@ -180,7 +159,14 @@
         searchDrills();
     }
 
-    onMount(loadPollOptions);
+    onMount(() => {
+        sortOptions(sortBy);
+    });
+    $: sortOptions(sortBy);
+    $: if (data.pollOptions) {
+        pollOptions = data.pollOptions || [];
+        sortOptions(sortBy);
+    }
 </script>
 
 <div class="max-w-4xl mx-auto">
@@ -233,9 +219,7 @@
             </div>
         </div>
         
-        {#if isLoading}
-            <div class="text-center py-8 text-text">Loading...</div>
-        {:else if pollOptions.length === 0}
+        {#if pollOptions.length === 0}
             <div class="text-center py-8 text-gray-500">No suggestions yet. Be the first to add one!</div>
         {:else}
             <div class="space-y-4">
@@ -256,6 +240,7 @@
                                                 bind:value={searchTerm}
                                                 placeholder="Search for a drill..."
                                                 class="w-full px-3 py-2 text-sm border rounded-md"
+                                                on:input={searchDrills}
                                             />
                                             {#if isLoadingDrills}
                                                 <div class="absolute right-2 top-2">
@@ -283,6 +268,7 @@
                                             <button
                                                 on:click={() => saveDrillLink(option.id)}
                                                 class="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                disabled={!selectedDrill}
                                             >
                                                 Save
                                             </button>

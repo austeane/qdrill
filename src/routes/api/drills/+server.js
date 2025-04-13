@@ -2,29 +2,73 @@ import { json } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
 import { drillService } from '$lib/server/services/drillService';
 
-export const GET = async ({ url }) => {
-  const page = parseInt(url.searchParams.get('page')) || 1;
-  const limit = parseInt(url.searchParams.get('limit')) || 10;
-  const all = url.searchParams.get('all') === 'true';
-  const sortBy = url.searchParams.get('sort');
-  const sortOrder = url.searchParams.get('order') || 'desc';
+export const GET = async ({ url, locals }) => {
+  // Get session info to pass userId for filtering
+  const session = await locals.getSession();
+  const userId = session?.user?.id;
+
+  // Pagination
+  const page = parseInt(url.searchParams.get('page') || '1');
+  const limit = parseInt(url.searchParams.get('limit') || '10');
+
+  // Sorting
+  const sortBy = url.searchParams.get('sort'); // e.g., 'name', 'date_created'
+  const sortOrder = url.searchParams.get('order') || 'desc'; // 'asc' or 'desc'
+
+  // Filters - Parse all specified filters from performance.md
+  const filters = {};
+  const parseCommaSeparated = (param) => 
+    url.searchParams.has(param) ? url.searchParams.get(param).split(',').map(t => t.trim().toLowerCase()).filter(t => t) : undefined;
+
+  filters.skill_level = parseCommaSeparated('skillLevel');
+  filters.complexity = url.searchParams.get('complexity')?.toLowerCase();
+  filters.skills_focused_on = parseCommaSeparated('skills');
+  filters.positions_focused_on = parseCommaSeparated('positions');
+  filters.drill_type = parseCommaSeparated('types');
   
+  const minPeople = url.searchParams.get('minPeople');
+  const maxPeople = url.searchParams.get('maxPeople');
+  if (minPeople) filters.number_of_people_min = parseInt(minPeople);
+  if (maxPeople) filters.number_of_people_max = parseInt(maxPeople);
+
+  const minLength = url.searchParams.get('minLength');
+  const maxLength = url.searchParams.get('maxLength');
+  // Assuming suggested_length is stored in minutes (or some numeric unit)
+  if (minLength) filters.suggested_length_min = parseInt(minLength); 
+  if (maxLength) filters.suggested_length_max = parseInt(maxLength);
+
+  const parseBooleanFilter = (param) => {
+    const value = url.searchParams.get(param)?.toLowerCase();
+    return value === 'true' ? true : (value === 'false' ? false : undefined);
+  }
+  filters.hasVideo = parseBooleanFilter('hasVideo');
+  filters.hasDiagrams = parseBooleanFilter('hasDiagrams');
+  filters.hasImages = parseBooleanFilter('hasImages');
+
+  filters.searchQuery = url.searchParams.get('q');
+
+  // Add userId to filters
+  if (userId) filters.userId = userId;
+
+  // Remove undefined filters
+  Object.keys(filters).forEach(key => filters[key] === undefined && delete filters[key]);
+
+  // Build options objects for the service
+  const options = { 
+    page, 
+    limit, 
+    sortBy, 
+    sortOrder 
+  };
+
   try {
-    // Use the getFilteredDrills method from DrillService for proper filtering
-    const results = await drillService.getFilteredDrills({}, {
-      page,
-      limit,
-      all,
-      sortBy,
-      sortOrder
-    });
-    
-    return json({
-      drills: results.items,
-      pagination: results.pagination
-    });
+    // Call the enhanced getFilteredDrills method
+    const result = await drillService.getFilteredDrills(filters, options);
+
+    // Return structure matches the frontend expectation from Phase 2 plan
+    return json(result); 
   } catch (error) {
-    console.error('[Database Error] Fetching drills:', error);
+    console.error('[API Error] Fetching drills:', error);
     return json({ error: 'An error occurred while fetching drills', details: error.toString() }, { status: 500 });
   }
 }

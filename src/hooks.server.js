@@ -1,7 +1,10 @@
-import { handle as authHandle } from "$lib/server/auth"
+import { auth } from "$lib/auth";
+import { svelteKitHandler } from "better-auth/svelte-kit";
 import { cleanup } from '$lib/server/db';
 
-export const handle = authHandle
+export async function handle({ event, resolve }) {
+    return svelteKitHandler({ event, resolve, auth });
+}
 
 export async function handleError({ error }) {
     console.error('Uncaught error:', error);

@@ -44,7 +44,7 @@ export class UserService extends BaseEntityService {
     return this.withTransaction(async (client) => {
       // Get user basic data
       const userQuery = `
-        SELECT id, name, email, image, emailVerified 
+        SELECT id, name, email, image, "emailVerified" 
         FROM users 
         WHERE id = $1
       `;
@@ -91,21 +91,21 @@ export class UserService extends BaseEntityService {
       // Get votes by user
       const votesQuery = `
         SELECT 
-          id,
-          drill_id,
-          practice_plan_id,
-          vote,
-          created_at,
+          v.id,
+          v.drill_id,
+          v.practice_plan_id,
+          v.vote,
+          v.created_at,
           CASE 
-            WHEN drill_id IS NOT NULL THEN 'drill' 
-            WHEN practice_plan_id IS NOT NULL THEN 'practice_plan' 
+            WHEN v.drill_id IS NOT NULL THEN 'drill' 
+            WHEN v.practice_plan_id IS NOT NULL THEN 'practice_plan' 
           END AS type,
           COALESCE(d.name, pp.name) AS item_name
         FROM votes v
         LEFT JOIN drills d ON v.drill_id = d.id
         LEFT JOIN practice_plans pp ON v.practice_plan_id = pp.id
-        WHERE user_id = $1
-        ORDER BY created_at DESC
+        WHERE v.user_id = $1
+        ORDER BY v.created_at DESC
       `;
       const votesResult = await client.query(votesQuery, [userId]);
       

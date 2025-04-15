@@ -1,21 +1,42 @@
-export async function load({ params, fetch }) {
+import { error } from '@sveltejs/kit';
+import { practicePlanService } from '$lib/server/services/practicePlanService';
+
+export async function load({ params, locals }) {
     const { id } = params;
+    const userId = locals.user?.id;
   
     try {
-        console.log('[Edit Page Server] Fetching practice plan:', id);
-        const response = await fetch(`/api/practice-plans/${id}`);
-        
-        if (!response.ok) {
-            console.error('[Edit Page Server] Response not OK:', response.status);
-            throw new Error('Failed to fetch practice plan details');
+        const planId = parseInt(id);
+        if (isNaN(planId)) {
+            throw error(400, 'Invalid Practice Plan ID');
         }
+
+        // Fetch the plan using the service (includes canUserView check)
+        const practicePlan = await practicePlanService.getPracticePlanById(planId, userId);
         
-        const practicePlan = await response.json();
-        console.log('[Edit Page Server] Fetched practice plan:', practicePlan);
+        // Explicitly check if the user can edit this plan
+        const canEdit = await practicePlanService.canUserEdit(planId, userId);
+        if (!canEdit) {
+            // Use 403 Forbidden if user can view but not edit
+            throw error(403, 'You do not have permission to edit this practice plan'); 
+        }
     
+        // Return the plan data if authorized
         return { practicePlan };
-    } catch (error) {
-        console.error('[Edit Page Server] Error:', error);
-        return { status: 500, error: 'Internal Server Error' };
+    } catch (err) {
+        console.error('[Edit Practice Plan Page Server] Error:', err);
+        // Re-throw SvelteKit errors or specific service errors
+        if (err.status) {
+            throw error(err.status, err.body?.message || 'Error loading practice plan');
+        } 
+        // Handle specific error messages from the service if needed
+        if (err.message === 'Practice plan not found') {
+            throw error(404, 'Practice plan not found');
+        } 
+        if (err.message === 'Unauthorized') { // From canUserView check within getPracticePlanById
+             throw error(403, 'You do not have permission to view this practice plan');
+        }
+        // Fallback to generic 500
+        throw error(500, 'Internal Server Error while loading practice plan edit page');
     }
 }

@@ -1,11 +1,11 @@
 <script>
-    import { signIn, signOut } from '@auth/sveltekit/client'
-    import { page } from '$app/stores'
-
+    import { useSession, signIn, signOut } from '$lib/auth-client'
+    
+    const session = useSession();
 </script>
 
-{#if $page.data.session}
+{#if $session.data}
     <button on:click={() => signOut()}>Sign out</button>
 {:else}
-    <button on:click={() => signIn('google')}>Sign in with Google</button>
+    <button on:click={() => signIn.social({ provider: 'google' })}>Sign in with Google</button>
 {/if}

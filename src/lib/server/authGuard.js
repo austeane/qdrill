@@ -2,10 +2,12 @@ import { error } from '@sveltejs/kit';
 
 export function authGuard(handler) {
   return async (event) => {
-    const session = await event.locals.getSession();
+    // With Better Auth, session is available directly on event.locals
+    const session = event.locals.session;
+    
     if (!session?.user) {
       throw error(401, {
-        message: 'Unauthorized - Please sign in with Google to continue'
+        message: 'Unauthorized - Please sign in to continue'
       });
     }
     return handler(event);

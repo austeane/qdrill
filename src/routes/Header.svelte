@@ -4,7 +4,10 @@
   import { page } from '$app/stores';
   import { cart } from '$lib/stores/cartStore';
   import { onMount } from 'svelte';
-  import { signIn, signOut } from '@auth/sveltekit/client';
+  import { useSession, signIn, signOut } from '$lib/auth-client';
+  
+  // Get session using Better Auth
+  const session = useSession();
   
   let isMobileMenuOpen = false;
   let isCartOpen = false;
@@ -47,7 +50,8 @@
     };
   });
 
-  $: user = $page.data.session?.user;
+  // User info from Better Auth
+  $: user = $session.data?.user;
 </script>
 
 <header class="w-full bg-white shadow-md z-50">
@@ -242,7 +246,7 @@
             </div>
           </div>
         {:else}
-          <button on:click={() => signIn('google')} class="text-gray-700 hover:text-gray-900 font-semibold">
+          <button on:click={() => signIn.social({ provider: 'google' })} class="text-gray-700 hover:text-gray-900 font-semibold">
             Sign in with Google
           </button>
         {/if}
@@ -414,7 +418,7 @@
           </div>
         {:else}
           <button 
-            on:click={() => signIn('google')} 
+            on:click={() => signIn.social({ provider: 'google' })} 
             class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold"
           >
             Sign in with Google

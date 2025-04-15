@@ -9,16 +9,20 @@
   import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
   import { dev } from '$app/environment';
   import { onMount } from 'svelte';
+  import { useSession } from '$lib/auth-client';
 
   inject({ mode: dev ? 'development' : 'production' });
   injectSpeedInsights();
+
+  // Get session using Better Auth
+  const session = useSession();
 
   /** @type {import('./$types').LayoutData} */
   export let data;
 
   // Function to check and associate entities from sessionStorage
-  async function checkAndAssociateEntities(session) {
-    if (!browser || !session) return;
+  async function checkAndAssociateEntities(sessionData) {
+    if (!browser || !sessionData) return;
 
     const itemsToAssociate = [
       { key: 'formationToAssociate', endpoint: '/api/formations' },
@@ -59,14 +63,16 @@
 
   // Check on initial load (in case user was already logged in but association failed before)
   onMount(() => {
-    checkAndAssociateEntities($page.data.session);
+    if ($session.data) {
+      checkAndAssociateEntities($session.data);
+    }
   });
 
   // Check whenever the session data changes (e.g., after login)
   $: {
-    if (browser && $page.data.session) {
+    if (browser && $session.data) {
       // Use timeout to ensure session is fully established after redirect
-      setTimeout(() => checkAndAssociateEntities($page.data.session), 100);
+      setTimeout(() => checkAndAssociateEntities($session.data), 100);
     }
   }
 

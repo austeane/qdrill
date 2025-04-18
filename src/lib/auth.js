@@ -1,8 +1,6 @@
 // src/lib/auth.js - Moved from server directory
 import { betterAuth } from "better-auth";
-import { PostgresDialect } from "kysely";
-import pg from "pg";
-const { Pool } = pg;
+import { kyselyDb } from '$lib/server/db'; // Import the Kysely instance
 
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
@@ -16,14 +14,11 @@ export const auth = betterAuth({
     }
   },
   
-  // Explicitly configure the Kysely dialect
+  // Pass the Kysely instance directly
   database: {
-    dialect: new PostgresDialect({
-      pool: new Pool({
-        connectionString: process.env.DATABASE_URL,
-      })
-    }),
-    type: "postgres" // Still specify the type for better-auth
+    db: kyselyDb, // Use the imported Kysely instance
+    // dialect: new VercelPostgresDialect({ pool: vercelPool }), // Remove dialect config
+    // type: "postgres" // Type is inferred when passing 'db'
   },
   // Uncommented after successful migration
   callbacks: {

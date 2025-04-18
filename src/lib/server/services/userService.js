@@ -139,55 +139,43 @@ export class UserService extends BaseEntityService {
 
   /**
    * Check if user has admin role
-   * @param {string} userId - User ID
+   * @param {string} userRole - User role from session
    * @returns {Promise<boolean>} - True if user is admin
    */
-  async isAdmin(userId) {
-    try {
-      // Check if user exists
-      const userExists = await this.exists(userId);
-      if (!userExists) {
-        return false;
-      }
-
-      // This is a simple implementation that could be expanded later
-      // to use a proper roles table or other authorization mechanism
-      const query = `
-        SELECT email FROM users WHERE id = $1
-      `;
-      
-      const result = await db.query(query, [userId]);
-      
-      if (result.rows.length === 0) {
-        return false;
-      }
-      
-      // List of admin email addresses
-      // In a production app, this would be stored in a database
-      const adminEmails = [
-        'admin@example.com',
-        // Add other admin emails as needed
-      ];
-      
-      return adminEmails.includes(result.rows[0].email);
-    } catch (error) {
-      console.error('Error in isAdmin:', error);
-      return false;
-    }
+  async isAdmin(userRole) {
+    // Checks if the role provided (presumably from the session) is 'admin'
+    // Assumes the role column exists in the users table and is populated in the session
+    return userRole === 'admin';
+    /* 
+    // Original implementation kept for reference:
+    // try {
+    //   const userExists = await this.exists(userId);
+    //   if (!userExists) return false;
+    //   const query = `SELECT email FROM users WHERE id = $1`;
+    //   const result = await db.query(query, [userId]);
+    //   if (result.rows.length === 0) return false;
+    //   const adminEmails = ['admin@example.com'];
+    //   return adminEmails.includes(result.rows[0].email);
+    // } catch (error) {
+    //   console.error('Error in isAdmin:', error);
+    //   return false;
+    // }
+    */
   }
 
   /**
    * Check if user can perform a specific action on an entity
-   * @param {string} userId - User ID
+   * @param {string} userId - User ID (still needed for ownership checks)
+   * @param {string} userRole - User Role from session
    * @param {string} action - Action type (view, edit, delete)
    * @param {string} entityType - Entity type (drill, practice_plan, formation)
    * @param {string|number} entityId - Entity ID
    * @returns {Promise<boolean>} - True if user can perform action
    */
-  async canUserPerformAction(userId, action, entityType, entityId) {
+  async canUserPerformAction(userId, userRole, action, entityType, entityId) {
     try {
       // If user is admin, they can do anything
-      const isUserAdmin = await this.isAdmin(userId);
+      const isUserAdmin = await this.isAdmin(userRole);
       if (isUserAdmin) {
         return true;
       }

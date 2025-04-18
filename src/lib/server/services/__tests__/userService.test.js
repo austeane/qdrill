@@ -143,215 +143,171 @@ describe('UserService', () => {
 
   describe('isAdmin', () => {
     it('should return true for admin users', async () => {
-      // Mock exists to return true (user exists)
-      vi.spyOn(userService, 'exists').mockResolvedValueOnce(true);
-      
-      // Mock query to return an admin email
-      db.query.mockResolvedValueOnce({
-        rows: [{ email: 'admin@example.com' }]
-      });
-
-      const result = await userService.isAdmin('123');
+      const result = await userService.isAdmin('admin');
       
       expect(result).toBe(true);
     });
 
     it('should return false for non-admin users', async () => {
-      // Mock exists to return true (user exists)
-      vi.spyOn(userService, 'exists').mockResolvedValueOnce(true);
-      
-      // Mock query to return a non-admin email
-      db.query.mockResolvedValueOnce({
-        rows: [{ email: 'regular@example.com' }]
-      });
-
-      const result = await userService.isAdmin('123');
+      const result = await userService.isAdmin('user');
       
       expect(result).toBe(false);
     });
 
-    it('should return false if user does not exist', async () => {
-      // Mock exists to return false (user doesn't exist)
-      vi.spyOn(userService, 'exists').mockResolvedValueOnce(false);
+    it('should return false for null or undefined roles', async () => {
+      let result = await userService.isAdmin(null);
+      expect(result).toBe(false);
 
-      const result = await userService.isAdmin('nonexistent');
-      
+      result = await userService.isAdmin(undefined);
+       
       expect(result).toBe(false);
     });
   });
 
   describe('canUserPerformAction', () => {
     it('should allow admins to perform any action', async () => {
-      // Mock isAdmin to return true
       vi.spyOn(userService, 'isAdmin').mockResolvedValueOnce(true);
 
       const result = await userService.canUserPerformAction(
-        '123', 'edit', 'drill', '456'
+        '123', 'admin', 'edit', 'drill', '456'
       );
       
       expect(result).toBe(true);
+      expect(userService.isAdmin).toHaveBeenCalledWith('admin');
     });
 
     it('should allow viewing public entities', async () => {
-      // Mock isAdmin to return false
       vi.spyOn(userService, 'isAdmin').mockResolvedValueOnce(false);
       
-      // Mock query for view check
       db.query.mockResolvedValueOnce({
-        rows: [{ 
-          id: '456', 
-          created_by: '789', 
-          visibility: 'public',
-          is_editable_by_others: false
-        }]
+        rows: [
+          { id: '456', created_by: '789', visibility: 'public', is_editable_by_others: false }
+        ]
       });
 
       const result = await userService.canUserPerformAction(
-        '123', 'view', 'drill', '456'
+        '123', 'user', 'view', 'drill', '456'
       );
       
       expect(result).toBe(true);
+      expect(userService.isAdmin).toHaveBeenCalledWith('user');
     });
 
     it('should allow viewing unlisted entities', async () => {
-      // Mock isAdmin to return false
       vi.spyOn(userService, 'isAdmin').mockResolvedValueOnce(false);
       
-      // Mock query for view check
       db.query.mockResolvedValueOnce({
-        rows: [{ 
-          id: '456', 
-          created_by: '789', 
-          visibility: 'unlisted',
-          is_editable_by_others: false
-        }]
+        rows: [
+          { id: '456', created_by: '789', visibility: 'unlisted', is_editable_by_others: false }
+        ]
       });
 
       const result = await userService.canUserPerformAction(
-        '123', 'view', 'drill', '456'
+        '123', 'user', 'view', 'drill', '456'
       );
       
       expect(result).toBe(true);
+      expect(userService.isAdmin).toHaveBeenCalledWith('user');
     });
 
     it('should only allow viewing private entities by creator', async () => {
-      // Mock isAdmin to return false
       vi.spyOn(userService, 'isAdmin').mockResolvedValueOnce(false);
       
-      // Mock query for view check - different creator
       db.query.mockResolvedValueOnce({
-        rows: [{ 
-          id: '456', 
-          created_by: '789', 
-          visibility: 'private',
-          is_editable_by_others: false
-        }]
+        rows: [
+          { id: '456', created_by: '789', visibility: 'private', is_editable_by_others: false }
+        ]
       });
 
       let result = await userService.canUserPerformAction(
-        '123', 'view', 'drill', '456'
+        '123', 'user', 'view', 'drill', '456'
       );
       
       expect(result).toBe(false);
+      expect(userService.isAdmin).toHaveBeenCalledWith('user');
       
-      // Reset mocks
       vi.clearAllMocks();
-      vi.spyOn(userService, 'isAdmin').mockResolvedValueOnce(false);
+      vi.spyOn(userService, 'isAdmin').mockResolvedValue(false); 
       
-      // Mock query for view check - same creator
       db.query.mockResolvedValueOnce({
-        rows: [{ 
-          id: '456', 
-          created_by: '123', 
-          visibility: 'private',
-          is_editable_by_others: false
-        }]
+        rows: [
+          { id: '456', created_by: '123', visibility: 'private', is_editable_by_others: false }
+        ]
       });
 
       result = await userService.canUserPerformAction(
-        '123', 'view', 'drill', '456'
+        '123', 'user', 'view', 'drill', '456'
       );
       
       expect(result).toBe(true);
+      expect(userService.isAdmin).toHaveBeenCalledWith('user');
     });
 
     it('should allow editing by creator', async () => {
-      // Mock isAdmin to return false
       vi.spyOn(userService, 'isAdmin').mockResolvedValueOnce(false);
       
-      // Mock query for edit check
       db.query.mockResolvedValueOnce({
-        rows: [{ 
-          id: '456', 
-          created_by: '123', 
-          is_editable_by_others: false
-        }]
+        rows: [
+          { id: '456', created_by: '123', is_editable_by_others: false }
+        ]
       });
 
       const result = await userService.canUserPerformAction(
-        '123', 'edit', 'drill', '456'
+        '123', 'user', 'edit', 'drill', '456'
       );
       
       expect(result).toBe(true);
+      expect(userService.isAdmin).toHaveBeenCalledWith('user');
     });
 
     it('should allow editing if is_editable_by_others is true', async () => {
-      // Mock isAdmin to return false
       vi.spyOn(userService, 'isAdmin').mockResolvedValueOnce(false);
       
-      // Mock query for edit check
       db.query.mockResolvedValueOnce({
-        rows: [{ 
-          id: '456', 
-          created_by: '789', 
-          is_editable_by_others: true
-        }]
+        rows: [
+          { id: '456', created_by: '789', is_editable_by_others: true }
+        ]
       });
 
       const result = await userService.canUserPerformAction(
-        '123', 'edit', 'drill', '456'
+        '123', 'user', 'edit', 'drill', '456'
       );
       
       expect(result).toBe(true);
+      expect(userService.isAdmin).toHaveBeenCalledWith('user');
     });
 
     it('should only allow deletion by creator', async () => {
-      // Mock isAdmin to return false
       vi.spyOn(userService, 'isAdmin').mockResolvedValueOnce(false);
       
-      // Mock query for delete check - different creator
       db.query.mockResolvedValueOnce({
-        rows: [{ 
-          id: '456', 
-          created_by: '789', 
-          is_editable_by_others: true
-        }]
+        rows: [
+          { id: '456', created_by: '789', is_editable_by_others: true }
+        ]
       });
 
       let result = await userService.canUserPerformAction(
-        '123', 'delete', 'drill', '456'
+        '123', 'user', 'delete', 'drill', '456'
       );
       
       expect(result).toBe(false);
+      expect(userService.isAdmin).toHaveBeenCalledWith('user');
       
-      // Reset mocks
       vi.clearAllMocks();
-      vi.spyOn(userService, 'isAdmin').mockResolvedValueOnce(false);
+      vi.spyOn(userService, 'isAdmin').mockResolvedValue(false);
       
-      // Mock query for delete check - same creator
       db.query.mockResolvedValueOnce({
-        rows: [{ 
-          id: '456', 
-          created_by: '123', 
-          is_editable_by_others: true
-        }]
+        rows: [
+          { id: '456', created_by: '123', is_editable_by_others: true }
+        ]
       });
 
       result = await userService.canUserPerformAction(
-        '123', 'delete', 'drill', '456'
+        '123', 'user', 'delete', 'drill', '456'
       );
       
       expect(result).toBe(true);
+      expect(userService.isAdmin).toHaveBeenCalledWith('user');
     });
   });
 });

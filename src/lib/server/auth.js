@@ -28,9 +28,10 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
       return true;
     },
     async session({ session, user }) {
-      // Include user ID in the session
+      // Include user ID and role in the session
       if (session.user) {
         session.user.id = user.id;
+        session.user.role = user.role; // Assuming 'user' object from adapter has 'role'
       }
       return session;
     },

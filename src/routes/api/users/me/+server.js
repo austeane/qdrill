@@ -3,7 +3,8 @@ import { authGuard } from '$lib/server/authGuard';
 import { userService } from '$lib/server/services/userService';
 
 export const GET = authGuard(async (event) => {
-    const session = await event.locals.getSession();
+    // Retrieve the session from event.locals
+    const session = event.locals.session;
     const userId = session.user.id;
 
     try {

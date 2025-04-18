@@ -4,7 +4,7 @@ import { drillService } from '$lib/server/services/drillService';
 
 export const GET = async ({ url, locals }) => {
   // Get session info to pass userId for filtering
-  const session = await locals.getSession();
+  const session = locals.session;
   const userId = session?.user?.id;
 
   // Pagination
@@ -76,7 +76,7 @@ export const GET = async ({ url, locals }) => {
 export const POST = async (event) => {
   try {
     const drillData = await event.request.json();
-    const session = await event.locals.getSession();
+    const session = event.locals.session;
     const userId = session?.user?.id || null;
     
     // Use the DrillService to create the drill
@@ -92,7 +92,7 @@ export const POST = async (event) => {
 export const PUT = authGuard(async ({ request, locals }) => {
   try {
     const drillData = await request.json();
-    const session = await locals.getSession();
+    const session = locals.session;
     const userId = session.user.id;
     
     // Use the DrillService to update the drill
@@ -115,7 +115,7 @@ export const PUT = authGuard(async ({ request, locals }) => {
 export const DELETE = authGuard(async ({ params, request, locals }) => {
   // In SvelteKit, for API routes with dynamic parameters, the parameter comes from params.id 
   const id = params.id;
-  const session = await locals.getSession();
+  const session = locals.session;
   const userId = session.user.id;
 
   try {

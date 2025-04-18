@@ -85,8 +85,10 @@ const drillSchema = Yup.object().shape({
 
 // Wrap the POST handler with authGuard
 export const POST = authGuard(async ({ request, locals }) => {
-  const session = await locals.getSession();
-  const userId = session.user.id;
+  console.log("Attempting bulk upload...");
+  // Example: Auth guard (replace with your actual auth logic)
+  const session = locals.session;
+  const userId = session?.user?.id;
 
   try {
     const formData = await request.formData();

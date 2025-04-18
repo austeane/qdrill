@@ -5,14 +5,16 @@ import { formationService } from '$lib/server/services/formationService.js';
  * @type {import('./$types').RequestHandler}
  */
 export async function POST({ params, request, locals }) {
-  const session = await locals.getSession();
+  const parentId = params.id;
+  const { childId, associationType } = await request.json();
+  const session = locals.session;
+  const userId = session?.user?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const formationId = parseInt(params.id);
-  const userId = session.user.id; // Adjust based on your session structure
+  const formationId = parseInt(parentId);
 
   if (isNaN(formationId)) {
     return json({ error: 'Invalid Formation ID' }, { status: 400 });

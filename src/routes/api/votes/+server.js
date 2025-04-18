@@ -7,7 +7,7 @@ await client.connect();
 
 // POST: Cast or update a vote
 export const POST = authGuard(async ({ request, locals }) => {
-    const session = await locals.getSession();
+    const session = locals.session;
     const userId = session.user.id;
     const body = await request.json();
     
@@ -60,7 +60,7 @@ export const POST = authGuard(async ({ request, locals }) => {
 
 // DELETE: Remove a vote
 export const DELETE = authGuard(async ({ url, locals }) => {
-    const session = await locals.getSession();
+    const session = locals.session;
     const userId = session?.user?.id;
 
     if (!userId) {

@@ -3,7 +3,7 @@ import { drillService } from '$lib/server/services/drillService.js';
 export async function load({ fetch, url, locals }) {
     try {
         // Get session info
-        const session = await locals.getSession();
+        const session = locals.session;
         const userId = session?.user?.id;
 
         // Pagination

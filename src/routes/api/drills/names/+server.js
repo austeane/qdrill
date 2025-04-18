@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService';
 
 export const GET = async (event) => {
-  const session = await event.locals.getSession();
+  const session = event.locals.session;
   const userId = session?.user?.id;
 
   try {

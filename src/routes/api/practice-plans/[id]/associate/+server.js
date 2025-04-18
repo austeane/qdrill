@@ -5,14 +5,16 @@ import { practicePlanService } from '$lib/server/services/practicePlanService.js
  * @type {import('./$types').RequestHandler}
  */
 export async function POST({ params, request, locals }) {
-  const session = await locals.getSession();
+  const parentId = params.id; 
+  const { childId, associationType } = await request.json();
+  const session = locals.session;
+  const userId = session?.user?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const planId = parseInt(params.id);
-  const userId = session.user.id;
+  const planId = parseInt(parentId);
 
   if (isNaN(planId)) {
     return json({ error: 'Invalid Practice Plan ID' }, { status: 400 });

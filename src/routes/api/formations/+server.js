@@ -10,7 +10,7 @@ import { dev } from '$app/environment';
 export async function GET({ url, locals }) {
   // Get session info to pass userId for filtering
   // Note: This assumes you have configured session handling in hooks.server.js
-  const session = await locals.getSession(); // Need locals passed to GET
+  const session = locals.session; // Need locals passed to GET
   const userId = session?.user?.id;
   
   // Pagination
@@ -71,7 +71,7 @@ export async function GET({ url, locals }) {
  */
 export const POST = async (event) => {
   const formationData = await event.request.json();
-  const session = await event.locals.getSession();
+  const session = event.locals.session;
   const userId = session?.user?.id || null;
   
   console.log('Creating formation with data:', JSON.stringify(formationData, null, 2));
@@ -98,7 +98,7 @@ export const POST = async (event) => {
  */
 export const PUT = authGuard(async ({ request, locals }) => {
   const formationData = await request.json();
-  const session = await locals.getSession();
+  const session = locals.session;
   const userId = session.user.id;
   const { id } = formationData;
   

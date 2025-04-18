@@ -4,7 +4,7 @@ import { query } from '$lib/server/db';
 
 export const POST = authGuard(async ({ request, locals }) => {
   const { drillId } = await request.json();
-  const session = await locals.getSession();
+  const session = locals.session;
   
   try {
     // Update the drill to associate it with the user

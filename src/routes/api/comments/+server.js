@@ -36,8 +36,8 @@ export async function GET({ url }) {
 
 // POST: Add a new comment (authenticated)
 export const POST = authGuard(async ({ request, locals }) => {
-    const session = await locals.getSession();
-    const userId = session.user.id;
+    const session = locals.session;
+    const userId = session?.user?.id;
     const { drillId, practicePlanId, content } = await request.json();
 
     if (!content || (!drillId && !practicePlanId)) {
@@ -60,8 +60,8 @@ export const POST = authGuard(async ({ request, locals }) => {
 // DELETE: Delete a comment (authenticated and authorized)
 export const DELETE = authGuard(async ({ url, locals }) => {
     const commentId = url.searchParams.get('id');
-    const session = await locals.getSession();
-    const userId = session.user.id;
+    const session = locals.session;
+    const userId = session?.user?.id;
 
     if (!commentId) {
         return json({ error: 'Comment ID is required' }, { status: 400 });

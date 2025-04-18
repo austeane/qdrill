@@ -4,8 +4,9 @@ import { dev } from '$app/environment';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ params, locals }) {
-  const session = await locals.getSession();
+  const session = locals.session;
   const userId = session?.user?.id;
+  const id = params.id;
   
   try {
     const formation = await formationService.getById(params.id);

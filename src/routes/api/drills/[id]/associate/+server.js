@@ -5,14 +5,16 @@ import { drillService } from '$lib/server/services/drillService.js';
  * @type {import('./$types').RequestHandler}
  */
 export async function POST({ params, request, locals }) {
-  const session = await locals.getSession();
+  const parentId = params.id;
+  const { childId, associationType } = await request.json();
+  const session = locals.session;
+  const userId = session?.user?.id;
 
-  if (!session?.user?.id) {
+  if (!userId) {
     return json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const drillId = parseInt(params.id);
-  const userId = session.user.id;
 
   if (isNaN(drillId)) {
     return json({ error: 'Invalid Drill ID' }, { status: 400 });

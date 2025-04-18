@@ -19,6 +19,8 @@ function errorResponse(message, status = 500) {
 export async function GET({ params, locals, url }) {
     const { id } = params;
     const includeVariants = url.searchParams.get('includeVariants') === 'true';
+    const session = locals.session;
+    const userId = session?.user?.id;
     
     if (!id || isNaN(parseInt(id))) {
         return errorResponse(ERROR_MESSAGES.INVALID_INPUT, 400);
@@ -39,9 +41,6 @@ export async function GET({ params, locals, url }) {
 
         // Check visibility and ownership (skip in development)
         if (!dev && drill.visibility === 'private') {
-            const session = await locals.getSession();
-            const userId = session?.user?.id;
-            
             // If private drill and no user session, or user is not the owner
             if (!userId || drill.created_by !== userId) {
                 return json({ error: 'Unauthorized' }, { status: 403 });
@@ -88,7 +87,7 @@ export async function GET({ params, locals, url }) {
 
 export async function PUT({ params, request, locals }) {
     const { id } = params;
-    const session = await locals.getSession();
+    const session = locals.session;
     const userId = session?.user?.id;
     
     if (!userId) {
@@ -139,7 +138,7 @@ export async function PUT({ params, request, locals }) {
 
 export async function DELETE({ params, locals }) {
     const { id } = params;
-    const session = await locals.getSession();
+    const session = locals.session;
     const userId = session?.user?.id;
     
     if (!userId && !dev) {

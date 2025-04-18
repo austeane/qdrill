@@ -5,7 +5,7 @@ const client = createClient();
 await client.connect();
 
 export async function GET({ url, locals }) {
-    const session = await locals.getSession();
+    const session = locals.session;
     const userId = session?.user?.id;
     
     if (!userId) {

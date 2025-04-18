@@ -2,12 +2,19 @@ import { json } from '@sveltejs/kit';
 import { practicePlanService } from '$lib/server/services/practicePlanService.js';
 
 export async function POST({ params, locals }) {
-    const { id } = params;
-    const session = await locals.getSession();
+    const { id: planId } = params;
+    const session = locals.session;
     const userId = session?.user?.id;
 
+    if (!userId) {
+        return json(
+            { error: 'User not authenticated' },
+            { status: 401 }
+        );
+    }
+
     try {
-        const result = await practicePlanService.duplicatePracticePlan(id, userId);
+        const result = await practicePlanService.duplicatePracticePlan(planId, userId);
         
         return json({ 
             success: true, 

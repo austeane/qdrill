@@ -32,8 +32,12 @@ export async function GET({ params }) {
  */
 export const DELETE = authGuard(async ({ params, locals }) => {
   const { id } = params;
-  const session = await locals.getSession();
-  const userId = session.user.id;
+  const session = locals.session;
+  const userId = session?.user?.id;
+
+  if (!userId) {
+      return json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
     // Check if the formation exists and if the user has permission to delete it
@@ -44,8 +48,8 @@ export const DELETE = authGuard(async ({ params, locals }) => {
     }
     
     // Only allow deletion if the user created the formation OR if in dev mode
-    if (!dev && formation.created_by !== userId) {
-      return json({ error: 'Unauthorized' }, { status: 403 });
+    if (formation.created_by !== userId) {
+      return json({ error: 'Forbidden: You do not own this formation' }, { status: 403 });
     }
     
     const deleted = await formationService.delete(id);

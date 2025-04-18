@@ -5,7 +5,7 @@ import { practicePlanService } from '$lib/server/services/practicePlanService.js
 
 export async function GET({ params, locals }) {
   const id = params.id;
-  const session = await locals.getSession();
+  const session = locals.session;
   const userId = session?.user?.id;
 
   try {
@@ -32,7 +32,7 @@ export async function GET({ params, locals }) {
 export const PUT = async ({ params, request, locals }) => {
   const { id } = params;
   const plan = await request.json();
-  const session = await locals.getSession();
+  const session = locals.session;
   const userId = session?.user?.id;
 
   try {
@@ -59,7 +59,7 @@ export const PUT = async ({ params, request, locals }) => {
 
 export const DELETE = authGuard(async ({ params, locals }) => {
   const { id } = params;
-  const session = await locals.getSession();
+  const session = locals.session;
   const userId = session?.user?.id;
 
   try {

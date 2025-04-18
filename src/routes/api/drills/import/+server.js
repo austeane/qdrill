@@ -13,8 +13,9 @@ const pool = new Pool({
 });
 
 export const POST = authGuard(async ({ request, locals }) => {
-  const session = await locals.getSession();
-  const userId = session.user.id;
+  console.log("Received request to import drills...");
+  const session = locals.session;
+  const userId = session?.user?.id;
 
   try {
     const { drills, fileName, visibility = 'public' } = await request.json();

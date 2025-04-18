@@ -70,7 +70,7 @@ export const GET = async ({ params }) => {
 
 export const POST = async ({ params, request, locals }) => {
   const { id } = params;
-  const session = await locals.getSession();
+  const session = locals.session;
   const userId = session?.user?.id || null;
 
   try {

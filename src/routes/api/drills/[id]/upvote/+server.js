@@ -3,14 +3,15 @@ import { error } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService';
 
 export async function POST({ params, locals }) {
-    const drillId = parseInt(params.id);
+    const drillId = params.id;
     
     // Validate drill ID
     if (!drillId || isNaN(drillId)) {
         throw error(400, 'Invalid drill ID');
     }
 
-    const session = await locals.getSession();
+    // Get user ID from session
+    const session = locals.session;
     const userId = session?.user?.id;
 
     if (!userId) {

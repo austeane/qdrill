@@ -1,8 +1,9 @@
-import { json } from '@sveltejs/kit';
+import { json, error as svelteKitError } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService';
 import { dev } from '$app/environment';
 import * as db from '$lib/server/db';
 import { authGuard } from '$lib/server/authGuard';
+import { AppError, NotFoundError, ForbiddenError, ValidationError, DatabaseError } from '$lib/server/errors';
 
 const ERROR_MESSAGES = {
     NOT_FOUND: (id) => `Drill with ID ${id} not found`,
@@ -11,10 +12,28 @@ const ERROR_MESSAGES = {
     INVALID_INPUT: 'Invalid input data'
 };
 
-// Helper function for error responses
-function errorResponse(message, status = 500) {
-    console.error(`[Error] ${message}`);
-    return json({ error: message }, { status });
+// Helper function to convert AppError to SvelteKit error response
+function handleApiError(err) {
+    if (err instanceof AppError) {
+        console.warn(`[API Warn] (${err.status} ${err.code}): ${err.message}`);
+        const body = { error: { code: err.code, message: err.message } };
+        if (err instanceof ValidationError && err.details) {
+            body.error.details = err.details;
+        }
+        return json(body, { status: err.status });
+    } else {
+        // Handle potential database constraint errors specifically if needed
+        if (err?.code === '23503') { // Foreign key violation
+            console.warn('[API Warn] Foreign key constraint violation:', err.detail);
+            return json({ error: { code: 'CONFLICT', message: 'Cannot perform operation due to related items.' } }, { status: 409 });
+        } else if (err?.code === '23505') { // Unique constraint violation
+            console.warn('[API Warn] Unique constraint violation:', err.detail);
+            return json({ error: { code: 'CONFLICT', message: 'An item with this identifier already exists.' } }, { status: 409 });
+        }
+        
+        console.error('[API Error] Unexpected error:', err);
+        return json({ error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected internal server error occurred' } }, { status: 500 });
+    }
 }
 
 export async function GET({ params, locals, url }) {
@@ -23,41 +42,46 @@ export async function GET({ params, locals, url }) {
     const session = locals.session;
     const userId = session?.user?.id;
     
-    if (!id || isNaN(parseInt(id))) {
-        return errorResponse(ERROR_MESSAGES.INVALID_INPUT, 400);
-    }
-
     try {
+        const drillId = parseInt(id);
+        if (!id || isNaN(drillId)) {
+            throw new ValidationError('Invalid Drill ID format');
+        }
+
         let drill;
         if (includeVariants) {
-            drill = await drillService.getDrillWithVariations(id);
+            drill = await drillService.getDrillWithVariations(drillId);
         } else {
-            drill = await drillService.getById(id);
+            drill = await drillService.getById(drillId);
         }
 
-        if (!drill) {
-            return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
-        }
-
-        // Check visibility and ownership (skip in development)
-        if (!dev && drill.visibility === 'private') {
+        // Check visibility and ownership
+        if (drill.visibility === 'private') {
             if (!userId || drill.created_by !== userId) {
-                return json({ error: 'Unauthorized' }, { status: 403 });
+                throw new ForbiddenError('Unauthorized to view this private drill');
             }
         }
 
         // If this is a variation, get the parent name
         if (drill.parent_drill_id && !drill.variations) {
-            const parentDrill = await drillService.getById(drill.parent_drill_id);
-            if (parentDrill) {
-                drill.parent_drill_name = parentDrill.name;
+            try {
+                const parentDrill = await drillService.getById(drill.parent_drill_id);
+                if (parentDrill) {
+                    drill.parent_drill_name = parentDrill.name;
+                }
+            } catch (parentErr) {
+                if (parentErr instanceof NotFoundError) {
+                    console.warn(`Parent drill ID ${drill.parent_drill_id} not found for variation ${drill.id}`);
+                    drill.parent_drill_name = '[Parent Deleted]'; // Indicate parent is gone
+                } else {
+                    throw parentErr; // Re-throw unexpected errors getting parent
+                }
             }
         }
 
         return json(drill);
-    } catch (error) {
-        console.error(`[Database Error] Fetching drill ${id}:`, error);
-        return errorResponse(ERROR_MESSAGES.DB_ERROR);
+    } catch (err) {
+        return handleApiError(err);
     }
 }
 
@@ -68,28 +92,24 @@ export const PUT = authGuard(async ({ params, request, locals }) => {
     const userId = session?.user?.id;
     
     try {
+        const drillId = parseInt(id);
+        if (!id || isNaN(drillId)) {
+            throw new ValidationError('Invalid Drill ID format');
+        }
+
         const drillData = await request.json();
         
-        if (!drillData.name || !drillData.drill_type) {
-            return errorResponse('Required fields missing', 400);
+        // Basic validation
+        if (!drillData.name || !drillData.brief_description) {
+            throw new ValidationError('Required fields missing: name, brief_description');
         }
 
         // Use DrillService to update the drill (now also updates votes)
-        const updatedDrill = await drillService.updateDrill(id, drillData, userId);
+        const updatedDrill = await drillService.updateDrill(drillId, drillData, userId);
         
         return json(updatedDrill);
-    } catch (error) {
-        console.error(`[Update Error] Drill ${id}:`, error);
-        
-        if (error.message === 'Unauthorized to edit this drill') {
-            return errorResponse(ERROR_MESSAGES.UNAUTHORIZED, 403);
-        } else if (error.message.includes('not found')) {
-            return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
-        } else if (error.code === '23505') {
-            return errorResponse('Duplicate entry found', 400);
-        }
-        
-        return errorResponse(ERROR_MESSAGES.DB_ERROR);
+    } catch (err) {
+        return handleApiError(err);
     }
 });
 
@@ -100,79 +120,60 @@ const handleDelete = async ({ params, locals }) => {
     const userId = session?.user?.id;
     
     try {
-        // Normal flow with auth check (authGuard handles the check)
+        const drillId = parseInt(id);
+        if (!id || isNaN(drillId)) {
+            throw new ValidationError('Invalid Drill ID format');
+        }
+
         // Pass userId for authorization check within the service
-        const result = await drillService.deleteDrill(id, userId);
+        const success = await drillService.deleteDrill(drillId, userId);
         
-        if (!result) {
+        if (!success) {
             // Service returns false if not found, true if deleted
-            return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
+            throw new NotFoundError(`Drill with ID ${drillId} not found for deletion.`);
         }
         
-        return json({ success: true });
-    } catch (error) {
-        console.error(`[Delete Error] Drill ${id}:`, error);
-        
-        // Handle specific errors thrown by the service
-        if (error.message === 'Unauthorized to delete this drill') {
-            return errorResponse(ERROR_MESSAGES.UNAUTHORIZED, 403);
-        } else if (error.code === '23503' || error.message.includes('referenced by other items')) {
-            // Catch potential FK constraint errors if service doesn't delete related items
-            return errorResponse('Cannot delete: drill is referenced by other items', 400);
-        } else if (error.message.includes('not found')) {
-            return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
-        }
-        
-        return errorResponse(ERROR_MESSAGES.DB_ERROR);
+        return json({ message: 'Drill deleted successfully' }, { status: 200 });
+    } catch (err) {
+        // Catch FK constraint errors specifically if service doesn't handle them gracefully
+        if (err?.code === '23503') {
+            throw new DatabaseError('Cannot delete: drill is referenced by other items', err); // Wrap it
+        } 
+        // Re-throw other errors to be handled by the main handler/helper
+        throw err; 
     }
 };
 
 // Export DELETE handler, applying authGuard only when not in dev mode
 export const DELETE = async (event) => {
-    const { id } = event.params;
-    const session = event.locals.session;
-    // Use a placeholder or known admin ID for dev mode deletion if strict user check is needed
-    // Or rely on the service logic that allows deletion if unowned + deleteRelated is true
-    const devUserId = session?.user?.id || null; // Pass null if no session, service handles unowned check
+    try {
+        const { id } = event.params;
+        const session = event.locals.session;
+        const userId = session?.user?.id || null; // Used for dev check
 
-    if (dev) {
-        console.log(`[DEV MODE BYPASS] Attempting deletion for drill ${id} with related data.`);
-        try {
+        const drillId = parseInt(id);
+        if (!id || isNaN(drillId)) {
+            throw new ValidationError('Invalid Drill ID format');
+        }
+
+        if (dev) {
+            console.log(`[DEV MODE BYPASS] Attempting deletion for drill ${drillId} with related data.`);
             // Call the service method with deleteRelated: true
-            // Pass devUserId (can be null) - service checks if drill.created_by === devUserId OR (drill.created_by === null AND deleteRelated)
-            const result = await drillService.deleteDrill(id, devUserId, { deleteRelated: true });
+            // Pass userId (can be null) - service checks if drill.created_by === userId OR (drill.created_by === null AND deleteRelated)
+            const result = await drillService.deleteDrill(drillId, userId, { deleteRelated: true });
             
             if (!result) {
-                // Service handles not found case
-                return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
+                // Service handles not found case by returning false
+                throw new NotFoundError(`Drill with ID ${drillId} not found for deletion (dev mode).`);
             }
             
-            return json({ success: true, message: 'Drill and related data deleted (dev mode)' });
-        } catch (error) {
-             console.error(`[DEV MODE] Error deleting drill ${id}:`, error);
-             // Handle specific errors from service call in dev mode
-             if (error.message === 'Unauthorized to delete this drill') {
-                 // This might happen if the drill IS owned, but not by devUserId
-                 return errorResponse(ERROR_MESSAGES.UNAUTHORIZED + ' (dev mode - owned by different user?)', 403);
-             } else if (error.code === '23503' || error.message.includes('referenced by other items')) {
-                 return errorResponse('Cannot delete: drill is referenced by other items (dev mode)', 400);
-             }
-             return errorResponse(ERROR_MESSAGES.DB_ERROR + ' (dev mode)');
-        } 
-        // Remove manual DB deletion logic
-        /*
-        const client = await db.getClient();
-        try {
-            // ... old client query logic ...
-        } catch (error) {
-            // ... old error handling ...
-        } finally {
-            client.release();
+            return json({ success: true, message: 'Drill and related data deleted (dev mode)' }, { status: 200 });
+        } else {
+            // In production, use the authGuard with the original handleDelete logic
+            const guardedDelete = authGuard(handleDelete);
+            return await guardedDelete(event); // Ensure guarded function is awaited
         }
-        */
-    } else {
-        // In production, use the authGuard with the original handleDelete logic
-        const guardedDelete = authGuard(handleDelete);
-        return guardedDelete(event);
+    } catch (err) {
+        return handleApiError(err);
     }
 };

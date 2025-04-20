@@ -1,66 +1,56 @@
 import { json } from '@sveltejs/kit';
-import { PREDEFINED_SKILLS } from '$lib/constants/skills';
-import * as db from '$lib/server/db';
+// Remove unused imports if PREDEFINED_SKILLS and db are no longer directly used.
+// import { PREDEFINED_SKILLS } from '$lib/constants/skills';
+// import * as db from '$lib/server/db';
+import { skillService } from '$lib/server/services/skillService';
+import { handleApiError } from '../utils/handleApiError';
 
-function standardizeSkill(skill) {
-  // Convert to proper case (capitalize first letter of each word)
-  return skill.toLowerCase().split(' ').map(word => 
-    word.charAt(0).toUpperCase() + word.slice(1)
-  ).join(' ');
-}
+// Remove standardizeSkill helper if service handles standardization.
+// function standardizeSkill(skill) {
+//   if (!skill) return '';
+//   return skill.trim().toLowerCase().replace(/\s+/g, '-');
+// }
 
-export async function GET() {
+export async function GET({ url }) {
   try {
-    // Fetch user-added skills with their usage counts
-    const userSkillsResult = await db.query('SELECT skill, usage_count FROM skills ORDER BY usage_count DESC');
-    const userSkills = userSkillsResult.rows;
-    
-    // Combine with predefined skills (assuming predefined skills are not stored in the DB)
-    const combinedSkills = PREDEFINED_SKILLS.map(skill => ({
-      skill,
-      usage_count: userSkills.find(us => us.skill === skill)?.usage_count || 0,
-      isPredefined: true
-    })).concat(
-      userSkills
-        .filter(us => !PREDEFINED_SKILLS.includes(us.skill))
-        .map(us => ({ skill: us.skill, usage_count: us.usage_count, isPredefined: false }))
-    );
-    
-    return json(combinedSkills);
-  } catch (error) {
-    console.error('Error fetching skills:', error);
-    return json({ error: 'Failed to retrieve skills' }, { status: 500 });
+    // Check for recommendation request
+    const recommendForParam = url.searchParams.get('recommendFor');
+    const limit = parseInt(url.searchParams.get('limit') || '5');
+
+    if (recommendForParam) {
+      // Handle recommendation request
+      const currentSkills = recommendForParam.split(',').map(s => s.trim()).filter(s => s);
+      if (currentSkills.length === 0) {
+        // Return empty array if no skills provided for recommendation
+        return json([]);
+      }
+      const recommendations = await skillService.getSkillRecommendations(currentSkills, limit);
+      return json(recommendations);
+    } else {
+      // Default: Fetch all skills from the database via the service
+      const skills = await skillService.getAllSkills();
+      return json(skills);
+    }
+
+  } catch (err) {
+    // Use the centralized error handler for any errors from the service or parsing
+    return handleApiError(err);
   }
 }
 
 export async function POST({ request }) {
-  const { skill: rawSkill, drillId } = await request.json();
-  const skill = standardizeSkill(rawSkill);
-  
   try {
-    const isPredefined = PREDEFINED_SKILLS.includes(skill);
-    
-    if (isPredefined) {
-      await db.query(
-        `UPDATE skills SET 
-         usage_count = usage_count + 1
-         WHERE skill = $1`,
-        [skill]
-      );
-    } else {
-      await db.query(
-        `INSERT INTO skills (skill, drills_used_in, usage_count) 
-         VALUES ($1, 1, 1) 
-         ON CONFLICT (skill) DO UPDATE SET 
-         drills_used_in = skills.drills_used_in + 1,
-         usage_count = skills.usage_count + 1`,
-        [skill]
-      );
-    }
-    
-    return json({ success: true });
-  } catch (error) {
-    console.error('Error adding skill:', error);
-    return json({ error: 'Failed to add skill' }, { status: 500 });
+    const body = await request.json();
+    const skillName = body?.skill; // Safely access skill property
+
+    // Service method handles validation (e.g., non-empty string) and DB errors
+    const result = await skillService.addOrIncrementSkill(skillName);
+
+    // Return 200 OK with the resulting skill object (created or updated)
+    return json(result, { status: 200 });
+
+  } catch (err) {
+    // Handle known errors (like ValidationError from service) or unexpected errors
+    return handleApiError(err);
   }
 }

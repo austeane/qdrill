@@ -1,6 +1,7 @@
 import { BaseEntityService } from './baseEntityService.js';
 import * as db from '$lib/server/db';
 import { fabricToExcalidraw } from '$lib/utils/diagramMigration'; // Import the utility function
+import { NotFoundError, ForbiddenError, ValidationError, DatabaseError, ConflictError } from '$lib/server/errors.js'; // Added import
 
 /**
  * Service for managing drills
@@ -70,13 +71,15 @@ export class DrillService extends BaseEntityService {
    * @param {Object} drillData - Updated drill data
    * @param {number} userId - User ID updating the drill
    * @returns {Promise<Object>} - The updated drill
-   * @throws {Error} - If drill not found or user not authorized
+   * @throws {NotFoundError} - If drill not found
+   * @throws {ForbiddenError} - If user not authorized
    */
   async updateDrill(id, drillData, userId) {
     // Check authorization using standard permission model
     const canEdit = await this.canUserEdit(id, userId);
     if (!canEdit) {
-      throw new Error('Unauthorized to edit this drill');
+      // Throw ForbiddenError instead of generic Error
+      throw new ForbiddenError('Unauthorized to edit this drill');
     }
     
     // Use a transaction to update drill and potentially related votes
@@ -87,7 +90,8 @@ export class DrillService extends BaseEntityService {
       
       // Check if drill exists
       if (!existingDrill) {
-        throw new Error('Drill not found');
+        // Throw NotFoundError instead of generic Error
+        throw new NotFoundError('Drill not found');
       }
       
       const existingSkills = existingDrill.skills_focused_on || [];
@@ -137,12 +141,14 @@ export class DrillService extends BaseEntityService {
    * @param {Object} options - Additional options
    * @param {boolean} [options.deleteRelated=false] - Whether to delete related votes and comments
    * @returns {Promise<boolean>} - True if successful, false if not found
+   * @throws {ForbiddenError} - If user not authorized
    */
   async deleteDrill(id, userId, options = { deleteRelated: false }) {
     // Check if user created the drill (or maybe if they can edit? Deletion is stricter)
     const drill = await this.getById(id);
     if (!drill) {
-      return false; // Drill not found
+      return false; // Drill not found - Changed: Should probably throw NotFoundError here as well, but API expects boolean
+      // Consider throwing NotFoundError('Drill not found to delete'); if API contract allows
     }
     
     // Check authorization: Only creator can delete
@@ -151,7 +157,8 @@ export class DrillService extends BaseEntityService {
       // This allows cleanup in dev mode even if ownership is null
       const isUnownedDevDelete = drill.created_by === null && options.deleteRelated;
       if (!isUnownedDevDelete) {
-         throw new Error('Unauthorized to delete this drill');
+         // Throw ForbiddenError instead of generic Error
+         throw new ForbiddenError('Unauthorized to delete this drill');
       }
     }
     
@@ -250,11 +257,13 @@ export class DrillService extends BaseEntityService {
    * @param {Object} variationData - Variation drill data
    * @param {number} userId - User ID creating the variation
    * @returns {Promise<Object>} - The created variation
+   * @throws {NotFoundError} - If parent drill not found
    */
   async createVariation(parentId, variationData, userId) {
     const parentDrill = await this.getById(parentId);
     if (!parentDrill) {
-      throw new Error('Parent drill not found');
+      // Throw NotFoundError instead of generic Error
+      throw new NotFoundError('Parent drill not found');
     }
     
     // Create a new drill as a variation
@@ -341,7 +350,7 @@ export class DrillService extends BaseEntityService {
     } catch (error) {
         console.error('Error in drillService.getDrillFilterOptions:', error);
         // Re-throw the error to be handled by the API route
-        throw new Error('Failed to retrieve filter options from database.');
+        throw new DatabaseError('Failed to retrieve filter options from database.', error);
     }
   }
   
@@ -561,7 +570,7 @@ export class DrillService extends BaseEntityService {
     } catch (error) {
       console.error(`Error in DrillService.getFilteredDrills:`, error);
       // Consider re-throwing or returning a specific error structure
-      throw error; 
+      throw new DatabaseError('Failed to retrieve filtered drills.', error);
     }
   }
   
@@ -634,23 +643,33 @@ export class DrillService extends BaseEntityService {
    * @param {number} drillId - Drill ID to make primary
    * @param {number} userId - User attempting the action
    * @returns {Promise<Object>} - Updated drill
+   * @throws {NotFoundError} - If drill not found
+   * @throws {ValidationError} - If the drill is not a variation
+   * @throws {ForbiddenError} - If user not authorized
    */
   async setAsPrimaryVariant(drillId, userId) {
     const drill = await this.getById(drillId);
     if (!drill) {
-      throw new Error('Drill not found');
+      // Throw NotFoundError instead of generic Error
+      throw new NotFoundError('Drill not found');
     }
     
     if (!drill.parent_drill_id) {
-      throw new Error('This drill is not a variation');
+      // Throw ValidationError instead of generic Error
+      throw new ValidationError('This drill is not a variation');
     }
     
     const parentDrill = await this.getById(drill.parent_drill_id);
+    // Add check for parentDrill existence (though getById should handle it)
+    if (!parentDrill) {
+       throw new NotFoundError('Parent drill not found');
+    }
     
     // Check if user can edit the parent using standard permission model
     const canEdit = await this.canUserEdit(parentDrill.id, userId);
     if (!canEdit) {
-      throw new Error('Unauthorized to modify drill variants');
+      // Throw ForbiddenError instead of generic Error
+      throw new ForbiddenError('Unauthorized to modify drill variants');
     }
     
     // Use transaction helper for the swap operation
@@ -748,19 +767,26 @@ export class DrillService extends BaseEntityService {
    * @param {number} drillId - Drill ID
    * @param {number} userId - User ID performing the upvote
    * @returns {Promise<Object>} - Updated vote count
+   * @throws {ValidationError} - If IDs are missing
+   * @throws {NotFoundError} - If drill not found
    */
   async toggleUpvote(drillId, userId) {
     if (!drillId || !userId) {
-      throw new Error('Both drill ID and user ID are required');
+      // Throw ValidationError instead of generic Error
+      throw new ValidationError('Both drill ID and user ID are required');
     }
 
     return this.withTransaction(async (client) => {
-      // First verify the drill exists
-      const drillExists = await this.exists(drillId);
-      if (!drillExists) {
-        throw new Error('Drill not found');
+      // First verify the drill exists using the base method (which might throw NotFoundError itself)
+      try {
+        await this.getById(drillId, client); // Use getById which handles not found
+      } catch (err) {
+        if (err instanceof NotFoundError) {
+          throw new NotFoundError('Drill not found for upvoting');
+        } 
+        throw err; // Re-throw other unexpected errors
       }
-
+      
       // Check if user has already voted
       const voteCheckQuery = `
         SELECT * FROM votes 
@@ -802,10 +828,14 @@ export class DrillService extends BaseEntityService {
    * @param {number} drillId - Drill ID to update
    * @param {number|null} parentDrillId - Parent drill ID or null to remove the relationship
    * @returns {Promise<Object>} - Updated drill with variant relationship
+   * @throws {ValidationError} - If drill ID is missing
+   * @throws {NotFoundError} - If drill or parent drill not found
+   * @throws {ConflictError} - If trying to make a parent a variant, or a variant a parent, or self-parenting
    */
   async setVariant(drillId, parentDrillId) {
     if (!drillId) {
-      throw new Error('Drill ID is required');
+      // Throw ValidationError instead of generic Error
+      throw new ValidationError('Drill ID is required');
     }
 
     return this.withTransaction(async (client) => {
@@ -819,7 +849,8 @@ export class DrillService extends BaseEntityService {
       const drillResult = await client.query(drillQuery, [drillId]);
 
       if (drillResult.rows.length === 0) {
-        throw new Error('Drill not found');
+        // Throw NotFoundError instead of generic Error
+        throw new NotFoundError('Drill not found');
       }
 
       const currentDrill = drillResult.rows[0];
@@ -835,23 +866,27 @@ export class DrillService extends BaseEntityService {
         const parentResult = await client.query(parentQuery, [parentDrillId]);
 
         if (parentResult.rows.length === 0) {
-          throw new Error('Parent drill not found');
+          // Throw NotFoundError instead of generic Error
+          throw new NotFoundError('Parent drill not found');
         }
 
         const parentDrill = parentResult.rows[0];
 
         // Validate constraints
         if (currentDrill.child_count > 0) {
-          throw new Error('Cannot make a parent drill into a variant');
+          // Throw ConflictError instead of generic Error
+          throw new ConflictError('Cannot make a parent drill into a variant');
         }
 
         if (parentDrill.parent_drill_id) {
-          throw new Error('Cannot set a variant as a parent');
+          // Throw ConflictError instead of generic Error
+          throw new ConflictError('Cannot set a variant as a parent');
         }
         
         // Prevent drill from being its own parent
         if (parentDrillId === drillId) {
-          throw new Error('Drill cannot be its own parent');
+          // Throw ConflictError instead of generic Error
+          throw new ConflictError('Drill cannot be its own parent');
         }
       }
 
@@ -916,13 +951,14 @@ export class DrillService extends BaseEntityService {
    * @param {number} id - Drill ID
    * @param {number} userId - User ID to associate with
    * @returns {Promise<Object>} - The updated drill
-   * @throws {Error} - If drill not found or already owned
+   * @throws {NotFoundError} - If drill not found
    */
   async associateDrill(id, userId) {
     const drill = await this.getById(id);
 
     if (!drill) {
-      throw new Error('Drill not found');
+      // getById should throw NotFoundError, but double-check
+      throw new NotFoundError('Drill not found for association');
     }
 
     // Check if already owned
@@ -999,7 +1035,8 @@ export class DrillService extends BaseEntityService {
       return { migratedCount: updates.length };
     } catch (error) {
         console.error('Error in drillService.migrateAllDiagramsToExcalidraw:', error);
-        throw new Error('Failed to migrate diagrams in database.');
+        // Wrap original error in DatabaseError
+        throw new DatabaseError('Failed to migrate diagrams in database.', error);
     }
   }
 
@@ -1010,87 +1047,100 @@ export class DrillService extends BaseEntityService {
    * @param {number|null} userId - ID of the user performing the import.
    * @param {string} visibility - Default visibility for imported drills.
    * @returns {Promise<Object>} - Object containing importedCount and uploadSource.
+   * @throws {ValidationError} - If input data is invalid or missing required fields
+   * @throws {DatabaseError} - If database insertion fails
    */
   async importDrills(drillsData, fileName, userId, visibility = 'public') {
     if (!Array.isArray(drillsData) || drillsData.length === 0) {
-      throw new Error('No drills provided for import');
+      // Throw ValidationError instead of generic Error
+      throw new ValidationError('No drills provided for import');
     }
 
     // Generate a unique upload_source ID (using timestamp + partial UUID for uniqueness)
     const uploadSource = `${fileName}_${Date.now()}_${(Math.random().toString(36).substring(2, 15))}`;
 
     return this.withTransaction(async (client) => {
-      const insertPromises = drillsData.map(drillInput => {
-        // Destructure and prepare data for insertion
-        const { 
-          name, brief_description, detailed_description, skill_level, 
-          complexity, suggested_length, number_of_people, skills_focused_on, 
-          positions_focused_on, video_link, images, diagrams 
-        } = drillInput;
+      try {
+        const insertPromises = drillsData.map(drillInput => {
+          // Destructure and prepare data for insertion
+          const { 
+            name, brief_description, detailed_description, skill_level, 
+            complexity, suggested_length, number_of_people, skills_focused_on, 
+            positions_focused_on, video_link, images, diagrams 
+          } = drillInput;
 
-        // Basic validation for required fields within the service
-        if (!name || !brief_description) {
-          throw new Error(`Drill missing required field (name or brief_description): ${JSON.stringify(drillInput)}`);
-        }
+          // Basic validation for required fields within the service
+          if (!name || !brief_description) {
+            // Throw ValidationError instead of generic Error
+            throw new ValidationError(`Drill missing required field (name or brief_description): ${JSON.stringify(drillInput)}`);
+          }
 
-        // Normalize the individual drill data
-        let drillToInsert = this.normalizeDrillData({
-          name,
-          brief_description,
-          detailed_description: detailed_description || null,
-          skill_level,
-          complexity: complexity || null,
-          // Handle suggested_length - Assuming it's an object {min, max}
-          suggested_length: suggested_length && typeof suggested_length === 'object' 
-            ? `${suggested_length.min}-${suggested_length.max}`
-            : null, 
-          // Handle number_of_people - Assuming it's an object {min, max}
-          number_of_people_min: number_of_people?.min || 0,
-          number_of_people_max: number_of_people?.max || 99,
-          skills_focused_on,
-          positions_focused_on,
-          video_link: video_link || null,
-          images: images || [],
-          diagrams,
-          upload_source: uploadSource,
-          created_by: userId,
-          visibility,
-          is_editable_by_others: false, // Default for imported drills
-          date_created: new Date() // Add creation timestamp
+          // Normalize the individual drill data
+          let drillToInsert = this.normalizeDrillData({
+            name,
+            brief_description,
+            detailed_description: detailed_description || null,
+            skill_level,
+            complexity: complexity || null,
+            // Handle suggested_length - Assuming it's an object {min, max}
+            suggested_length: suggested_length && typeof suggested_length === 'object' 
+              ? `${suggested_length.min}-${suggested_length.max}`
+              : null, 
+            // Handle number_of_people - Assuming it's an object {min, max}
+            number_of_people_min: number_of_people?.min || 0,
+            number_of_people_max: number_of_people?.max || 99,
+            skills_focused_on,
+            positions_focused_on,
+            video_link: video_link || null,
+            images: images || [],
+            diagrams,
+            upload_source: uploadSource,
+            created_by: userId,
+            visibility,
+            is_editable_by_others: false, // Default for imported drills
+            date_created: new Date() // Add creation timestamp
+          });
+
+          // Convert diagrams to JSON strings AFTER initial normalization
+          if (drillToInsert.diagrams && Array.isArray(drillToInsert.diagrams)) {
+               drillToInsert.diagrams = drillToInsert.diagrams.map(diagram => 
+                 typeof diagram === 'string' ? diagram : JSON.stringify(diagram)
+               );
+          }
+
+          // Use base create method logic for consistency (handles timestamps etc.)
+          // Instead of direct INSERT, we call the internal create method
+          // We need to adapt the base create method or replicate its INSERT logic here
+          // Replicating INSERT logic here for simplicity in this refactor:
+          const columns = Object.keys(drillToInsert);
+          const values = Object.values(drillToInsert);
+          const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+          const queryText = `INSERT INTO ${this.tableName} (${columns.map(col => `"${col}"`).join(', ')}) VALUES (${placeholders}) RETURNING *`;
+          
+          return client.query(queryText, values);
         });
 
-        // Convert diagrams to JSON strings AFTER initial normalization
-        if (drillToInsert.diagrams && Array.isArray(drillToInsert.diagrams)) {
-             drillToInsert.diagrams = drillToInsert.diagrams.map(diagram => 
-               typeof diagram === 'string' ? diagram : JSON.stringify(diagram)
-             );
-        }
+        // Wait for all insertions to complete
+        const results = await Promise.all(insertPromises);
+        const insertedDrills = results.map(res => res.rows[0]);
 
-        // Use base create method logic for consistency (handles timestamps etc.)
-        // Instead of direct INSERT, we call the internal create method
-        // We need to adapt the base create method or replicate its INSERT logic here
-        // Replicating INSERT logic here for simplicity in this refactor:
-        const columns = Object.keys(drillToInsert);
-        const values = Object.values(drillToInsert);
-        const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
-        const queryText = `INSERT INTO ${this.tableName} (${columns.map(col => `"${col}"`).join(', ')}) VALUES (${placeholders}) RETURNING *`;
+        // Optionally, update skill counts for all imported drills
+        for (const drill of insertedDrills) {
+          if (drill.skills_focused_on && drill.skills_focused_on.length > 0) {
+            // Use the existing updateSkills method, passing the client for transaction safety
+            await this.updateSkills(drill.skills_focused_on, drill.id, client);
+          }
+        }
         
-        return client.query(queryText, values);
-      });
-
-      // Wait for all insertions to complete
-      const results = await Promise.all(insertPromises);
-      const insertedDrills = results.map(res => res.rows[0]);
-
-      // Optionally, update skill counts for all imported drills
-      for (const drill of insertedDrills) {
-        if (drill.skills_focused_on && drill.skills_focused_on.length > 0) {
-          // Use the existing updateSkills method, passing the client for transaction safety
-          await this.updateSkills(drill.skills_focused_on, drill.id, client);
+        return { importedCount: drillsData.length, uploadSource };
+      } catch (error) {
+        // Add specific error wrapping for import failures
+        if (error instanceof ValidationError || error instanceof DatabaseError || error instanceof AppError) {
+          throw error; // Re-throw known app errors
         }
+        console.error('Error during bulk drill import:', error);
+        throw new DatabaseError('Failed during bulk drill import.', error);
       }
-      
-      return { importedCount: drillsData.length, uploadSource };
     });
   }
 }

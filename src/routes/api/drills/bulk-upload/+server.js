@@ -3,6 +3,8 @@ import { parse } from 'csv-parse/sync';
 import * as Yup from 'yup';
 import { PREDEFINED_SKILLS } from '$lib/constants/skills';
 import { authGuard } from '$lib/server/authGuard';
+import { handleApiError } from '../utils/handleApiError.js';
+import { ValidationError } from '$lib/server/errors.js';
 
 // Constants mapping numbers to representations
 const skillLevelMap = {
@@ -85,41 +87,53 @@ const drillSchema = Yup.object().shape({
 
 // Wrap the POST handler with authGuard
 export const POST = authGuard(async ({ request, locals }) => {
-  console.log("Attempting bulk upload...");
-  // Example: Auth guard (replace with your actual auth logic)
+  console.log("Attempting bulk upload parsing and validation...");
   const session = locals.session;
   const userId = session?.user?.id;
 
   try {
     const formData = await request.formData();
     const file = formData.get('file');
-    const visibility = formData.get('visibility') || 'public'; // Get visibility setting
+    const visibility = formData.get('visibility') || 'public';
 
-    if (!file) {
-      return json({ error: 'No file uploaded' }, { status: 400 });
+    if (!file || !(file instanceof File) || file.size === 0) {
+      throw new ValidationError('No valid file uploaded');
     }
 
     const csvContent = await file.text();
-    const records = parse(csvContent, { columns: true, skip_empty_lines: true });
+    
+    let records;
+    try {
+      records = parse(csvContent, { columns: true, skip_empty_lines: true });
+    } catch (parseError) {
+      console.error('CSV parsing error:', parseError);
+      throw new ValidationError('Failed to parse CSV file. Please ensure it is valid CSV format.', { details: parseError.message });
+    }
+    
+    if (!records || records.length === 0) {
+      throw new ValidationError('CSV file is empty or contains no data rows.');
+    }
 
     const parsedDrills = [];
     let validDrills = 0;
     let drillsWithErrors = 0;
 
-    for (const [index, record] of records.entries()) {
+    await Promise.all(records.map(async (record, index) => {
       const drill = parseDrill(record);
       drill.created_by = userId;
       drill.visibility = visibility;
-      drill.is_editable_by_others = false; // Default to false for bulk uploads
+      drill.is_editable_by_others = false;
+
+      await validateDrill(drill);
 
       if (drill.errors.length === 0) {
         validDrills++;
       } else {
         drillsWithErrors++;
-        drill.row = index + 2; // Assuming header is row 1
+        drill.row = index + 2;
       }
       parsedDrills.push(drill);
-    }
+    }));
 
     return json({
       summary: {
@@ -129,9 +143,9 @@ export const POST = authGuard(async ({ request, locals }) => {
       },
       drills: parsedDrills
     });
-  } catch (error) {
-    console.error('Error processing bulk upload:', error);
-    return json({ error: 'Failed to process bulk upload', details: error.toString() }, { status: 500 });
+    
+  } catch (err) {
+    return handleApiError(err);
   }
 });
 
@@ -157,10 +171,9 @@ function parseDrill(record) {
     video_link: record['Video Link'],
     drill_type: parseArray(record['Drill Type']).filter(type => drillTypeOptions.includes(type)),
     errors: [],
-    diagrams: [] // Initialize with an empty array
+    diagrams: []
   };
 
-  validateDrill(drill);
   return drill;
 }
 
@@ -181,7 +194,12 @@ async function validateDrill(drill) {
     await drillSchema.validate(drill, { abortEarly: false });
     drill.errors = [];
   } catch (err) {
-    drill.errors = err.errors;
+    if (err instanceof Yup.ValidationError) {
+      drill.errors = err.errors;
+    } else {
+      console.error('Unexpected validation error:', err);
+      drill.errors = ['An unexpected error occurred during validation.'];
+    }
   }
 }
 

@@ -2,54 +2,52 @@ import { json } from '@sveltejs/kit';
 import { formationService } from '$lib/server/services/formationService.js';
 import { authGuard } from '$lib/server/authGuard';
 import { dev } from '$app/environment';
+import { handleApiError } from '../utils/handleApiError';
 
 /**
  * GET handler for formations
  * Supports filtering, pagination, and getting all formations
  */
 export async function GET({ url, locals }) {
-  // Get session info to pass userId for filtering
-  // Note: This assumes you have configured session handling in hooks.server.js
-  const session = locals.session; // Need locals passed to GET
-  const userId = session?.user?.id;
-  
-  // Pagination
-  const page = parseInt(url.searchParams.get('page') || '1');
-  const limit = parseInt(url.searchParams.get('limit') || '10');
-  
-  // Sorting
-  const sortBy = url.searchParams.get('sort'); // e.g., 'name', 'created_at'
-  const sortOrder = url.searchParams.get('order'); // 'asc' or 'desc'
-  
-  // Filters
-  const tagsParam = url.searchParams.get('tags'); // Comma-separated
-  const formation_type = url.searchParams.get('type');
-  const searchQuery = url.searchParams.get('q');
-
-  // Parse tags
-  const tags = tagsParam ? tagsParam.split(',').map(t => t.trim()).filter(t => t) : undefined;
-
-  // Build options objects for the service
-  const filters = {};
-  if (tags) filters.tags = tags;
-  if (formation_type) filters.formation_type = formation_type;
-  if (searchQuery) filters.searchQuery = searchQuery;
-
-  const sortOptions = {};
-  if (sortBy) sortOptions.sortBy = sortBy;
-  if (sortOrder) sortOptions.sortOrder = sortOrder;
-
-  const paginationOptions = { 
-    page, 
-    limit, 
-    columns: ['id', 'name', 'brief_description', 'tags', 'formation_type', 'created_at'] 
-  };
-  
-  // Pass userId to filters (assuming null if not logged in, handled by service)
-  filters.userId = userId; // Uncomment if locals and session are available
-  
   try {
-    // Call the new service method
+    const session = await locals.auth();
+    const userId = session?.user?.id ?? null;
+  
+    // Pagination
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '10');
+  
+    // Sorting
+    const sortBy = url.searchParams.get('sort'); // e.g., 'name', 'created_at'
+    const sortOrder = url.searchParams.get('order'); // 'asc' or 'desc'
+  
+    // Filters
+    const tagsParam = url.searchParams.get('tags'); // Comma-separated
+    const formation_type = url.searchParams.get('type');
+    const searchQuery = url.searchParams.get('q');
+
+    // Parse tags
+    const tags = tagsParam ? tagsParam.split(',').map(t => t.trim()).filter(t => t) : undefined;
+
+    // Build options objects for the service
+    const filters = {};
+    if (tags) filters.tags = tags;
+    if (formation_type) filters.formation_type = formation_type;
+    if (searchQuery) filters.searchQuery = searchQuery;
+
+    const sortOptions = {};
+    if (sortBy) sortOptions.sortBy = sortBy;
+    if (sortOrder) sortOptions.sortOrder = sortOrder;
+
+    const paginationOptions = { 
+      page, 
+      limit, 
+      columns: ['id', 'name', 'brief_description', 'tags', 'formation_type', 'created_at'] 
+    };
+    
+    // Add userId to filters for visibility checks
+    filters.userId = userId;
+
     const result = await formationService.getFilteredFormations(
       filters,
       sortOptions,
@@ -57,40 +55,31 @@ export async function GET({ url, locals }) {
     );
     
     return json(result);
-  } catch (error) {
-    console.error('Error fetching formations:', error);
-    return json(
-      { error: 'An error occurred while fetching formations', details: error.message },
-      { status: 500 }
-    );
+  } catch (err) {
+    // Use the centralized error handler
+    return handleApiError(err);
   }
 }
 
 /**
  * POST handler for creating a new formation
  */
-export const POST = async (event) => {
-  const formationData = await event.request.json();
-  const session = event.locals.session;
-  const userId = session?.user?.id || null;
-  
-  console.log('Creating formation with data:', JSON.stringify(formationData, null, 2));
-  console.log('User ID:', userId);
-  
+export async function POST({ request, locals }) {
   try {
-    // Make sure we don't pass an empty/null ID
-    const { id, ...dataWithoutId } = formationData;
-    
-    const formation = await formationService.createFormation(dataWithoutId, userId);
-    return json(formation);
-  } catch (error) {
-    console.error('Error creating formation:', error);
-    return json(
-      { error: 'An error occurred while creating the formation', details: error.message },
-      { status: 500 }
-    );
+    const formationData = await request.json();
+    const session = await locals.auth();
+    const userId = session?.user?.id || null;
+  
+    console.log('Creating formation with data:', JSON.stringify(formationData, null, 2));
+    console.log('User ID:', userId);
+  
+    const newFormation = await formationService.createFormation(formationData, userId);
+    return json(newFormation, { status: 201 });
+  } catch (err) {
+    // Use the centralized error handler
+    return handleApiError(err);
   }
-};
+}
 
 /**
  * PUT handler for updating an existing formation

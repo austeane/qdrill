@@ -1,8 +1,11 @@
 <script>
     import { toast } from '@zerodevx/svelte-toast';
-    
+    import ExcalidrawRenderer from '$lib/components/ExcalidrawRenderer.svelte';
+    import { apiFetch } from '$lib/utils/apiFetch.js';
+
     let isMigrating = false;
     let migrationResult = null;
+    let testError = null;
 
     async function migrateDiagrams() {
         if (!confirm('Are you sure you want to migrate all diagrams from Fabric.js to Excalidraw? This action cannot be undone.')) {
@@ -10,12 +13,12 @@
         }
 
         isMigrating = true;
+        migrationResult = null;
         try {
-            const response = await fetch('/api/drills/migrate-diagrams', { 
+            const result = await apiFetch('/api/drills/migrate-diagrams', {
                 method: 'POST'
             });
-            const result = await response.json();
-            
+
             if (result.success) {
                 toast.push('Migration completed successfully!', {
                     theme: {
@@ -23,11 +26,11 @@
                         '--toastColor': 'white'
                     }
                 });
+                 migrationResult = result;
             } else {
-                throw new Error(result.error || 'Migration failed');
+                throw new Error(result.error || 'Migration indicated failure despite OK status.');
             }
-            
-            migrationResult = result;
+
         } catch (error) {
             console.error('Migration error:', error);
             toast.push(`Migration failed: ${error.message}`, {
@@ -36,38 +39,42 @@
                     '--toastColor': 'white'
                 }
             });
+             migrationResult = { error: error.message };
         } finally {
             isMigrating = false;
         }
     }
 
     async function testMigration() {
+        migrationResult = null;
+        testError = null;
         try {
-            const response = await fetch('/api/drills');
-            const drills = await response.json();
-            
-            // Find first drill with diagrams
-            const testDrill = drills.find(drill => drill.diagrams?.length > 0);
-            
+            const drills = await apiFetch('/api/drills');
+
+            const testDrill = drills.find(drill => drill.diagrams?.length > 0 && typeof drill.diagrams[0] === 'object');
+
             if (!testDrill) {
-                toast.push('No drills with diagrams found for testing', {
+                toast.push('No drills with Fabric.js diagrams found for testing', {
                     theme: {
-                        '--toastBackground': '#EF4444',
+                        '--toastBackground': '#F59E0B',
                         '--toastColor': 'white'
                     }
                 });
                 return;
             }
 
-            // Show the before/after comparison
+            const migratedDiagram = await convertSingleDiagram(testDrill.diagrams[0]);
+
             migrationResult = {
                 testDrill: {
                     id: testDrill.id,
                     name: testDrill.name,
                     originalDiagram: testDrill.diagrams[0],
-                    migratedDiagram: await convertSingleDiagram(testDrill.diagrams[0])
+                    migratedDiagram: migratedDiagram
                 }
             };
+             toast.push('Test conversion successful. Check results below.', { theme: { '--toastBackground': '#3B82F6', '--toastColor': 'white' } });
+
         } catch (error) {
             console.error('Test migration error:', error);
             toast.push(`Test failed: ${error.message}`, {
@@ -76,18 +83,19 @@
                     '--toastColor': 'white'
                 }
             });
+            testError = error.message;
         }
     }
 
     async function convertSingleDiagram(diagram) {
-        const response = await fetch('/api/drills/test-migration', {
+        const result = await apiFetch('/api/drills/test-migration', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ diagram })
         });
-        return response.json();
+        return result;
     }
 </script>
 
@@ -125,6 +133,9 @@
             >
                 Test Migration
             </button>
+            {#if testError}
+                <p class="mt-4 text-red-600">Error: {testError}</p>
+            {/if}
         </div>
 
         <div class="bg-white shadow rounded-lg p-6">
@@ -145,26 +156,55 @@
         {#if migrationResult}
             <div class="bg-white shadow rounded-lg p-6">
                 <h2 class="text-xl font-semibold mb-4">Migration Result</h2>
-                {#if migrationResult.testDrill}
+                {#if migrationResult.error}
+                     <p class="text-red-600">Migration failed: {migrationResult.error}</p>
+                {:else if migrationResult.testDrill}
                     <div class="space-y-4">
-                        <h3 class="text-lg font-medium">Test Results for: {migrationResult.testDrill.name}</h3>
-                        <div class="grid grid-cols-2 gap-4">
+                        <h3 class="text-lg font-medium">Test Results for Drill: {migrationResult.testDrill.name} (ID: {migrationResult.testDrill.id})</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <h4 class="font-medium mb-2">Original (Fabric.js)</h4>
-                                <pre class="bg-gray-100 p-4 rounded overflow-auto max-h-96">
+                                <h4 class="font-medium mb-2">Original (Fabric.js JSON)</h4>
+                                <pre class="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-xs">
                                     {JSON.stringify(migrationResult.testDrill.originalDiagram, null, 2)}
                                 </pre>
                             </div>
                             <div>
                                 <h4 class="font-medium mb-2">Migrated (Excalidraw)</h4>
-                                <pre class="bg-gray-100 p-4 rounded overflow-auto max-h-96">
-                                    {JSON.stringify(migrationResult.testDrill.migratedDiagram, null, 2)}
-                                </pre>
+                                {#if migrationResult.testDrill.migratedDiagram?.elements}
+                                    <div class="border rounded p-2 h-96">
+                                         <ExcalidrawRenderer sceneData={{ elements: migrationResult.testDrill.migratedDiagram.elements, appState: migrationResult.testDrill.migratedDiagram.appState }} />
+                                    </div>
+                                    <details class="mt-2">
+                                        <summary class="cursor-pointer text-sm text-gray-600">Show Excalidraw JSON</summary>
+                                        <pre class="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-xs mt-2">
+                                            {JSON.stringify(migrationResult.testDrill.migratedDiagram, null, 2)}
+                                        </pre>
+                                    </details>
+                                {:else}
+                                     <p class="text-orange-600">No Excalidraw elements generated.</p>
+                                     <pre class="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-xs mt-2">
+                                        {JSON.stringify(migrationResult.testDrill.migratedDiagram, null, 2)}
+                                     </pre>
+                                {/if}
                             </div>
                         </div>
                     </div>
+                {:else if migrationResult.success !== undefined}
+                     <h3 class="text-lg font-medium">Full Migration Summary</h3>
+                     <pre class="bg-gray-100 p-4 rounded overflow-auto">
+                        {JSON.stringify(migrationResult, null, 2)}
+                     </pre>
+                     {#if migrationResult.errors && migrationResult.errors.length > 0}
+                        <h4 class="font-medium mt-4 text-red-600">Migration Errors:</h4>
+                        <ul class="list-disc list-inside text-red-600 text-sm">
+                            {#each migrationResult.errors as errorDetail}
+                                <li>Drill ID {errorDetail.drillId}: {errorDetail.error}</li>
+                            {/each}
+                        </ul>
+                     {/if}
                 {:else}
-                    <pre class="bg-gray-100 p-4 rounded overflow-auto">
+                    <p class="text-gray-600">Unexpected migration result format.</p>
+                     <pre class="bg-gray-100 p-4 rounded overflow-auto">
                         {JSON.stringify(migrationResult, null, 2)}
                     </pre>
                 {/if}

@@ -1,4 +1,5 @@
 import * as db from '$lib/server/db';
+import { NotFoundError, ValidationError, DatabaseError, InternalServerError } from '$lib/server/errors';
 
 /**
  * Base service class for entity operations
@@ -134,60 +135,65 @@ export class BaseEntityService {
     }
 
     try {
-      let results;
-      let pagination = {};
+      return this.withTransaction(async (client) => {
+        let results;
+        let pagination = {};
 
-      if (!all) {
-        // Get total count for pagination
-        const countQuery = `
-          SELECT COUNT(*)
-          FROM ${this.tableName}
-          ${whereClause}
-        `;
-        
-        const countResult = await db.query(countQuery, queryParams);
-        const totalItems = parseInt(countResult.rows[0].count);
-        
-        pagination = {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalItems,
-          totalPages: Math.ceil(totalItems / limit)
+        // Prepare query parameters once
+        const preparedQueryParams = [...queryParams];
+
+        if (!all) {
+          // Get total count for pagination
+          const countQuery = `
+            SELECT COUNT(*)
+            FROM ${this.tableName}
+            ${whereClause}
+          `;
+
+          const countResult = await client.query(countQuery, preparedQueryParams);
+          const totalItems = parseInt(countResult.rows[0].count);
+
+          pagination = {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit)
+          };
+
+          // Main query with pagination
+          const query = `
+            SELECT ${validColumns.join(', ')}
+            FROM ${this.tableName}
+            ${whereClause}
+            ${orderBy}
+            LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+          `;
+
+          // Add pagination parameters
+          const allParams = [...preparedQueryParams, limit, offset];
+          const result = await client.query(query, allParams);
+          results = result.rows;
+        } else {
+          // Query without pagination
+          const query = `
+            SELECT ${validColumns.join(', ')}
+            FROM ${this.tableName}
+            ${whereClause}
+            ${orderBy}
+          `;
+
+          const result = await client.query(query, preparedQueryParams);
+          results = result.rows;
+        }
+
+        return {
+          items: results,
+          pagination: all ? null : pagination
         };
-
-        // Main query with pagination
-        const query = `
-          SELECT ${validColumns.join(', ')}
-          FROM ${this.tableName}
-          ${whereClause}
-          ${orderBy}
-          LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
-        `;
-
-        // Add pagination parameters
-        const allParams = [...queryParams, limit, offset];
-        const result = await db.query(query, allParams);
-        results = result.rows;
-      } else {
-        // Query without pagination
-        const query = `
-          SELECT ${validColumns.join(', ')}
-          FROM ${this.tableName}
-          ${whereClause}
-          ${orderBy}
-        `;
-        
-        const result = await db.query(query, queryParams);
-        results = result.rows;
-      }
-
-      return {
-        items: results,
-        pagination: all ? null : pagination
-      };
+      });
     } catch (error) {
       console.error(`Error in ${this.tableName}.getAll():`, error);
-      throw error;
+      throw new DatabaseError(`Failed to retrieve ${this.tableName}`, error);
     }
   }
 
@@ -195,7 +201,9 @@ export class BaseEntityService {
    * Get a single entity by ID
    * @param {number|string} id - Entity ID
    * @param {Array<string>} columns - Columns to return (default: this.defaultColumns)
-   * @returns {Promise<Object>} - Entity object or null if not found
+   * @returns {Promise<Object>} - Entity object
+   * @throws {NotFoundError} If entity not found
+   * @throws {DatabaseError} On database error
    */
   async getById(id, columns = this.defaultColumns) {
     try {
@@ -217,10 +225,20 @@ export class BaseEntityService {
       
       const result = await db.query(query, [id]);
       
-      return result.rows.length > 0 ? result.rows[0] : null;
+      // Throw NotFoundError if no rows are returned
+      if (result.rows.length === 0) {
+        throw new NotFoundError(`${this.tableName.slice(0, -1)} with ID ${id} not found`);
+      }
+
+      return result.rows[0];
     } catch (error) {
-      console.error(`Error in ${this.tableName}.getById():`, error);
-      throw error;
+      // Re-throw NotFoundError directly
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      console.error(`Error in ${this.tableName}.getById(${id}):`, error);
+      // Wrap other errors as DatabaseError
+      throw new DatabaseError(`Failed to retrieve ${this.tableName.slice(0, -1)} with ID ${id}`, error);
     }
   }
 
@@ -246,7 +264,7 @@ export class BaseEntityService {
       
       // No columns to insert
       if (columns.length === 0) {
-        throw new Error('No valid data provided for insertion');
+        throw new ValidationError('No valid data provided for insertion');
       }
       
       const placeholders = columns.map((_, index) => `$${index + 1}`).join(', ');
@@ -262,7 +280,7 @@ export class BaseEntityService {
       return result.rows[0];
     } catch (error) {
       console.error(`Error in ${this.tableName}.create():`, error);
-      throw error;
+      throw new DatabaseError(`Failed to create ${this.tableName.slice(0, -1)}`, error);
     }
   }
 
@@ -271,6 +289,9 @@ export class BaseEntityService {
    * @param {number|string} id - Entity ID
    * @param {Object} data - Updated entity data
    * @returns {Promise<Object>} - Updated entity
+   * @throws {NotFoundError} If entity not found
+   * @throws {DatabaseError} On database error
+   * @throws {ValidationError} If no valid data provided
    */
   async update(id, data) {
     try {
@@ -280,7 +301,7 @@ export class BaseEntityService {
       );
       
       if (columns.length === 0) {
-        return this.getById(id);
+        throw new ValidationError('No valid data provided for update');
       }
       
       const values = columns.map(column => data[column]);
@@ -298,23 +319,34 @@ export class BaseEntityService {
       
       const result = await db.query(query, [id, ...values]);
       
-      return result.rows.length > 0 ? result.rows[0] : null;
+      // Throw NotFoundError if no rows were affected (entity didn't exist)
+      if (result.rows.length === 0) {
+         throw new NotFoundError(`${this.tableName.slice(0, -1)} with ID ${id} not found for update`);
+      }
+
+      return result.rows[0];
     } catch (error) {
-      console.error(`Error in ${this.tableName}.update():`, error);
-      throw error;
+      // Re-throw known errors
+      if (error instanceof NotFoundError || error instanceof ValidationError) {
+        throw error;
+      }
+      console.error(`Error in ${this.tableName}.update(${id}):`, error);
+      throw new DatabaseError(`Failed to update ${this.tableName.slice(0, -1)} with ID ${id}`, error);
     }
   }
 
   /**
    * Delete an entity by ID
    * @param {number|string} id - Entity ID
-   * @returns {Promise<boolean>} - True if successful, false if entity not found
+   * @returns {Promise<void>} - Resolves if successful
+   * @throws {NotFoundError} If entity not found
+   * @throws {DatabaseError} On database error
    */
   async delete(id) {
     try {
       // Ensure the primary key is allowed (it should be by default)
       if (!this.isColumnAllowed(this.primaryKey)) {
-        throw new Error(`Primary key ${this.primaryKey} is not in the allowed columns list`);
+        throw new InternalServerError(`Primary key ${this.primaryKey} is not in the allowed columns list for ${this.tableName}`);
       }
 
       const query = `
@@ -325,10 +357,17 @@ export class BaseEntityService {
       
       const result = await db.query(query, [id]);
       
-      return result.rows.length > 0;
+      // Throw NotFoundError if no rows were deleted (entity didn't exist)
+      if (result.rows.length === 0) {
+        throw new NotFoundError(`${this.tableName.slice(0, -1)} with ID ${id} not found for deletion`);
+      }
     } catch (error) {
-      console.error(`Error in ${this.tableName}.delete():`, error);
-      throw error;
+      // Re-throw known errors
+      if (error instanceof NotFoundError || error instanceof InternalServerError) {
+        throw error;
+      }
+      console.error(`Error in ${this.tableName}.delete(${id}):`, error);
+      throw new DatabaseError(`Failed to delete ${this.tableName.slice(0, -1)} with ID ${id}`, error);
     }
   }
 
@@ -355,8 +394,8 @@ export class BaseEntityService {
       
       return result.rows.length > 0;
     } catch (error) {
-      console.error(`Error in ${this.tableName}.exists():`, error);
-      throw error;
+      console.error(`Error in ${this.tableName}.exists(${id}):`, error);
+      return false;
     }
   }
 
@@ -381,7 +420,7 @@ export class BaseEntityService {
       const validSearchColumns = searchColumns.filter(col => this.isColumnAllowed(col));
       
       if (validSearchColumns.length === 0) {
-        throw new Error('No valid search columns provided');
+        throw new ValidationError('No valid search columns provided');
       }
       
       // Validate columns to return
@@ -444,8 +483,12 @@ export class BaseEntityService {
         }
       };
     } catch (error) {
+      // Re-throw known errors
+      if (error instanceof ValidationError) {
+        throw error;
+      }
       console.error(`Error in ${this.tableName}.search():`, error);
-      throw error;
+      throw new DatabaseError(`Failed to search ${this.tableName}`, error);
     }
   }
   
@@ -479,22 +522,27 @@ export class BaseEntityService {
    */
   async canUserEdit(entityId, userId) {
     if (!this.useStandardPermissions) {
-      console.warn(`Standard permissions not enabled for ${this.tableName} service`);
+      console.warn(`Standard permissions not enabled for ${this.tableName} service - allowing edit`);
       return true;
     }
     
-    const entity = await this.getById(entityId);
-    if (!entity) {
-      return false;
+    try {
+      const entity = await this.getById(entityId);
+
+      // Can edit if:
+      // 1. User created the entity
+      // 2. Entity is editable by others
+      // 3. Entity has no creator (created_by is null)
+      return entity.created_by === userId || 
+             entity.is_editable_by_others === true || 
+             entity.created_by === null;
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      console.error(`Error checking edit permission for ${this.tableName} ${entityId}:`, error);
+      throw new DatabaseError(`Failed to check edit permission for ${this.tableName.slice(0, -1)}`, error);
     }
-    
-    // Can edit if:
-    // 1. User created the entity
-    // 2. Entity is editable by others
-    // 3. Entity has no creator (created_by is null)
-    return entity.created_by === userId || 
-           entity.is_editable_by_others === true || 
-           entity.created_by === null;
   }
   
   /**

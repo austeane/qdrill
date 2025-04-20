@@ -8,6 +8,7 @@
   import { page } from '$app/stores';
   import { authClient } from '$lib/auth-client';
   import { toast } from '@zerodevx/svelte-toast'
+  import { apiFetch } from '$lib/utils/apiFetch.js';
 
   const dispatch = createEventDispatcher();
 
@@ -216,19 +217,12 @@
     skillSearchTerm.set('');
 
     try {
-      const response = await fetch('/api/skills', {
+      const addedSkill = await apiFetch('/api/skills', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ skill: skillToAdd })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to add skill' }));
-        throw new Error(errorData.error || 'Server error adding skill');
-      }
-
-      const addedSkill = await response.json();
-      
       toast.push('Skill added successfully');
 
     } catch (error) {
@@ -400,19 +394,11 @@
       const { diagrams: _, ...loggableData } = requestBody;
       console.log('Submitting drill data:', loggableData);
 
-      const response = await fetch(url, {
+      const result = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server error response:', errorText);
-        throw new Error(errorText || 'Server error');
-      }
-
-      const result = await response.json();
 
       if (!$page.data.session) {
         const confirmed = confirm(

@@ -1,5 +1,6 @@
 import { BaseEntityService } from './baseEntityService.js';
 import * as db from '$lib/server/db';
+import { NotFoundError, DatabaseError, ConflictError, ValidationError } from '$lib/server/errors';
 
 /**
  * Service for managing formations
@@ -82,8 +83,13 @@ export class FormationService extends BaseEntityService {
    * @param {string} searchTerm - Search term
    * @param {Object} options - Optional search options (pagination, etc.)
    * @returns {Promise<Object>} - Search results with pagination
+   * @throws {DatabaseError} On database error
+   * @throws {ValidationError} If search term is invalid
    */
   async searchFormations(searchTerm, options = {}) {
+    if (!searchTerm || typeof searchTerm !== 'string' || searchTerm.trim().length === 0) {
+      throw new ValidationError('Invalid search term provided.');
+    }
     const searchColumns = ['name', 'brief_description', 'detailed_description'];
     return await this.search(searchTerm, searchColumns, options);
   }
@@ -130,28 +136,41 @@ export class FormationService extends BaseEntityService {
 
   /**
    * Associate an anonymously created formation with a user
-   * @param {number} id - Formation ID
+   * @param {number|string} id - Formation ID
    * @param {number} userId - User ID to associate with
    * @returns {Promise<Object>} - The updated formation
-   * @throws {Error} - If formation not found or already owned
+   * @throws {NotFoundError} - If formation not found
+   * @throws {ConflictError} - If formation already owned by another user
+   * @throws {DatabaseError} - On database error
    */
   async associateFormation(id, userId) {
+    // getById will throw NotFoundError if formation doesn't exist
     const formation = await this.getById(id);
 
-    if (!formation) {
-      throw new Error('Formation not found');
+    // Check if already owned by a *different* user
+    if (formation.created_by !== null && formation.created_by !== userId) {
+       // Use ConflictError
+      throw new ConflictError('Formation is already associated with another user.');
     }
 
-    if (formation.created_by !== null) {
-      // Formation already has an owner, do nothing or throw error?
-      // Let's return the existing formation for now.
-      // console.warn(`Formation ${id} already associated with user ${formation.created_by}. Cannot associate with ${userId}.`);
-      // throw new Error('Formation already has an owner');
-      return formation; 
+    // If already owned by the *same* user, return (idempotent)
+    if (formation.created_by === userId) {
+      return formation;
     }
 
-    // Update the created_by field
-    return await this.update(id, { created_by: userId });
+    // Update the created_by field using base update method
+    // This will also throw NotFoundError if the formation disappears
+    try {
+      return await this.update(id, { created_by: userId });
+    } catch (error) {
+      // Re-throw known errors (NotFoundError)
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      // Wrap others as DatabaseError
+      console.error(`Error associating formation ${id} with user ${userId}:`, error);
+      throw new DatabaseError('Failed to associate formation', error);
+    }
   }
 
   /**
@@ -251,7 +270,8 @@ export class FormationService extends BaseEntityService {
       };
     } catch (error) {
       console.error(`Error in FormationService.getFilteredFormations:`, error);
-      throw error;
+      // Wrap generic DB errors
+      throw new DatabaseError('Failed to retrieve filtered formations', error);
     }
   }
 }

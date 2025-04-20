@@ -10,6 +10,7 @@
   import { toast } from '@zerodevx/svelte-toast';
   import ExcalidrawWrapper from '../../../components/ExcalidrawWrapper.svelte';
   import { dev } from '$app/environment';
+  import { apiFetch } from '$lib/utils/apiFetch.js';
 
   export let data;
   console.log('[Page Component] Initial data:', data);
@@ -90,19 +91,21 @@
 
   async function loadPotentialParents() {
     isLoadingParents = true;
+    availableParentDrills = []; // Reset
     try {
-      const response = await fetch('/api/drills');
-      if (response.ok) {
-        const drills = await response.json();
-        // Filter out current drill and any variants
-        availableParentDrills = drills.filter(d => 
-          d.id !== $drill.id && 
-          !d.parent_drill_id &&
-          d.id !== $drill.parent_drill_id
-        );
-      }
+      const drills = await apiFetch('/api/drills');
+      
+      // Filter out current drill and any variants
+      availableParentDrills = drills.filter(d => 
+        d.id !== $drill.id && 
+        !d.parent_drill_id &&
+        d.id !== $drill.parent_drill_id
+      );
     } catch (error) {
       console.error('Error loading potential parent drills:', error);
+      toast.push(`Failed to load drills: ${error.message}`, {
+        theme: { '--toastBackground': '#EF4444', '--toastColor': 'white' }
+      });
     } finally {
       isLoadingParents = false;
     }
@@ -117,7 +120,7 @@
     }
 
     try {
-      const response = await fetch(`/api/drills/${relationshipType === 'current-as-child' ? $drill.id : selectedDrill.id}/set-variant`, {
+      const updatedDrill = await apiFetch(`/api/drills/${relationshipType === 'current-as-child' ? $drill.id : selectedDrill.id}/set-variant`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -125,11 +128,6 @@
         })
       });
 
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      const updatedDrill = await response.json();
       drill.set(updatedDrill);
       showVariantModal = false;
       selectedDrill = null;
@@ -143,7 +141,7 @@
       goto(`/drills/${$drill.id}`, { replaceState: true });
     } catch (error) {
       console.error('Error setting variant relationship:', error);
-      toast.push('Failed to set variant relationship', {
+      toast.push(`Failed to set variant relationship: ${error.message}`, {
         theme: { '--toastBackground': '#EF4444', '--toastColor': 'white' }
       });
     }
@@ -151,17 +149,12 @@
 
   async function removeVariant() {
     try {
-      const response = await fetch(`/api/drills/${$drill.id}/set-variant`, {
+      const updatedDrill = await apiFetch(`/api/drills/${$drill.id}/set-variant`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parentDrillId: null })
       });
 
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      const updatedDrill = await response.json();
       drill.set(updatedDrill);
       toast.push('Successfully removed variant status', {
         theme: { '--toastBackground': '#10B981', '--toastColor': 'white' }
@@ -171,7 +164,7 @@
       goto(`/drills/${$drill.id}`, { replaceState: true });
     } catch (error) {
       console.error('Error removing variant status:', error);
-      toast.push('Failed to remove variant status', {
+      toast.push(`Failed to remove variant status: ${error.message}`, {
         theme: { '--toastBackground': '#EF4444', '--toastColor': 'white' }
       });
     }
@@ -179,15 +172,17 @@
 
   async function searchDrills() {
     isSearching = true;
+    searchResults = []; // Reset
     try {
-      const response = await fetch(`/api/drills/search?query=${encodeURIComponent(searchQuery)}`);
-      if (response.ok) {
-        const drills = await response.json();
-        // Filter out current drill and any variants
-        searchResults = drills.filter(d => d.id !== $drill.id);
-      }
+      const drills = await apiFetch(`/api/drills/search?query=${encodeURIComponent(searchQuery)}`);
+      
+      // Filter out current drill and any variants
+      searchResults = drills.filter(d => d.id !== $drill.id);
     } catch (error) {
       console.error('Error searching drills:', error);
+      toast.push(`Search failed: ${error.message}`, {
+        theme: { '--toastBackground': '#EF4444', '--toastColor': 'white' }
+      });
     } finally {
       isSearching = false;
     }
@@ -209,29 +204,32 @@
 
   async function removeVariantRelationship(variantId) {
     try {
-      const response = await fetch(`/api/drills/${variantId}/set-variant`, {
+      await apiFetch(`/api/drills/${variantId}/set-variant`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parentDrillId: null })
       });
 
-      if (!response.ok) {
-        throw new Error(await response.text());
+      // If the first fetch succeeded, refresh the current drill
+      try {
+          const updatedDrill = await apiFetch(`/api/drills/${$drill.id}`);
+          drill.set(updatedDrill);
+          toast.push('Variant relationship removed successfully', {
+            theme: { '--toastBackground': '#10B981', '--toastColor': 'white' }
+          });
+      } catch (refreshError) {
+           // Handle error fetching the updated drill info specifically
+          console.error('Error refreshing drill data after removing relationship:', refreshError);
+          toast.push(`Removed relationship, but failed to refresh drill data: ${refreshError.message}` , {
+            theme: { '--toastBackground': '#F59E0B', '--toastColor': 'white' } // Warning
+          });
+          // Optionally, still try to update UI partially or navigate away
+          // For now, we just show the warning.
       }
 
-      // Refresh the current drill to update the variations list
-      const drillResponse = await fetch(`/api/drills/${$drill.id}`);
-      if (drillResponse.ok) {
-        const updatedDrill = await drillResponse.json();
-        drill.set(updatedDrill);
-      }
-
-      toast.push('Variant relationship removed successfully', {
-        theme: { '--toastBackground': '#10B981', '--toastColor': 'white' }
-      });
     } catch (error) {
       console.error('Error removing variant relationship:', error);
-      toast.push('Failed to remove variant relationship', {
+      toast.push(`Failed to remove variant relationship: ${error.message}`, {
         theme: { '--toastBackground': '#EF4444', '--toastColor': 'white' }
       });
     }
@@ -243,13 +241,9 @@
     }
 
     try {
-        const response = await fetch(`/api/drills/${$drill.id}`, {
+        await apiFetch(`/api/drills/${$drill.id}`, {
             method: 'DELETE'
         });
-
-        if (!response.ok) {
-            throw new Error('Failed to delete drill');
-        }
 
         toast.push('Drill deleted successfully', {
             theme: { '--toastBackground': '#48bb78', '--toastColor': '#fff' }
@@ -259,7 +253,7 @@
         goto('/drills');
     } catch (error) {
         console.error('Error deleting drill:', error);
-        toast.push('Failed to delete drill', {
+        toast.push(`Failed to delete drill: ${error.message}`, {
             theme: { '--toastBackground': '#f56565', '--toastColor': '#fff' }
         });
     }

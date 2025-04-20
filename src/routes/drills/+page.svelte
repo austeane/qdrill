@@ -11,6 +11,7 @@
   import { goto, invalidate } from '$app/navigation';
   import { navigating } from '$app/stores';
   import { FILTER_STATES } from '$lib/constants';
+  import { apiFetch } from '$lib/utils/apiFetch.js';
 
   // Import only necessary stores (filter/sort state)
   import {
@@ -243,20 +244,21 @@
     }
 
     try {
-        const response = await fetch(`/api/drills/${drillId}`, {
+        // Use apiFetch for the DELETE request
+        await apiFetch(`/api/drills/${drillId}`, {
             method: 'DELETE'
         });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'Failed to delete drill');
-        }
-
+        
+        // apiFetch throws on error, so if we get here, it was successful
         toast.push('Drill deleted successfully', {
             theme: { '--toastBackground': '#48bb78', '--toastColor': '#fff' }
         });
 
-        invalidate('app:drills');
+        // Invalidate the data to refresh the list
+        invalidate('app:drills'); // Assuming you have a layout load function that depends on this
+        // Alternatively, force a page reload or manually remove the item from the UI
+        // data.items = data.items.filter(d => d.id !== drillId);
+
     } catch (error) {
         console.error('Error deleting drill:', error);
         toast.push(`Failed to delete drill: ${error.message}`, {

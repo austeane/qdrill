@@ -1,6 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { randomUUID } from 'crypto';
 import { pendingPracticePlanService } from '$lib/server/services/pendingPracticePlanService'; // Assuming this service exists
+import { handleApiError } from '../utils/handleApiError.js';
+import { NotFoundError } from '$lib/server/errors.js'; // Import NotFoundError for potential use
 
 const COOKIE_NAME = 'pendingPlanToken';
 const COOKIE_OPTS = {
@@ -15,6 +17,7 @@ const COOKIE_OPTS = {
 export async function POST({ request, cookies }) {
     try {
         const planData = await request.json();
+        // TODO: Add validation for planData structure/content?
         const token = randomUUID();
         const expiresAt = new Date(Date.now() + COOKIE_OPTS.maxAge * 1000);
 
@@ -28,8 +31,8 @@ export async function POST({ request, cookies }) {
         return json({ success: true, token }, { status: 201 });
 
     } catch (error) {
-        console.error('[API /api/pending-plans] Error saving pending plan:', error);
-        return json({ error: 'Failed to save pending plan data.' }, { status: 500 });
+        // Note: If save throws specific errors (e.g., validation), handleApiError will map them
+        return handleApiError(error); 
     }
 }
 
@@ -39,26 +42,26 @@ export async function GET({ cookies }) {
 
     if (!token) {
         console.log('[API /api/pending-plans] No pending plan token found in cookies.');
-        return json({ plan: null }); // No token, no pending plan
+        // Throw NotFoundError for consistent handling
+        // Client should interpret this as no pending plan found
+        throw new NotFoundError('No pending plan token found');
     }
 
     try {
         // Retrieve the pending plan data using the service
+        // pendingPracticePlanService.get should throw NotFoundError if token is invalid/expired
         const planData = await pendingPracticePlanService.get(token);
 
-        if (planData) {
-            console.log(`[API /api/pending-plans] Retrieved pending plan for token: ${token}`);
-            return json({ plan: planData });
-        } else {
-            console.log(`[API /api/pending-plans] Pending plan not found or expired for token: ${token}`);
-            // Clear the cookie if the data is missing or expired server-side
-            cookies.delete(COOKIE_NAME, { path: COOKIE_OPTS.path });
-            return json({ plan: null });
-        }
+        console.log(`[API /api/pending-plans] Retrieved pending plan for token: ${token}`);
+        return json({ plan: planData }); // Return plan data directly
+
     } catch (error) {
-        console.error(`[API /api/pending-plans] Error retrieving pending plan for token ${token}:`, error);
-        // Optionally clear cookie on error too? Maybe not, allow retry?
-        return json({ error: 'Failed to retrieve pending plan data.' }, { status: 500 });
+        // Clear the cookie if the plan wasn't found or other error occurred
+        if (error instanceof NotFoundError) {
+             console.log(`[API /api/pending-plans] Pending plan not found or expired for token: ${token}`);
+             cookies.delete(COOKIE_NAME, { path: COOKIE_OPTS.path });
+        }
+        return handleApiError(error);
     }
 }
 
@@ -66,25 +69,30 @@ export async function GET({ cookies }) {
 export async function DELETE({ cookies }) {
     const token = cookies.get(COOKIE_NAME);
 
+    // Always clear the cookie if present, regardless of server-side success
+    if (token) {
+        cookies.delete(COOKIE_NAME, { path: COOKIE_OPTS.path });
+    }
+
     if (!token) {
         console.log('[API /api/pending-plans] Delete requested but no token found.');
-        return json({ success: true }, { status: 200 }); // Nothing to delete
+        // Nothing to delete server-side, return success (204 No Content)
+        return new Response(null, { status: 204 });
     }
 
     try {
         // Delete the pending plan data using the service
+        // Assuming delete might implicitly handle non-existent tokens gracefully
         await pendingPracticePlanService.delete(token);
 
-        // Clear the cookie
-        cookies.delete(COOKIE_NAME, { path: COOKIE_OPTS.path });
-
-        console.log(`[API /api/pending-plans] Deleted pending plan and cookie for token: ${token}`);
-        return json({ success: true }, { status: 200 }); // Use 200 OK as we are returning a body
+        console.log(`[API /api/pending-plans] Deleted pending plan data for token: ${token}`);
+        // Return 204 No Content on successful deletion
+        return new Response(null, { status: 204 }); 
 
     } catch (error) {
+        // Log the error, but the cookie is already cleared.
+        // Return the standardized error response.
         console.error(`[API /api/pending-plans] Error deleting pending plan for token ${token}:`, error);
-        // Don't clear the cookie here, allow retry? Or clear anyway? Let's clear it.
-        cookies.delete(COOKIE_NAME, { path: COOKIE_OPTS.path });
-        return json({ error: 'Failed to delete pending plan data.' }, { status: 500 });
+        return handleApiError(error);
     }
 } 

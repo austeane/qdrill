@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { practicePlanService } from '$lib/server/services/practicePlanService.js';
 import { FILTER_STATES } from '$lib/constants'; // Import FILTER_STATES
+import { handleApiError } from '../utils/handleApiError'; // Import the error handler
 
 // Custom error class for better error handling
 class PracticePlanError extends Error {
@@ -48,12 +49,9 @@ export async function GET({ url, locals }) {
     });
     // Return the whole result object including items and pagination
     return json(result);
-  } catch (error) {
-    console.error('Error fetching practice plans:', error);
-    return json(
-      { error: 'Failed to fetch practice plans', details: error.message },
-      { status: 500 }
-    );
+  } catch (err) {
+    // Use the centralized error handler
+    return handleApiError(err);
   }
 }
 
@@ -101,18 +99,8 @@ export const POST = async ({ request, locals }) => {
       { id: result.id, message: 'Practice plan created successfully' }, 
       { status: 201 }
     );
-  } catch (error) {
-    console.error('Practice Plan Error:', {
-      message: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
-    });
-
-    return json({
-      error: error.message || 'An unexpected error occurred',
-      details: process.env.NODE_ENV === 'development' ? error.toString() : undefined
-    }, {
-      status: error instanceof PracticePlanError ? error.status : 500
-    });
+  } catch (err) {
+    // Use the centralized error handler
+    return handleApiError(err);
   }
 };

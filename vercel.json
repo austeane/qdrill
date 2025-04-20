@@ -1,6 +1,6 @@
 {
   "rewrites": [
-    { "source": "/api/drills/(.*)", "destination": "/api/drills" },
-    { "source": "/api/practice-plans/(.*)", "destination": "/api/practice-plans" }
+    { "source": "/api/drills", "destination": "/api/drills" },
+    { "source": "/api/practice-plans", "destination": "/api/practice-plans" }
   ]
 }

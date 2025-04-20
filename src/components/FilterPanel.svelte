@@ -427,10 +427,11 @@
         if ($searchQuery) params.set('search', $searchQuery);
 
         const finalParams = params.toString();
-        console.log(`[FilterPanel] Navigating to: /drills?${finalParams}`); // Log target URL
+        const targetPath = filterType === 'practice-plans' ? '/practice-plans' : '/drills';
+        console.log(`[FilterPanel] Navigating to: ${targetPath}?${finalParams}`); // Log target URL
         
         try {
-            await goto(`/drills?${finalParams}`, { replaceState: true, keepFocus: true, noScroll: true });
+            await goto(`${targetPath}?${finalParams}`, { replaceState: true, keepFocus: true, noScroll: true });
             console.log("[FilterPanel] goto call completed.");
         } catch (error) {
             console.error("[FilterPanel] Error during goto navigation:", error);

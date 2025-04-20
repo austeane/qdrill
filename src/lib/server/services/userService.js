@@ -142,22 +142,32 @@ export class UserService extends BaseEntityService {
 
   /**
    * Check if user has admin role
-   * @param {string} userRole - User role from session
+   * @param {string} userRole - User role from session (Currently NOT populated - see auth.js callbacks)
    * @returns {Promise<boolean>} - True if user is admin
    */
   async isAdmin(userRole) {
+    // TODO: Implement proper Role-Based Access Control (RBAC)
+    // This requires:
+    // 1. Adding a 'role' column to the 'users' table.
+    // 2. Updating the session callback in 'src/lib/auth.js' to fetch and include the user's role.
+    // 3. Updating this function to check session.user.role === 'admin'.
+    // For now, disabling admin functionality by always returning false.
+    return false;
+    /*
+    // Original implementation kept for reference:
     // Checks if the role provided (presumably from the session) is 'admin'
     // Assumes the role column exists in the users table and is populated in the session
-    return userRole === 'admin';
-    /* 
-    // Original implementation kept for reference:
+    // return userRole === 'admin';
+    */
+    /*
+    // Older hardcoded implementation:
     // try {
     //   const userExists = await this.exists(userId);
     //   if (!userExists) return false;
     //   const query = `SELECT email FROM users WHERE id = $1`;
     //   const result = await db.query(query, [userId]);
     //   if (result.rows.length === 0) return false;
-    //   const adminEmails = ['admin@example.com'];
+    //   const adminEmails = ['admin@example.com']; // Hardcoded list
     //   return adminEmails.includes(result.rows[0].email);
     // } catch (error) {
     //   console.error('Error in isAdmin:', error);

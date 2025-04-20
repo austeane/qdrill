@@ -52,11 +52,12 @@ export async function load({ url }) {
         // For now, we'll assume the default public/unlisted filtering in the service is sufficient.
 
         // Fetch formations using the service
-        const formationsResult = await formationService.getFilteredFormations(
-            filters, 
-            sortOptions, 
-            paginationOptions
-        );
+        // Pass combined options to the base getAll method
+        const formationsResult = await formationService.getAll({
+            filters,
+            sort: sortOptions, 
+            pagination: paginationOptions
+        });
 
         // TODO: Fetch filter options if needed (e.g., list of all tags, all formation types)
         // const filterOptions = await fetchFilterOptions(); 

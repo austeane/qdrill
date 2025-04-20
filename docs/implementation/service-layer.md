@@ -84,6 +84,19 @@ export async function query(text, params) {
 }
 ```
 
+### Full-Text Search (FTS)
+
+To provide efficient text searching, the application utilizes PostgreSQL's full-text search capabilities. This involves:
+
+1.  **`tsvector` Column**: Tables containing searchable text content (e.g., `drills`, `practice_plans`, `formations`) include a `search_vector` column of type `tsvector`.
+2.  **Update Function & Trigger**: A PostgreSQL function (e.g., `update_drill_search_vector`) and a corresponding trigger (e.g., `drill_search_vector_update`) are created for each searchable table. These automatically update the `search_vector` column whenever relevant text fields (like `name`, `description`) are inserted or updated. The function uses `to_tsvector` and `setweight` to combine and rank different text fields.
+3.  **GIN Index**: A GIN (Generalized Inverted Index) is created on the `search_vector` column (e.g., `idx_gin_drill_search_vector`) to significantly speed up full-text queries.
+4.  **Service Layer Integration**: The `BaseEntityService.search` method (and custom queries like in `PracticePlanService.getAll`) uses the `@@` operator with `plainto_tsquery` (or `to_tsquery`) against the `search_vector` column, replacing inefficient `LIKE` queries. Relevance sorting is often applied using `ts_rank_cd`.
+
+**Update (Ticket #20):** The core FTS logic (querying the `search_vector` column with `plainto_tsquery` and ranking with `ts_rank_cd`) has been centralized within the enhanced `BaseEntityService.search` method. Services like `DrillService`, `PracticePlanService`, and `FormationService` now leverage this base method, passing the search term and relying on the base implementation. They still require the underlying database setup (tsvector column, function, trigger, index).
+
+**Note:** When adding new searchable entities or fields, ensure the corresponding table has the `search_vector` column, update function, trigger, and GIN index configured. Migration scripts should handle the initial population of the `search_vector` for existing rows.
+
 ### API Integration
 
 API endpoints use service instances to handle business logic:

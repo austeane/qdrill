@@ -66,6 +66,21 @@
     let showEstimatedParticipants = false;
     let showContainsDrill = false;
   
+    // Provide safe defaults in case props are undefined
+    const fallbackNumberOfPeople = { min: 0, max: 100 };
+    const fallbackSuggestedLengths = { min: 0, max: 120 };
+
+    // Effective options (merge prop with fallback)
+    $: effectiveNumberOfPeopleOptions = {
+        min: numberOfPeopleOptions?.min ?? fallbackNumberOfPeople.min,
+        max: numberOfPeopleOptions?.max ?? fallbackNumberOfPeople.max
+    };
+
+    $: effectiveSuggestedLengths = {
+        min: suggestedLengths?.min ?? fallbackSuggestedLengths.min,
+        max: suggestedLengths?.max ?? fallbackSuggestedLengths.max
+    };
+
     // Set up variables for the sliders
     let numberOfPeopleRange = [$selectedNumberOfPeopleMin, $selectedNumberOfPeopleMax];
     let suggestedLengthsRange = [$selectedSuggestedLengthsMin, $selectedSuggestedLengthsMax];
@@ -80,8 +95,8 @@
     onMount(() => {
       mounted = true;
       // Initialize slider ranges from store values in case they were loaded from URL
-      numberOfPeopleRange = [$selectedNumberOfPeopleMin ?? numberOfPeopleOptions.min, $selectedNumberOfPeopleMax ?? numberOfPeopleOptions.max];
-      suggestedLengthsRange = [$selectedSuggestedLengthsMin ?? suggestedLengths.min, $selectedSuggestedLengthsMax ?? suggestedLengths.max];
+      numberOfPeopleRange = [$selectedNumberOfPeopleMin ?? effectiveNumberOfPeopleOptions.min, $selectedNumberOfPeopleMax ?? effectiveNumberOfPeopleOptions.max];
+      suggestedLengthsRange = [$selectedSuggestedLengthsMin ?? effectiveSuggestedLengths.min, $selectedSuggestedLengthsMax ?? effectiveSuggestedLengths.max];
     });
   
     // Function to reset all filters
@@ -90,18 +105,18 @@
       selectedComplexities.set({});
       selectedSkillsFocusedOn.set({});
       selectedPositionsFocusedOn.set({});
-      selectedNumberOfPeopleMin.set(numberOfPeopleOptions.min);
-      selectedNumberOfPeopleMax.set(numberOfPeopleOptions.max);
-      selectedSuggestedLengthsMin.set(suggestedLengths.min);
-      selectedSuggestedLengthsMax.set(suggestedLengths.max);
+      selectedNumberOfPeopleMin.set(effectiveNumberOfPeopleOptions.min);
+      selectedNumberOfPeopleMax.set(effectiveNumberOfPeopleOptions.max);
+      selectedSuggestedLengthsMin.set(effectiveSuggestedLengths.min);
+      selectedSuggestedLengthsMax.set(effectiveSuggestedLengths.max);
       selectedHasVideo.set(null);
       selectedHasDiagrams.set(null);
       selectedHasImages.set(null);
       selectedDrillTypes.set({});
 
       // Reset local slider state
-      numberOfPeopleRange = [numberOfPeopleOptions.min, numberOfPeopleOptions.max];
-      suggestedLengthsRange = [suggestedLengths.min, suggestedLengths.max];
+      numberOfPeopleRange = [effectiveNumberOfPeopleOptions.min, effectiveNumberOfPeopleOptions.max];
+      suggestedLengthsRange = [effectiveSuggestedLengths.min, effectiveSuggestedLengths.max];
 
       if (filterType === 'practice-plans') {
         selectedPhaseOfSeason.set({});
@@ -197,12 +212,12 @@
     }
   
     // Reactive statements to initialize selectedSuggestedLengthsMin and Max
-    $: if (suggestedLengths.min != null && $selectedSuggestedLengthsMin === 0) {
-      selectedSuggestedLengthsMin.set(suggestedLengths.min);
+    $: if (effectiveSuggestedLengths.min != null && $selectedSuggestedLengthsMin === 0) {
+      selectedSuggestedLengthsMin.set(effectiveSuggestedLengths.min);
     }
   
-    $: if (suggestedLengths.max != null && $selectedSuggestedLengthsMax === 120) {
-      selectedSuggestedLengthsMax.set(suggestedLengths.max);
+    $: if (effectiveSuggestedLengths.max != null && $selectedSuggestedLengthsMax === 120) {
+      selectedSuggestedLengthsMax.set(effectiveSuggestedLengths.max);
     }
   
     // Subscribe to Practice Plans Filters if needed
@@ -305,7 +320,7 @@
 
     let skillsSearchTerm = '';
     
-    $: filteredSkills = skillsFocusedOn
+    $: filteredSkills = (skillsFocusedOn || []) 
         .map(skill => typeof skill === 'object' ? skill.skill : skill)
         .filter((skill, index, self) => 
             // Remove duplicates
@@ -318,6 +333,24 @@
     function subscribe(stores, callback) {
       const unsubscribes = stores.map(store => store.subscribe(() => callback()));
       return () => unsubscribes.forEach(unsub => unsub());
+    }
+
+    // Helper to toggle tri‑state boolean filters (null → true → false → null)
+    function toggleBooleanFilter(store) {
+        store.update(current => current === null ? true : (current === true ? false : null));
+        dispatch('filterChange');
+    }
+
+    function toggleHasVideo() {
+        toggleBooleanFilter(selectedHasVideo);
+    }
+
+    function toggleHasDiagrams() {
+        toggleBooleanFilter(selectedHasDiagrams);
+    }
+
+    function toggleHasImages() {
+        toggleBooleanFilter(selectedHasImages);
     }
 </script>
 
@@ -340,9 +373,9 @@
                 data-testid="filter-category-skillLevels"
             >
                 Skill Levels
-                {#if $selectedSkillLevels.length > 0}
+                {#if Object.keys($selectedSkillLevels).length > 0}
                     <span class="absolute top-0 right-0 bg-blue-500 text-white text-xs rounded-full px-1 transform translate-x-1/2 -translate-y-1/2">
-                        ({$selectedSkillLevels.length})
+                        ({Object.keys($selectedSkillLevels).length})
                     </span>
                 {/if}
             </button>
@@ -379,9 +412,9 @@
                 aria-controls="drillComplexity-content"
             >
                 Complexity
-                {#if $selectedComplexities.length > 0}
+                {#if Object.keys($selectedComplexities).length > 0}
                     <span class="absolute top-0 right-0 bg-blue-500 text-white text-xs rounded-full px-1 transform translate-x-1/2 -translate-y-1/2">
-                        ({$selectedComplexities.length})
+                        ({Object.keys($selectedComplexities).length})
                     </span>
                 {/if}
             </button>
@@ -418,9 +451,9 @@
                 aria-controls="skillsFocusedOn-content"
             >
                 Skills Focused On
-                {#if $selectedSkillsFocusedOn.length > 0}
+                {#if Object.keys($selectedSkillsFocusedOn).length > 0}
                     <span class="absolute top-0 right-0 bg-blue-500 text-white text-xs rounded-full px-1 transform translate-x-1/2 -translate-y-1/2">
-                        ({$selectedSkillsFocusedOn.length})
+                        ({Object.keys($selectedSkillsFocusedOn).length})
                     </span>
                 {/if}
             </button>
@@ -464,9 +497,9 @@
                 aria-controls="positionsFocusedOn-content"
             >
                 Positions Focused On
-                {#if $selectedPositionsFocusedOn.length > 0}
+                {#if Object.keys($selectedPositionsFocusedOn).length > 0}
                     <span class="absolute top-0 right-0 bg-blue-500 text-white text-xs rounded-full px-1 transform translate-x-1/2 -translate-y-1/2">
-                        ({$selectedPositionsFocusedOn.length})
+                        ({Object.keys($selectedPositionsFocusedOn).length})
                     </span>
                 {/if}
             </button>
@@ -503,7 +536,7 @@
         >
             Number of Participants
             <span class="ml-2 text-sm font-semibold">
-                {$selectedNumberOfPeopleMin === numberOfPeopleOptions.min ? 'Any' : $selectedNumberOfPeopleMin} - {$selectedNumberOfPeopleMax === numberOfPeopleOptions.max ? 'Any' : $selectedNumberOfPeopleMax}
+                {$selectedNumberOfPeopleMin === effectiveNumberOfPeopleOptions.min ? 'Any' : $selectedNumberOfPeopleMin} - {$selectedNumberOfPeopleMax === effectiveNumberOfPeopleOptions.max ? 'Any' : $selectedNumberOfPeopleMax}
             </span>
         </button>
         
@@ -518,8 +551,8 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Participants Range</label>
                 <RangeSlider
                     bind:values={numberOfPeopleRange}
-                    min={numberOfPeopleOptions.min ?? 0}
-                    max={numberOfPeopleOptions.max ?? 100}
+                    min={effectiveNumberOfPeopleOptions.min ?? 0}
+                    max={effectiveNumberOfPeopleOptions.max ?? 100}
                     step={1}
                     float
                     pips
@@ -546,7 +579,7 @@
         >
             Suggested Lengths
             <span class="ml-2 text-sm font-semibold">
-            {$selectedSuggestedLengthsMin === suggestedLengths.min ? 'Any' : $selectedSuggestedLengthsMin} - {$selectedSuggestedLengthsMax === suggestedLengths.max ? 'Any' : $selectedSuggestedLengthsMax} mins
+            {$selectedSuggestedLengthsMin === effectiveSuggestedLengths.min ? 'Any' : $selectedSuggestedLengthsMin} - {$selectedSuggestedLengthsMax === effectiveSuggestedLengths.max ? 'Any' : $selectedSuggestedLengthsMax} mins
             </span>
         </button>
         
@@ -561,8 +594,8 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Length Range (mins)</label>
             <RangeSlider
                 bind:values={suggestedLengthsRange}
-                min={suggestedLengths.min ?? 0}
-                max={suggestedLengths.max ?? 120}
+                min={effectiveSuggestedLengths.min}
+                max={effectiveSuggestedLengths.max}
                 step={5} 
                 float
                 pips
@@ -622,9 +655,9 @@
                 aria-controls="drillTypes-content"
             >
                 Drill Types
-                {#if $selectedDrillTypes.length > 0}
+                {#if Object.keys($selectedDrillTypes).length > 0}
                     <span class="absolute top-0 right-0 bg-blue-500 text-white text-xs rounded-full px-1 transform translate-x-1/2 -translate-y-1/2">
-                        ({$selectedDrillTypes.length})
+                        ({Object.keys($selectedDrillTypes).length})
                     </span>
                 {/if}
             </button>

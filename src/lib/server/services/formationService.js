@@ -13,6 +13,7 @@ export class FormationService extends BaseEntityService {
   constructor() {
     // Define allowed columns for the formations table
     const allowedFormationColumns = [
+      'id', // Ensure primary key is always allowed
       'name',
       'brief_description',
       'detailed_description',
@@ -23,13 +24,31 @@ export class FormationService extends BaseEntityService {
       'formation_type',
       'created_by',
       'created_at',
-      'updated_at'
+      'updated_at',
+      'search_vector' // Allow search vector column
     ];
+
+    // Standard permission configuration
+    const permissionConfig = {
+      userIdColumn: 'created_by',
+      visibilityColumn: 'visibility',
+      publicValue: 'public',
+      unlistedValue: 'unlisted',
+      privateValue: 'private',
+      editableByOthersColumn: 'is_editable_by_others' // For canUserEdit check
+    };
     
-    super('formations', 'id', ['*'], allowedFormationColumns, { 
-      diagrams: 'json', 
-      tags: 'array' 
-    });
+    super(
+      'formations', 
+      'id', 
+      ['*'], 
+      allowedFormationColumns, 
+      { 
+        diagrams: 'json', 
+        tags: 'array' 
+      },
+      permissionConfig // Pass permission config
+    );
   }
 
   /**
@@ -90,8 +109,9 @@ export class FormationService extends BaseEntityService {
     if (!searchTerm || typeof searchTerm !== 'string' || searchTerm.trim().length === 0) {
       throw new ValidationError('Invalid search term provided.');
     }
-    const searchColumns = ['name', 'brief_description', 'detailed_description'];
-    return await this.search(searchTerm, searchColumns, options);
+    // Use base service's search which leverages tsvector ('search_vector' column)
+    // Pass the original options which might include filters, pagination, userId etc.
+    return await this.search(searchTerm, null, options, 'search_vector', 'english'); 
   }
   
   /**
@@ -101,7 +121,8 @@ export class FormationService extends BaseEntityService {
    * @returns {Promise<Object>} - Formations created by this user
    */
   async getFormationsByUser(userId, options = {}) {
-    const filters = { ...options.filters, created_by: userId };
+    const filters = { ...options.filters, created_by__eq: userId }; // Use __eq operator
+    // Directly use the base getAll method with the filter
     return await this.getAll({ ...options, filters });
   }
   
@@ -111,27 +132,11 @@ export class FormationService extends BaseEntityService {
    * @returns {Object} - Normalized data
    */
   normalizeFormationData(data) {
-    const normalizedData = { ...data };
-    
-    // Remove id field if it's null or undefined
-    if (normalizedData.id === null || normalizedData.id === undefined) {
-      delete normalizedData.id;
-    }
-    
-    // Ensure diagrams is an array
-    if (!Array.isArray(normalizedData.diagrams)) {
-      normalizedData.diagrams = normalizedData.diagrams ? [normalizedData.diagrams] : [];
-    }
-    
-    // No need to stringify diagrams as they will be stored as JSONB[]
-    // The database column type already handles JSON objects
-    
-    // Ensure tags is an array
-    if (!Array.isArray(normalizedData.tags)) {
-      normalizedData.tags = normalizedData.tags ? [normalizedData.tags] : [];
-    }
-    
-    return normalizedData;
+    // Base service handles ID, array fields, and timestamps generally.
+    // Keep this method for potential future formation-specific normalization.
+    // For now, just return the data as is, assuming upstream handles basics.
+    // const normalizedData = super.normalizeArrayFields(data, ['tags', 'diagrams']); // Example if we needed explicit normalization
+    return data; 
   }
 
   /**
@@ -170,108 +175,6 @@ export class FormationService extends BaseEntityService {
       // Wrap others as DatabaseError
       console.error(`Error associating formation ${id} with user ${userId}:`, error);
       throw new DatabaseError('Failed to associate formation', error);
-    }
-  }
-
-  /**
-   * Get formations with advanced filtering, sorting, and pagination
-   * @param {Object} [filters={}] - Filters object
-   * @param {string[]} [filters.tags] - Tags to filter by (match any)
-   * @param {string} [filters.formation_type] - Formation type to filter by
-   * @param {string} [filters.userId] - User ID for visibility filtering
-   * @param {string} [filters.searchQuery] - Text search query (searches name, description)
-   * @param {Object} [sortOptions={}] - Sorting options
-   * @param {string} [sortOptions.sortBy='created_at'] - Column to sort by (e.g., 'name', 'created_at')
-   * @param {'asc'|'desc'} [sortOptions.sortOrder='desc'] - Sort order
-   * @param {Object} [paginationOptions={}] - Pagination options
-   * @param {number} [paginationOptions.page=1] - Page number
-   * @param {number} [paginationOptions.limit=10] - Items per page
-   * @param {string[]} [paginationOptions.columns=['*']] - Columns to select
-   * @returns {Promise<Object>} - Object containing `items` array and `pagination` info
-   */
-  async getFilteredFormations(filters = {}, sortOptions = {}, paginationOptions = {}) {
-    const { tags, formation_type, searchQuery, userId } = filters;
-    const { sortBy = 'created_at', sortOrder = 'desc' } = sortOptions;
-    const { page = 1, limit = 10, columns = ['*'] } = paginationOptions;
-
-    const allowedSortColumns = ['name', 'created_at', 'updated_at', 'formation_type'];
-    const validSortBy = allowedSortColumns.includes(sortBy) ? sortBy : 'created_at';
-    const validSortOrder = this.validateSortOrder(sortOrder); // Use base class validator
-
-    const conditions = [];
-    const queryParams = [];
-    let paramIndex = 1;
-
-    if (tags && Array.isArray(tags) && tags.length > 0) {
-      // Assumes tags is an array of strings
-      // Use && operator (contains all) instead of ANY (contains any)? Let's use ANY for now.
-      // GIN index on 'tags' supports this well.
-      conditions.push(`tags @> $${paramIndex++}`); // Use @> for contains operator
-      queryParams.push(tags);
-    }
-
-    if (formation_type) {
-      conditions.push(`formation_type = $${paramIndex++}`);
-      queryParams.push(formation_type);
-    }
-
-    if (searchQuery) {
-      const searchPattern = `%${searchQuery.toLowerCase()}%`;
-      conditions.push(`(
-        LOWER(name) ILIKE $${paramIndex} OR 
-        LOWER(brief_description) ILIKE $${paramIndex} OR 
-        LOWER(detailed_description) ILIKE $${paramIndex}
-      )`);
-      queryParams.push(searchPattern);
-      paramIndex++;
-    }
-
-    // Visibility filter (similar to drillService)
-    const visibilityConditions = [
-      "(visibility = 'public' OR visibility IS NULL)", // Treat NULL as public
-      "visibility = 'unlisted'"
-    ];
-    if (userId) {
-      visibilityConditions.push(`(visibility = 'private' AND created_by = $${paramIndex++})`);
-      queryParams.push(userId);
-    }
-    conditions.push(`(${visibilityConditions.join(' OR ')})`);
-
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const orderByClause = `ORDER BY ${validSortBy} ${validSortOrder}, ${this.primaryKey} ${validSortOrder}`;
-    const offset = (page - 1) * limit;
-
-    try {
-      // Get total count for pagination
-      const countQuery = `SELECT COUNT(*) FROM ${this.tableName} ${whereClause}`;
-      const countResult = await db.query(countQuery, queryParams);
-      const totalItems = parseInt(countResult.rows[0].count);
-      const totalPages = Math.ceil(totalItems / limit);
-
-      // Get the actual items
-      const safeColumns = Array.isArray(columns) && columns.length > 0 ? columns.map(col => `"${col}"`).join(', ') : '*';
-      const itemsQuery = `
-        SELECT ${safeColumns}
-        FROM ${this.tableName}
-        ${whereClause}
-        ${orderByClause}
-        LIMIT $${paramIndex++} OFFSET $${paramIndex++}
-      `;
-      const itemsResult = await db.query(itemsQuery, [...queryParams, limit, offset]);
-
-      return {
-        items: itemsResult.rows,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalItems,
-          totalPages
-        }
-      };
-    } catch (error) {
-      console.error(`Error in FormationService.getFilteredFormations:`, error);
-      // Wrap generic DB errors
-      throw new DatabaseError('Failed to retrieve filtered formations', error);
     }
   }
 }

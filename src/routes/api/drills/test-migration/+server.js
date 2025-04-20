@@ -1,19 +1,35 @@
 import { json } from '@sveltejs/kit';
 import { fabricToExcalidraw } from '$lib/utils/diagramMigration';
 import { dev } from '$app/environment';
+import { handleApiError } from '../utils/handleApiError.js';
+import { ForbiddenError, ValidationError, InternalServerError } from '$lib/server/errors.js';
 
 export async function POST({ request }) {
     // Only allow in development mode
     if (!dev) {
-        return json({ error: 'Not available in production' }, { status: 403 });
+        return handleApiError(new ForbiddenError('Test migration endpoint is only available in development mode.'));
     }
 
     try {
-        const { diagram } = await request.json();
+        let diagram;
+        try {
+            const body = await request.json();
+            diagram = body.diagram;
+        } catch (jsonError) {
+            throw new ValidationError('Invalid JSON payload', { details: jsonError.message });
+        }
+        
+        if (!diagram) {
+            throw new ValidationError('Missing diagram field in request body');
+        }
+        
         const convertedDiagram = fabricToExcalidraw(diagram);
+        if (!convertedDiagram) {
+            throw new InternalServerError('Diagram conversion failed.');
+        }
+        
         return json(convertedDiagram);
-    } catch (error) {
-        console.error('Error in test migration:', error);
-        return json({ error: error.message }, { status: 500 });
+    } catch (err) {
+        return handleApiError(err);
     }
 } 

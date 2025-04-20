@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { addBreak, addDrillToPlan, addOneOffDrill } from '$lib/stores/sectionsStore';
   import { toast } from '@zerodevx/svelte-toast';
+  import { apiFetch } from '$lib/utils/apiFetch.js';
   
   export let show = false;
   export let selectedSectionId = null;
@@ -27,18 +28,11 @@
     }
     
     try {
-      const response = await fetch(`/api/drills/search?query=${encodeURIComponent(query)}`);
-      if (response.ok) {
-        searchResults = await response.json();
-      } else {
-        console.error('Failed to search drills');
-        searchResults = [];
-        toast.push('Error searching drills', { theme: { '--toastBackground': 'red' } });
-      }
+      searchResults = await apiFetch(`/api/drills/search?query=${encodeURIComponent(query)}`);
     } catch (error) {
       console.error('Error searching drills:', error);
       searchResults = [];
-      toast.push('Error connecting to server', { theme: { '--toastBackground': 'red' } });
+      toast.push(`Search failed: ${error.message}`, { theme: { '--toastBackground': 'red' } });
     }
   }
 

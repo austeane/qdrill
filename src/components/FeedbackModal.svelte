@@ -4,6 +4,7 @@
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
     import { onMount } from 'svelte';
+    import { apiFetch } from '$lib/utils/apiFetch';
 
     let feedbackText = '';
     let feedbackType = 'general';
@@ -21,13 +22,13 @@
             feedbackType
         };
 
-        const response = await fetch('/api/feedback', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (response.ok) {
+        try {
+            await apiFetch('/api/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
             feedbackText = '';
             feedbackType = 'general';
             name = '';
@@ -35,9 +36,9 @@
             feedbackModalVisible.set(false);
             // Optionally, refresh feedback list
             loadFeedback();
-        } else {
-            // Handle error (e.g., show a message)
-            alert('Failed to submit feedback. Please contact Austin.');
+        } catch (error) {
+            // Error handling already done by apiFetch
+            alert('Failed to submit feedback: ' + error.message);
         }
     }
 
@@ -51,10 +52,11 @@
     }
 
     async function loadFeedback() {
-        const response = await fetch('/api/feedback');
-        if (response.ok) {
-            const data = await response.json();
+        try {
+            const data = await apiFetch('/api/feedback');
             feedbackList.set(data);
+        } catch (error) {
+            console.error('Failed to load feedback:', error);
         }
     }
 

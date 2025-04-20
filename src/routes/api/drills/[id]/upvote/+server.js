@@ -1,39 +1,31 @@
 import { json } from '@sveltejs/kit';
-import { error } from '@sveltejs/kit';
+// import { error } from '@sveltejs/kit'; // No longer using SvelteKit error helper directly
 import { drillService } from '$lib/server/services/drillService';
+import { authGuard } from '$lib/server/authGuard'; // Import authGuard
+import { handleApiError } from '../../utils/handleApiError.js'; // Import the helper
+import { UnauthorizedError, ValidationError } from '$lib/server/errors.js';
 
-export async function POST({ params, locals }) {
-    const drillId = params.id;
-    
-    // Validate drill ID
-    if (!drillId || isNaN(drillId)) {
-        throw error(400, 'Invalid drill ID');
-    }
-
-    // Get user ID from session
+// Apply authGuard
+export const POST = authGuard(async ({ params, locals }) => {
     const session = locals.session;
-    const userId = session?.user?.id;
-
-    if (!userId) {
-        return json({ error: 'Login required to upvote' }, { status: 401 });
-    }
-
+    const userId = session?.user?.id; // Guard ensures userId exists
+    
     try {
-        // Use the drillService to handle the upvote logic
-        const result = await drillService.toggleUpvote(drillId, userId);
+        const drillId = parseInt(params.id);
         
+        if (!params.id || isNaN(drillId)) {
+            throw new ValidationError('Invalid Drill ID format');
+        }
+        
+        // Service method handles NotFoundError
+        const result = await drillService.toggleUpvote(drillId, userId);
+
         return json({ 
             upvotes: result.upvotes,
             hasVoted: result.hasVoted
         });
     } catch (err) {
-        console.error('Error upvoting drill:', err);
-        
-        // Handle specific errors with appropriate status codes
-        if (err.message === 'Drill not found') {
-            throw error(404, 'Drill not found');
-        }
-        
-        return json({ error: 'Failed to upvote drill' }, { status: 500 });
+        // Use the centralized error handler
+        return handleApiError(err);
     }
-}
+});

@@ -4,6 +4,7 @@
   import { goto } from '$app/navigation';
   import { toast } from '@zerodevx/svelte-toast';
   import ExcalidrawWrapper from '$components/ExcalidrawWrapper.svelte';
+  import { apiFetch } from '$lib/utils/apiFetch.js';
 
   let fileInput;
   let uploadedFile = writable(null);
@@ -64,21 +65,18 @@
     }
 
     isUploading.set(true);
+    uploadSummary.set(null); // Reset summary
+    parsedDrills.set([]); // Reset drills
     const formData = new FormData();
     formData.append('file', $uploadedFile);
     formData.append('visibility', $visibility);
 
     try {
-      const response = await fetch('/api/drills/bulk-upload', {
+      const result = await apiFetch('/api/drills/bulk-upload', {
         method: 'POST',
         body: formData
       });
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const result = await response.json();
       uploadSummary.set(result.summary);
       parsedDrills.set(result.drills.map(drill => ({
         ...drill,
@@ -87,7 +85,7 @@
       })));
     } catch (error) {
       console.error('Error uploading CSV:', error);
-      toast.push('Failed to upload CSV file', { theme: { '--toastBackground': 'red' } });
+      toast.push(`Failed to upload CSV file: ${error.message}`, { theme: { '--toastBackground': 'red' } });
     } finally {
       isUploading.set(false);
     }
@@ -264,7 +262,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
     }
 
     try {
-      const response = await fetch('/api/drills/import', {
+      const result = await apiFetch('/api/drills/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -274,11 +272,6 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Import failed');
-      }
-
-      const result = await response.json();
       toast.push(`Successfully imported ${result.importedCount} drills`, {
         theme: { '--toastBackground': 'green' }
       });
@@ -286,7 +279,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
       goto('/drills');
     } catch (error) {
       console.error('Error importing drills:', error);
-      toast.push('Failed to import drills', { theme: { '--toastBackground': 'red' } });
+      toast.push(`Failed to import drills: ${error.message}`, { theme: { '--toastBackground': 'red' } });
     }
   }
 

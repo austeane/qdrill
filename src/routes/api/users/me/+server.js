@@ -1,16 +1,17 @@
 import { json } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
 import { userService } from '$lib/server/services/userService';
+import { handleApiError } from '../../utils/handleApiError';
 
-export const GET = authGuard(async (event) => {
-    // Retrieve the session from event.locals
-    const session = event.locals.session;
-    const userId = session.user.id;
-
-    // Ensure we have a row in users table for this Better‑Auth user
-    await userService.ensureUserExists(session.user);
-
+export const GET = authGuard(async ({ locals }) => {
     try {
+        // Retrieve the session from event.locals
+        const session = await locals.auth();
+        const userId = session.user.id;
+
+        // Ensure we have a row in users table for this Better‑Auth user
+        await userService.ensureUserExists(session.user);
+
         // Use the userService to fetch the complete profile
         const profileData = await userService.getUserProfile(userId);
         
@@ -27,8 +28,8 @@ export const GET = authGuard(async (event) => {
             votes: profileData.votes,
             comments: profileData.comments
         });
-    } catch (error) {
-        console.error('Error fetching user profile data:', error);
-        return json({ error: 'Failed to fetch profile data' }, { status: 500 });
+    } catch (err) {
+        // Use the centralized error handler
+        return handleApiError(err);
     }
 });

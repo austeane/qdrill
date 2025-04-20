@@ -1,5 +1,6 @@
 import { BaseEntityService } from './baseEntityService.js';
 import * as db from '$lib/server/db';
+import { DatabaseError, ValidationError, NotFoundError } from '$lib/server/errors';
 
 /**
  * Service for managing skills
@@ -31,7 +32,7 @@ export class SkillService extends BaseEntityService {
       return result.rows;
     } catch (error) {
       console.error('Error fetching all skills:', error);
-      throw new Error('Failed to fetch skills');
+      throw new DatabaseError('Failed to fetch skills', error);
     }
   }
 
@@ -40,14 +41,16 @@ export class SkillService extends BaseEntityService {
    * Handles the logic previously in DrillForm.svelte's addSkill function.
    * @param {string} skillName - The name of the skill to add.
    * @returns {Promise<Object>} - The created or updated skill object.
+   * @throws {ValidationError} If skillName is invalid
+   * @throws {DatabaseError} On database error
    */
   async addOrIncrementSkill(skillName) {
     if (!skillName || typeof skillName !== 'string') {
-      throw new Error('Invalid skill name provided');
+      throw new ValidationError('Invalid skill name provided');
     }
     const trimmedSkill = skillName.trim();
     if (trimmedSkill === '') {
-      throw new Error('Skill name cannot be empty');
+      throw new ValidationError('Skill name cannot be empty');
     }
 
     try {
@@ -61,13 +64,13 @@ export class SkillService extends BaseEntityService {
       `;
       const result = await db.query(query, [trimmedSkill]);
       if (result.rows.length === 0) {
-        throw new Error('Failed to add or update skill in database');
+        throw new DatabaseError('Failed to add or update skill in database, no rows returned.');
       }
       return result.rows[0];
     } catch (error) {
       console.error(`Error adding or incrementing skill "${trimmedSkill}":`, error);
       // Check for specific DB errors if needed (e.g., constraints)
-      throw new Error('Database error while saving skill');
+      throw new DatabaseError('Database error while saving skill', error);
     }
   }
 
@@ -87,13 +90,16 @@ export class SkillService extends BaseEntityService {
       const result = await db.query(query, [drillId]);
       
       if (result.rows.length === 0) {
-        return [];
+        throw new NotFoundError(`Drill with ID ${drillId} not found when fetching skills.`);
       }
       
       return result.rows[0].skills_focused_on || [];
     } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
       console.error('Error in getSkillsForDrill:', error);
-      throw error;
+      throw new DatabaseError('Failed to get skills for drill', error);
     }
   }
 
@@ -116,7 +122,7 @@ export class SkillService extends BaseEntityService {
       return result.rows;
     } catch (error) {
       console.error('Error in getMostUsedSkills:', error);
-      throw error;
+      throw new DatabaseError('Failed to get most used skills', error);
     }
   }
 
@@ -222,7 +228,7 @@ export class SkillService extends BaseEntityService {
       return skillsResult.rows.map(row => row.skill);
     } catch (error) {
       console.error('Error in getSkillRecommendations:', error);
-      throw error;
+      throw new DatabaseError('Failed to get skill recommendations', error);
     }
   }
 }

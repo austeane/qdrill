@@ -3,6 +3,7 @@ import * as db from '$lib/server/db';
 import { kyselyDb } from '$lib/server/db.js'; // Import Kysely instance
 import { jsonObjectFrom } from 'kysely/helpers/postgres';
 import { sql } from 'kysely'; // Import sql tag
+import { NotFoundError, ForbiddenError, ValidationError, DatabaseError, ConflictError } from '$lib/server/errors';
 
 /**
  * Service for managing practice plans
@@ -243,10 +244,12 @@ export class PracticePlanService extends BaseEntityService {
    * @param {Object} planData - Practice plan data
    * @param {number|null} userId - User ID creating the plan (null if anonymous)
    * @returns {Promise<Object>} - The created practice plan with ID
-   * @throws {Error} If validation fails
+   * @throws {ValidationError} If validation fails
+   * @throws {ForbiddenError} If anonymous user tries to create non-public plan
+   * @throws {DatabaseError} On database error
    */
   async createPracticePlan(planData, userId = null) {
-    // Validate the practice plan - this will throw if invalid
+    // Validate the practice plan - this will throw ValidationError if invalid
     this.validatePracticePlan(planData);
     
     // If user is not logged in, force public visibility and editable by others
@@ -258,12 +261,14 @@ export class PracticePlanService extends BaseEntityService {
     // Validate visibility
     const validVisibilities = ['public', 'unlisted', 'private'];
     if (!planData.visibility || !validVisibilities.includes(planData.visibility)) {
-      throw new Error('Invalid visibility setting');
+      // Use ValidationError for invalid visibility input
+      throw new ValidationError('Invalid visibility setting provided.', { visibility: 'Must be public, unlisted, or private' });
     }
 
     // If user is logged out, they can only create public plans
     if (!userId && planData.visibility !== 'public') {
-      throw new Error('Anonymous users can only create public plans');
+      // Use ForbiddenError as anonymous users are not allowed this action
+      throw new ForbiddenError('Anonymous users can only create public plans');
     }
 
     const {
@@ -320,6 +325,12 @@ export class PracticePlanService extends BaseEntityService {
 
       // Insert sections and their items
       for (const section of sections) {
+        // Validate section data before inserting?
+        if (!section || typeof section.name !== 'string' || typeof section.order !== 'number') {
+          // Rollback transaction and throw ValidationError
+          throw new ValidationError('Invalid section data provided.', { section: section?.name || 'unknown' });
+        }
+
         const sectionResult = await client.query(
           `INSERT INTO practice_plan_sections 
            (practice_plan_id, name, "order", goals, notes)
@@ -339,6 +350,12 @@ export class PracticePlanService extends BaseEntityService {
         // Insert items for this section
         if (section.items?.length > 0) {
           for (const [index, item] of section.items.entries()) {
+            // Validate item data before inserting?
+            if (!item || typeof item.duration !== 'number' || typeof item.type !== 'string') {
+              // Rollback transaction and throw ValidationError
+              throw new ValidationError('Invalid item data provided in section.', { item: item?.name || 'unknown' });
+            }
+
             await client.query(
               `INSERT INTO practice_plan_drills 
                (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, diagram_data, parallel_group_id, parallel_timeline, group_timelines, name)
@@ -381,7 +398,7 @@ export class PracticePlanService extends BaseEntityService {
       }
 
       return { id: planId };
-    });
+    }); // Transaction automatically handles rollback on error
   }
   
   /**
@@ -389,101 +406,110 @@ export class PracticePlanService extends BaseEntityService {
    * @param {number} id - Practice plan ID
    * @param {number|null} userId - User ID requesting the plan
    * @returns {Promise<Object>} - Complete practice plan with sections and items
+   * @throws {NotFoundError} If plan not found
+   * @throws {ForbiddenError} If user lacks permission to view
+   * @throws {DatabaseError} On database error
    */
   async getPracticePlanById(id, userId = null) {
-    return this.withTransaction(async (client) => {
-      // First fetch the practice plan
-      const planResult = await client.query(
-        `SELECT * FROM practice_plans WHERE id = $1`,
-        [id]
-      );
+    try {
+      // First fetch the practice plan using base service method
+      // This will throw NotFoundError if the plan doesn't exist.
+      const practicePlan = await this.getById(id);
 
-      if (planResult.rows.length === 0) {
-        throw new Error('Practice plan not found');
-      }
-
-      const practicePlan = planResult.rows[0];
-
-      // Use standard permission check
+      // Check view permission using standard permission check
+      // This relies on the entity being fetched first.
       if (!this.canUserView(practicePlan, userId)) {
-        throw new Error('Unauthorized');
+        // Use ForbiddenError
+        throw new ForbiddenError('You do not have permission to view this practice plan');
       }
 
-      // Fetch sections
-      const sectionsResult = await client.query(
-        `SELECT * FROM practice_plan_sections 
-         WHERE practice_plan_id = $1 
-         ORDER BY "order"`,
-        [id]
-      );
+      // Fetch sections and items within a transaction for consistency
+      return this.withTransaction(async (client) => {
+        // Fetch sections
+        const sectionsResult = await client.query(
+          `SELECT * FROM practice_plan_sections 
+           WHERE practice_plan_id = $1 
+           ORDER BY "order"`,
+          [id]
+        );
 
-      // Fetch items with their section assignments
-      const itemsResult = await client.query(
-        `SELECT 
-          ppd.id,
-          ppd.practice_plan_id,
-          ppd.section_id,
-          ppd.drill_id,
-          ppd.order_in_plan,
-          ppd.duration AS item_duration,
-          ppd.type,
-          ppd.name,
-          ppd.parallel_group_id,
-          ppd.parallel_timeline,
-          ppd.diagram_data AS ppd_diagram_data,
-          ppd.group_timelines::text[] AS "groupTimelines",
-          d.id AS drill_id,
-          d.name AS drill_name,
-          d.brief_description,
-          d.detailed_description,
-          d.suggested_length,
-          d.skill_level,
-          d.complexity,
-          d.number_of_people_min,
-          d.number_of_people_max,
-          d.skills_focused_on,
-          d.positions_focused_on,
-          d.video_link,
-          d.diagrams
-         FROM practice_plan_drills ppd
-         LEFT JOIN drills d ON ppd.drill_id = d.id
-         WHERE ppd.practice_plan_id = $1
-         ORDER BY ppd.section_id, ppd.order_in_plan`,
-        [id]
-      );
+        // Fetch items with their section assignments
+        const itemsResult = await client.query(
+          `SELECT 
+            ppd.id,
+            ppd.practice_plan_id,
+            ppd.section_id,
+            ppd.drill_id,
+            ppd.order_in_plan,
+            ppd.duration AS item_duration,
+            ppd.type,
+            ppd.name,
+            ppd.parallel_group_id,
+            ppd.parallel_timeline,
+            ppd.diagram_data AS ppd_diagram_data,
+            ppd.group_timelines::text[] AS "groupTimelines",
+            d.id AS drill_id,
+            d.name AS drill_name,
+            d.brief_description,
+            d.detailed_description,
+            d.suggested_length,
+            d.skill_level,
+            d.complexity,
+            d.number_of_people_min,
+            d.number_of_people_max,
+            d.skills_focused_on,
+            d.positions_focused_on,
+            d.video_link,
+            d.diagrams
+           FROM practice_plan_drills ppd
+           LEFT JOIN drills d ON ppd.drill_id = d.id
+           WHERE ppd.practice_plan_id = $1
+           ORDER BY ppd.section_id, ppd.order_in_plan`,
+          [id]
+        );
 
-      // Organize items by section
-      const sections = sectionsResult.rows.map(section => ({
-        ...section,
-        items: itemsResult.rows
-          .filter(item => item.section_id === section.id)
-          .map(item => this.formatDrillItem(item))
-      }));
+        // Organize items by section
+        const sections = sectionsResult.rows.map(section => ({
+          ...section,
+          items: itemsResult.rows
+            .filter(item => item.section_id === section.id)
+            .map(item => this.formatDrillItem(item))
+        }));
 
-      // Calculate duration for each section
-      sections.forEach(section => {
-        section.duration = this.calculateSectionDuration(section.items);
-      });
+        // Calculate duration for each section
+        sections.forEach(section => {
+          section.duration = this.calculateSectionDuration(section.items);
+        });
 
-      // If no sections exist, create a default one
-      if (sections.length === 0) {
-        const defaultSection = {
-          id: 'default',
-          name: 'Main Section',
-          order: 0,
-          goals: [],
-          notes: '',
-          items: itemsResult.rows.map(item => this.formatDrillItem(item))
-        };
-        defaultSection.duration = this.calculateSectionDuration(defaultSection.items);
-        sections.push(defaultSection);
+        // If no sections exist, create a default one
+        if (sections.length === 0) {
+          const defaultSection = {
+            id: 'default',
+            name: 'Main Section',
+            order: 0,
+            goals: [],
+            notes: '',
+            items: itemsResult.rows.map(item => this.formatDrillItem(item))
+          };
+          defaultSection.duration = this.calculateSectionDuration(defaultSection.items);
+          sections.push(defaultSection);
+        }
+
+        // Add sections to practice plan
+        practicePlan.sections = sections;
+
+        return practicePlan;
+      }); // End transaction
+
+    } catch (error) {
+      // Re-throw known errors (NotFoundError, ForbiddenError from above)
+      if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+        throw error;
       }
-
-      // Add sections to practice plan
-      practicePlan.sections = sections;
-
-      return practicePlan;
-    });
+      // Wrap other potential errors (e.g., DB errors during section/item fetch) in DatabaseError
+      console.error(`Error fetching practice plan details for ID ${id}:`, error);
+      throw new DatabaseError('Failed to fetch practice plan details', error);
+    }
   }
   
   /**
@@ -492,18 +518,31 @@ export class PracticePlanService extends BaseEntityService {
    * @param {Object} planData - Updated practice plan data
    * @param {number|null} userId - User ID updating the plan
    * @returns {Promise<Object>} - Updated practice plan
+   * @throws {NotFoundError} If plan not found
+   * @throws {ForbiddenError} If user lacks permission to edit
+   * @throws {ValidationError} If validation fails
+   * @throws {DatabaseError} On database error
    */
   async updatePracticePlan(id, planData, userId = null) {
-    // Check if the plan exists
-    const existingPlan = await this.getById(id);
-    if (!existingPlan) {
-      throw new Error('Practice plan not found');
+    // Validate incoming data structure (basic checks)
+    // More specific validation (like visibility) happens later
+    if (!planData || typeof planData !== 'object') {
+      throw new ValidationError('Invalid update data provided.');
     }
 
-    // Check edit permissions using standard permission model
-    const canEdit = await this.canUserEdit(id, userId);
-    if (!canEdit) {
-      throw new Error('Unauthorized to edit this practice plan');
+    // Check edit permissions *before* fetching the plan for update
+    // This relies on canUserEdit throwing NotFoundError if the plan doesn't exist,
+    // or ForbiddenError if the user cannot edit.
+    try {
+      await this.canUserEdit(id, userId);
+    } catch (error) {
+      // Re-throw NotFoundError or ForbiddenError from canUserEdit
+      if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+        throw error;
+      }
+      // Wrap other errors (e.g., DB error during permission check) as DatabaseError
+      console.error(`Error checking edit permission for plan ${id}:`, error);
+      throw new DatabaseError('Failed to check edit permission', error);
     }
 
     // If anonymous user, force public visibility and editable
@@ -563,6 +602,11 @@ export class PracticePlanService extends BaseEntityService {
       // Insert sections
       if (planData.sections?.length > 0) {
         for (const section of planData.sections) {
+          // Validate section data before inserting?
+          if (!section || typeof section.name !== 'string' || typeof section.order !== 'number') {
+            throw new ValidationError('Invalid section data provided during update.', { section: section?.name || 'unknown' });
+          }
+
           // Insert section
           const sectionResult = await client.query(
             `INSERT INTO practice_plan_sections 
@@ -575,6 +619,11 @@ export class PracticePlanService extends BaseEntityService {
           // Insert items with explicit ordering
           if (section.items?.length > 0) {
             for (const [index, item] of section.items.entries()) {
+              // Validate item data before inserting?
+              if (!item || typeof item.duration !== 'number' || typeof item.type !== 'string') {
+                throw new ValidationError('Invalid item data provided in section during update.', { item: item?.name || 'unknown' });
+              }
+
               await client.query(
                 `INSERT INTO practice_plan_drills 
                  (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, 
@@ -618,50 +667,75 @@ export class PracticePlanService extends BaseEntityService {
         }
       }
 
+      // Fetch the newly updated plan to return it (including sections/drills potentially)
+      // Using getPracticePlanById ensures consistency and applies view permissions
+      // However, this might be inefficient. Returning result.rows[0] is faster but less complete.
+      // Let's return the raw update result for now, assuming the caller might re-fetch if needed.
+      // return await this.getPracticePlanById(id, userId);
       return result.rows[0];
-    });
+
+    }); // Transaction handles rollback
   }
   
   /**
    * Delete a practice plan
    * @param {number} id - Practice plan ID
    * @param {number} userId - User ID requesting deletion
-   * @returns {Promise<boolean>} - True if successful
+   * @returns {Promise<void>} - Resolves if successful
+   * @throws {NotFoundError} If plan not found
+   * @throws {ForbiddenError} If user lacks permission to delete
+   * @throws {DatabaseError} On database error
    */
   async deletePracticePlan(id, userId) {
-    // First check if the user has permission to delete this plan
-    const plan = await this.getById(id);
-    if (!plan) {
-      throw new Error('Practice plan not found');
+    // Check delete permissions (uses canUserEdit logic, should ideally be canUserDelete if different)
+    // This relies on canUserEdit throwing NotFoundError or ForbiddenError.
+    try {
+      const canEdit = await this.canUserEdit(id, userId);
+      // Add specific check: Only the creator can delete (is_editable_by_others doesn't grant delete rights)
+      const plan = await this.getById(id); // Fetch again to check creator explicitly
+      if (plan.created_by !== userId) {
+        throw new ForbiddenError('Only the creator can delete this practice plan');
+      }
+      // Note: If canUserEdit already threw, this won't be reached.
+    } catch (error) {
+      // Re-throw known errors from permission check/getById
+      if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+        throw error;
+      }
+      // Wrap other errors as DatabaseError
+      console.error(`Error checking delete permission for plan ${id}:`, error);
+      throw new DatabaseError('Failed to check delete permission', error);
     }
 
-    // Check permissions using standard permission model
-    const canEdit = await this.canUserEdit(id, userId);
-    if (!canEdit) {
-      throw new Error('Unauthorized to delete this practice plan');
-    }
-    
     // Use transaction helper for the deletion
-    return this.withTransaction(async (client) => {
-      // Delete related records first
-      await client.query(
-        'DELETE FROM practice_plan_drills WHERE practice_plan_id = $1',
-        [id]
-      );
+    try {
+      return await this.withTransaction(async (client) => {
+        // Delete related records first (important for foreign key constraints)
+        await client.query(
+          'DELETE FROM practice_plan_drills WHERE practice_plan_id = $1',
+          [id]
+        );
 
-      await client.query(
-        'DELETE FROM practice_plan_sections WHERE practice_plan_id = $1',
-        [id]
-      );
+        await client.query(
+          'DELETE FROM practice_plan_sections WHERE practice_plan_id = $1',
+          [id]
+        );
 
-      // Finally delete the practice plan
-      await client.query(
-        'DELETE FROM practice_plans WHERE id = $1',
-        [id]
-      );
+        // Finally delete the practice plan using the base method
+        // The base delete method now throws NotFoundError if the plan was already deleted.
+        await super.delete(id);
 
-      return true;
-    });
+        // No return value needed, implicit resolution indicates success
+      });
+    } catch (error) {
+      // Re-throw known errors (like NotFoundError from super.delete if plan disappeared mid-transaction)
+      if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+        throw error;
+      }
+      console.error(`Error deleting practice plan ${id}:`, error);
+      // Wrap other errors (e.g., DB errors during deletion) as DatabaseError
+      throw new DatabaseError('Failed to delete practice plan', error);
+    }
   }
   
   /**
@@ -669,132 +743,164 @@ export class PracticePlanService extends BaseEntityService {
    * @param {number} id - Practice plan ID to duplicate
    * @param {number|null} userId - User ID creating the duplicate
    * @returns {Promise<Object>} - New practice plan ID
+   * @throws {NotFoundError} If original plan not found
+   * @throws {ForbiddenError} If user cannot view original plan
+   * @throws {DatabaseError} On database error
    */
   async duplicatePracticePlan(id, userId = null) {
-    // First fetch the original practice plan
-    const originalPlan = await this.getById(id);
-    if (!originalPlan) {
-      throw new Error('Practice plan not found');
+    // First fetch the original practice plan details, including checking view permissions
+    // getPracticePlanById handles NotFoundError and ForbiddenError.
+    let originalPlanWithDetails;
+    try {
+      originalPlanWithDetails = await this.getPracticePlanById(id, userId);
+    } catch (error) {
+      // Re-throw known errors
+      if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+        throw error;
+      }
+      console.error(`Error fetching original plan ${id} for duplication:`, error);
+      throw new DatabaseError('Failed to fetch original plan for duplication', error);
     }
 
-    // Use transaction helper
-    return this.withTransaction(async (client) => {
-      // Create data for new plan with timestamps
-      const newPlanData = this.addTimestamps({
-        name: `${originalPlan.name} (Copy)`,
-        description: originalPlan.description,
-        practice_goals: originalPlan.practice_goals,
-        phase_of_season: originalPlan.phase_of_season,
-        estimated_number_of_participants: originalPlan.estimated_number_of_participants,
-        created_by: userId,
-        visibility: originalPlan.visibility,
-        is_editable_by_others: originalPlan.is_editable_by_others,
-        start_time: originalPlan.start_time
-      }, true);
+    // Use transaction helper for duplication process
+    try {
+      return await this.withTransaction(async (client) => {
+        // Create data for new plan with timestamps
+        const newPlanData = this.addTimestamps({
+          name: `${originalPlanWithDetails.name} (Copy)`,
+          description: originalPlanWithDetails.description,
+          practice_goals: originalPlanWithDetails.practice_goals,
+          phase_of_season: originalPlanWithDetails.phase_of_season,
+          estimated_number_of_participants: originalPlanWithDetails.estimated_number_of_participants,
+          created_by: userId,
+          // New plan visibility/editability depends on user creating it, or defaults?
+          // Let's default to private for the user, or public if anonymous
+          visibility: userId ? 'private' : 'public',
+          is_editable_by_others: !userId, // Editable if anonymous, not otherwise by default
+          start_time: originalPlanWithDetails.start_time
+        }, true);
 
-      // Create new practice plan
-      const newPlanResult = await client.query(
-        `INSERT INTO practice_plans (
-          name, description, practice_goals, phase_of_season,
-          estimated_number_of_participants, created_by,
-          visibility, is_editable_by_others, start_time, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-        RETURNING *`,
-        [
-          newPlanData.name,
-          newPlanData.description,
-          newPlanData.practice_goals,
-          newPlanData.phase_of_season,
-          newPlanData.estimated_number_of_participants,
-          newPlanData.created_by,
-          newPlanData.visibility,
-          newPlanData.is_editable_by_others,
-          newPlanData.start_time,
-          newPlanData.created_at,
-          newPlanData.updated_at
-        ]
-      );
-
-      const newPlanId = newPlanResult.rows[0].id;
-
-      // Copy sections
-      const sectionsResult = await client.query(
-        `SELECT * FROM practice_plan_sections 
-         WHERE practice_plan_id = $1 
-         ORDER BY "order"`,
-        [id]
-      );
-
-      for (const section of sectionsResult.rows) {
-        // Insert section
-        const newSectionResult = await client.query(
-          `INSERT INTO practice_plan_sections 
-           (practice_plan_id, name, "order", goals, notes)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING id`,
-          [newPlanId, section.name, section.order, section.goals, section.notes]
+        // Create new practice plan
+        const newPlanResult = await client.query(
+          `INSERT INTO practice_plans (
+            name, description, practice_goals, phase_of_season,
+            estimated_number_of_participants, created_by,
+            visibility, is_editable_by_others, start_time, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          RETURNING *`,
+          [
+            newPlanData.name,
+            newPlanData.description,
+            newPlanData.practice_goals,
+            newPlanData.phase_of_season,
+            newPlanData.estimated_number_of_participants,
+            newPlanData.created_by,
+            newPlanData.visibility,
+            newPlanData.is_editable_by_others,
+            newPlanData.start_time,
+            newPlanData.created_at,
+            newPlanData.updated_at
+          ]
         );
 
-        const newSectionId = newSectionResult.rows[0].id;
+        const newPlanId = newPlanResult.rows[0].id;
 
-        // Copy drills for this section
-        const drillsResult = await client.query(
-          `SELECT * FROM practice_plan_drills 
-           WHERE practice_plan_id = $1 AND section_id = $2
-           ORDER BY order_in_plan`,
-          [id, section.id]
+        // Copy sections
+        const sectionsResult = await client.query(
+          `SELECT * FROM practice_plan_sections 
+           WHERE practice_plan_id = $1 
+           ORDER BY "order"`,
+          [id]
         );
 
-        for (const drill of drillsResult.rows) {
-          await client.query(
-            `INSERT INTO practice_plan_drills 
-             (practice_plan_id, section_id, drill_id, order_in_plan, 
-              duration, type, diagram_data, parallel_group_id, parallel_timeline,
-              group_timelines, name)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-            [
-              newPlanId,
-              newSectionId,
-              drill.drill_id,
-              drill.order_in_plan,
-              drill.duration,
-              drill.type,
-              drill.diagram_data,
-              drill.parallel_group_id,
-              drill.parallel_timeline,
-              drill.group_timelines,
-              drill.name
-            ]
+        for (const section of sectionsResult.rows) {
+          // Insert section
+          const newSectionResult = await client.query(
+            `INSERT INTO practice_plan_sections 
+             (practice_plan_id, name, "order", goals, notes)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id`,
+            [newPlanId, section.name, section.order, section.goals, section.notes]
           );
-        }
-      }
 
-      return { id: newPlanId };
-    });
+          const newSectionId = newSectionResult.rows[0].id;
+
+          // Copy drills for this section
+          const drillsResult = await client.query(
+            `SELECT * FROM practice_plan_drills 
+             WHERE practice_plan_id = $1 AND section_id = $2
+             ORDER BY order_in_plan`,
+            [id, section.id]
+          );
+
+          for (const drill of drillsResult.rows) {
+            await client.query(
+              `INSERT INTO practice_plan_drills 
+               (practice_plan_id, section_id, drill_id, order_in_plan, 
+                duration, type, diagram_data, parallel_group_id, parallel_timeline,
+                group_timelines, name)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+              [
+                newPlanId,
+                newSectionId,
+                drill.drill_id,
+                drill.order_in_plan,
+                drill.duration,
+                drill.type,
+                drill.diagram_data,
+                drill.parallel_group_id,
+                drill.parallel_timeline,
+                drill.group_timelines,
+                drill.name
+              ]
+            );
+          }
+        }
+
+        return { id: newPlanId };
+      }); // End transaction
+    } catch (error) {
+      console.error(`Error duplicating practice plan ${id}:`, error);
+      // Wrap errors during the duplication transaction
+      throw new DatabaseError('Failed to duplicate practice plan', error);
+    }
   }
   
   /**
    * Validate a practice plan
    * @param {Object} plan - Practice plan to validate
-   * @throws {Error} If validation fails
+   * @throws {ValidationError} If validation fails
    */
   validatePracticePlan(plan) {
+    const errors = {};
+
     // Check if the name is valid
     if (!plan.name?.trim()) {
-      throw new Error('Name is required');
+      // Use ValidationError
+      // throw new ValidationError('Practice plan name is required');
+      errors.name = 'Name is required';
     }
-    
-    // Check if there are any sections with drills
-    const hasAnyDrills = plan.sections?.some(section => 
-      section.items?.some(item => 
-        item.type === 'drill' && (item.drill_id || item.id)
+
+    // Basic check for sections structure
+    if (!Array.isArray(plan.sections)) {
+      // Allow empty sections array for now, create assumes it exists
+      // throw new ValidationError('Plan sections must be an array.');
+      // errors.sections = 'Sections must be an array';
+    }
+
+    // Check if there are any actual drill items (not breaks or empty one-offs)
+    const hasAnyDrills = plan.sections?.some(section =>
+      section.items?.some(item =>
+        item.type === 'drill' && (item.drill_id || item.drill?.id)
       )
     );
 
     if (!hasAnyDrills) {
-      throw new Error('At least one drill is required');
+      // Use ValidationError
+      // throw new ValidationError('At least one drill item is required in the practice plan');
+      errors.items = 'At least one drill is required';
     }
-    
+
     // Validate phase_of_season
     const validPhases = [
       'Offseason',
@@ -803,10 +909,19 @@ export class PracticePlanService extends BaseEntityService {
       'Tournament tuneup',
       'End of season, peaking'
     ];
-    
+
     if (plan.phase_of_season && !validPhases.includes(plan.phase_of_season)) {
-      throw new Error(`Invalid phase of season. Must be one of: ${validPhases.join(', ')}`);
+      // Use ValidationError
+      // throw new ValidationError(`Invalid phase of season. Must be one of: ${validPhases.join(', ')}`);
+      errors.phase_of_season = `Invalid phase of season. Must be one of: ${validPhases.join(', ')}`;
     }
+
+    // Check for overall validation errors
+    if (Object.keys(errors).length > 0) {
+      throw new ValidationError('Practice plan validation failed', errors);
+    }
+
+    // Add more validation rules as needed (e.g., item duration > 0?)
   }
   
   /**
@@ -895,23 +1010,38 @@ export class PracticePlanService extends BaseEntityService {
    * @param {number} id - Practice Plan ID
    * @param {number} userId - User ID to associate with
    * @returns {Promise<Object>} - The updated practice plan
-   * @throws {Error} - If plan not found or already owned
+   * @throws {NotFoundError} - If plan not found
+   * @throws {ConflictError} - If plan already owned by another user
+   * @throws {DatabaseError} - On database error
    */
   async associatePracticePlan(id, userId) {
+    // getById will throw NotFoundError if plan doesn't exist
     const plan = await this.getById(id);
 
-    if (!plan) {
-      throw new Error('Practice plan not found');
+    // Check if already owned by a *different* user
+    if (plan.created_by !== null && plan.created_by !== userId) {
+      // Use ConflictError as the resource state prevents association
+      throw new ConflictError('Practice plan is already associated with another user.');
     }
 
-    // Check if already owned
-    if (plan.created_by !== null) {
-      // Return existing plan if already owned
+    // If already owned by the *same* user, return the plan (idempotent)
+    if (plan.created_by === userId) {
       return plan;
     }
 
-    // Update the created_by field
-    return await this.update(id, { created_by: userId });
+    // Update the created_by field using base update method
+    // This will also throw NotFoundError if the plan disappears mid-operation
+    try {
+      return await this.update(id, { created_by: userId });
+    } catch (error) {
+      // Re-throw known errors (like NotFoundError from update)
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      // Wrap other errors as DatabaseError
+      console.error(`Error associating plan ${id} with user ${userId}:`, error);
+      throw new DatabaseError('Failed to associate practice plan', error);
+    }
   }
 }
 

@@ -1,6 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
 import * as db from '$lib/server/db';
+import { handleApiError } from '../utils/handleApiError.js';
+import { ForbiddenError, NotFoundError } from '$lib/server/errors.js';
 
 // GET: Fetch comments for a specific drill or practice plan
 export async function GET({ url }) {
@@ -8,7 +10,7 @@ export async function GET({ url }) {
     const practicePlanId = url.searchParams.get('practicePlanId');
 
     if (!drillId && !practicePlanId) {
-        return json({ error: 'Missing drillId or practicePlanId' }, { status: 400 });
+        return json({ error: { code: 'BAD_REQUEST', message: 'Missing drillId or practicePlanId' } }, { status: 400 });
     }
 
     try {
@@ -26,8 +28,7 @@ export async function GET({ url }) {
         const result = await db.query(query, params);
         return json(result.rows);
     } catch (error) {
-        console.error('Error fetching comments:', error);
-        return json({ error: 'Failed to fetch comments' }, { status: 500 });
+        return handleApiError(error);
     }
 }
 
@@ -38,7 +39,7 @@ export const POST = authGuard(async ({ request, locals }) => {
     const { drillId, practicePlanId, content } = await request.json();
 
     if (!content || (!drillId && !practicePlanId)) {
-        return json({ error: 'Content and either drillId or practicePlanId are required' }, { status: 400 });
+        return json({ error: { code: 'BAD_REQUEST', message: 'Content and either drillId or practicePlanId are required' } }, { status: 400 });
     }
 
     try {
@@ -49,8 +50,7 @@ export const POST = authGuard(async ({ request, locals }) => {
         );
         return json(result.rows[0], { status: 201 });
     } catch (error) {
-        console.error('Error adding comment:', error);
-        return json({ error: 'Failed to add comment' }, { status: 500 });
+        return handleApiError(error);
     }
 });
 
@@ -61,25 +61,23 @@ export const DELETE = authGuard(async ({ url, locals }) => {
     const userId = session?.user?.id;
 
     if (!commentId) {
-        return json({ error: 'Comment ID is required' }, { status: 400 });
+        return json({ error: { code: 'BAD_REQUEST', message: 'Comment ID is required' } }, { status: 400 });
     }
 
     try {
-        // Check if the comment exists and belongs to the user
         const commentResult = await db.query('SELECT * FROM comments WHERE id = $1', [commentId]);
         if (commentResult.rows.length === 0) {
-            return json({ error: 'Comment not found' }, { status: 404 });
+            throw new NotFoundError('Comment not found');
         }
 
         const comment = commentResult.rows[0];
         if (comment.user_id !== userId) {
-            return json({ error: 'Unauthorized' }, { status: 403 });
+            throw new ForbiddenError('User is not authorized to delete this comment');
         }
 
         await db.query('DELETE FROM comments WHERE id = $1', [commentId]);
-        return json({ message: 'Comment deleted successfully' });
+        return new Response(null, { status: 204 });
     } catch (error) {
-        console.error('Error deleting comment:', error);
-        return json({ error: 'Failed to delete comment' }, { status: 500 });
+        return handleApiError(error);
     }
 });

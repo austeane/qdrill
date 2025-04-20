@@ -1,6 +1,26 @@
-import { json } from '@sveltejs/kit';
+import { json, error as svelteKitError } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
 import { drillService } from '$lib/server/services/drillService';
+import { AppError, DatabaseError, ValidationError } from '$lib/server/errors'; // Import AppError and specific types if needed
+
+// Helper function to convert AppError to SvelteKit error response
+function handleApiError(err) {
+  if (err instanceof AppError) {
+    console.warn(`[API Warn] (${err.status} ${err.code}): ${err.message}`);
+    // Use SvelteKit's error helper for standard errors, or json for custom structure
+    // Let's stick to the custom structure: { error: { code, message } }
+    const body = { error: { code: err.code, message: err.message } };
+    // Add details for validation errors
+    if (err instanceof ValidationError && err.details) {
+      body.error.details = err.details;
+    }
+    return json(body, { status: err.status });
+  } else {
+    console.error('[API Error] Unexpected error:', err);
+    // Default to 500 Internal Server Error for unknown errors
+    return json({ error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected internal server error occurred' } }, { status: 500 });
+  }
+}
 
 export const GET = async ({ url, locals }) => {
   // Get session info to pass userId for filtering
@@ -67,9 +87,9 @@ export const GET = async ({ url, locals }) => {
 
     // Return structure matches the frontend expectation from Phase 2 plan
     return json(result); 
-  } catch (error) {
-    console.error('[API Error] Fetching drills:', error);
-    return json({ error: 'An error occurred while fetching drills', details: error.toString() }, { status: 500 });
+  } catch (err) { // Renamed variable to err
+    // Use the helper function
+    return handleApiError(err);
   }
 }
 
@@ -79,13 +99,18 @@ export const POST = async (event) => {
     const session = event.locals.session;
     const userId = session?.user?.id || null;
     
+    // Basic validation at API boundary (example)
+    if (!drillData.name || !drillData.brief_description) {
+      throw new ValidationError('Missing required fields: name, brief_description');
+    }
+
     // Use the DrillService to create the drill
     const drill = await drillService.createDrill(drillData, userId);
     
-    return json(drill);
-  } catch (error) {
-    console.error('Error occurred while creating drill:', error);
-    return json({ error: 'An error occurred while creating the drill', details: error.toString() }, { status: 500 });
+    return json(drill, { status: 201 }); // Return 201 Created
+  } catch (err) { // Renamed variable to err
+    // Use the helper function
+    return handleApiError(err);
   }
 };
 
@@ -95,45 +120,49 @@ export const PUT = authGuard(async ({ request, locals }) => {
     const session = locals.session;
     const userId = session.user.id;
     
+    // Basic validation
+    if (!drillData.id) {
+      throw new ValidationError('Drill ID is required for update');
+    }
+
     // Use the DrillService to update the drill
     const updatedDrill = await drillService.updateDrill(drillData.id, drillData, userId);
     
     return json(updatedDrill);
-  } catch (error) {
-    // Handle specific error types
-    if (error.message === 'Unauthorized to edit this drill') {
-      return json({ error: 'Unauthorized' }, { status: 403 });
-    } else if (error.message.includes('not found')) {
-      return json({ error: 'Drill not found' }, { status: 404 });
-    }
-    
-    console.error('Error updating drill:', error);
-    return json({ error: 'An error occurred while updating the drill', details: error.toString() }, { status: 500 });
+  } catch (err) { // Renamed variable to err
+    // Use the helper function
+    return handleApiError(err);
   }
 });
 
 export const DELETE = authGuard(async ({ params, request, locals }) => {
   // In SvelteKit, for API routes with dynamic parameters, the parameter comes from params.id 
-  const id = params.id;
+  // But this is the collection route, DELETE on /api/drills doesn't make sense semantically
+  // It should likely be on /api/drills/[id]
+  // Keeping the logic as it was, but noting this route might be incorrect
+  const idParam = params.id; // This will likely be undefined here
+  const { id } = await request.json(); // Assume ID comes from body for now
+  
+  if (!id) {
+    return handleApiError(new ValidationError('Drill ID must be provided in the request body for DELETE'));
+  }
+  
   const session = locals.session;
   const userId = session.user.id;
 
   try {
     // Use the DrillService to delete the drill
-    const result = await drillService.deleteDrill(id, userId);
-    
-    if (!result) {
-      return json({ error: 'Drill not found' }, { status: 404 });
+    const success = await drillService.deleteDrill(id, userId, { deleteRelated: false }); // Default to not deleting related
+
+    if (!success) {
+      // If deleteDrill returns false, it means not found (based on current service logic)
+      // Convert this to a NotFoundError for consistency
+      return handleApiError(new NotFoundError(`Drill with ID ${id} not found for deletion.`));
     }
-    
-    return json({ message: 'Drill deleted successfully' });
-  } catch (error) {
-    // Handle unauthorized error
-    if (error.message === 'Unauthorized to delete this drill') {
-      return json({ error: 'Unauthorized' }, { status: 403 });
-    }
-    
-    console.error(`[Delete Error] Drill ${id}:`, error);
-    return json({ error: 'An error occurred while deleting the drill', details: error.toString() }, { status: 500 });
+
+    return json({ message: 'Drill deleted successfully' }, { status: 200 }); // Use 200 OK or 204 No Content
+  } catch (err) { // Renamed variable to err
+    // Use the helper function
+    return handleApiError(err);
   }
 });

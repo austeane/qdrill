@@ -1,17 +1,15 @@
 import { json } from '@sveltejs/kit';
 // import * as db from '$lib/server/db'; // No longer needed directly
 import { drillService } from '$lib/server/services/drillService'; // Import the service
+import { handleApiError } from '../utils/handleApiError.js'; // Import the helper
 
 export async function GET() {
     try {
-        // Call the service method to get filter options
+        // Service method handles potential database errors
         const filterOptions = await drillService.getDrillFilterOptions();
-        
         return json(filterOptions);
-    } catch (error) {
-        console.error('Error fetching filter options via service:', error);
-        // Use the error message thrown by the service or a generic one
-        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch filter options';
-        return json({ error: errorMessage }, { status: 500 });
+    } catch (err) {
+        // Use the centralized error handler
+        return handleApiError(err);
     }
 } 

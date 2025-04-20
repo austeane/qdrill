@@ -1,25 +1,31 @@
 import { json } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
-import { query } from '$lib/server/db';
+// import { query } from '$lib/server/db'; // Use service instead
+import { drillService } from '$lib/server/services/drillService.js';
+import { handleApiError } from '../utils/handleApiError.js'; // Import the helper
+import { ValidationError } from '$lib/server/errors.js';
 
 export const POST = authGuard(async ({ request, locals }) => {
-  const { drillId } = await request.json();
   const session = locals.session;
-  
-  try {
-    // Update the drill to associate it with the user
-    const result = await query(
-      'UPDATE drills SET created_by = $1 WHERE id = $2 AND created_by IS NULL RETURNING *',
-      [session.user.id, drillId]
-    );
+  const userId = session?.user?.id; // Guard ensures userId exists
 
-    if (result.rowCount === 0) {
-      return json({ error: 'Drill not found or already owned' }, { status: 404 });
+  try {
+    const { drillId } = await request.json();
+
+    if (!drillId || isNaN(parseInt(drillId))) {
+      throw new ValidationError('Valid Drill ID must be provided in the request body');
     }
 
-    return json({ success: true, drill: result.rows[0] });
-  } catch (error) {
-    console.error('Error associating drill:', error);
-    return json({ error: 'Failed to associate drill with user' }, { status: 500 });
+    // Use the DrillService to associate the drill
+    const updatedDrill = await drillService.associateDrill(drillId, userId);
+
+    // Service method handles not found and already owned cases internally
+    // (currently returns existing drill if already owned, throws NotFoundError if not found)
+
+    return json({ success: true, drill: updatedDrill });
+    
+  } catch (err) {
+    // Use the centralized error handler
+    return handleApiError(err);
   }
 }); 

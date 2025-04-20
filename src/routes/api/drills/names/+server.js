@@ -1,30 +1,27 @@
 import { json } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService';
+import { handleApiError } from '../utils/handleApiError.js'; // Import the helper
 
 export const GET = async (event) => {
   const session = event.locals.session;
   const userId = session?.user?.id;
 
   try {
-    // Get drill names, filtered by visibility in the service
+    // Service method handles filtering and potential DB errors
     const result = await drillService.getFilteredDrills({
-      userId: userId // Pass userId for filtering
+      userId: userId // Pass userId for filtering private drills
     }, {
-      limit: 1000, // Fetch a large number, consider pagination if this grows
-      sortBy: 'name', // Sort alphabetically by name
+      limit: 10000, // Increased limit, consider cursor pagination if list grows very large
+      sortBy: 'name',
       sortOrder: 'asc',
-      // Select only necessary columns (handled by service now)
-      columns: ['id', 'name']
+      columns: ['id', 'name'] // Request only necessary columns
     });
 
-    if (!result || !result.items) {
-      return json([]);
-    }
-
-    // Return the items directly as they only contain id and name
-    return json(result.items);
-  } catch (error) {
-    console.error('[Names Error] Fetching drill names:', error);
-    return json({ error: 'Failed to fetch drill names', details: error.toString() }, { status: 500 });
+    // Return the items directly
+    return json(result?.items || []);
+    
+  } catch (err) {
+    // Use the centralized error handler
+    return handleApiError(err);
   }
 };

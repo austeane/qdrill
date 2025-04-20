@@ -1,6 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
 import * as db from '$lib/server/db';
+import { handleApiError } from '../utils/handleApiError.js';
+import { NotFoundError } from '$lib/server/errors.js';
 
 // POST: Cast or update a vote
 export const POST = authGuard(async ({ request, locals }) => {
@@ -12,15 +14,14 @@ export const POST = authGuard(async ({ request, locals }) => {
 
     if ((!drillId && !practicePlanId) || ![1, -1].includes(vote)) {
         console.error('Invalid vote input:', { drillId, practicePlanId, vote });
-        return json({ error: 'Invalid input' }, { status: 400 });
+        return json({ error: { code: 'BAD_REQUEST', message: 'Invalid input: Requires drillId or practicePlanId, and vote must be 1 or -1' } }, { status: 400 });
     }
 
     try {
         if (drillId) {
-            // Get drill name and insert vote
             const drillResult = await db.query('SELECT name FROM drills WHERE id = $1', [drillId]);
             if (drillResult.rows.length === 0) {
-                return json({ error: 'Drill not found' }, { status: 404 });
+                throw new NotFoundError('Drill not found');
             }
             const drillName = drillResult.rows[0].name;
 
@@ -32,10 +33,9 @@ export const POST = authGuard(async ({ request, locals }) => {
                 [userId, drillId, vote, drillName]
             );
         } else {
-            // Get practice plan name and insert vote
             const planResult = await db.query('SELECT name FROM practice_plans WHERE id = $1', [practicePlanId]);
             if (planResult.rows.length === 0) {
-                return json({ error: 'Practice plan not found' }, { status: 404 });
+                throw new NotFoundError('Practice plan not found');
             }
             const planName = planResult.rows[0].name;
 
@@ -50,8 +50,7 @@ export const POST = authGuard(async ({ request, locals }) => {
 
         return json({ message: 'Vote recorded successfully' });
     } catch (error) {
-        console.error('Error recording vote:', error);
-        return json({ error: 'Failed to record vote' }, { status: 500 });
+        return handleApiError(error);
     }
 });
 
@@ -64,7 +63,7 @@ export const DELETE = authGuard(async ({ url, locals }) => {
     const practicePlanId = url.searchParams.get('practicePlanId');
 
     if (!drillId && !practicePlanId) {
-        return json({ error: 'Missing drillId or practicePlanId' }, { status: 400 });
+        return json({ error: { code: 'BAD_REQUEST', message: 'Missing drillId or practicePlanId' } }, { status: 400 });
     }
 
     try {
@@ -80,10 +79,9 @@ export const DELETE = authGuard(async ({ url, locals }) => {
             );
         }
 
-        return json({ message: 'Vote removed successfully' });
+        return new Response(null, { status: 204 });
     } catch (error) {
-        console.error('Error removing vote:', error);
-        return json({ error: 'Failed to remove vote' }, { status: 500 });
+        return handleApiError(error);
     }
 });
 
@@ -93,7 +91,7 @@ export async function GET({ url }) {
     const practicePlanId = url.searchParams.get('practicePlanId');
 
     if (!drillId && !practicePlanId) {
-        return json({ error: 'Missing drillId or practicePlanId' }, { status: 400 });
+        return json({ error: { code: 'BAD_REQUEST', message: 'Missing drillId or practicePlanId' } }, { status: 400 });
     }
 
     try {
@@ -102,8 +100,8 @@ export async function GET({ url }) {
         if (drillId) {
             query = `
                 SELECT 
-                    SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END) AS upvotes,
-                    SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END) AS downvotes
+                    COALESCE(SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END), 0) AS upvotes,
+                    COALESCE(SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END), 0) AS downvotes
                 FROM votes
                 WHERE drill_id = $1
             `;
@@ -111,8 +109,8 @@ export async function GET({ url }) {
         } else {
             query = `
                 SELECT 
-                    SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END) AS upvotes,
-                    SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END) AS downvotes
+                    COALESCE(SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END), 0) AS upvotes,
+                    COALESCE(SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END), 0) AS downvotes
                 FROM votes
                 WHERE practice_plan_id = $1
             `;
@@ -120,9 +118,9 @@ export async function GET({ url }) {
         }
 
         const result = await db.query(query, params);
-        return json(result.rows[0]);
+        const data = result.rows[0] || { upvotes: 0, downvotes: 0 };
+        return json(data);
     } catch (error) {
-        console.error('Error fetching vote counts:', error);
-        return json({ error: 'Failed to fetch vote counts' }, { status: 500 });
+        return handleApiError(error);
     }
 }

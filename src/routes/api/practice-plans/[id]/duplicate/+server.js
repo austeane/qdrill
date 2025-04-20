@@ -1,36 +1,22 @@
 import { json } from '@sveltejs/kit';
-import { practicePlanService } from '$lib/server/services/practicePlanService.js';
+import { practicePlanService } from '$lib/server/services/practicePlanService';
+import { handleApiError } from '../../../utils/handleApiError';
 
 export async function POST({ params, locals }) {
-    const { id: planId } = params;
-    const session = locals.session;
-    const userId = session?.user?.id;
-
-    if (!userId) {
-        return json(
-            { error: 'User not authenticated' },
-            { status: 401 }
-        );
-    }
-
     try {
-        const result = await practicePlanService.duplicatePracticePlan(planId, userId);
-        
-        return json({ 
-            success: true, 
-            message: 'Practice plan duplicated successfully',
-            id: result.id
-        });
-    } catch (error) {
-        console.error('Error duplicating practice plan:', error);
-        
-        if (error.message === 'Practice plan not found') {
-            return json({ error: error.message }, { status: 404 });
+        const { id } = params;
+        const session = await locals.auth();
+        const userId = session?.user?.id ?? null;
+
+        const planId = parseInt(id);
+        if (isNaN(planId)) {
+            return json({ error: 'Invalid practice plan ID' }, { status: 400 });
         }
-        
-        return json(
-            { error: 'Failed to duplicate practice plan', details: error.toString() },
-            { status: 500 }
-        );
+
+        const newPlan = await practicePlanService.duplicatePracticePlan(planId, userId);
+
+        return json(newPlan, { status: 201 });
+    } catch (err) {
+        return handleApiError(err);
     }
 }

@@ -4,12 +4,11 @@ This index lists the tickets created based on the findings of the code review, r
 
 
 ## P1: High Priority (Foundation & Scalability)
-1.  [Ticket 12: Refactor API Routes Bypassing Service Layer/Shared DB](./12-api-service-bypass.md)
-2.  [Ticket 11: Implement Consistent API Error Handling Strategy](./11-api-error-handling.md)
-3.  [Ticket 20: Enhance `BaseEntityService` Filtering/Flexibility](./20-refactor-baseentityservice.md)
-4.  [Ticket 14: Centralize Validation Logic](./14-refactor-validation.md)
-5.  [Ticket 06: Implement Server-Side Pagination/Filtering/Sorting for Drills](./06-api-scalability-drills.md)
-6.  [Ticket 07: Implement Server-Side Pagination/Filtering/Sorting for Practice Plans](./07-api-scalability-practice-plans.md)
+1.  [Ticket 11: Implement Consistent API Error Handling Strategy](./11-api-error-handling.md)
+2.  [Ticket 20: Enhance `BaseEntityService` Filtering/Flexibility](./20-refactor-baseentityservice.md)
+3.  [Ticket 14: Centralize Validation Logic](./14-refactor-validation.md)
+4.  [Ticket 06: Implement Server-Side Pagination/Filtering/Sorting for Drills](./06-api-scalability-drills.md)
+5.  [Ticket 07: Implement Server-Side Pagination/Filtering/Sorting for Practice Plans](./07-api-scalability-practice-plans.md)
 
 ## P2: Architectural Refactors (Maintainability & Coupling)
 

@@ -8,18 +8,16 @@
   import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
   import { dev } from '$app/environment';
   import { page } from '$app/stores';
-  import { goto } from '$app/navigation';
+  import { goto, invalidate } from '$app/navigation';
   import { navigating } from '$app/stores';
-  
-  // Import stores
+  import { FILTER_STATES } from '$lib/constants';
+
+  // Import only necessary stores (filter/sort state)
   import {
-    drills,
     currentPage,
     totalPages,
-    totalItems,
     drillsPerPage,
     searchQuery,
-    initializeDrills,
     selectedSkillLevels,
     selectedComplexities,
     selectedSkillsFocusedOn,
@@ -36,11 +34,8 @@
 
   export let data;
 
-  // Initialize drills data from load function result
-  $: initializeDrills(data);
-
-  // Filter options from load (ensure keys match what FilterPanel expects)
-  const filterOptions = data.filterOptions || {};
+  // Filter options from load
+  $: filterOptions = data.filterOptions || {};
 
   // Object to hold temporary button states ('added', 'removed', or null)
   let buttonStates = {};
@@ -48,13 +43,64 @@
   // Reactive set of drill IDs currently in the cart
   $: drillsInCart = new Set($cart.map(d => d.id));
 
-  // Initialize buttonStates
+  // Initialize buttonStates based on data.items
   $: {
-    if ($drills) {
-      buttonStates = $drills.reduce((acc, drill) => {
-        acc[drill.id] = drillsInCart.has(drill.id) ? 'in-cart' : null;
+    if (data && data.items) {
+      buttonStates = data.items.reduce((acc, drill) => {
+        // Keep existing state if present, otherwise initialize
+        acc[drill.id] = buttonStates[drill.id] ?? (drillsInCart.has(drill.id) ? 'in-cart' : null);
         return acc;
-      }, {...buttonStates});
+      }, {});
+    }
+  }
+
+  // Initialize filter stores from URL search params on mount or when URL changes
+  $: {
+    if ($page.url.searchParams) {
+        const params = $page.url.searchParams;
+
+        // Helper to parse comma-separated params into store object
+        const parseCommaSeparatedToStore = (paramName, store) => {
+            const values = params.get(paramName)?.split(',').map(t => t.trim()).filter(t => t) || [];
+            const newState = {};
+            values.forEach(v => { newState[v] = FILTER_STATES.REQUIRED }); // Assume URL values mean REQUIRED
+            store.set(newState);
+        };
+
+        // Helper to parse simple param into store
+        const parseSimpleParamToStore = (paramName, store, defaultValue = null, parser = (v) => v) => {
+            store.set(params.has(paramName) ? parser(params.get(paramName)) : defaultValue);
+        };
+        
+        const parseBooleanParamToStore = (paramName, store) => {
+            const value = params.get(paramName)?.toLowerCase();
+            store.set(value === 'true' ? true : (value === 'false' ? false : null));
+        };
+
+        parseCommaSeparatedToStore('skillLevel', selectedSkillLevels);
+        parseCommaSeparatedToStore('complexity', selectedComplexities);
+        parseCommaSeparatedToStore('skills', selectedSkillsFocusedOn);
+        parseCommaSeparatedToStore('positions', selectedPositionsFocusedOn);
+        parseCommaSeparatedToStore('types', selectedDrillTypes);
+
+        parseSimpleParamToStore('minPeople', selectedNumberOfPeopleMin, null, parseInt);
+        parseSimpleParamToStore('maxPeople', selectedNumberOfPeopleMax, null, parseInt);
+        parseSimpleParamToStore('minLength', selectedSuggestedLengthsMin, null, parseInt);
+        parseSimpleParamToStore('maxLength', selectedSuggestedLengthsMax, null, parseInt);
+        parseSimpleParamToStore('q', searchQuery, '');
+        
+        parseBooleanParamToStore('hasVideo', selectedHasVideo);
+        parseBooleanParamToStore('hasDiagrams', selectedHasDiagrams);
+        parseBooleanParamToStore('hasImages', selectedHasImages);
+
+        // Initialize sort stores
+        selectedSortOption.set(params.get('sort') || 'date_created');
+        selectedSortOrder.set(params.get('order') || 'desc');
+        
+        // Update pagination stores from data (might be slightly delayed vs URL, but reflects loaded data)
+        currentPage.set(data.pagination?.page || 1);
+        totalPages.set(data.pagination?.totalPages || 1);
+        drillsPerPage.set(parseInt(params.get('limit') || '10'));
     }
   }
 
@@ -66,48 +112,45 @@
   }
 
   function applyFiltersAndNavigate({ resetPage = false } = {}) {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(); // Start fresh
 
     // Pagination
-    const pageToNavigate = resetPage ? 1 : $currentPage;
+    const pageToNavigate = resetPage ? 1 : ($page.url.searchParams.get('page') || 1);
     params.set('page', pageToNavigate.toString());
     params.set('limit', $drillsPerPage.toString());
 
-    // Sorting - Update or remove existing
-    if ($selectedSortOption) {
+    // Sorting
+    if ($selectedSortOption && $selectedSortOption !== 'date_created') { // Only add if not default
         params.set('sort', $selectedSortOption);
-    } else {
-        params.delete('sort');
     }
-    if ($selectedSortOrder) {
+    if ($selectedSortOrder && $selectedSortOrder !== 'desc') { // Only add if not default
         params.set('order', $selectedSortOrder);
-    } else {
-        params.delete('order');
     }
 
-    // Filters - Update or remove existing
-    // Helper to set/delete params for comma-separated values from filter store objects
+    // Filters
+    // Helper to set params for comma-separated values from filter store objects
     const updateCommaSeparatedParam = (paramName, storeValue) => {
-        // Adjust this logic based on how FilterPanel sets the state (e.g., true/false, REQUIRED/EXCLUDED)
         const values = Object.entries(storeValue || {})
-            .filter(([, state]) => state === true || state === 'REQUIRED') // Example: only include 'true' or 'REQUIRED' states
+            .filter(([, state]) => state === FILTER_STATES.REQUIRED) // Only add REQUIRED filters to URL
             .map(([key]) => key);
         if (values.length > 0) {
             params.set(paramName, values.join(','));
-        } else {
-            params.delete(paramName);
         }
     };
 
-    // Helper to set/delete params for simple values (null check)
-    const updateSimpleParam = (paramName, value) => {
-        if (value !== null && value !== undefined && value !== '') {
+    // Helper to set params for simple values (null check)
+    const updateSimpleParam = (paramName, value, defaultValue = null) => {
+        if (value !== null && value !== undefined && value !== '' && value !== defaultValue) { // Only add if not default
             params.set(paramName, value.toString());
-        } else {
-            params.delete(paramName);
         }
     };
     
+    const updateBooleanParam = (paramName, value) => {
+        if (value !== null) { // Add if true or false, ignore null
+            params.set(paramName, value.toString());
+        }
+    };
+
     updateCommaSeparatedParam('skillLevel', $selectedSkillLevels);
     updateCommaSeparatedParam('complexity', $selectedComplexities);
     updateCommaSeparatedParam('skills', $selectedSkillsFocusedOn);
@@ -118,37 +161,36 @@
     updateSimpleParam('maxPeople', $selectedNumberOfPeopleMax);
     updateSimpleParam('minLength', $selectedSuggestedLengthsMin);
     updateSimpleParam('maxLength', $selectedSuggestedLengthsMax);
-    updateSimpleParam('hasVideo', $selectedHasVideo);
-    updateSimpleParam('hasDiagrams', $selectedHasDiagrams);
-    updateSimpleParam('hasImages', $selectedHasImages);
-    updateSimpleParam('q', $searchQuery);
     
-    // Remove empty query param if search is cleared
-    if (!$searchQuery) {
-        params.delete('q');
-    }
+    updateBooleanParam('hasVideo', $selectedHasVideo);
+    updateBooleanParam('hasDiagrams', $selectedHasDiagrams);
+    updateBooleanParam('hasImages', $selectedHasImages);
+
+    updateSimpleParam('q', $searchQuery, '');
 
     goto(`/drills?${params.toString()}`, { keepFocus: true, noScroll: true });
   }
 
+  function goToPage(pageNumber) {
+      if (pageNumber >= 1 && pageNumber <= (data.pagination?.totalPages || 1)) {
+          const params = new URLSearchParams($page.url.searchParams);
+          params.set('page', pageNumber.toString());
+          goto(`/drills?${params.toString()}`, { keepFocus: true, noScroll: true });
+      }
+  }
+
   function nextPage() {
-    if ($currentPage < $totalPages) {
-      currentPage.update(p => p + 1);
-      applyFiltersAndNavigate();
-    }
+    goToPage((data.pagination?.page || 1) + 1);
   }
 
   function prevPage() {
-    if ($currentPage > 1) {
-      currentPage.update(p => p - 1);
-      applyFiltersAndNavigate();
-    }
+    goToPage((data.pagination?.page || 1) - 1);
   }
-  
+
   function handleSearchInput() {
      debounce(() => applyFiltersAndNavigate({ resetPage: true }));
   }
-  
+
   function handleSortChange(event) {
     selectedSortOption.set(event.target.value);
     applyFiltersAndNavigate({ resetPage: true });
@@ -169,10 +211,10 @@
       cart.addDrill(drill);
       buttonStates = { ...buttonStates, [drill.id]: 'added' };
     }
-    buttonStates = { ...buttonStates };
+    // No need for second buttonStates = { ...buttonStates };
     setTimeout(() => {
-      buttonStates = { ...buttonStates, [drill.id]: isInCart ? null : 'in-cart' };
-      buttonStates = { ...buttonStates };
+      // Update state based on actual cart status after timeout
+      buttonStates = { ...buttonStates, [drill.id]: $cart.some(d => d.id === drill.id) ? 'in-cart' : null };
     }, 500);
   }
 
@@ -187,9 +229,7 @@
         showSortOptions = false;
       }
     };
-
     document.addEventListener('click', handleClickOutside);
-
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
@@ -202,7 +242,7 @@
 
   async function deleteDrill(drillId, event) {
     event.stopPropagation();
-    
+
     if (!confirm('Are you sure you want to delete this drill? This action cannot be undone.')) {
         return;
     }
@@ -217,17 +257,11 @@
             throw new Error(errorData.error || 'Failed to delete drill');
         }
 
-        // Remove the drill from the store
-        drills.update(currentDrills => 
-            currentDrills.filter(d => d.id !== drillId)
-        );
-
         toast.push('Drill deleted successfully', {
             theme: { '--toastBackground': '#48bb78', '--toastColor': '#fff' }
         });
 
-        // Refresh the current view by re-applying filters/pagination
-        applyFiltersAndNavigate();
+        invalidate('app:drills');
     } catch (error) {
         console.error('Error deleting drill:', error);
         toast.push(`Failed to delete drill: ${error.message}`, {
@@ -274,18 +308,6 @@
     numberOfPeopleOptions={filterOptions.numberOfPeopleOptions}
     suggestedLengths={filterOptions.suggestedLengths}
     drillTypes={filterOptions.drillTypes}
-    bind:selectedSkillLevels={$selectedSkillLevels}
-    bind:selectedComplexities={$selectedComplexities}
-    bind:selectedSkillsFocusedOn={$selectedSkillsFocusedOn}
-    bind:selectedPositionsFocusedOn={$selectedPositionsFocusedOn}
-    bind:selectedNumberOfPeopleMin={$selectedNumberOfPeopleMin}
-    bind:selectedNumberOfPeopleMax={$selectedNumberOfPeopleMax}
-    bind:selectedSuggestedLengthsMin={$selectedSuggestedLengthsMin}
-    bind:selectedSuggestedLengthsMax={$selectedSuggestedLengthsMax}
-    bind:selectedHasVideo={$selectedHasVideo}
-    bind:selectedHasDiagrams={$selectedHasDiagrams}
-    bind:selectedHasImages={$selectedHasImages}
-    bind:selectedDrillTypes={$selectedDrillTypes}
     on:filterChange={() => applyFiltersAndNavigate({ resetPage: true })}
   />
 
@@ -300,9 +322,9 @@
         <span class="transform transition-transform duration-300" class:rotate-180={showSortOptions}>▼</span>
       </button>
       {#if showSortOptions}
-        <div 
+        <div
           bind:this={sortOptionsRef}
-          transition:slide="{{ duration: 300 }}" 
+          transition:slide="{{ duration: 300 }}"
           class="absolute left-0 mt-2 p-4 bg-white border border-gray-200 rounded-lg shadow-sm z-10"
         >
           <div class="flex flex-col space-y-2">
@@ -340,15 +362,15 @@
   </div>
 
   <!-- Loading and Empty States -->
-  {#if $navigating}
+  {#if $navigating && !data.items}
     <p class="text-center text-gray-500 py-10">Loading drills...</p>
-  {:else if !$drills || $drills.length === 0}
+  {:else if !data.items || data.items.length === 0}
     <p class="text-center text-gray-500 py-10">No drills match your criteria.</p>
   {:else}
     <!-- Drills Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {#each $drills as drill (drill.id)}
-        <div 
+      {#each data.items as drill (drill.id)}
+        <div
           class="border border-gray-200 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 hover:shadow-lg flex flex-col"
           data-testid="drill-card"
         >
@@ -413,7 +435,7 @@
               {/if}
               {#if drill.number_of_people_min}
                 <p class="text-sm text-gray-500 mt-1">
-                  <span class="font-medium">People:</span> 
+                  <span class="font-medium">People:</span>
                   {drill.number_of_people_min}
                   {#if drill.number_of_people_max && drill.number_of_people_max !== drill.number_of_people_min}
                    - {drill.number_of_people_max}
@@ -449,20 +471,20 @@
     </div>
 
     <!-- Pagination Controls -->
-    {#if $totalPages > 1}
+    {#if data.pagination && data.pagination.totalPages > 1}
       <div class="flex justify-center items-center mt-8 space-x-4" data-testid="pagination-controls">
         <button
           on:click={prevPage}
-          disabled={$currentPage === 1 || $navigating}
+          disabled={data.pagination.page === 1 || $navigating}
           class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors duration-300"
           data-testid="pagination-prev-button"
         >
           Previous
         </button>
-        <span class="text-gray-700" data-testid="pagination-current-page">Page {$currentPage} of {$totalPages}</span>
+        <span class="text-gray-700" data-testid="pagination-current-page">Page {data.pagination.page} of {data.pagination.totalPages}</span>
         <button
           on:click={nextPage}
-          disabled={$currentPage === $totalPages || $navigating}
+          disabled={data.pagination.page === data.pagination.totalPages || $navigating}
           class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors duration-300"
           data-testid="pagination-next-button"
         >

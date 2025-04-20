@@ -10,9 +10,6 @@ export const totalItems = writable(0);
 export const drillsPerPage = writable(10);
 export const isLoading = writable(false);
 
-// Data stores
-export const drills = writable([]);
-
 // Filter stores
 export const selectedSkillLevels = writable({});
 export const selectedComplexities = writable({});
@@ -31,29 +28,6 @@ export const selectedDrillTypes = writable({});
 // Skills store
 export const allSkills = writable(PREDEFINED_SKILLS);
 export const sortedSkills = derived(allSkills, $allSkills => [...$allSkills].sort((a, b) => a.name.localeCompare(b.name)));
-
-// Function to initialize drills data
-export function initializeDrills(data) {
-  if (!data) {
-    console.warn('initializeDrills called with null or undefined data');
-    drills.set([]);
-    currentPage.set(1);
-    totalPages.set(1);
-    totalItems.set(0);
-    return;
-  }
-  
-  drills.set(data.items || []);
-  if (data.pagination) {
-    currentPage.set(data.pagination.page || 1);
-    totalPages.set(data.pagination.totalPages || 1);
-    totalItems.set(data.pagination.totalItems || 0);
-  } else {
-    currentPage.set(1);
-    totalPages.set(1);
-    totalItems.set(0);
-  }
-}
 
 // Optional: Helper function to reset all filter states
 export function resetDrillFilters() {

@@ -6,12 +6,12 @@
 
 **Affected Files:**
 
-*   [`src/routes/drills/+page.server.js`](src/routes/drills/+page.server.js) (Needs to handle params and pass to service)
-*   [`src/routes/drills/+page.svelte`](src/routes/drills/+page.svelte) (Needs to trigger reloads based on filter/sort/page changes via URL)
-*   [`src/routes/api/drills/+server.js`](src/routes/api/drills/+server.js) (GET handler needs to accept and use params)
-*   [`src/lib/server/services/drillService.js`](src/lib/server/services/drillService.js) (Needs methods like `getFilteredDrills` to accept pagination, filter, and sort options)
-*   [`src/lib/stores/drillsStore.js`](src/lib/stores/drillsStore.js) (Role will shift from holding all data to holding current page data and filter state)
-*   [`src/components/FilterPanel.svelte`](src/components/FilterPanel.svelte) (Needs to update URL parameters correctly to trigger server reloads)
+*   [`src/routes/drills/+page.server.js`](/src/routes/drills/+page.server.js) (Needs to handle params and pass to service)
+*   [`src/routes/drills/+page.svelte`](/src/routes/drills/+page.svelte) (Needs to trigger reloads based on filter/sort/page changes via URL)
+*   [`src/routes/api/drills/+server.js`](/src/routes/api/drills/+server.js) (GET handler needs to accept and use params)
+*   [`src/lib/server/services/drillService.js`](/src/lib/server/services/drillService.js) (Needs methods like `getFilteredDrills` to accept pagination, filter, and sort options)
+*   [`src/lib/stores/drillsStore.js`](/src/lib/stores/drillsStore.js) (Role will shift from holding all data to holding current page data and filter state)
+*   [`src/components/FilterPanel.svelte`](/src/components/FilterPanel.svelte) (Needs to update URL parameters correctly to trigger server reloads)
 
 **Related Notes:**
 

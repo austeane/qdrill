@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService';
 import { dev } from '$app/environment';
 import * as db from '$lib/server/db';
+import { authGuard } from '$lib/server/authGuard';
 
 const ERROR_MESSAGES = {
     NOT_FOUND: (id) => `Drill with ID ${id} not found`,
@@ -85,14 +86,11 @@ export async function GET({ params, locals, url }) {
     }
 }
 
-export async function PUT({ params, request, locals }) {
+// Wrap PUT handler with authGuard
+export const PUT = authGuard(async ({ params, request, locals }) => {
     const { id } = params;
     const session = locals.session;
     const userId = session?.user?.id;
-    
-    if (!userId) {
-        return json({ error: 'Authentication required' }, { status: 401 });
-    }
     
     try {
         const drillData = await request.json();
@@ -129,40 +127,16 @@ export async function PUT({ params, request, locals }) {
         
         return errorResponse(ERROR_MESSAGES.DB_ERROR);
     }
-}
+});
 
-export async function DELETE({ params, locals }) {
+// Define core delete logic
+const handleDelete = async ({ params, locals }) => {
     const { id } = params;
     const session = locals.session;
     const userId = session?.user?.id;
     
-    if (!userId && !dev) {
-        return json({ error: 'Authentication required' }, { status: 401 });
-    }
-    
     try {
-        // In dev mode, we need to handle the case properly without breaking auth checks
-        if (dev) {
-            // In dev mode, get the drill first to check it exists
-            const drill = await drillService.getById(id);
-            if (!drill) {
-                return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
-            }
-            
-            // For dev mode, directly use db to delete without auth check
-            const client = await db.getClient();
-            try {
-                await client.query('DELETE FROM drills WHERE id = $1', [id]);
-                // Also delete related votes and comments in dev mode for cleanup
-                await client.query('DELETE FROM votes WHERE drill_id = $1', [id]);
-                await client.query('DELETE FROM comments WHERE drill_id = $1', [id]);
-                return json({ success: true });
-            } finally {
-                client.release();
-            }
-        }
-        
-        // Normal flow with auth check
+        // Normal flow with auth check (authGuard handles the check)
         const result = await drillService.deleteDrill(id, userId);
         
         if (!result) {
@@ -181,4 +155,40 @@ export async function DELETE({ params, locals }) {
         
         return errorResponse(ERROR_MESSAGES.DB_ERROR);
     }
-}
+};
+// Export DELETE handler, applying authGuard only when not in dev mode
+export const DELETE = async (event) => {
+    if (dev) {
+        console.log('[DEV MODE BYPASS] Allowing drill deletion without auth guard.');
+        const { id } = event.params;
+        // In dev mode, get the drill first to check it exists
+        const drill = await drillService.getById(id);
+        if (!drill) {
+            return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
+        }
+
+        // For dev mode, directly use db to delete without auth check
+        const client = await db.getClient();
+        try {
+            await client.query('DELETE FROM drills WHERE id = $1', [id]);
+            // Also delete related votes and comments in dev mode for cleanup
+            await client.query('DELETE FROM votes WHERE drill_id = $1', [id]);
+            await client.query('DELETE FROM comments WHERE drill_id = $1', [id]);
+            return json({ success: true });
+        } catch (error) {
+             console.error(`[DEV MODE] Error deleting drill ${id}:`, error);
+             // Handle potential FK constraint errors even in dev mode
+             if (error.code === '23503') {
+                 return errorResponse('Cannot delete: drill is referenced by other items (dev mode)', 400);
+             }
+             return errorResponse(ERROR_MESSAGES.DB_ERROR + ' (dev mode)');
+        } finally {
+            client.release();
+        }
+    } else {
+        // In production, use the authGuard
+        const guardedDelete = authGuard(handleDelete);
+        return guardedDelete(event);
+    }
+};
+

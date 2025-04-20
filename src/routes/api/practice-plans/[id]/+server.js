@@ -29,11 +29,12 @@ export async function GET({ params, locals }) {
   }
 }
 
-export const PUT = async ({ params, request, locals }) => {
+// Wrap PUT handler with authGuard
+export const PUT = authGuard(async ({ params, request, locals }) => {
   const { id } = params;
   const plan = await request.json();
   const session = locals.session;
-  const userId = session?.user?.id;
+  const userId = session?.user?.id; // authGuard ensures session and user exist
 
   try {
     const updatedPlan = await practicePlanService.updatePracticePlan(id, plan, userId);
@@ -55,7 +56,7 @@ export const PUT = async ({ params, request, locals }) => {
       { status: 500 }
     );
   }
-};
+});
 
 // Define the core deletion logic as a separate async function
 const handleDelete = async ({ params, locals }) => {

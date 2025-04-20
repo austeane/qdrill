@@ -109,15 +109,10 @@ export async function PUT({ params, request, locals }) {
         const updatedDrill = await drillService.updateDrill(id, drillData, userId);
         
         // Update the name in votes table if it exists (this isn't in the service since it's crossing domains)
-        const client = await db.getClient();
-        try {
-            await client.query(
-                `UPDATE votes SET item_name = $1 WHERE drill_id = $2`,
-                [drillData.name, id]
-            );
-        } finally {
-            client.release();
-        }
+        await db.query(
+            `UPDATE votes SET item_name = $1 WHERE drill_id = $2`,
+            [drillData.name, id]
+        );
         
         return json(updatedDrill);
     } catch (error) {
@@ -158,6 +153,9 @@ export async function DELETE({ params, locals }) {
             const client = await db.getClient();
             try {
                 await client.query('DELETE FROM drills WHERE id = $1', [id]);
+                // Also delete related votes and comments in dev mode for cleanup
+                await client.query('DELETE FROM votes WHERE drill_id = $1', [id]);
+                await client.query('DELETE FROM comments WHERE drill_id = $1', [id]);
                 return json({ success: true });
             } finally {
                 client.release();

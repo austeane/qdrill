@@ -1,5 +1,5 @@
 <script>
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { toast } from '@zerodevx/svelte-toast';
   import { page } from '$app/stores';
@@ -50,6 +50,7 @@
 
   // Add proper prop definitions with defaults
   export let practicePlan = null;
+  export let pendingPlanData = null; // New prop for data loaded server-side
 
   // UI state
   let showEmptyCartModal = false;
@@ -57,11 +58,34 @@
   let showTimelineSelector = false;
   let selectedSectionForDrill = null;
 
-  // Initialize the form when practice plan is provided
+  // Initialize the form when practice plan or pending data is provided
   $: {
-    if (practicePlan) {
+    if (pendingPlanData) {
+      console.log('[PracticePlanForm] Initializing with PENDING plan data:', pendingPlanData);
+      // Restore simple fields
+      planName.set(pendingPlanData.name);
+      planDescription.set(pendingPlanData.description);
+      practiceGoals.set(pendingPlanData.practice_goals);
+      phaseOfSeason.set(pendingPlanData.phase_of_season);
+      estimatedNumberOfParticipants.set(pendingPlanData.estimated_number_of_participants);
+      isEditableByOthers.set(pendingPlanData.is_editable_by_others);
+      visibility.set(pendingPlanData.visibility);
+      startTime.set(pendingPlanData.start_time);
+      
+      // Restore sections and items
+      if (pendingPlanData.sections) {
+        // Assuming initializeSections can handle this structure
+        initializeSections({ sections: pendingPlanData.sections }); 
+      }
+      // Mark form as initialized to prevent overriding by practicePlan prop later if both exist
+      // (though server-side load should handle deleting pending data)
+       initializeHistory(); // Re-initialize history after restoring state
+      
+    } else if (practicePlan) {
+      console.log('[PracticePlanForm] Initializing with EXISTING plan data:', practicePlan);
       initializeForm(practicePlan);
       initializeSections(practicePlan);
+       initializeHistory(); // Initialize history for existing plan too
     }
   }
   
@@ -94,7 +118,7 @@
       );
 
       if (confirmed) {
-        // Store form data in sessionStorage
+        // Store form data via API
         const formData = {
           name: $planName,
           description: $planDescription,
@@ -106,15 +130,43 @@
           sections: $sections, // Include sections and items
           start_time: $startTime
         };
-        console.log('Storing pending practice plan data:', formData);
-        sessionStorage.setItem('pendingPracticePlanData', JSON.stringify(formData));
-        await authClient.signIn.social({ provider: 'google' });
-        return;
+        console.log('[PracticePlanForm] Saving pending practice plan data via API:', formData);
+        try {
+          const response = await fetch('/api/pending-plans', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error('[PracticePlanForm] Failed to save pending plan:', errorData);
+            toast.push(`Failed to save draft: ${errorData.error || 'Unknown error'}`, { theme: { '--toastBackground': 'red' } });
+            return; // Stop if saving draft failed
+          }
+
+          // Proceed to sign in
+          await authClient.signIn.social({ provider: 'google' });
+          return; // Stop further execution, redirecting to login
+
+        } catch (error) {
+            console.error('[PracticePlanForm] Error calling /api/pending-plans:', error);
+            toast.push('Error saving draft. Please try again.', { theme: { '--toastBackground': 'red' } });
+            return; // Stop if API call failed
+        }
+
       } else {
         visibility.set('public');
         isEditableByOthers.set(true); // Ensure editable if becoming public
       }
     }
+
+    // --- Logic for associating an existing plan after anonymous save ---
+    // This part also needs adjustment if we want anonymous users to be able
+    // to save *first* and *then* associate. Currently, it tries to associate
+    // *after* saving. Let's keep the existing flow for now, which requires
+    // login *before* saving non-public plans. If the user saves a public plan
+    // anonymously, the association prompt remains.
 
     // If not logged in after the check, ensure settings are correct
     if (!$page.data.session) {
@@ -123,20 +175,23 @@
     }
 
     // Call the existing submit function (now assuming logged in or public/editable)
-    const resultPlanId = await submitPracticePlan($sections, practicePlan);
+    // NOTE: submitPracticePlan in the store will need updating to DELETE the pending plan
+    const resultPlanId = await submitPracticePlan($sections, practicePlan); 
     
     if (resultPlanId) {
-      // After successful submission for non-logged in users
+      // After successful submission for non-logged in users (public plan only)
       if (!$page.data.session) {
         const confirmedAssociate = confirm(
-          'Would you like to log in so that you can own this practice plan?\n\n' +
+          'Practice plan saved publicly. Would you like to log in to claim ownership?\n\n' +
           'Click OK to log in with Google\n' +
-          'Click Cancel to continue without logging in'
+          'Click Cancel to view the plan without logging in'
         );
 
         if (confirmedAssociate) {
-          console.log('Setting practicePlanToAssociate:', resultPlanId);
-          sessionStorage.setItem('practicePlanToAssociate', resultPlanId);
+          console.log('[PracticePlanForm] Setting practicePlanToAssociate (for public plan):', resultPlanId);
+          // Still using sessionStorage for this specific association ID, as it's simpler
+          // than creating another temporary server state just for the ID.
+          sessionStorage.setItem('practicePlanToAssociate', resultPlanId); 
           await authClient.signIn.social({ provider: 'google' });
           return; // Stop further execution, redirecting to login
         }
@@ -146,58 +201,32 @@
       if (!practicePlan) { // Only clear cart on create
         cart.clear();
       }
+      // Clear any potential association ID from sessionStorage if we get here
+      sessionStorage.removeItem('practicePlanToAssociate'); 
       goto(`/practice-plans/${resultPlanId}`);
     }
   }
   
   // Component initialization
   onMount(async () => {
-    initializeHistory();
-    
-    // Restore pending data if it exists
-    const pendingData = sessionStorage.getItem('pendingPracticePlanData');
-    if (pendingData) {
-      try {
-        const data = JSON.parse(pendingData);
-        console.log('Restoring pending practice plan data:', data);
-        
-        // Restore simple fields
-        planName.set(data.name);
-        planDescription.set(data.description);
-        practiceGoals.set(data.practice_goals);
-        phaseOfSeason.set(data.phase_of_season);
-        estimatedNumberOfParticipants.set(data.estimated_number_of_participants);
-        isEditableByOthers.set(data.is_editable_by_others);
-        visibility.set(data.visibility);
-        startTime.set(data.start_time);
-        
-        // Restore sections and items (might need careful handling)
-        if (data.sections) {
-          // Assuming initializeSections can handle this structure
-          initializeSections({ sections: data.sections }); 
-          // OR manually update the sections store:
-          // sections.set(data.sections);
-        }
-
-        // Re-initialize history after restoring state
+    // Initialize history store regardless of data source
+    // Note: If pendingPlanData exists, it will re-initialize history above in the reactive block.
+    // If only practicePlan exists, it also initializes above.
+    // If neither exists (fresh create), initialize here.
+    if (!pendingPlanData && !practicePlan) {
         initializeHistory();
+    }
 
-        // Clear the stored data
-        sessionStorage.removeItem('pendingPracticePlanData');
-        await tick(); // Wait for updates
-        console.log('Pending practice plan data restored and removed.');
+    // --- Removed sessionStorage restoration logic ---
+    // const pendingData = sessionStorage.getItem('pendingPracticePlanData');
+    // if (pendingData) { ... } 
+    // else { ... } 
 
-      } catch (e) {
-        console.error('Error restoring pending practice plan data:', e);
-        sessionStorage.removeItem('pendingPracticePlanData'); // Clear corrupted data
-      }
-    } else {
-      // Original onMount logic if no pending data
-      if ($cart.length === 0 && !practicePlan) {
+    // Original onMount logic if no pending data AND no existing plan
+    if (!pendingPlanData && !practicePlan) {
+      if ($cart.length === 0) {
         showEmptyCartModal = true;
-      }
-      
-      if (!practicePlan) {
+      } else {
           const cartItems = $cart.map(drill => ({
               id: drill.id,
               type: 'drill',
@@ -214,30 +243,48 @@
             sections.update(currentSections => {
               const newSections = [...currentSections];
               
-              // Add all drills to the "Skill Building" section (index 1)
-              const skillBuildingIndex = 1;
+              // Add all drills to the "Skill Building" section (index 1) if it exists
+              const skillBuildingIndex = newSections.findIndex(s => s.name === 'Skill Building') ?? 1; // Default to 1 if not found
               
-              // Add all drills to the Skill Building section
-              cartItems.forEach(item => {
-                newSections[skillBuildingIndex].items.push({
-                  id: item.id,
-                  type: 'drill',
-                  name: item.name,
-                  drill: item.drill,
-                  duration: 15,
-                  selected_duration: 15
+              if (newSections[skillBuildingIndex]) {
+                // Add all drills to the Skill Building section
+                cartItems.forEach(item => {
+                  newSections[skillBuildingIndex].items.push({
+                    id: item.id,
+                    type: 'drill',
+                    name: item.name,
+                    drill: item.drill,
+                    duration: 15,
+                    selected_duration: 15
+                  });
                 });
-              });
+              } else {
+                // Fallback: Add to the first section if Skill Building doesn't exist
+                 cartItems.forEach(item => {
+                  newSections[0].items.push({
+                    id: item.id,
+                    type: 'drill',
+                    name: item.name,
+                    drill: item.drill,
+                    duration: 15,
+                    selected_duration: 15
+                  });
+                });
+              }
               
               return newSections;
             });
           }
           
           selectedItems.set(cartItems);
-      } else {
-        // If editing an existing plan, initialize timelines
-        initializeTimelinesFromPlan(practicePlan);
       }
+    } else if (practicePlan && !pendingPlanData) { 
+        // If editing an existing plan (and not restoring pending), initialize timelines
+        initializeTimelinesFromPlan(practicePlan);
+    } else if (pendingPlanData) {
+        // If restoring pending data, timelines should be part of the section data already
+        // No specific timeline init needed here, handled by initializeSections
+        console.log('[PracticePlanForm] Timelines restored from pending data via initializeSections.');
     }
 
     // Add keyboard shortcuts

@@ -7,6 +7,9 @@ export const GET = authGuard(async (event) => {
     const session = event.locals.session;
     const userId = session.user.id;
 
+    // Ensure we have a row in users table for this Better‑Auth user
+    await userService.ensureUserExists(session.user);
+
     try {
         // Use the userService to fetch the complete profile
         const profileData = await userService.getUserProfile(userId);

@@ -80,8 +80,23 @@
 
             <!-- Practice Plans Created -->
             <section class="bg-white rounded-lg shadow-sm p-6">
-                <!-- Similar structure to Drills section, but for Practice Plans -->
-                // ... existing practice plans content with same styling as drills ...
+                <h2 class="text-xl font-semibold mb-4">Practice Plans I've Created</h2>
+                {#if userData.practicePlans.length > 0}
+                    <ul class="divide-y">
+                        {#each userData.practicePlans as plan}
+                            <li class="py-4 first:pt-0 last:pb-0">
+                                <h3 class="text-lg font-bold">
+                                    <a href={`/practice-plans/${plan.id}`} 
+                                       class="text-theme-1 hover:underline">{plan.name}</a>
+                                </h3>
+                                <p class="text-gray-600 text-sm mt-1">{plan.description}</p>
+                                <!-- Optional: Add Upvote/Downvote or other relevant info here if needed -->
+                            </li>
+                        {/each}
+                    </ul>
+                {:else}
+                    <p class="text-gray-500 italic">You haven't created any practice plans yet.</p>
+                {/if}
             </section>
         </div>
 
@@ -109,8 +124,24 @@
                         {/if}
                     </div>
                     
-                    <!-- Liked Practice Plans (similar structure) -->
-                    // ... existing practice plans content with same styling as drills ...
+                    <!-- Liked Practice Plans -->
+                    <div>
+                        <h3 class="text-lg font-semibold mb-2">Practice Plans</h3>
+                        {#if getLikedPracticePlans(userData.votes).length > 0}
+                            <ul class="divide-y">
+                                {#each getLikedPracticePlans(userData.votes) as vote}
+                                    <li class="py-3 first:pt-0 last:pb-0 flex justify-between items-center">
+                                        <a href={`/practice-plans/${vote.practice_plan_id}`} 
+                                           class="text-theme-1 hover:underline">{vote.item_name}</a>
+                                        <!-- Assuming Upvote/Downvote is not directly applicable here unless you have a specific ID -->
+                                        <!-- Maybe just show the name -->
+                                    </li>
+                                {/each}
+                            </ul>
+                        {:else}
+                            <p class="text-gray-500 italic">No liked practice plans yet</p>
+                        {/if}
+                    </div>
                 </div>
             </section>
 

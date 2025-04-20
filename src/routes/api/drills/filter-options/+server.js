@@ -1,13 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { createClient } from '@vercel/postgres';
-
-const client = createClient();
-await client.connect();
-
-// Add normalizeString function
-function normalizeString(str) {
-    return str?.toLowerCase().trim() || '';
-}
+import * as db from '$lib/server/db';
 
 export async function GET() {
     try {
@@ -59,11 +51,11 @@ export async function GET() {
             positionsFocusedResult,
             drillTypesResult
         ] = await Promise.all([
-            client.query(skillLevelsQuery),
-            client.query(complexitiesQuery),
-            client.query(skillsFocusedQuery),
-            client.query(positionsFocusedQuery),
-            client.query(drillTypesQuery)
+            db.query(skillLevelsQuery),
+            db.query(complexitiesQuery),
+            db.query(skillsFocusedQuery),
+            db.query(positionsFocusedQuery),
+            db.query(drillTypesQuery)
         ]);
 
         // Get min/max for number of people
@@ -75,7 +67,7 @@ export async function GET() {
             WHERE number_of_people_min IS NOT NULL
             OR number_of_people_max IS NOT NULL;
         `;
-        const peopleRangeResult = await client.query(peopleRangeQuery);
+        const peopleRangeResult = await db.query(peopleRangeQuery);
 
         // Process the results (simplified since normalization is done in SQL)
         const processResults = rows => rows

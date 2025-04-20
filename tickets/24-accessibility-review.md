@@ -7,11 +7,11 @@
     - General: Semantic HTML usage, color contrast, keyboard navigation for interactive elements (like drag/drop handles, custom buttons/dropdowns).
 - **Affected Files:** Potentially many components, including:
     - `src/components/practice-plan/modals/*.svelte`
-    - `src/components/FeedbackModal.svelte`
-    - `src/components/ThreeStateCheckbox.svelte`
-    - `src/components/FilterPanel.svelte`
-    - Components involved in drag/drop (`DrillItem.svelte`, etc.)
-    - `src/components/Cart.svelte`
+    - [`src/components/FeedbackModal.svelte`](src/components/FeedbackModal.svelte)
+    - [`src/components/ThreeStateCheckbox.svelte`](src/components/ThreeStateCheckbox.svelte)
+    - [`src/components/FilterPanel.svelte`](src/components/FilterPanel.svelte)
+    - Components involved in drag/drop ([`DrillItem.svelte`](src/components/DrillItem.svelte), etc.)
+    - [`src/components/Cart.svelte`](src/components/Cart.svelte)
 - **Recommendations:**
     - Conduct a thorough accessibility audit using automated tools (e.g., Axe DevTools) and manual testing (keyboard navigation, screen reader checks).
     - Ensure all interactive elements are keyboard accessible and have clear focus indicators.

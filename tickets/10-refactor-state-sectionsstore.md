@@ -2,23 +2,23 @@
 
 **Priority:** High
 
-**Description:** The `src/lib/stores/sectionsStore.js` is extremely large (>1000 lines) and complex. It manages the intricate nested state of practice plan sections, items, parallel groups, and timelines. This complexity makes it difficult to understand, maintain, debug, and test. It also uses some non-standard practices like module-level counters for IDs.
+**Description:** The [`src/lib/stores/sectionsStore.js`](src/lib/stores/sectionsStore.js) is extremely large (>1000 lines) and complex. It manages the intricate nested state of practice plan sections, items, parallel groups, and timelines. This complexity makes it difficult to understand, maintain, debug, and test. It also uses some non-standard practices like module-level counters for IDs.
 
 **Affected Files:**
 
-*   `src/lib/stores/sectionsStore.js`
-*   `src/lib/stores/historyStore.js` (Relies heavily on `sectionsStore` snapshots)
-*   `src/components/practice-plan/**` (Many shared components interact with it)
-*   `src/routes/practice-plans/PracticePlanForm.svelte` (Uses it)
-*   `src/routes/practice-plans/wizard/**` (Should use it after Ticket 08)
-*   `src/lib/stores/dragManager.js` (Directly modifies `$sections`)
+*   [`src/lib/stores/sectionsStore.js`](src/lib/stores/sectionsStore.js)
+*   [`src/lib/stores/historyStore.js`](src/lib/stores/historyStore.js) (Relies heavily on `sectionsStore` snapshots)
+*   [`src/components/practice-plan/**`](src/components/practice-plan/) (Many shared components interact with it)
+*   [`src/routes/practice-plans/PracticePlanForm.svelte`](src/routes/practice-plans/PracticePlanForm.svelte) (Uses it)
+*   [`src/routes/practice-plans/wizard/**`](src/routes/practice-plans/wizard/) (Should use it after Ticket 08)
+*   [`src/lib/stores/dragManager.js`](src/lib/stores/dragManager.js) (Directly modifies `$sections`)
 
 **Related Notes:**
 
-*   `code-review/practice-plan-notes.md` (`sectionsStore` review)
-*   `code-review/practice-plan-wizard-notes.md` (Impact of complexity on wizard)
-*   `code-review/shared-components-notes.md` (Coupling issues)
-*   `code-review/holistic-summary.md` (Key Themes: State Management)
+*   [`code-review/practice-plan-notes.md`](code-review/practice-plan-notes.md) (`sectionsStore` review)
+*   [`code-review/practice-plan-wizard-notes.md`](code-review/practice-plan-wizard-notes.md) (Impact of complexity on wizard)
+*   [`code-review/shared-components-notes.md`](code-review/shared-components-notes.md) (Coupling issues)
+*   [`code-review/holistic-summary.md`](code-review/holistic-summary.md) (Key Themes: State Management)
 
 **Action Required:**
 

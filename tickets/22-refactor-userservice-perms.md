@@ -6,7 +6,7 @@
     - `canUserPerformAction` duplicates permission logic found elsewhere (inefficient, inconsistent).
     - `getUserProfile` fetches potentially large amounts of related data (drills, plans, votes, comments) eagerly, which could cause performance issues for active users.
 - **Affected Files:**
-    - `src/lib/server/services/userService.js`
+    - [`src/lib/server/services/userService.js`](src/lib/server/services/userService.js)
 - **Recommendations:**
     - **Implement Role System:** Replace hardcoded `isAdmin` check with a database-driven role/permission system associated with user accounts.
     - **Remove Redundant Permission Logic:** Delete `canUserPerformAction`. Rely on permission checks within `BaseEntityService` or specific entity services (`canUserView`/`canUserEdit`).

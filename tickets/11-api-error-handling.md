@@ -2,20 +2,20 @@
 
 **Priority:** Medium
 
-**Description:** The error handling strategy across API routes (`src/routes/api/**/*.js`) is inconsistent. Some routes return generic 500 errors, others return custom JSON error payloads, and many rely on matching specific error message strings propagated from service layers to determine the appropriate HTTP status code (e.g., 404, 403). Relying on error message strings is brittle and makes refactoring services difficult.
+**Description:** The error handling strategy across API routes ([`src/routes/api/**/*.js`](src/routes/api/)) is inconsistent. Some routes return generic 500 errors, others return custom JSON error payloads, and many rely on matching specific error message strings propagated from service layers to determine the appropriate HTTP status code (e.g., 404, 403). Relying on error message strings is brittle and makes refactoring services difficult.
 
 **Affected Files:**
 
-*   All API route handlers in `src/routes/api/` (e.g., `/drills`, `/practice-plans`, `/formations`, `/comments`, `/votes`, etc.)
-*   All service layer files in `src/lib/server/services/` (as they currently throw generic `Error` objects with string messages).
+*   All API route handlers in [`src/routes/api/`](src/routes/api/) (e.g., `/drills`, `/practice-plans`, `/formations`, `/comments`, `/votes`, etc.)
+*   All service layer files in [`src/lib/server/services/`](src/lib/server/services/) (as they currently throw generic `Error` objects with string messages).
 
 **Related Notes:**
 
-*   `code-review/holistic-summary.md` (Key Themes: API Design)
-*   `code-review/drill-notes.md` (API route reviews)
-*   `code-review/practice-plan-notes.md` (API route reviews)
-*   `code-review/formations-notes.md` (API route reviews)
-*   `code-review/service-notes.md` (Error handling in services)
+*   [`code-review/holistic-summary.md`](code-review/holistic-summary.md) (Key Themes: API Design)
+*   [`code-review/drill-notes.md`](code-review/drill-notes.md) (API route reviews)
+*   [`code-review/practice-plan-notes.md`](code-review/practice-plan-notes.md) (API route reviews)
+*   [`code-review/formations-notes.md`](code-review/formations-notes.md) (API route reviews)
+*   [`code-review/service-notes.md`](code-review/service-notes.md) (Error handling in services)
 
 **Action Required:**
 

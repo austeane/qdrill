@@ -190,6 +190,26 @@ export async function submitPracticePlan(sectionsData, practicePlan) {
 
     const data = await response.json();
     toast.push(`Practice plan ${practicePlan ? 'updated' : 'created'} successfully`);
+
+    // Clean up pending plan data after successful save
+    try {
+        console.log('[PracticePlanStore] Deleting pending plan data after successful save...');
+        const deleteResponse = await fetch('/api/pending-plans', {
+            method: 'DELETE'
+        });
+        if (!deleteResponse.ok) {
+            // Log error but don't fail the overall success flow
+            const errorData = await deleteResponse.text(); // Might not be JSON
+            console.error('[PracticePlanStore] Failed to delete pending plan data:', deleteResponse.status, errorData);
+            toast.push('Note: Could not clear draft data automatically.', { theme: { '--toastBackground': 'orange' } });
+        } else {
+            console.log('[PracticePlanStore] Pending plan data deleted successfully.');
+        }
+    } catch (cleanupError) {
+        console.error('[PracticePlanStore] Error during pending plan cleanup:', cleanupError);
+        toast.push('Note: Error during draft cleanup.', { theme: { '--toastBackground': 'orange' } });
+    }
+
     return data.id;
   } catch (error) {
     console.log('[PracticePlanForm] Error', String(error));

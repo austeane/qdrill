@@ -8,14 +8,26 @@ let pool;
 
 function getPool() {
   if (!pool) {
-    pool = createPool({
-      // Configuration is automatically pulled from Vercel env vars
-      // You can add overrides here if needed, e.g., connectionString for local dev
-      // connectionString: process.env.POSTGRES_URL
-    });
+    const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
 
-    // Vercel's pool handles errors internally, but you could add listeners if needed
-    // pool.on('error', ...);
+    if (connectionString) {
+      // Create a real pool when a connection string is available (dev/production runtime)
+      pool = createPool({ connectionString });
+    } else {
+      // Fallback stub during build or when running without DB access (e.g. CI, static analysis)
+      pool = {
+        async query() {
+          return { rows: [], rowCount: 0 };
+        },
+        async connect() {
+          return {
+            query: async () => ({ rows: [], rowCount: 0 }),
+            release: () => {}
+          };
+        },
+        async end() {}
+      };
+    }
   }
   return pool;
 }
@@ -55,3 +67,6 @@ export async function end() {
         pool = null;
     }
 }
+
+// Alias for compatibility with hooks.server.js
+export const cleanup = end;

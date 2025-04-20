@@ -22,7 +22,6 @@
 		"migrate:down": "dotenv -e .env.local -- npx node-pg-migrate down"
 	},
 	"devDependencies": {
-		"@auth/pg-adapter": "^1.7.4",
 		"@fontsource/fira-mono": "^5.1.0",
 		"@neoconfetti/svelte": "^2.2.1",
 		"@playwright/test": "^1.49.0",
@@ -55,8 +54,6 @@
 		"web-vitals": "^4.2.4"
 	},
 	"dependencies": {
-		"@auth/core": "^0.37.4",
-		"@auth/sveltekit": "^1.7.4",
 		"@dnd-kit/core": "^6.2.0",
 		"@excalidraw/excalidraw": "^0.17.6",
 		"@mapbox/node-pre-gyp": "^1.0.11",

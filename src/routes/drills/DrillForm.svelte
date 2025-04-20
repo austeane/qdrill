@@ -6,7 +6,7 @@
   import { dndzone } from 'svelte-dnd-action';
   import { PREDEFINED_SKILLS } from '$lib/constants/skills';
   import { page } from '$app/stores';
-  import { signIn } from '@auth/sveltekit/client';
+  import { authClient } from '$lib/auth-client';
   import { toast } from '@zerodevx/svelte-toast'
 
   const dispatch = createEventDispatcher();
@@ -360,7 +360,7 @@
         };
         console.log('Storing pending drill data:', formData);
         sessionStorage.setItem('pendingDrillData', JSON.stringify(formData));
-        await signIn('google');
+        await authClient.signIn.social({ provider: 'google' });
         return;
       } else {
         visibility.set('public');
@@ -424,7 +424,7 @@
         if (confirmed) {
           console.log('Setting drillToAssociate:', result.id);
           sessionStorage.setItem('drillToAssociate', result.id);
-          await signIn('google');
+          await authClient.signIn.social({ provider: 'google' });
           return;
         }
       }

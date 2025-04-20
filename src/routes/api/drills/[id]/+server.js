@@ -28,7 +28,6 @@ export async function GET({ params, locals, url }) {
     }
 
     try {
-        // Get the drill with or without variations
         let drill;
         if (includeVariants) {
             drill = await drillService.getDrillWithVariations(id);
@@ -42,32 +41,8 @@ export async function GET({ params, locals, url }) {
 
         // Check visibility and ownership (skip in development)
         if (!dev && drill.visibility === 'private') {
-            // If private drill and no user session, or user is not the owner
             if (!userId || drill.created_by !== userId) {
                 return json({ error: 'Unauthorized' }, { status: 403 });
-            }
-        }
-
-        // Add creator name if variations are included
-        if (includeVariants && drill.variations && drill.variations.length > 0) {
-            const userIds = [...new Set(drill.variations.map(v => v.created_by).filter(id => id))];
-            
-            if (userIds.length > 0) {
-                const usersResult = await db.query(
-                    `SELECT id, name FROM users WHERE id = ANY($1)`,
-                    [userIds]
-                );
-                
-                const userMap = {};
-                usersResult.rows.forEach(user => {
-                    userMap[user.id] = user.name;
-                });
-                
-                drill.variations.forEach(variation => {
-                    if (variation.created_by) {
-                        variation.creator_name = userMap[variation.created_by];
-                    }
-                });
             }
         }
 
@@ -95,28 +70,17 @@ export const PUT = authGuard(async ({ params, request, locals }) => {
     try {
         const drillData = await request.json();
         
-        // Basic input validation
         if (!drillData.name || !drillData.drill_type) {
             return errorResponse('Required fields missing', 400);
         }
 
-        // Add ID to drill data
-        drillData.id = parseInt(id);
-        
-        // Use DrillService to update the drill
+        // Use DrillService to update the drill (now also updates votes)
         const updatedDrill = await drillService.updateDrill(id, drillData, userId);
-        
-        // Update the name in votes table if it exists (this isn't in the service since it's crossing domains)
-        await db.query(
-            `UPDATE votes SET item_name = $1 WHERE drill_id = $2`,
-            [drillData.name, id]
-        );
         
         return json(updatedDrill);
     } catch (error) {
         console.error(`[Update Error] Drill ${id}:`, error);
         
-        // Handle specific errors
         if (error.message === 'Unauthorized to edit this drill') {
             return errorResponse(ERROR_MESSAGES.UNAUTHORIZED, 403);
         } else if (error.message.includes('not found')) {
@@ -129,7 +93,7 @@ export const PUT = authGuard(async ({ params, request, locals }) => {
     }
 });
 
-// Define core delete logic
+// Define core delete logic (used by guarded handler)
 const handleDelete = async ({ params, locals }) => {
     const { id } = params;
     const session = locals.session;
@@ -137,9 +101,11 @@ const handleDelete = async ({ params, locals }) => {
     
     try {
         // Normal flow with auth check (authGuard handles the check)
+        // Pass userId for authorization check within the service
         const result = await drillService.deleteDrill(id, userId);
         
         if (!result) {
+            // Service returns false if not found, true if deleted
             return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
         }
         
@@ -147,48 +113,66 @@ const handleDelete = async ({ params, locals }) => {
     } catch (error) {
         console.error(`[Delete Error] Drill ${id}:`, error);
         
+        // Handle specific errors thrown by the service
         if (error.message === 'Unauthorized to delete this drill') {
             return errorResponse(ERROR_MESSAGES.UNAUTHORIZED, 403);
-        } else if (error.code === '23503') {
+        } else if (error.code === '23503' || error.message.includes('referenced by other items')) {
+            // Catch potential FK constraint errors if service doesn't delete related items
             return errorResponse('Cannot delete: drill is referenced by other items', 400);
+        } else if (error.message.includes('not found')) {
+            return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
         }
         
         return errorResponse(ERROR_MESSAGES.DB_ERROR);
     }
 };
+
 // Export DELETE handler, applying authGuard only when not in dev mode
 export const DELETE = async (event) => {
-    if (dev) {
-        console.log('[DEV MODE BYPASS] Allowing drill deletion without auth guard.');
-        const { id } = event.params;
-        // In dev mode, get the drill first to check it exists
-        const drill = await drillService.getById(id);
-        if (!drill) {
-            return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
-        }
+    const { id } = event.params;
+    const session = event.locals.session;
+    // Use a placeholder or known admin ID for dev mode deletion if strict user check is needed
+    // Or rely on the service logic that allows deletion if unowned + deleteRelated is true
+    const devUserId = session?.user?.id || null; // Pass null if no session, service handles unowned check
 
-        // For dev mode, directly use db to delete without auth check
-        const client = await db.getClient();
+    if (dev) {
+        console.log(`[DEV MODE BYPASS] Attempting deletion for drill ${id} with related data.`);
         try {
-            await client.query('DELETE FROM drills WHERE id = $1', [id]);
-            // Also delete related votes and comments in dev mode for cleanup
-            await client.query('DELETE FROM votes WHERE drill_id = $1', [id]);
-            await client.query('DELETE FROM comments WHERE drill_id = $1', [id]);
-            return json({ success: true });
+            // Call the service method with deleteRelated: true
+            // Pass devUserId (can be null) - service checks if drill.created_by === devUserId OR (drill.created_by === null AND deleteRelated)
+            const result = await drillService.deleteDrill(id, devUserId, { deleteRelated: true });
+            
+            if (!result) {
+                // Service handles not found case
+                return errorResponse(ERROR_MESSAGES.NOT_FOUND(id), 404);
+            }
+            
+            return json({ success: true, message: 'Drill and related data deleted (dev mode)' });
         } catch (error) {
              console.error(`[DEV MODE] Error deleting drill ${id}:`, error);
-             // Handle potential FK constraint errors even in dev mode
-             if (error.code === '23503') {
+             // Handle specific errors from service call in dev mode
+             if (error.message === 'Unauthorized to delete this drill') {
+                 // This might happen if the drill IS owned, but not by devUserId
+                 return errorResponse(ERROR_MESSAGES.UNAUTHORIZED + ' (dev mode - owned by different user?)', 403);
+             } else if (error.code === '23503' || error.message.includes('referenced by other items')) {
                  return errorResponse('Cannot delete: drill is referenced by other items (dev mode)', 400);
              }
              return errorResponse(ERROR_MESSAGES.DB_ERROR + ' (dev mode)');
+        } 
+        // Remove manual DB deletion logic
+        /*
+        const client = await db.getClient();
+        try {
+            // ... old client query logic ...
+        } catch (error) {
+            // ... old error handling ...
         } finally {
             client.release();
         }
+        */
     } else {
-        // In production, use the authGuard
+        // In production, use the authGuard with the original handleDelete logic
         const guardedDelete = authGuard(handleDelete);
         return guardedDelete(event);
     }
 };
-

@@ -57,21 +57,15 @@ export const PUT = async ({ params, request, locals }) => {
   }
 };
 
-export const DELETE = authGuard(async ({ params, locals }) => {
+// Define the core deletion logic as a separate async function
+const handleDelete = async ({ params, locals }) => {
   const { id } = params;
   const session = locals.session;
   const userId = session?.user?.id;
 
   try {
-    // In development mode, we'll allow all users to delete plans
-    if (dev) {
-      const result = await practicePlanService.deletePracticePlan(id, userId);
-      return json({ success: true, message: 'Practice plan deleted successfully' });
-    } else {
-      // In production, enforce permissions
-      const result = await practicePlanService.deletePracticePlan(id, userId);
-      return json({ success: true, message: 'Practice plan deleted successfully' });
-    }
+    const result = await practicePlanService.deletePracticePlan(id, userId);
+    return json({ success: true, message: 'Practice plan deleted successfully' });
   } catch (error) {
     console.error('Error deleting practice plan:', error);
     
@@ -88,4 +82,37 @@ export const DELETE = authGuard(async ({ params, locals }) => {
       { status: 500 }
     );
   }
-});
+};
+
+// Export the DELETE handler
+export const DELETE = async (event) => {
+  // In development mode, bypass the authGuard entirely
+  if (dev) {
+    console.log('[DEV MODE BYPASS] Allowing practice plan deletion without auth guard.');
+    // Directly call the core logic, but still need user ID for the service
+    const { params, locals } = event;
+    const id = params.id;
+    const userId = locals.session?.user?.id; // Still pass userId if available, service might use it
+
+    try {
+      // Note: The service *itself* might still enforce ownership unless bypassed there too.
+      // For now, we are just bypassing the authGuard wrapper.
+      await practicePlanService.deletePracticePlan(id, userId);
+      return json({ success: true, message: 'Practice plan deleted successfully (dev bypass)' });
+    } catch (error) {
+      console.error('[DEV MODE] Error deleting practice plan:', error);
+      if (error.message === 'Practice plan not found') {
+        return json({ error: error.message }, { status: 404 });
+      }
+      // Handle other potential errors even in dev mode
+      return json(
+        { error: 'Failed to delete practice plan (dev mode)', details: error.toString() },
+        { status: 500 }
+      );
+    }
+  } else {
+    // In production, use the authGuard
+    const guardedDelete = authGuard(handleDelete);
+    return guardedDelete(event);
+  }
+};

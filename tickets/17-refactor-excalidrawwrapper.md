@@ -2,17 +2,17 @@
 
 **Priority:** Medium
 
-**Description:** The `src/components/ExcalidrawWrapper.svelte` component is extremely large (>1000 lines) and handles too many responsibilities related to integrating the Excalidraw React library into Svelte. It manages rendering, data loading/saving, template generation, a custom sidebar with image assets, fullscreen mode (via a second instance), state synchronization, and various workarounds.
+**Description:** The [`src/components/ExcalidrawWrapper.svelte`](src/components/ExcalidrawWrapper.svelte) component is extremely large (>1000 lines) and handles too many responsibilities related to integrating the Excalidraw React library into Svelte. It manages rendering, data loading/saving, template generation, a custom sidebar with image assets, fullscreen mode (via a second instance), state synchronization, and various workarounds.
 
 **Affected Files:**
 
-*   `src/components/ExcalidrawWrapper.svelte`
-*   Components using it (e.g., `DrillForm.svelte`, `FormationForm.svelte`, potentially `bulk-upload/+page.svelte`, detail pages)
+*   [`src/components/ExcalidrawWrapper.svelte`](src/components/ExcalidrawWrapper.svelte)
+*   Components using it (e.g., `DrillForm.svelte`, `FormationForm.svelte`, potentially [`bulk-upload/+page.svelte`](src/routes/bulk-upload/+page.svelte), detail pages)
 
 **Related Notes:**
 
-*   `code-review/diagram-notes.md`
-*   `code-review/holistic-summary.md` (Key Themes: Component Design, React Dependency)
+*   [`code-review/diagram-notes.md`](code-review/diagram-notes.md)
+*   [`code-review/holistic-summary.md`](code-review/holistic-summary.md) (Key Themes: Component Design, React Dependency)
 
 **Action Required:**
 

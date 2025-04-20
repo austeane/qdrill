@@ -11,7 +11,7 @@ export class UserService extends BaseEntityService {
    */
   constructor() {
     super('users', 'id', ['*'], [
-      'id', 'name', 'email', 'image', 'emailVerified'
+      'id', 'name', 'email', 'image', 'email_verified'
     ]);
   }
 
@@ -41,22 +41,25 @@ export class UserService extends BaseEntityService {
    * @returns {Promise<Object>} - User profile with drills, plans, votes, comments
    */
   async getUserProfile(userId) {
+    // Get user basic data
+    const userQuery = `
+      SELECT id, name, email, image, email_verified AS "emailVerified" 
+      FROM users 
+      WHERE id = $1
+    `;
+    
+    // Fetch user outside transaction first
+    const userResult = await db.query(userQuery, [userId]);
+    
+    if (userResult.rows.length === 0) {
+      console.error(`User not found in DB with ID: ${userId}`); // Add log
+      return null;
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Now start transaction for related data
     return this.withTransaction(async (client) => {
-      // Get user basic data
-      const userQuery = `
-        SELECT id, name, email, image, "emailVerified" 
-        FROM users 
-        WHERE id = $1
-      `;
-      
-      const userResult = await client.query(userQuery, [userId]);
-      
-      if (userResult.rows.length === 0) {
-        return null;
-      }
-      
-      const user = userResult.rows[0];
-      
       // Get drills created by user
       const drillsQuery = `
         SELECT id, name, brief_description, date_created, 
@@ -253,6 +256,35 @@ export class UserService extends BaseEntityService {
     } catch (error) {
       console.error(`Error in canUserPerformAction for ${action} on ${entityType}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * Ensure a user row exists in the users table. If it doesn't, insert it using data
+   * from Better‑Auth's session.
+   * @param {{id:string,name?:string,email?:string,image?:string,emailVerified?:boolean}} userObj
+   */
+  async ensureUserExists(userObj) {
+    if (!userObj?.id) return;
+
+    const { id, name, email, image, emailVerified } = userObj;
+
+    // Quick existence check
+    const exists = await this.exists(id);
+    if (exists) return;
+
+    // Insert minimal row
+    const insertQuery = `
+      INSERT INTO users (id, name, email, image, email_verified)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (id) DO NOTHING
+    `;
+
+    try {
+      await db.query(insertQuery, [id, name ?? null, email ?? null, image ?? null, emailVerified ? new Date() : null]);
+      console.info('Inserted new user row for Better‑Auth id', id);
+    } catch (err) {
+      console.error('Failed to insert user row for', id, err);
     }
   }
 }

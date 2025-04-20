@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Vercel Build Check
+
+If you want to verify that your changes build correctly, run `vercel build` instead of using pnpm.

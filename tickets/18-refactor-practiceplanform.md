@@ -2,23 +2,23 @@
 
 **Priority:** Medium
 
-**Description:** The `src/routes/practice-plans/PracticePlanForm.svelte` component is very large and complex. It manages the entire UI for creating/editing practice plans, integrates multiple stores (`practicePlanStore`, `sectionsStore`, `historyStore`, `cartStore`), handles a fragile authentication flow using `sessionStorage`, loads TinyMCE, manages modals, and contains complex initialization logic.
+**Description:** The [`src/routes/practice-plans/PracticePlanForm.svelte`](src/routes/practice-plans/PracticePlanForm.svelte) component is very large and complex. It manages the entire UI for creating/editing practice plans, integrates multiple stores (`practicePlanStore`, `sectionsStore`, `historyStore`, `cartStore`), handles a fragile authentication flow using `sessionStorage`, loads TinyMCE, manages modals, and contains complex initialization logic.
 
 **Affected Files:**
 
-*   `src/routes/practice-plans/PracticePlanForm.svelte`
+*   [`src/routes/practice-plans/PracticePlanForm.svelte`](src/routes/practice-plans/PracticePlanForm.svelte)
 
 **Related Notes:**
 
-*   `code-review/practice-plan-notes.md` (`PracticePlanForm` review)
-*   `code-review/modal-notes.md` (Modal interactions)
-*   `code-review/holistic-summary.md` (Key Themes: Component Design, State Management)
+*   [`code-review/practice-plan-notes.md`](code-review/practice-plan-notes.md) (`PracticePlanForm` review)
+*   [`code-review/modal-notes.md`](code-review/modal-notes.md) (Modal interactions)
+*   [`code-review/holistic-summary.md`](code-review/holistic-summary.md) (Key Themes: Component Design, State Management)
 
 **Action Required:**
 
 1.  **Break Down Component:** Decompose the form into smaller, more manageable sub-components. Potential candidates:
     *   `PracticePlanMetadataForm`: Handles basic fields (name, description, goals, visibility, etc.).
-    *   `PracticePlanSectionsEditor`: Handles the rendering and high-level interaction with the sections/items list (using `SectionContainer` etc.).
+    *   `PracticePlanSectionsEditor`: Handles the rendering and high-level interaction with the sections/items list (using [`SectionContainer`](src/components/practice-plan/sections/SectionContainer.svelte) etc.).
     *   `PracticePlanActions`: Handles buttons like Save, Cancel, Undo/Redo.
     *   `PracticePlanAuthHandler`: Encapsulates the logic for handling anonymous user saving and post-login association (though ideally replaced by server-side patterns).
 2.  **Simplify State Management:** This component will benefit significantly from the refactoring of `practicePlanStore` (Ticket 09) and `sectionsStore` (Ticket 10), and decoupling of shared components (Ticket 15).
@@ -30,4 +30,4 @@
 4.  **Improve Initialization Logic:** Simplify the `onMount` logic. With Form Actions, much of the state restoration might become unnecessary. Initialization should clearly handle create vs. edit scenarios based on data passed from the `load` function.
 5.  **Centralize Submission:** Use SvelteKit Form Actions for submission logic (as per Ticket 09 refactoring). This moves API calls, validation, normalization, and feedback handling to the server-side action associated with the form.
 6.  **Clarify Validation:** Integrate with the centralized validation system (Ticket 14). Use form actions to report validation errors back to the form UI.
-7.  **Review Modal Interactions:** Ensure interactions with modals (`EmptyCartModal`, `DrillSearchModal`, `TimelineSelectorModal`) follow the decoupled pattern (dispatching events, handling events) proposed in Ticket 15. 
+7.  **Review Modal Interactions:** Ensure interactions with modals ([`EmptyCartModal`](src/components/practice-plan/modals/EmptyCartModal.svelte), [`DrillSearchModal`](src/components/practice-plan/modals/DrillSearchModal.svelte), [`TimelineSelectorModal`](src/components/practice-plan/modals/TimelineSelectorModal.svelte)) follow the decoupled pattern (dispatching events, handling events) proposed in Ticket 15. 

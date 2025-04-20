@@ -1,9 +1,6 @@
 import { json } from '@sveltejs/kit';
-import { createClient } from '@vercel/postgres';
 import { PREDEFINED_SKILLS } from '$lib/constants/skills';
-
-const client = createClient();
-await client.connect();
+import * as db from '$lib/server/db';
 
 function standardizeSkill(skill) {
   // Convert to proper case (capitalize first letter of each word)
@@ -15,7 +12,7 @@ function standardizeSkill(skill) {
 export async function GET() {
   try {
     // Fetch user-added skills with their usage counts
-    const userSkillsResult = await client.query('SELECT skill, usage_count FROM skills ORDER BY usage_count DESC');
+    const userSkillsResult = await db.query('SELECT skill, usage_count FROM skills ORDER BY usage_count DESC');
     const userSkills = userSkillsResult.rows;
     
     // Combine with predefined skills (assuming predefined skills are not stored in the DB)
@@ -44,14 +41,14 @@ export async function POST({ request }) {
     const isPredefined = PREDEFINED_SKILLS.includes(skill);
     
     if (isPredefined) {
-      await client.query(
+      await db.query(
         `UPDATE skills SET 
          usage_count = usage_count + 1
          WHERE skill = $1`,
         [skill]
       );
     } else {
-      await client.query(
+      await db.query(
         `INSERT INTO skills (skill, drills_used_in, usage_count) 
          VALUES ($1, 1, 1) 
          ON CONFLICT (skill) DO UPDATE SET 

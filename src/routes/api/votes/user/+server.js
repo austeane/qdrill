@@ -1,8 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { createClient } from '@vercel/postgres';
-
-const client = createClient();
-await client.connect();
+import * as db from '$lib/server/db';
 
 export async function GET({ url, locals }) {
     const session = locals.session;
@@ -31,7 +28,7 @@ export async function GET({ url, locals }) {
             params = [userId, practicePlanId];
         }
 
-        const result = await client.query(query, params);
+        const result = await db.query(query, params);
         return json(result.rows[0] || { vote: 0 });
     } catch (error) {
         console.error('Error fetching user vote:', error);

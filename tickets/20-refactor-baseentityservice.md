@@ -7,8 +7,8 @@
     - Search uses inefficient `LIKE '%term%'`.
     - Services often bypass it with direct DB calls due to these limitations.
 - **Affected Files:**
-    - `src/lib/server/services/baseEntityService.js`
-    - Services extending it (`drillService.js`, `practicePlanService.js`, `formationService.js`, `userService.js`, `skillService.js`)
+    - [`src/lib/server/services/baseEntityService.js`](src/lib/server/services/baseEntityService.js)
+    - Services extending it ([`drillService.js`](src/lib/server/services/drillService.js), [`practicePlanService.js`](src/lib/server/services/practicePlanService.js), [`formationService.js`](src/lib/server/services/formationService.js), [`userService.js`](src/lib/server/services/userService.js), [`skillService.js`](src/lib/server/services/skillService.js))
 - **Recommendations:**
     - **Enhance Filtering:** Integrate a more powerful query builder or filtering library (or manually add support for more operators like `>`, `<`, `LIKE`, `IS NULL`, basic `OR` conditions) in `getAll`.
     - **Flexible Permissions:** Allow configuration of permission columns/logic, or provide hooks for custom permission checks.

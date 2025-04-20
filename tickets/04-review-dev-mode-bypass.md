@@ -6,20 +6,20 @@
 
 **Affected Files:**
 
-*   `src/routes/api/drills/[id]/+server.js` (DELETE handler)
-*   `src/routes/api/practice-plans/[id]/+server.js` (DELETE handler - check seems redundant?)
-*   `src/routes/api/formations/+server.js` (PUT handler)
-*   `src/routes/formations/[id]/edit/+page.server.js` (Edit access load function)
-*   `src/components/DeletePracticePlan.svelte` (Delete button visibility)
+*   [`src/routes/api/drills/[id]/+server.js`](src/routes/api/drills/[id]/+server.js) (DELETE handler)
+*   [`src/routes/api/practice-plans/[id]/+server.js`](src/routes/api/practice-plans/[id]/+server.js) (DELETE handler - check seems redundant?)
+*   [`src/routes/api/formations/+server.js`](src/routes/api/formations/+server.js) (PUT handler)
+*   [`src/routes/formations/[id]/edit/+page.server.js`](src/routes/formations/[id]/edit/+page.server.js) (Edit access load function)
+*   [`src/components/DeletePracticePlan.svelte`](src/components/DeletePracticePlan.svelte) (Delete button visibility)
 *   Potentially others where `$app/environment`'s `dev` flag is used for conditional authorization.
 
 **Related Notes:**
 
-*   `code-review/drill-notes.md`
-*   `code-review/practice-plan-notes.md`
-*   `code-review/formations-notes.md`
-*   `code-review/shared-components-notes.md`
-*   `code-review/holistic-summary.md`
+*   [`code-review/drill-notes.md`](code-review/drill-notes.md)
+*   [`code-review/practice-plan-notes.md`](code-review/practice-plan-notes.md)
+*   [`code-review/formations-notes.md`](code-review/formations-notes.md)
+*   [`code-review/shared-components-notes.md`](code-review/shared-components-notes.md)
+*   [`code-review/holistic-summary.md`](code-review/holistic-summary.md)
 
 **Action Required:**
 
@@ -30,4 +30,4 @@
     *   Using environment variables specifically for enabling test modes, separate from the general `dev` flag.
     *   Implementing configuration flags within services or components that can be toggled for testing.
 4.  **Remove Bypasses:** Remove the direct `if (dev)` checks that bypass standard permission logic from API routes, load functions, and components.
-5.  **Verify Redundancy:** Specifically investigate the `dev` check in `api/practice-plans/[id]/+server.js` DELETE handler, as it seemed redundant based on the code review. 
+5.  **Verify Redundancy:** Specifically investigate the `dev` check in [`api/practice-plans/[id]/+server.js`](src/routes/api/practice-plans/[id]/+server.js) DELETE handler, as it seemed redundant based on the code review. 

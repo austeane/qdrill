@@ -6,16 +6,16 @@
 
 **Affected Files:**
 
-*   `src/routes/drills/+page.svelte` (`brief_description`)
-*   `src/routes/drills/[id]/+page.svelte` (`detailed_description`)
-*   `src/routes/practice-plans/[id]/+page.svelte` (`practicePlan.description`)
+*   [`src/routes/drills/+page.svelte`](src/routes/drills/+page.svelte) (`brief_description`)
+*   [`src/routes/drills/[id]/+page.svelte`](src/routes/drills/[id]/+page.svelte) (`detailed_description`)
+*   [`src/routes/practice-plans/[id]/+page.svelte`](src/routes/practice-plans/[id]/+page.svelte) (`practicePlan.description`)
 *   Potentially others if TinyMCE output is rendered elsewhere.
 
 **Related Notes:**
 
-*   `code-review/drill-notes.md`
-*   `code-review/practice-plan-notes.md`
-*   `code-review/holistic-summary.md`
+*   [`code-review/drill-notes.md`](code-review/drill-notes.md)
+*   [`code-review/practice-plan-notes.md`](code-review/practice-plan-notes.md)
+*   [`code-review/holistic-summary.md`](code-review/holistic-summary.md)
 
 **Action Required:**
 

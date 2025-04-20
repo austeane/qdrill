@@ -1,9 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
-import { createClient } from '@vercel/postgres';
-
-const client = createClient();
-await client.connect();
+import * as db from '$lib/server/db';
 
 // POST: Cast or update a vote
 export const POST = authGuard(async ({ request, locals }) => {
@@ -21,13 +18,13 @@ export const POST = authGuard(async ({ request, locals }) => {
     try {
         if (drillId) {
             // Get drill name and insert vote
-            const drillResult = await client.query('SELECT name FROM drills WHERE id = $1', [drillId]);
+            const drillResult = await db.query('SELECT name FROM drills WHERE id = $1', [drillId]);
             if (drillResult.rows.length === 0) {
                 return json({ error: 'Drill not found' }, { status: 404 });
             }
             const drillName = drillResult.rows[0].name;
 
-            await client.query(
+            await db.query(
                 `INSERT INTO votes (user_id, drill_id, vote, item_name) 
                  VALUES ($1, $2, $3, $4) 
                  ON CONFLICT (user_id, drill_id) 
@@ -36,13 +33,13 @@ export const POST = authGuard(async ({ request, locals }) => {
             );
         } else {
             // Get practice plan name and insert vote
-            const planResult = await client.query('SELECT name FROM practice_plans WHERE id = $1', [practicePlanId]);
+            const planResult = await db.query('SELECT name FROM practice_plans WHERE id = $1', [practicePlanId]);
             if (planResult.rows.length === 0) {
                 return json({ error: 'Practice plan not found' }, { status: 404 });
             }
             const planName = planResult.rows[0].name;
 
-            await client.query(
+            await db.query(
                 `INSERT INTO votes (user_id, practice_plan_id, vote, item_name) 
                  VALUES ($1, $2, $3, $4) 
                  ON CONFLICT (user_id, practice_plan_id) 
@@ -76,12 +73,12 @@ export const DELETE = authGuard(async ({ url, locals }) => {
 
     try {
         if (drillId) {
-            await client.query(
+            await db.query(
                 'DELETE FROM votes WHERE user_id = $1 AND drill_id = $2',
                 [userId, parseInt(drillId, 10)]
             );
         } else {
-            await client.query(
+            await db.query(
                 'DELETE FROM votes WHERE user_id = $1 AND practice_plan_id = $2',
                 [userId, parseInt(practicePlanId, 10)]
             );
@@ -126,7 +123,7 @@ export async function GET({ url }) {
             params.push(parseInt(practicePlanId, 10));
         }
 
-        const result = await client.query(query, params);
+        const result = await db.query(query, params);
         return json(result.rows[0]);
     } catch (error) {
         console.error('Error fetching vote counts:', error);

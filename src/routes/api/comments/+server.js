@@ -1,9 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
-import { createClient } from '@vercel/postgres';
-
-const client = createClient();
-await client.connect();
+import * as db from '$lib/server/db';
 
 // GET: Fetch comments for a specific drill or practice plan
 export async function GET({ url }) {
@@ -26,7 +23,7 @@ export async function GET({ url }) {
         }
         query += ' ORDER BY c.created_at ASC';
 
-        const result = await client.query(query, params);
+        const result = await db.query(query, params);
         return json(result.rows);
     } catch (error) {
         console.error('Error fetching comments:', error);
@@ -45,7 +42,7 @@ export const POST = authGuard(async ({ request, locals }) => {
     }
 
     try {
-        const result = await client.query(
+        const result = await db.query(
             `INSERT INTO comments (user_id, drill_id, practice_plan_id, content) 
              VALUES ($1, $2, $3, $4) RETURNING *`,
             [userId, drillId ? parseInt(drillId, 10) : null, practicePlanId ? parseInt(practicePlanId, 10) : null, content]
@@ -69,7 +66,7 @@ export const DELETE = authGuard(async ({ url, locals }) => {
 
     try {
         // Check if the comment exists and belongs to the user
-        const commentResult = await client.query('SELECT * FROM comments WHERE id = $1', [commentId]);
+        const commentResult = await db.query('SELECT * FROM comments WHERE id = $1', [commentId]);
         if (commentResult.rows.length === 0) {
             return json({ error: 'Comment not found' }, { status: 404 });
         }
@@ -79,7 +76,7 @@ export const DELETE = authGuard(async ({ url, locals }) => {
             return json({ error: 'Unauthorized' }, { status: 403 });
         }
 
-        await client.query('DELETE FROM comments WHERE id = $1', [commentId]);
+        await db.query('DELETE FROM comments WHERE id = $1', [commentId]);
         return json({ message: 'Comment deleted successfully' });
     } catch (error) {
         console.error('Error deleting comment:', error);

@@ -35,10 +35,6 @@ export const DELETE = authGuard(async ({ params, locals }) => {
   const session = locals.session;
   const userId = session?.user?.id;
 
-  if (!userId) {
-      return json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
     // Check if the formation exists and if the user has permission to delete it
     const formation = await formationService.getById(id);

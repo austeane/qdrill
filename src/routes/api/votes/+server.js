@@ -60,10 +60,6 @@ export const DELETE = authGuard(async ({ url, locals }) => {
     const session = locals.session;
     const userId = session?.user?.id;
 
-    if (!userId) {
-        return json({ error: 'User not authenticated' }, { status: 401 });
-    }
-
     const drillId = url.searchParams.get('drillId');
     const practicePlanId = url.searchParams.get('practicePlanId');
 

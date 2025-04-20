@@ -1,12 +1,13 @@
 import { error } from '@sveltejs/kit';
 import { practicePlanService } from '$lib/server/services/practicePlanService';
+import { authGuard } from '$lib/server/authGuard'; // Import authGuard
 
 const COOKIE_NAME = 'pendingPlanToken'; // Add cookie name constant
 
 /** @type {import('./$types').PageServerLoad} */
-export async function load({ params, locals, cookies, fetch }) { // Add cookies and fetch
+export const load = authGuard(async ({ params, locals, cookies, fetch }) => { // Add cookies and fetch
     const { id } = params;
-    const userId = locals.user?.id;
+    const userId = locals.user?.id; // authGuard ensures locals.session and locals.user exist
     let pendingPlanData = null;
     let practicePlan = null;
 
@@ -87,4 +88,4 @@ export async function load({ params, locals, cookies, fetch }) { // Add cookies 
         // but the form initialization logic should handle pendingPlanData correctly.
         // isPendingData: !!pendingPlanData 
     };
-}
+});

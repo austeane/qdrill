@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { practicePlanService } from '$lib/server/services/practicePlanService.js';
 import { drillService } from '$lib/server/services/drillService.js';
+import { redirect } from '@sveltejs/kit';
 
 /**
  * Parses the URL query parameters to extract drill IDs.
@@ -17,10 +18,59 @@ function getSelectedDrillIds(searchParams) {
 }
 
 export async function load({ fetch, url, locals }) {
-  // Fetch practice plans directly from the service
   const userId = locals.user?.id;
-  const result = await practicePlanService.getAll({ userId });
-  const practicePlans = result.items; // Assuming service returns { items: [...] }
+
+  // --- Get parameters from URL --- 
+  const page = url.searchParams.get('page') || '1';
+  const limit = url.searchParams.get('limit') || '10'; // Or your preferred default
+  const sortBy = url.searchParams.get('sortBy') || 'created_at';
+  const sortOrder = url.searchParams.get('sortOrder') || 'desc';
+  const search = url.searchParams.get('search') || '';
+  // Get other filter params directly from the URL to pass to the API
+  const phaseReq = url.searchParams.getAll('phase_req');
+  const phaseExc = url.searchParams.getAll('phase_exc');
+  const goalReq = url.searchParams.getAll('goal_req');
+  const goalExc = url.searchParams.getAll('goal_exc');
+  const minP = url.searchParams.get('minP');
+  const maxP = url.searchParams.get('maxP');
+  const drillIds = url.searchParams.getAll('drillId');
+
+  // --- Construct API URL --- 
+  const apiUrl = new URL(`${url.origin}/api/practice-plans`);
+  apiUrl.searchParams.set('page', page);
+  apiUrl.searchParams.set('limit', limit);
+  apiUrl.searchParams.set('sortBy', sortBy);
+  apiUrl.searchParams.set('sortOrder', sortOrder);
+  if (search) apiUrl.searchParams.set('search', search);
+  phaseReq.forEach(p => apiUrl.searchParams.append('phase_req', p));
+  phaseExc.forEach(p => apiUrl.searchParams.append('phase_exc', p));
+  goalReq.forEach(g => apiUrl.searchParams.append('goal_req', g));
+  goalExc.forEach(g => apiUrl.searchParams.append('goal_exc', g));
+  if (minP) apiUrl.searchParams.set('minP', minP);
+  if (maxP) apiUrl.searchParams.set('maxP', maxP);
+  drillIds.forEach(id => apiUrl.searchParams.append('drillId', id));
+
+  // --- Fetch data from the API endpoint --- 
+  let practicePlansData = { items: [], pagination: null };
+  try {
+      const response = await fetch(apiUrl.toString(), {
+          headers: {
+              // Pass cookies if necessary for auth, careful with server-side fetch
+              // 'cookie': event.request.headers.get('cookie') || ''
+          }
+      });
+      if (!response.ok) {
+          console.error(`API Error: ${response.status} ${response.statusText}`);
+          // Optionally handle specific errors, e.g., redirect on 401
+          // Or return an error state to the page
+          practicePlansData = { items: [], pagination: null, error: `Failed to load plans: ${response.statusText}` };
+      } else {
+          practicePlansData = await response.json();
+      }
+  } catch (error) {
+      console.error('Fetch Error loading practice plans:', error);
+      practicePlansData = { items: [], pagination: null, error: 'Could not connect to API' };
+  }
 
   // Define filter options directly in the server-side code
   const filterOptions = {
@@ -70,9 +120,16 @@ export async function load({ fetch, url, locals }) {
     }
   }
 
+  // --- Return data to the page ---
   return {
-    practicePlans,
+    practicePlans: practicePlansData.items, // Pass items array
+    pagination: practicePlansData.pagination, // Pass pagination object
     filterOptions,
-    initialSelectedDrills
+    initialSelectedDrills,
+    // Pass current search/sort state for potential UI binding
+    currentSearch: search,
+    currentSortBy: sortBy,
+    currentSortOrder: sortOrder,
+    error: practicePlansData.error // Pass error message if any
   };
 }

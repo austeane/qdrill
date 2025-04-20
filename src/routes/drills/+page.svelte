@@ -32,6 +32,8 @@
     selectedDrillTypes
   } from '$lib/stores/drillsStore';
 
+  import Pagination from '$components/Pagination.svelte';
+
   export let data;
 
   // Filter options from load
@@ -171,20 +173,13 @@
     goto(`/drills?${params.toString()}`, { keepFocus: true, noScroll: true });
   }
 
-  function goToPage(pageNumber) {
-      if (pageNumber >= 1 && pageNumber <= (data.pagination?.totalPages || 1)) {
-          const params = new URLSearchParams($page.url.searchParams);
-          params.set('page', pageNumber.toString());
-          goto(`/drills?${params.toString()}`, { keepFocus: true, noScroll: true });
-      }
-  }
-
-  function nextPage() {
-    goToPage((data.pagination?.page || 1) + 1);
-  }
-
-  function prevPage() {
-    goToPage((data.pagination?.page || 1) - 1);
+  function handlePageChange(event) {
+    const newPage = event.detail.page;
+    if (newPage >= 1 && newPage <= (data.pagination?.totalPages || 1)) {
+      const params = new URLSearchParams($page.url.searchParams);
+      params.set('page', newPage.toString());
+      goto(`/drills?${params.toString()}`, { keepFocus: true, noScroll: true });
+    }
   }
 
   function handleSearchInput() {
@@ -472,25 +467,11 @@
 
     <!-- Pagination Controls -->
     {#if data.pagination && data.pagination.totalPages > 1}
-      <div class="flex justify-center items-center mt-8 space-x-4" data-testid="pagination-controls">
-        <button
-          on:click={prevPage}
-          disabled={data.pagination.page === 1 || $navigating}
-          class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors duration-300"
-          data-testid="pagination-prev-button"
-        >
-          Previous
-        </button>
-        <span class="text-gray-700" data-testid="pagination-current-page">Page {data.pagination.page} of {data.pagination.totalPages}</span>
-        <button
-          on:click={nextPage}
-          disabled={data.pagination.page === data.pagination.totalPages || $navigating}
-          class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors duration-300"
-          data-testid="pagination-next-button"
-        >
-          Next
-        </button>
-      </div>
+      <Pagination 
+        currentPage={data.pagination.page}
+        totalPages={data.pagination.totalPages}
+        on:pageChange={handlePageChange}
+      />
     {/if}
   {/if}
 </div>

@@ -1,6 +1,6 @@
 <script>
     import FilterPanel from '$components/FilterPanel.svelte';
-    import { onDestroy, onMount } from 'svelte';
+    import { onDestroy, onMount, afterUpdate } from 'svelte';
     import { tick } from 'svelte';
     import { cart } from '$lib/stores/cartStore';
     import { goto } from '$app/navigation';
@@ -16,195 +16,183 @@
         selectedEstimatedParticipantsMax
     } from '$lib/stores/practicePlanStore';
     import DeletePracticePlan from '$components/DeletePracticePlan.svelte';
+    import Pagination from '$components/Pagination.svelte';
 
     export let data;
 
-    // Practice Plans data from load with safety check
-    let practicePlans = Array.isArray(data.practicePlans) ? data.practicePlans : [];
+    // Data from load function (now contains paginated items and metadata)
+    $: practicePlans = data.practicePlans || [];
+    $: pagination = data.pagination;
+    $: filterOptions = data.filterOptions || {};
+    $: initialSelectedDrills = data.initialSelectedDrills || [];
+    $: error = data.error; // Handle potential loading errors
 
-    // Available filter options from load
-    const {
-        phaseOfSeason,
-        estimatedParticipants,
-        practiceGoals
-    } = data.filterOptions || {};
+    // --- Component State reflecting URL/Load Data --- 
+    let searchQuery = data.currentSearch || ''; // Initialize from load data
+    let selectedDrills = initialSelectedDrills; // Initialize from load data
+    let currentSortBy = data.currentSortBy || 'created_at';
+    let currentSortOrder = data.currentSortOrder || 'desc';
 
-    // Search Query
-    let searchQuery = '';
+    // --- Initialize filter stores based on URL on mount/update --- 
+    function initializeFiltersFromUrl() {
+        const searchParams = $page.url.searchParams;
 
-    // Selected drills for 'Contains drill' filter
-    // Initialize directly from server-provided data
-    let selectedDrills = data.initialSelectedDrills || [];
+        // Helper to parse filter params (req/exc)
+        const parseFilterParam = (baseName) => {
+            const state = {};
+            searchParams.getAll(`${baseName}_req`).forEach(val => { state[val] = FILTER_STATES.REQUIRED; });
+            searchParams.getAll(`${baseName}_exc`).forEach(val => { state[val] = FILTER_STATES.EXCLUDED; });
+            return state;
+        };
 
-    function handleDrillSelect(drill) {
-        if (!selectedDrills.find(d => d.id === drill.id)) {
-            selectedDrills = [...selectedDrills, drill];
-            updateUrlWithSelectedDrills();
+        selectedPhaseOfSeason.set(parseFilterParam('phase'));
+        selectedPracticeGoals.set(parseFilterParam('goal'));
+
+        selectedEstimatedParticipantsMin.set(parseInt(searchParams.get('minP') || filterOptions.estimatedParticipants?.min || '1', 10));
+        selectedEstimatedParticipantsMax.set(parseInt(searchParams.get('maxP') || filterOptions.estimatedParticipants?.max || '100', 10));
+        
+        // Update local sort state if different from URL
+        const urlSortBy = searchParams.get('sortBy') || 'created_at';
+        const urlSortOrder = searchParams.get('sortOrder') || 'desc';
+        if (urlSortBy !== currentSortBy) {
+             currentSortBy = urlSortBy;
+             selectedSortOption.set(urlSortBy);
+        }
+        if (urlSortOrder !== currentSortOrder) {
+            currentSortOrder = urlSortOrder;
+            selectedSortOrder.set(urlSortOrder);
         }
     }
 
-    function handleDrillRemove(drillId) {
-        selectedDrills = selectedDrills.filter(d => d.id !== drillId);
-        updateUrlWithSelectedDrills();
-    }
-
-    // Debounced version of URL update to avoid rapid history changes
-    const debouncedUpdateUrl = debounce(updateUrlWithSelectedDrills, 300);
-
-    function updateUrlWithSelectedDrills() {
-        const url = new URL(window.location);
-        url.searchParams.delete('drillId');
-        selectedDrills.forEach(drill => {
-            url.searchParams.append('drillId', drill.id);
-        });
-        // Use replaceState to avoid adding multiple history entries during selection
-        history.replaceState({}, '', url);
-        // No reload needed, reactive filtering handles the update
-    }
-
-    // Helper functions for normalization
-    function normalizeString(str) {
-        return str?.toLowerCase().trim() || '';
-    }
-
-    function normalizeArray(arr) {
-        return arr?.map(item => normalizeString(item)) || [];
-    }
-
-    // Add these helper functions before the filteredPlans reactive statement
-    function filterByThreeState(planValue, filterState, allPossibleValues) {
-        if (!filterState || Object.keys(filterState).length === 0) return true;
-
-        const requiredValues = [];
-        const excludedValues = [];
-
-        for (const [value, state] of Object.entries(filterState)) {
-            if (state === FILTER_STATES.REQUIRED) {
-                requiredValues.push(value);
-            } else if (state === FILTER_STATES.EXCLUDED) {
-                excludedValues.push(value);
-            }
-        }
-
-        // 1. First check if all values are excluded
-        const totalPossibleValues = allPossibleValues || [];
-        const excludedAll = totalPossibleValues.length > 0 && 
-                           excludedValues.length === totalPossibleValues.length;
-        if (excludedAll) {
-            return false;
-        }
-
-        // 2. If the item has no value, and there are required values, exclude it
-        if (!planValue && requiredValues.length > 0) {
-            return false;
-        }
-
-        // 3. If there are required values, item must match one
-        if (requiredValues.length > 0) {
-            return requiredValues.includes(planValue);
-        }
-
-        // 4. If the item has a value and it's in excluded values, exclude it
-        if (planValue && excludedValues.includes(planValue)) {
-            return false;
-        }
-
-        return true;
-    }
-
-    // Helper function for array-based filters
-    function filterByThreeStateArray(planValues, filterState, allPossibleValues) {
-        if (!filterState || Object.keys(filterState).length === 0) return true;
-
-        const requiredValues = [];
-        const excludedValues = [];
-
-        for (const [value, state] of Object.entries(filterState)) {
-            if (state === FILTER_STATES.REQUIRED) {
-                requiredValues.push(value);
-            } else if (state === FILTER_STATES.EXCLUDED) {
-                excludedValues.push(value);
-            }
-        }
-
-        // Ensure planValues is an array
-        const valuesArray = Array.isArray(planValues) ? planValues : [];
-
-        // 1. First check if all values are excluded
-        const totalPossibleValues = allPossibleValues || [];
-        const excludedAll = totalPossibleValues.length > 0 && 
-                           excludedValues.length === totalPossibleValues.length;
-        if (excludedAll) {
-            return false;
-        }
-
-        // 2. If the item has no values and there are required values, exclude it
-        if ((!valuesArray || valuesArray.length === 0) && requiredValues.length > 0) {
-            return false;
-        }
-
-        // 3. If there are required values, item must have all of them
-        if (requiredValues.length > 0) {
-            return requiredValues.every(value => valuesArray.includes(value));
-        }
-
-        // 4. If any of the item's values are in excluded values, exclude it
-        if (valuesArray.some(value => excludedValues.includes(value))) {
-            return false;
-        }
-
-        return true;
-    }
-
-    // Filtering logic with additional safety check
-    $: filteredPlans = (Array.isArray(practicePlans) ? practicePlans : []).filter(plan => {
-        let matches = true;
-
-        // Search filtering
-        if (searchQuery.trim() !== '') {
-            const query = searchQuery.toLowerCase();
-            const nameMatch = plan.name?.toLowerCase().includes(query) || false;
-            const descriptionMatch = plan.description?.toLowerCase().includes(query) || false;
-            matches = matches && (nameMatch || descriptionMatch);
-        }
-
-        // Phase of Season filtering
-        matches = matches && filterByThreeState(
-            plan.phase_of_season,
-            $selectedPhaseOfSeason,
-            data.filterOptions.phaseOfSeason
-        );
-
-        // Practice Goals filtering (using array-based filter)
-        matches = matches && filterByThreeStateArray(
-            plan.practice_goals,
-            $selectedPracticeGoals,
-            data.filterOptions.practiceGoals
-        );
-
-        // Estimated Participants
-        if ($selectedEstimatedParticipantsMin !== null || $selectedEstimatedParticipantsMax !== null) {
-            const participants = plan.estimated_number_of_participants;
-            if ($selectedEstimatedParticipantsMin !== null) {
-                matches = matches && participants >= $selectedEstimatedParticipantsMin;
-            }
-            if ($selectedEstimatedParticipantsMax !== null) {
-                matches = matches && participants <= $selectedEstimatedParticipantsMax;
-            }
-        }
-
-        // Contains Drills
-        if (selectedDrills.length > 0) {
-            const planDrillIds = plan.drills || [];
-            const selectedDrillIds = selectedDrills.map(d => d.id);
-            matches = matches && selectedDrillIds.every(id => planDrillIds.includes(id));
-        }
-
-        return matches;
+    onMount(() => {
+        initializeFiltersFromUrl();
     });
 
-    let showEmptyCartModal = false;
+    // Re-initialize filters if URL changes (e.g., back/forward buttons)
+    afterUpdate(() => {
+         if ($page.url.searchParams.toString() !== previousSearchParams) {
+            initializeFiltersFromUrl();
+            searchQuery = $page.url.searchParams.get('search') || '';
+            selectedDrills = initialSelectedDrills; // Re-sync selectedDrills if needed, handled by load
+            previousSearchParams = $page.url.searchParams.toString();
+        }
+    });
+    let previousSearchParams = ''; // Track search params for afterUpdate
+    onMount(() => { 
+        previousSearchParams = $page.url.searchParams.toString(); 
+        
+        // Subscribe to sort changes after mount
+        let initialMount = true;
+        const unsubscribeSortOption = selectedSortOption.subscribe(value => {
+            if (!initialMount) {
+                 currentSortBy = value;
+                 updateUrlParams();
+            }
+        });
+        const unsubscribeSortOrder = selectedSortOrder.subscribe(value => {
+             if (!initialMount) {
+                 currentSortOrder = value;
+                 updateUrlParams();
+             }
+        });
+        
+        // Set initialMount to false after initial setup
+        tick().then(() => { initialMount = false; });
 
+        // Unsubscribe on component destroy
+        return () => {
+            unsubscribeSortOption();
+            unsubscribeSortOrder();
+        };
+    });
+
+
+    // --- URL Update Logic --- 
+    const updateUrlParams = debounce(() => {
+        const params = new URLSearchParams($page.url.searchParams);
+
+        // Update search
+        if (searchQuery) {
+            params.set('search', searchQuery);
+        } else {
+            params.delete('search');
+        }
+
+        // Update sort
+        params.set('sortBy', $selectedSortOption);
+        params.set('sortOrder', $selectedSortOrder);
+
+        // Update filters from stores
+        updateFilterUrlParams(params, 'phase', $selectedPhaseOfSeason);
+        updateFilterUrlParams(params, 'goal', $selectedPracticeGoals);
+
+        // Update range filters
+        if ($selectedEstimatedParticipantsMin !== (filterOptions.estimatedParticipants?.min ?? 1)) {
+            params.set('minP', $selectedEstimatedParticipantsMin.toString());
+        } else {
+            params.delete('minP');
+        }
+        if ($selectedEstimatedParticipantsMax !== (filterOptions.estimatedParticipants?.max ?? 100)) {
+            params.set('maxP', $selectedEstimatedParticipantsMax.toString());
+        } else {
+            params.delete('maxP');
+        }
+
+        // Update selected drills
+        params.delete('drillId'); // Clear existing
+        selectedDrills.forEach(drill => {
+            params.append('drillId', drill.id.toString());
+        });
+
+        // Reset page to 1 when filters/search/sort change
+        params.set('page', '1');
+
+        goto(`?${params.toString()}`, { keepFocus: true, noScroll: true });
+    }, 300); // Debounce time
+
+    // Helper to update URL for multi-state filters
+    function updateFilterUrlParams(params, baseName, filterState) {
+        params.delete(`${baseName}_req`);
+        params.delete(`${baseName}_exc`);
+        for (const [value, state] of Object.entries(filterState)) {
+            if (state === FILTER_STATES.REQUIRED) {
+                params.append(`${baseName}_req`, value);
+            } else if (state === FILTER_STATES.EXCLUDED) {
+                params.append(`${baseName}_exc`, value);
+            }
+        }
+    }
+
+    function handlePageChange(event) {
+        const newPage = event.detail.page;
+        const params = new URLSearchParams($page.url.searchParams);
+        params.set('page', newPage.toString());
+        goto(`?${params.toString()}`, { keepFocus: true });
+    }
+
+    // --- Event Handlers --- 
+    function handleDrillSelect(event) {
+        const drill = event.detail; // Assuming FilterPanel dispatches drill object
+        if (!selectedDrills.find(d => d.id === drill.id)) {
+            selectedDrills = [...selectedDrills, drill];
+            updateUrlParams(); // Trigger URL update
+        }
+    }
+
+    function handleDrillRemove(event) {
+        const drillId = event.detail; // Assuming FilterPanel dispatches drillId
+        selectedDrills = selectedDrills.filter(d => d.id !== drillId);
+        updateUrlParams(); // Trigger URL update
+    }
+
+    // Called when FilterPanel signals a change in its filters
+    function handleFilterChange() {
+        updateUrlParams();
+    }
+
+
+    // --- Existing Modal Logic --- 
+    let showEmptyCartModal = false;
     function handleCreatePlanClick() {
         if ($cart.length === 0) {
             showEmptyCartModal = true;
@@ -212,50 +200,27 @@
             goto('/practice-plans/create');
         }
     }
-
     function closeModal() {
         showEmptyCartModal = false;
     }
-
     function goToDrills() {
         showEmptyCartModal = false;
         goto('/drills');
     }
 
-    // Define sort options for practice plans
+    // --- Sort Options --- 
     const sortOptions = [
       { value: 'name', label: 'Name' },
       { value: 'created_at', label: 'Date Created' },
-      { value: 'estimated_number_of_participants', label: 'Estimated Participants' }
+      { value: 'estimated_number_of_participants', label: 'Estimated Participants' },
+      { value: 'updated_at', label: 'Date Updated' }
     ];
 
-    // Reactive sorting
-    $: sortedPlans = [...filteredPlans].sort((a, b) => {
-      if (!$selectedSortOption) return 0;
-      
-      let aValue = a[$selectedSortOption];
-      let bValue = b[$selectedSortOption];
-      
-      // Handle potential null/undefined values during sorting
-      if (aValue == null && bValue == null) return 0;
-      if (aValue == null) return $selectedSortOrder === 'asc' ? -1 : 1; // Sort nulls first or last based on order
-      if (bValue == null) return $selectedSortOrder === 'asc' ? 1 : -1;
-
-      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
-      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
-      
-      if (aValue < bValue) return $selectedSortOrder === 'asc' ? -1 : 1;
-      if (aValue > bValue) return $selectedSortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    // Update practicePlans when data prop changes (e.g., after navigation)
-    $: if (data.practicePlans) {
-        practicePlans = Array.isArray(data.practicePlans) ? data.practicePlans : [];
-    }
-    // Update selectedDrills when data prop changes (e.g., after navigation)
-    $: if (data.initialSelectedDrills) {
-        selectedDrills = data.initialSelectedDrills || [];
+    // Helper for DeletePracticePlan callback
+    function onPlanDeleted(deletedPlanId) {
+        practicePlans = practicePlans.filter(p => p.id !== deletedPlanId);
+        // Optionally, could trigger a full reload if pagination counts change significantly
+        // goto(window.location.href, { invalidateAll: true });
     }
 </script>
 
@@ -305,13 +270,15 @@
     <!-- Filter Panel -->
     <FilterPanel
         filterType="practice-plans"
-        phaseOfSeasonOptions={phaseOfSeason}
-        practiceGoalsOptions={practiceGoals}
-        bind:selectedDrills={selectedDrills}
-        onDrillSelect={handleDrillSelect}
-        onDrillRemove={handleDrillRemove}
+        phaseOfSeasonOptions={filterOptions.phaseOfSeason}
+        practiceGoalsOptions={filterOptions.practiceGoals}
+        bind:selectedDrills={selectedDrills} 
+        on:drillSelect={handleDrillSelect}
+        on:drillRemove={handleDrillRemove}
+        on:filterChange={handleFilterChange}
         {sortOptions}
-        onFilterChange={debouncedUpdateUrl}
+        bind:selectedSortOption={$selectedSortOption}
+        bind:selectedSortOrder={$selectedSortOrder}
     />
 
     <!-- Search input -->
@@ -320,59 +287,82 @@
         placeholder="Search practice plans..."
         class="mb-6 w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         bind:value={searchQuery}
+        on:input={updateUrlParams} 
     />
 
-    <!-- Practice Plans Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {#each sortedPlans as plan (plan.id)}
-            <div class="border border-gray-200 p-6 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 cursor-pointer">
-                <!-- Header section with title and voting -->
-                <div class="relative flex justify-between items-start mb-4">
-                    <div class="flex-1 pr-12">
-                        <h2 class="text-xl font-bold">
-                            <a href="/practice-plans/{plan.id}" class="text-blue-600 hover:text-blue-800">
-                                {plan.name}
-                            </a>
-                        </h2>
-                    </div>
-                    <div class="absolute right-0 top-0">
-                        <UpvoteDownvote practicePlanId={plan.id} />
-                    </div>
-                </div>
+    <!-- Display Error Message -->
+    {#if error}
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <strong class="font-bold">Error:</strong>
+        <span class="block sm:inline"> {error}</span>
+      </div>
+    {/if}
 
-                <!-- Rest of the card content -->
-                {#if plan.phase_of_season}
-                    <p class="text-sm text-gray-500 mb-1">
-                        <strong>Phase of Season:</strong> {plan.phase_of_season}
-                    </p>
-                {/if}
-                {#if plan.estimated_number_of_participants}
-                    <p class="text-sm text-gray-500 mb-1">
-                        <strong>Estimated Participants:</strong> {plan.estimated_number_of_participants}
-                    </p>
-                {/if}
-                {#if plan.practice_goals}
-                    <p class="text-sm text-gray-500 mb-1">
-                        <strong>Practice Goals:</strong> {plan.practice_goals}
-                    </p>
-                {/if}
-                
-                <div class="flex justify-between items-center mt-4">
-                    <a 
-                        href="/practice-plans/{plan.id}" 
-                        class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded"
-                    >
-                        View Practice Plan
-                    </a>
-                    <DeletePracticePlan 
-                        planId={plan.id} 
-                        createdBy={plan.created_by}
-                        onDelete={() => {
-                            practicePlans = practicePlans.filter(p => p.id !== plan.id);
-                        }}
-                    />
+    <!-- Practice Plans Grid -->
+    {#if practicePlans.length > 0}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Use practicePlans directly (already paginated and sorted by server) -->
+            {#each practicePlans as plan (plan.id)}
+                <div class="border border-gray-200 p-6 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1">
+                    <!-- Header section with title and voting -->
+                    <div class="relative flex justify-between items-start mb-4">
+                        <div class="flex-1 pr-12">
+                            <h2 class="text-xl font-bold">
+                                <a href="/practice-plans/{plan.id}" class="text-blue-600 hover:text-blue-800">
+                                    {plan.name}
+                                </a>
+                            </h2>
+                        </div>
+                        <div class="absolute right-0 top-0">
+                            <!-- UpvoteDownvote component usage remains the same -->
+                            <UpvoteDownvote practicePlanId={plan.id} /> 
+                        </div>
+                    </div>
+
+                    <!-- Rest of the card content remains the same -->
+                    {#if plan.phase_of_season}
+                        <p class="text-sm text-gray-500 mb-1">
+                            <strong>Phase of Season:</strong> {plan.phase_of_season}
+                        </p>
+                    {/if}
+                    {#if plan.estimated_number_of_participants}
+                        <p class="text-sm text-gray-500 mb-1">
+                            <strong>Estimated Participants:</strong> {plan.estimated_number_of_participants}
+                        </p>
+                    {/if}
+                    {#if plan.practice_goals && plan.practice_goals.length > 0}
+                        <p class="text-sm text-gray-500 mb-1">
+                            <strong>Practice Goals:</strong> {plan.practice_goals.join(', ')}
+                        </p>
+                    {/if}
+                    
+                    <div class="flex justify-between items-center mt-4">
+                        <a 
+                            href="/practice-plans/{plan.id}" 
+                            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded"
+                        >
+                            View Practice Plan
+                        </a>
+                        <!-- Pass callback to handle deletion in the current list -->
+                        <DeletePracticePlan 
+                            planId={plan.id} 
+                            createdBy={plan.created_by}
+                            on:delete={() => onPlanDeleted(plan.id)} 
+                        />
+                    </div>
                 </div>
-            </div>
-        {/each}
-    </div>
+            {/each}
+        </div>
+
+        <!-- Pagination Controls -->
+        {#if pagination && pagination.totalPages > 1}
+            <Pagination 
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+                on:pageChange={handlePageChange}
+            />
+        {/if}
+    {:else if !error}
+        <p class="text-center text-gray-500 mt-8">No practice plans found matching your criteria.</p>
+    {/if}
 </div>

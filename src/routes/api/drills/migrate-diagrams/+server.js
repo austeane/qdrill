@@ -1,49 +1,23 @@
 import { json } from '@sveltejs/kit';
-import { fabricToExcalidraw } from '$lib/utils/diagramMigration';
-import * as db from '$lib/server/db';
+// import { fabricToExcalidraw } from '$lib/utils/diagramMigration'; // No longer needed directly
+// import * as db from '$lib/server/db'; // No longer needed directly
+import { drillService } from '$lib/server/services/drillService'; // Import the service
 
 export async function POST() {
   try {
-    // Get all drills with diagrams
-    const drillsResult = await db.query(`
-      SELECT id, diagrams 
-      FROM drills 
-      WHERE diagrams IS NOT NULL AND diagrams != '[]'
-    `);
-
-    const updates = [];
+    // Call the service method to perform the migration
+    const result = await drillService.migrateAllDiagramsToExcalidraw();
     
-    for (const drill of drillsResult.rows) {
-      const migratedDiagrams = drill.diagrams.map(diagram => {
-        if (!diagram) return null;
-        
-        // Check if it's already an Excalidraw diagram
-        if (diagram.type === 'excalidraw') return diagram;
-        
-        // Convert Fabric diagram to Excalidraw
-        return fabricToExcalidraw(diagram);
-      }).filter(Boolean);
-
-      // Update the drill with migrated diagrams
-      updates.push(
-        db.query(
-          'UPDATE drills SET diagrams = $1 WHERE id = $2',
-          [JSON.stringify(migratedDiagrams), drill.id]
-        )
-      );
-    }
-
-    await Promise.all(updates);
-
     return json({ 
       success: true, 
-      message: `Successfully migrated ${updates.length} drills` 
+      message: `Successfully migrated ${result.migratedCount} drills.` 
     });
   } catch (error) {
-    console.error('Error migrating diagrams:', error);
+    console.error('Error migrating diagrams via service:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to migrate diagrams';
     return json({ 
       success: false, 
-      error: error.message 
+      error: errorMessage 
     }, { status: 500 });
   }
 } 

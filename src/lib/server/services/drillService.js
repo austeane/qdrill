@@ -1,5 +1,6 @@
 import { BaseEntityService } from './baseEntityService.js';
 import * as db from '$lib/server/db';
+import { fabricToExcalidraw } from '$lib/utils/diagramMigration'; // Import the utility function
 
 /**
  * Service for managing drills
@@ -78,9 +79,11 @@ export class DrillService extends BaseEntityService {
       throw new Error('Unauthorized to edit this drill');
     }
     
-    return this.withTransaction(async () => {
+    // Use a transaction to update drill and potentially related votes
+    return this.withTransaction(async (client) => { 
       // Get existing skills to calculate differences
-      const existingDrill = await this.getById(id);
+      // Pass client to getById to ensure transactional consistency if needed by base class
+      const existingDrill = await this.getById(id, client); 
       
       // Check if drill exists
       if (!existingDrill) {
@@ -100,10 +103,10 @@ export class DrillService extends BaseEntityService {
         normalizedData.created_by = userId;
       }
       
-      // Update the drill
-      const updatedDrill = await this.update(id, normalizedData);
+      // Update the drill using the transaction client
+      const updatedDrill = await this.update(id, normalizedData, client);
       
-      // Update skills
+      // Update skills using the transaction client
       const skillsToRemove = existingSkills.filter(
         skill => !normalizedData.skills_focused_on?.includes(skill)
       );
@@ -111,7 +114,17 @@ export class DrillService extends BaseEntityService {
         skill => !existingSkills.includes(skill)
       ) || [];
       
-      await this.updateSkillCounts(skillsToAdd, skillsToRemove, id);
+      // Ensure updateSkillCounts can use the client (needs modification if not already done)
+      // Assuming updateSkillCounts internally uses updateSkills which now accepts a client
+      await this.updateSkillCounts(skillsToAdd, skillsToRemove, id, client); 
+
+      // Update the name in votes table if name changed
+      if (normalizedData.name && normalizedData.name !== existingDrill.name) {
+          await client.query(
+              `UPDATE votes SET item_name = $1 WHERE drill_id = $2`,
+              [normalizedData.name, id]
+          );
+      }
       
       return updatedDrill;
     });
@@ -121,27 +134,62 @@ export class DrillService extends BaseEntityService {
    * Delete a drill by ID
    * @param {number} id - Drill ID to delete
    * @param {number} userId - User ID attempting the deletion
+   * @param {Object} options - Additional options
+   * @param {boolean} [options.deleteRelated=false] - Whether to delete related votes and comments
    * @returns {Promise<boolean>} - True if successful, false if not found
    */
-  async deleteDrill(id, userId) {
-    // Check if user created the drill
+  async deleteDrill(id, userId, options = { deleteRelated: false }) {
+    // Check if user created the drill (or maybe if they can edit? Deletion is stricter)
     const drill = await this.getById(id);
     if (!drill) {
-      return false;
+      return false; // Drill not found
     }
     
-    // Only allow deletion by creator, not just any editor
+    // Check authorization: Only creator can delete
     if (drill.created_by !== userId) {
-      throw new Error('Unauthorized to delete this drill');
+      // If not the creator, check if it's unowned and the user is trying to delete with related data (dev mode)
+      // This allows cleanup in dev mode even if ownership is null
+      const isUnownedDevDelete = drill.created_by === null && options.deleteRelated;
+      if (!isUnownedDevDelete) {
+         throw new Error('Unauthorized to delete this drill');
+      }
     }
     
-    return await this.delete(id);
+    return this.withTransaction(async (client) => {
+      // Delete related items first if requested
+      if (options.deleteRelated) {
+          // Delete related votes
+          await client.query('DELETE FROM votes WHERE drill_id = $1', [id]);
+          // Delete related comments
+          await client.query('DELETE FROM comments WHERE drill_id = $1', [id]);
+          // Potentially delete from practice_plan_drills, etc. if needed
+          // TODO: Add deletion from practice_plan_drills if required
+      }
+
+      // Delete the drill itself using the base service method with the client
+      const deleted = await this.delete(id, client);
+      
+      // If base delete returns false but no error, it means not found (shouldn't happen after getById check)
+      if (!deleted) {
+         console.warn(`DrillService.deleteDrill: Drill ${id} found initially but base delete returned false.`);
+         return false;
+      }
+
+      // Decrement skill counts (only if deletion was successful)
+      const skillsToDecrement = drill.skills_focused_on || [];
+      if (skillsToDecrement.length > 0) {
+         // Passing an empty array for skillsToAdd
+         await this.updateSkillCounts([], skillsToDecrement, id, client);
+      }
+
+      return true; // Successfully deleted
+    });
   }
   
   /**
-   * Get a drill with its variations
+   * Get a drill with its variations and creator names
    * @param {number} id - Drill ID
-   * @returns {Promise<Object>} - Drill with variations
+   * @returns {Promise<Object>} - Drill with variations and creator names
    */
   async getDrillWithVariations(id) {
     const drill = await this.getById(id);
@@ -151,7 +199,7 @@ export class DrillService extends BaseEntityService {
     
     // Get variations of this drill
     const variationsQuery = `
-      SELECT d.*,
+      SELECT d.*, 
              (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
       FROM drills d
       WHERE d.parent_drill_id = $1
@@ -160,6 +208,38 @@ export class DrillService extends BaseEntityService {
     
     const variationsResult = await db.query(variationsQuery, [id]);
     drill.variations = variationsResult.rows;
+    
+    // Fetch creator names for variations if any exist
+    if (drill.variations && drill.variations.length > 0) {
+      const userIds = [...new Set(drill.variations.map(v => v.created_by).filter(Boolean))];
+      
+      if (userIds.length > 0) {
+        try {
+          // Fetch user names using a separate service or direct query for now
+          // TODO: Consider a dedicated UserService for this
+          const usersResult = await db.query(
+            `SELECT id, name FROM users WHERE id = ANY($1)`, 
+            [userIds]
+          );
+          
+          const userMap = {};
+          usersResult.rows.forEach(user => {
+            userMap[user.id] = user.name;
+          });
+          
+          // Add creator_name to each variation
+          drill.variations.forEach(variation => {
+            if (variation.created_by) {
+              variation.creator_name = userMap[variation.created_by] || 'Unknown User';
+            }
+          });
+        } catch (userError) {
+          console.error(`Error fetching user names for variations of drill ${id}:`, userError);
+          // Proceed without creator names if fetching fails
+          drill.variations.forEach(variation => { variation.creator_name = 'Error fetching name'; });
+        }
+      }
+    }
     
     return drill;
   }
@@ -193,6 +273,76 @@ export class DrillService extends BaseEntityService {
     }
     
     return variation;
+  }
+  
+  /**
+   * Get options for drill filters (distinct values, ranges).
+   * @returns {Promise<Object>} - Object containing filter options.
+   */
+  async getDrillFilterOptions() {
+    try {
+      // Helper function to process distinct values
+      const processDistinctResults = (rows) => {
+        return rows
+          .map(row => row.value)
+          .filter(Boolean) // Ensure value is not null/undefined/empty string
+          .sort();
+      }
+
+      // Query for distinct values (using LOWER + TRIM in SQL)
+      const skillLevelsQuery = `SELECT DISTINCT LOWER(TRIM(UNNEST(skill_level))) as value FROM drills WHERE array_length(skill_level, 1) > 0 ORDER BY value;`;
+      const complexitiesQuery = `SELECT DISTINCT LOWER(TRIM(complexity)) as value FROM drills WHERE complexity IS NOT NULL ORDER BY value;`;
+      const skillsFocusedQuery = `SELECT DISTINCT LOWER(TRIM(UNNEST(skills_focused_on))) as value FROM drills WHERE array_length(skills_focused_on, 1) > 0 ORDER BY value;`;
+      const positionsFocusedQuery = `SELECT DISTINCT LOWER(TRIM(UNNEST(positions_focused_on))) as value FROM drills WHERE array_length(positions_focused_on, 1) > 0 ORDER BY value;`;
+      const drillTypesQuery = `SELECT DISTINCT LOWER(TRIM(UNNEST(drill_type))) as value FROM drills WHERE array_length(drill_type, 1) > 0 ORDER BY value;`;
+
+      // Query for min/max number of people
+      const peopleRangeQuery = `
+        SELECT 
+          MIN(number_of_people_min) as min_people,
+          MAX(number_of_people_max) as max_people
+        FROM drills
+        WHERE number_of_people_min IS NOT NULL OR number_of_people_max IS NOT NULL;
+      `;
+      
+      // Execute all queries in parallel
+      const [ 
+        skillLevelsResult, 
+        complexitiesResult, 
+        skillsFocusedResult, 
+        positionsFocusedResult, 
+        drillTypesResult, 
+        peopleRangeResult 
+      ] = await Promise.all([
+        db.query(skillLevelsQuery),
+        db.query(complexitiesQuery),
+        db.query(skillsFocusedQuery),
+        db.query(positionsFocusedQuery),
+        db.query(drillTypesQuery),
+        db.query(peopleRangeQuery)
+      ]);
+      
+      return {
+        skillLevels: processDistinctResults(skillLevelsResult.rows),
+        complexities: processDistinctResults(complexitiesResult.rows),
+        skillsFocusedOn: processDistinctResults(skillsFocusedResult.rows),
+        positionsFocusedOn: processDistinctResults(positionsFocusedResult.rows),
+        drillTypes: processDistinctResults(drillTypesResult.rows),
+        numberOfPeopleOptions: {
+          min: peopleRangeResult.rows[0]?.min_people ?? 0, // Use nullish coalescing
+          max: peopleRangeResult.rows[0]?.max_people ?? 100 // Use nullish coalescing
+        },
+        // These seem like fixed values, could be constants?
+        suggestedLengths: {
+          min: 0,
+          max: 120
+        }
+      };
+    } catch (error) {
+        console.error('Error in drillService.getDrillFilterOptions:', error);
+        // Re-throw the error to be handled by the API route
+        throw new Error('Failed to retrieve filter options from database.');
+    }
   }
   
   /**
@@ -543,18 +693,21 @@ export class DrillService extends BaseEntityService {
    * @param {Array<string>} skillsToAdd - Skills to increment
    * @param {Array<string>} skillsToRemove - Skills to decrement
    * @param {number} drillId - Drill ID
+   * @param {pg.Client} [client=null] - Optional DB client for transactions
    * @returns {Promise<void>}
    */
-  async updateSkillCounts(skillsToAdd, skillsToRemove, drillId) {
+  async updateSkillCounts(skillsToAdd, skillsToRemove, drillId, client = null) {
+    const dbInterface = client || db;
     // Add new skills
     if (skillsToAdd && skillsToAdd.length > 0) {
-      await this.updateSkills(skillsToAdd, drillId);
+      // Pass client to updateSkills
+      await this.updateSkills(skillsToAdd, drillId, client); 
     }
     
     // Remove skills no longer used
     if (skillsToRemove && skillsToRemove.length > 0) {
       for (const skill of skillsToRemove) {
-        await db.query(
+        await dbInterface.query( // Use dbInterface (client or db)
           `UPDATE skills SET drills_used_in = drills_used_in - 1 WHERE skill = $1`,
           [skill]
         );
@@ -566,11 +719,15 @@ export class DrillService extends BaseEntityService {
    * Update skills for a drill
    * @param {Array<string>} skills - Skills to update
    * @param {number} drillId - Drill ID
+   * @param {pg.Client} [client=null] - Optional DB client for transactions
    * @returns {Promise<void>} 
    */
-  async updateSkills(skills, drillId) {
+  async updateSkills(skills, drillId, client = null) {
+    // Use the provided client or the default db module
+    const dbInterface = client || db;
+    
     for (const skill of skills) {
-      await db.query(
+      await dbInterface.query(
         `INSERT INTO skills (skill, drills_used_in, usage_count) 
          VALUES ($1, 1, 1) 
          ON CONFLICT (skill) DO UPDATE SET 
@@ -776,6 +933,165 @@ export class DrillService extends BaseEntityService {
 
     // Update the created_by field
     return await this.update(id, { created_by: userId });
+  }
+
+  /**
+   * Migrate all Fabric.js diagrams in the drills table to Excalidraw format.
+   * @returns {Promise<Object>} - Object containing the count of migrated drills.
+   */
+  async migrateAllDiagramsToExcalidraw() {
+    try {
+      // Get all drills that have diagrams which might need migration
+      // Check if diagrams is not null and not an empty JSON array/object string
+      const drillsResult = await db.query(`
+        SELECT id, diagrams 
+        FROM drills 
+        WHERE diagrams IS NOT NULL AND diagrams::text != '[]' AND diagrams::text != '{}'
+      `);
+
+      const updates = [];
+      
+      for (const drill of drillsResult.rows) {
+        let needsUpdate = false;
+        let migratedDiagrams = [];
+
+        if (drill.diagrams && Array.isArray(drill.diagrams)) {
+           migratedDiagrams = drill.diagrams.map(diagram => {
+             if (!diagram) return null;
+            
+             // If it's already Excalidraw or lacks a 'type' field, skip it
+             if (diagram.type === 'excalidraw' || !diagram.type) return diagram;
+             
+             // Assuming diagrams without type 'excalidraw' are Fabric
+             const converted = fabricToExcalidraw(diagram);
+             if (converted) {
+               needsUpdate = true; // Mark that a conversion happened
+               return converted;
+             } else {
+                // If conversion fails, keep the original diagram
+                console.warn(`Failed to convert diagram for drill ID ${drill.id}. Keeping original.`);
+                return diagram;
+             }
+           }).filter(Boolean);
+        } else {
+          // Handle cases where diagrams might not be an array (shouldn't happen with normalization)
+          console.warn(`Drill ID ${drill.id} has non-array diagrams field: ${typeof drill.diagrams}`);
+          continue; // Skip this drill
+        }
+
+        // Only update if a conversion actually happened
+        if (needsUpdate) {
+          updates.push(
+            db.query(
+              'UPDATE drills SET diagrams = $1 WHERE id = $2',
+              // Use JSON.stringify only if the base service doesn't handle it
+              // Assuming base service expects JS objects for JSON fields
+              [migratedDiagrams, drill.id] 
+            )
+          );
+        }
+      }
+      
+      if (updates.length > 0) {
+        await Promise.all(updates);
+      }
+      
+      return { migratedCount: updates.length };
+    } catch (error) {
+        console.error('Error in drillService.migrateAllDiagramsToExcalidraw:', error);
+        throw new Error('Failed to migrate diagrams in database.');
+    }
+  }
+
+  /**
+   * Import multiple drills from an array.
+   * @param {Array<Object>} drillsData - Array of drill objects to import.
+   * @param {string} fileName - Original name of the file being imported.
+   * @param {number|null} userId - ID of the user performing the import.
+   * @param {string} visibility - Default visibility for imported drills.
+   * @returns {Promise<Object>} - Object containing importedCount and uploadSource.
+   */
+  async importDrills(drillsData, fileName, userId, visibility = 'public') {
+    if (!Array.isArray(drillsData) || drillsData.length === 0) {
+      throw new Error('No drills provided for import');
+    }
+
+    // Generate a unique upload_source ID (using timestamp + partial UUID for uniqueness)
+    const uploadSource = `${fileName}_${Date.now()}_${(Math.random().toString(36).substring(2, 15))}`;
+
+    return this.withTransaction(async (client) => {
+      const insertPromises = drillsData.map(drillInput => {
+        // Destructure and prepare data for insertion
+        const { 
+          name, brief_description, detailed_description, skill_level, 
+          complexity, suggested_length, number_of_people, skills_focused_on, 
+          positions_focused_on, video_link, images, diagrams 
+        } = drillInput;
+
+        // Basic validation for required fields within the service
+        if (!name || !brief_description) {
+          throw new Error(`Drill missing required field (name or brief_description): ${JSON.stringify(drillInput)}`);
+        }
+
+        // Normalize the individual drill data
+        let drillToInsert = this.normalizeDrillData({
+          name,
+          brief_description,
+          detailed_description: detailed_description || null,
+          skill_level,
+          complexity: complexity || null,
+          // Handle suggested_length - Assuming it's an object {min, max}
+          suggested_length: suggested_length && typeof suggested_length === 'object' 
+            ? `${suggested_length.min}-${suggested_length.max}`
+            : null, 
+          // Handle number_of_people - Assuming it's an object {min, max}
+          number_of_people_min: number_of_people?.min || 0,
+          number_of_people_max: number_of_people?.max || 99,
+          skills_focused_on,
+          positions_focused_on,
+          video_link: video_link || null,
+          images: images || [],
+          diagrams,
+          upload_source: uploadSource,
+          created_by: userId,
+          visibility,
+          is_editable_by_others: false, // Default for imported drills
+          date_created: new Date() // Add creation timestamp
+        });
+
+        // Convert diagrams to JSON strings AFTER initial normalization
+        if (drillToInsert.diagrams && Array.isArray(drillToInsert.diagrams)) {
+             drillToInsert.diagrams = drillToInsert.diagrams.map(diagram => 
+               typeof diagram === 'string' ? diagram : JSON.stringify(diagram)
+             );
+        }
+
+        // Use base create method logic for consistency (handles timestamps etc.)
+        // Instead of direct INSERT, we call the internal create method
+        // We need to adapt the base create method or replicate its INSERT logic here
+        // Replicating INSERT logic here for simplicity in this refactor:
+        const columns = Object.keys(drillToInsert);
+        const values = Object.values(drillToInsert);
+        const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+        const queryText = `INSERT INTO ${this.tableName} (${columns.map(col => `"${col}"`).join(', ')}) VALUES (${placeholders}) RETURNING *`;
+        
+        return client.query(queryText, values);
+      });
+
+      // Wait for all insertions to complete
+      const results = await Promise.all(insertPromises);
+      const insertedDrills = results.map(res => res.rows[0]);
+
+      // Optionally, update skill counts for all imported drills
+      for (const drill of insertedDrills) {
+        if (drill.skills_focused_on && drill.skills_focused_on.length > 0) {
+          // Use the existing updateSkills method, passing the client for transaction safety
+          await this.updateSkills(drill.skills_focused_on, drill.id, client);
+        }
+      }
+      
+      return { importedCount: drillsData.length, uploadSource };
+    });
   }
 }
 

@@ -10,8 +10,6 @@ export async function handle({ event, resolve }) {
             headers: event.request.headers
         });
 
-        console.info('Better‑Auth getSession result:', sessionResult);
-
         if (sessionResult) {
             // merge user into session for backward compatibility
             event.locals.session = {
@@ -20,7 +18,7 @@ export async function handle({ event, resolve }) {
             };
             event.locals.user = sessionResult.user;
         } else {
-            console.info('No active session found for request');
+            // console.info('No active session found for request');
         }
     } catch (err) {
         console.warn('Error while fetching session:', err);
@@ -33,9 +31,6 @@ export async function handle({ event, resolve }) {
 
 export async function handleError({ error }) {
     console.error('Uncaught error:', error);
-    
-    // Clean up only the resources related to this request
-    await cleanup();
     
     return {
         message: 'Internal error',

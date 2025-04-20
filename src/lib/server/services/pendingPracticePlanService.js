@@ -8,7 +8,7 @@ const pendingPlans = new Map();
 
 // Store pending plan data
 async function save(token, data, expiresAt) {
-    console.log(`[PendingPlanService] Saving plan for token ${token}, expires at ${expiresAt.toISOString()}`);
+    // console.log(`[PendingPlanService] Saving plan for token ${token}, expires at ${expiresAt.toISOString()}`);
     pendingPlans.set(token, {
         data,
         expiresAt: expiresAt.getTime(), // Store expiry time as timestamp
@@ -22,19 +22,22 @@ async function get(token) {
     cleanupExpired(); // Clean before getting
     const entry = pendingPlans.get(token);
     if (entry) {
-        console.log(`[PendingPlanService] Found plan for token ${token}`);
+        // console.log(`[PendingPlanService] Found plan for token ${token}`);
         return entry.data; // Return only the data part
     }
-    console.log(`[PendingPlanService] Plan not found for token ${token}`);
+    // console.log(`[PendingPlanService] Plan not found for token ${token}`);
     return null;
 }
 
 // Delete pending plan data
 async function deletePlan(token) {
     const deleted = pendingPlans.delete(token);
-    if (deleted) {
-        console.log(`[PendingPlanService] Deleted plan for token ${token}`);
-    } else {
+    // if (deleted) {
+    //     console.log(`[PendingPlanService] Deleted plan for token ${token}`);
+    // } else {
+    //     console.log(`[PendingPlanService] Attempted to delete non-existent plan for token ${token}`);
+    // }
+    if (!deleted) {
         console.log(`[PendingPlanService] Attempted to delete non-existent plan for token ${token}`);
     }
 }
@@ -50,7 +53,7 @@ function cleanupExpired() {
         }
     }
     if (removedCount > 0) {
-        console.log(`[PendingPlanService] Cleaned up ${removedCount} expired pending plans.`);
+        // console.log(`[PendingPlanService] Cleaned up ${removedCount} expired pending plans.`);
     }
 }
 

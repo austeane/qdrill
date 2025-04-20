@@ -12,10 +12,10 @@
       selectedHasVideo,
       selectedHasDiagrams,
       selectedHasImages,
-      searchQuery
+      searchQuery,
+      selectedDrillTypes
     } from '$lib/stores/drillsStore';
-    import { debounce } from 'lodash-es';
-    import { onMount, onDestroy } from 'svelte';
+    import { createEventDispatcher, onMount } from 'svelte';
     import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
     import { writable } from 'svelte/store';
     import ThreeStateCheckbox from './ThreeStateCheckbox.svelte';
@@ -29,6 +29,8 @@
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
     import { browser } from '$app/environment';
+
+    const dispatch = createEventDispatcher();
 
     export let customClass = '';
     export let filterType = 'drills'; // New prop to determine filter context
@@ -77,21 +79,30 @@
   
     onMount(() => {
       mounted = true;
+      // Initialize slider ranges from store values in case they were loaded from URL
+      numberOfPeopleRange = [$selectedNumberOfPeopleMin ?? numberOfPeopleOptions.min, $selectedNumberOfPeopleMax ?? numberOfPeopleOptions.max];
+      suggestedLengthsRange = [$selectedSuggestedLengthsMin ?? suggestedLengths.min, $selectedSuggestedLengthsMax ?? suggestedLengths.max];
     });
   
     // Function to reset all filters
     function resetFilters() {
-      selectedSkillLevels.set([]);
-      selectedComplexities.set([]);
-      selectedSkillsFocusedOn.set([]);
-      selectedPositionsFocusedOn.set([]);
+      selectedSkillLevels.set({});
+      selectedComplexities.set({});
+      selectedSkillsFocusedOn.set({});
+      selectedPositionsFocusedOn.set({});
       selectedNumberOfPeopleMin.set(numberOfPeopleOptions.min);
       selectedNumberOfPeopleMax.set(numberOfPeopleOptions.max);
       selectedSuggestedLengthsMin.set(suggestedLengths.min);
       selectedSuggestedLengthsMax.set(suggestedLengths.max);
-      selectedHasVideo.set(false);
-      selectedHasDiagrams.set(false);
-      selectedHasImages.set(false);
+      selectedHasVideo.set(null);
+      selectedHasDiagrams.set(null);
+      selectedHasImages.set(null);
+      selectedDrillTypes.set({});
+
+      // Reset local slider state
+      numberOfPeopleRange = [numberOfPeopleOptions.min, numberOfPeopleOptions.max];
+      suggestedLengthsRange = [suggestedLengths.min, suggestedLengths.max];
+
       if (filterType === 'practice-plans') {
         selectedPhaseOfSeason.set({});
         selectedPracticeGoals.set({});
@@ -100,7 +111,7 @@
         selectedDrills = [];
       }
       closeAllFilters();
-      selectedDrillTypes.set({});
+      dispatch('filterChange');
     }
   
     // Function to handle toggling filters
@@ -212,11 +223,16 @@
       }
     }
 
-    const debouncedFetchDrillSuggestions = debounce(fetchDrillSuggestions, 300);
+    // Simple debounce helper (client-side only)
+    function debounce(fn, delay = 300) {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+      };
+    }
 
-    onDestroy(() => {
-      debouncedFetchDrillSuggestions.cancel();
-    });
+    const debouncedFetchDrillSuggestions = debounce(fetchDrillSuggestions, 300);
 
     function addDrillToSelected(drill) {
       onDrillSelect(drill);
@@ -230,29 +246,17 @@
   
     export let drillTypes = [];
   
-    import { selectedDrillTypes } from '$lib/stores/drillsStore';
-  
-    function toggleDrillTypeState(type) {
+    function toggleDrillTypeState(type, newState) {
       selectedDrillTypes.update(selected => {
-        const currentState = selected[type] || FILTER_STATES.NEUTRAL;
-        const newState = currentState === FILTER_STATES.NEUTRAL 
-          ? FILTER_STATES.REQUIRED 
-          : currentState === FILTER_STATES.REQUIRED 
-            ? FILTER_STATES.EXCLUDED 
-            : FILTER_STATES.NEUTRAL;
-        
-        return { ...selected, [type]: newState };
+          const updated = { ...selected };
+          if (newState === FILTER_STATES.NEUTRAL) {
+              delete updated[type];
+          } else {
+              updated[type] = newState;
+          }
+          return updated;
       });
-    }
-  
-    export let sortOptions = [];
-  
-    function handleSortChange(event) {
-      selectedSortOption.set(event.target.value);
-    }
-  
-    function toggleSortOrder() {
-      selectedSortOrder.update(order => order === 'asc' ? 'desc' : 'asc');
+      dispatch('filterChange');
     }
   
     // Helper function for updating filter states
@@ -265,41 +269,16 @@
                 } else {
                     updated[value] = newState;
                 }
-                console.log(`[FilterPanel] selectedSkillLevels updated. New state:`, JSON.stringify(updated)); // Log new state
                 return updated;
             });
+            dispatch('filterChange');
         };
     }
   
     // Create update handlers for each filter type
-    const updateSkillLevel = (value, newState) => {
-        selectedSkillLevels.update(current => {
-            const updated = { ...current };
-            if (newState === FILTER_STATES.NEUTRAL) {
-                delete updated[value];
-            } else {
-                updated[value] = newState;
-            }
-            console.log(`[FilterPanel] selectedSkillLevels updated. New state:`, JSON.stringify(updated)); // Log new state
-            return updated;
-        });
-    };
+    const updateSkillLevel = updateFilterState(selectedSkillLevels);
     const updateComplexity = updateFilterState(selectedComplexities);
-    const updateSkillsFocused = (value, newState) => {
-        console.log(`[FilterPanel] Updating skill: ${value} to state: ${newState}`);
-        console.log('[FilterPanel] Current skills state:', $selectedSkillsFocusedOn);
-        
-        selectedSkillsFocusedOn.update(current => {
-            const updated = { ...current };
-            if (newState === FILTER_STATES.NEUTRAL) {
-                delete updated[value];
-            } else {
-                updated[value] = newState;
-            }
-            console.log('[FilterPanel] Updated skills state:', updated);
-            return updated;
-        });
-    };
+    const updateSkillsFocused = updateFilterState(selectedSkillsFocusedOn);
     const updatePositionsFocused = updateFilterState(selectedPositionsFocusedOn);
     const updatePhaseOfSeason = updateFilterState(selectedPhaseOfSeason);
     const updatePracticeGoals = updateFilterState(selectedPracticeGoals);
@@ -308,17 +287,20 @@
     function handleEstimatedParticipantsChange(event) {
         selectedEstimatedParticipantsMin.set(estimatedParticipantsRange[0]);
         selectedEstimatedParticipantsMax.set(estimatedParticipantsRange[1]);
+        dispatch('filterChange');
     }
 
     // Update the range slider handlers
     function handleNumberOfPeopleChange(event) {
         selectedNumberOfPeopleMin.set(numberOfPeopleRange[0]);
         selectedNumberOfPeopleMax.set(numberOfPeopleRange[1]);
+        dispatch('filterChange');
     }
 
     function handleSuggestedLengthsChange(event) {
         selectedSuggestedLengthsMin.set(suggestedLengthsRange[0]);
         selectedSuggestedLengthsMax.set(suggestedLengthsRange[1]);
+        dispatch('filterChange');
     }
 
     let skillsSearchTerm = '';
@@ -332,152 +314,6 @@
             skill.toLowerCase().includes(skillsSearchTerm.toLowerCase())
         );
   
-    let unsubscribe;
-    
-    onMount(() => {
-      // Initialize the updateFilters function
-      const updateFilters = debounce(async () => {
-        console.log(`[FilterPanel] Debounced updateFilters executing.`); // Log execution start
-        if (!browser) {
-            console.log("[FilterPanel] updateFilters skipped (not browser).");
-            return;
-        } 
-        
-        // Start with a fresh URLSearchParams, keeping only pagination and sort
-        const params = new URLSearchParams();
-        const currentParams = $page.url.searchParams;
-        
-        // Keep sort parameters
-        if (currentParams.has('sort')) params.set('sort', currentParams.get('sort'));
-        if (currentParams.has('order')) params.set('order', currentParams.get('order'));
-        
-        // Reset page when filters change
-        params.set('page', '1');
-        
-        // Update filter parameters based on filter type
-        if (filterType === 'drills') {
-          // Add selected filters
-          Object.entries($selectedSkillLevels).forEach(([level, state]) => {
-            if (state === FILTER_STATES.REQUIRED) {
-              params.append('skillLevel[]', level); 
-              console.log(`[FilterPanel] Appending skillLevel[] = ${level}`); // Log appended param
-            }
-          });
-
-          Object.entries($selectedComplexities).forEach(([complexity, state]) => {
-            if (state === FILTER_STATES.REQUIRED) {
-              params.append('complexity[]', complexity);
-            }
-          });
-
-          Object.entries($selectedSkillsFocusedOn).forEach(([skill, state]) => {
-            if (state === FILTER_STATES.REQUIRED) {
-              params.append('skillsFocused[]', skill);
-            }
-          });
-
-          Object.entries($selectedPositionsFocusedOn).forEach(([position, state]) => {
-            if (state === FILTER_STATES.REQUIRED) {
-              params.append('positionsFocused[]', position);
-            }
-          });
-
-          // Add number of people parameters
-          if ($selectedNumberOfPeopleMin !== null && $selectedNumberOfPeopleMin > numberOfPeopleOptions.min) {
-            params.set('numberOfPeopleMin', $selectedNumberOfPeopleMin.toString());
-          }
-          if ($selectedNumberOfPeopleMax !== null && $selectedNumberOfPeopleMax < numberOfPeopleOptions.max) {
-            params.set('numberOfPeopleMax', $selectedNumberOfPeopleMax.toString());
-          }
-
-          // Add suggested lengths parameters
-          if ($selectedSuggestedLengthsMin !== null && $selectedSuggestedLengthsMin > suggestedLengths.min) {
-            params.set('suggestedLengthsMin', $selectedSuggestedLengthsMin.toString());
-          }
-          if ($selectedSuggestedLengthsMax !== null && $selectedSuggestedLengthsMax < suggestedLengths.max) {
-            params.set('suggestedLengthsMax', $selectedSuggestedLengthsMax.toString());
-          }
-
-          // Add boolean filters only if they're true
-          if ($selectedHasVideo) params.set('hasVideo', 'true');
-          if ($selectedHasDiagrams) params.set('hasDiagrams', 'true');
-          if ($selectedHasImages) params.set('hasImages', 'true');
-        } else if (filterType === 'practice-plans') {
-          Object.entries($selectedPhaseOfSeason).forEach(([phase, state]) => {
-            if (state === FILTER_STATES.REQUIRED) {
-              params.append('phaseOfSeason', phase);
-            }
-          });
-          
-          Object.entries($selectedPracticeGoals).forEach(([goal, state]) => {
-            if (state === FILTER_STATES.REQUIRED) {
-              params.append('practiceGoals', goal);
-            }
-          });
-
-          if ($selectedEstimatedParticipantsMin) {
-            params.set('participantsMin', $selectedEstimatedParticipantsMin.toString());
-          }
-          if ($selectedEstimatedParticipantsMax) {
-            params.set('participantsMax', $selectedEstimatedParticipantsMax.toString());
-          }
-        }
-        
-        // Common parameters
-        if ($searchQuery) params.set('search', $searchQuery);
-
-        const finalParams = params.toString();
-        const targetPath = filterType === 'practice-plans' ? '/practice-plans' : '/drills';
-        console.log(`[FilterPanel] Navigating to: ${targetPath}?${finalParams}`); // Log target URL
-        
-        try {
-            await goto(`${targetPath}?${finalParams}`, { replaceState: true, keepFocus: true, noScroll: true });
-            console.log("[FilterPanel] goto call completed.");
-        } catch (error) {
-            console.error("[FilterPanel] Error during goto navigation:", error);
-        }
-      }, 300);
-
-      // Set up the reactive statement with appropriate stores based on filter type
-      let storesToWatch = [
-        selectedSkillLevels,
-        selectedComplexities,
-        selectedSkillsFocusedOn,
-        selectedPositionsFocusedOn,
-        selectedHasVideo,
-        selectedHasDiagrams,
-        selectedHasImages,
-        searchQuery,
-        selectedSortOption,
-        selectedSortOrder,
-        // Add these stores to watch for changes
-        selectedNumberOfPeopleMin,
-        selectedNumberOfPeopleMax,
-        selectedSuggestedLengthsMin,
-        selectedSuggestedLengthsMax
-      ];
-
-      if (filterType === 'practice-plans') {
-        storesToWatch = [
-          selectedPhaseOfSeason,
-          selectedPracticeGoals,
-          selectedEstimatedParticipantsMin,
-          selectedEstimatedParticipantsMax,
-          searchQuery,
-          selectedSortOption,
-          selectedSortOrder
-        ];
-      }
-
-      unsubscribe = subscribe(storesToWatch, updateFilters);
-    });
-
-    onDestroy(() => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    });
-
     // Helper function to subscribe to multiple stores
     function subscribe(stores, callback) {
       const unsubscribes = stores.map(store => store.subscribe(() => callback()));
@@ -520,9 +356,10 @@
                     tabindex="0"
                 >
                     {#each skillLevels as level}
+                        {@const currentState = $selectedSkillLevels[level] || FILTER_STATES.NEUTRAL}
                         <ThreeStateCheckbox
                             value={level}
-                            state={$selectedSkillLevels[level] || FILTER_STATES.NEUTRAL}
+                            state={currentState}
                             label={level}
                             onChange={updateSkillLevel}
                         />
@@ -558,9 +395,10 @@
                     tabindex="0"
                 >
                     {#each complexities as complexity}
+                        {@const currentState = $selectedComplexities[complexity] || FILTER_STATES.NEUTRAL}
                         <ThreeStateCheckbox
                             value={complexity}
-                            state={$selectedComplexities[complexity] || FILTER_STATES.NEUTRAL}
+                            state={currentState}
                             label={complexity}
                             onChange={updateComplexity}
                         />
@@ -642,9 +480,10 @@
                     tabindex="0"
                 >
                     {#each positionsFocusedOn as position}
+                        {@const currentState = $selectedPositionsFocusedOn[position] || FILTER_STATES.NEUTRAL}
                         <ThreeStateCheckbox
                             value={position}
-                            state={$selectedPositionsFocusedOn[position] || FILTER_STATES.NEUTRAL}
+                            state={currentState}
                             label={position}
                             onChange={updatePositionsFocused}
                         />
@@ -679,8 +518,8 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">Participants Range</label>
                 <RangeSlider
                     bind:values={numberOfPeopleRange}
-                    min={numberOfPeopleOptions.min}
-                    max={numberOfPeopleOptions.max}
+                    min={numberOfPeopleOptions.min ?? 0}
+                    max={numberOfPeopleOptions.max ?? 100}
                     step={1}
                     float
                     pips
@@ -722,8 +561,8 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Length Range (mins)</label>
             <RangeSlider
                 bind:values={suggestedLengthsRange}
-                min={suggestedLengths.min}
-                max={suggestedLengths.max}
+                min={suggestedLengths.min ?? 0}
+                max={suggestedLengths.max ?? 120}
                 step={5} 
                 float
                 pips
@@ -739,34 +578,37 @@
     </div>
     <!-- Has Video Filter -->
     <div class="relative">
-        <button 
-            class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${$selectedHasVideo ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            on:click={() => selectedHasVideo.update(v => !v)}
-            aria-pressed={$selectedHasVideo}
+        <button
+            class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 
+                   ${$selectedHasVideo === true ? 'bg-blue-500 text-white' : ($selectedHasVideo === false ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')}`}
+            on:click={toggleHasVideo}
+            aria-pressed={$selectedHasVideo === true ? 'true' : ($selectedHasVideo === false ? 'mixed' : 'false')}
         >
-            Has Video
+            Has Video {$selectedHasVideo === true ? '(Yes)' : ($selectedHasVideo === false ? '(No)' : '')}
         </button>
     </div>
    
     <!-- Has Diagrams Filter -->
     <div class="relative">
-        <button 
-            class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${$selectedHasDiagrams ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            on:click={() => selectedHasDiagrams.update(v => !v)}
-            aria-pressed={$selectedHasDiagrams}
+        <button
+            class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 
+                   ${$selectedHasDiagrams === true ? 'bg-blue-500 text-white' : ($selectedHasDiagrams === false ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')}`}
+            on:click={toggleHasDiagrams}
+            aria-pressed={$selectedHasDiagrams === true ? 'true' : ($selectedHasDiagrams === false ? 'mixed' : 'false')}
         >
-            Has Diagrams
+            Has Diagrams {$selectedHasDiagrams === true ? '(Yes)' : ($selectedHasDiagrams === false ? '(No)' : '')}
         </button>
     </div>
 
     <!-- Has Images Filter -->
     <div class="relative">
-        <button 
-            class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${$selectedHasImages ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-            on:click={() => selectedHasImages.update(v => !v)}
-            aria-pressed={$selectedHasImages}
+        <button
+            class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 
+                   ${$selectedHasImages === true ? 'bg-blue-500 text-white' : ($selectedHasImages === false ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')}`}
+            on:click={toggleHasImages}
+            aria-pressed={$selectedHasImages === true ? 'true' : ($selectedHasImages === false ? 'mixed' : 'false')}
         >
-            Has Images
+            Has Images {$selectedHasImages === true ? '(Yes)' : ($selectedHasImages === false ? '(No)' : '')}
         </button>
     </div>
 
@@ -796,9 +638,10 @@
                     tabindex="0"
                 >
                     {#each drillTypes as type}
+                        {@const currentState = $selectedDrillTypes[type] || FILTER_STATES.NEUTRAL}
                         <ThreeStateCheckbox
                             value={type}
-                            state={$selectedDrillTypes[type] || FILTER_STATES.NEUTRAL}
+                            state={currentState}
                             label={type}
                             onChange={toggleDrillTypeState}
                         />
@@ -1003,30 +846,6 @@
         </div>
       {/if}
     </div>
-{/if}
-
-<!-- Sort By Control -->
-{#if sortOptions.length > 0}
-  <div class="relative">
-    <select
-      class="appearance-none bg-gray-100 border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
-      on:change={handleSortChange}
-    >
-      <option value="">Sort by...</option>
-      {#each sortOptions as option}
-        <option value={option.value}>{option.label}</option>
-      {/each}
-    </select>
-    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-      <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-    </div>
-  </div>
-  <button
-    class="inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 bg-gray-100 text-gray-700 hover:bg-gray-200"
-    on:click={toggleSortOrder}
-  >
-    {$selectedSortOrder === 'asc' ? 'Ascending' : 'Descending'}
-  </button>
 {/if}
 
 <!-- Overlay to close dropdown when clicking outside -->

@@ -1,7 +1,7 @@
 import { BaseEntityService } from './baseEntityService.js';
 import * as db from '$lib/server/db';
 import { fabricToExcalidraw } from '$lib/utils/diagramMigration'; // Import the utility function
-import { NotFoundError, ForbiddenError, ValidationError, DatabaseError, ConflictError } from '$lib/server/errors.js'; // Added import
+import { NotFoundError, ForbiddenError, ValidationError, DatabaseError, ConflictError, AppError } from '$lib/server/errors.js'; // Added import
 
 /**
  * Service for managing drills
@@ -12,22 +12,35 @@ export class DrillService extends BaseEntityService {
    * Creates a new DrillService
    */
   constructor() {
-    super('drills', 'id', ['*'], [
-      'name', 'brief_description', 'detailed_description', 'skill_level', 
+    const allowedColumns = [
+      'name', 'brief_description', 'detailed_description', 'skill_level',
       'complexity', 'suggested_length', 'number_of_people_min', 'number_of_people_max',
       'skills_focused_on', 'positions_focused_on', 'drill_type', 'created_by',
-      'visibility', 'date_created', 'is_editable_by_others'
-    ], { 
-      diagrams: 'json', 
+      'visibility', 'date_created', 'updated_at', 'is_editable_by_others',
+      'parent_drill_id', 'video_link', 'diagrams', 'images', 'upload_source',
+      'search_vector' // Add search_vector if using FTS
+    ];
+    
+    const columnTypes = {
+      diagrams: 'json',
       skills_focused_on: 'array',
       positions_focused_on: 'array',
       skill_level: 'array',
       drill_type: 'array',
       images: 'array'
-    });
+    };
     
-    // Enable standard permissions model
-    this.enableStandardPermissions();
+    // Configure standard permissions (using default column names/values)
+    const permissionConfig = {
+      // userIdColumn: 'created_by', // default
+      // visibilityColumn: 'visibility', // default
+      // publicValue: 'public', // default
+      // unlistedValue: 'unlisted', // default
+      // privateValue: 'private', // default
+      // editableByOthersColumn: 'is_editable_by_others' // default
+    };
+    
+    super('drills', 'id', ['*'], allowedColumns, columnTypes, permissionConfig);
     
     // Define array fields for normalization
     this.arrayFields = ['skill_level', 'skills_focused_on', 'positions_focused_on', 'drill_type', 'images', 'diagrams'];
@@ -75,18 +88,15 @@ export class DrillService extends BaseEntityService {
    * @throws {ForbiddenError} - If user not authorized
    */
   async updateDrill(id, drillData, userId) {
-    // Check authorization using standard permission model
-    const canEdit = await this.canUserEdit(id, userId);
-    if (!canEdit) {
-      // Throw ForbiddenError instead of generic Error
-      throw new ForbiddenError('Unauthorized to edit this drill');
-    }
-    
     // Use a transaction to update drill and potentially related votes
     return this.withTransaction(async (client) => { 
+      // Check authorization using standard permission model within transaction
+      // canUserEdit now throws ForbiddenError if not authorized
+      await this.canUserEdit(id, userId, client);
+
       // Get existing skills to calculate differences
       // Pass client to getById to ensure transactional consistency if needed by base class
-      const existingDrill = await this.getById(id, client); 
+      const existingDrill = await this.getById(id, ['*'], userId, client); 
       
       // Check if drill exists
       if (!existingDrill) {
@@ -144,25 +154,19 @@ export class DrillService extends BaseEntityService {
    * @throws {ForbiddenError} - If user not authorized
    */
   async deleteDrill(id, userId, options = { deleteRelated: false }) {
-    // Check if user created the drill (or maybe if they can edit? Deletion is stricter)
-    const drill = await this.getById(id);
-    if (!drill) {
-      return false; // Drill not found - Changed: Should probably throw NotFoundError here as well, but API expects boolean
-      // Consider throwing NotFoundError('Drill not found to delete'); if API contract allows
-    }
-    
-    // Check authorization: Only creator can delete
-    if (drill.created_by !== userId) {
-      // If not the creator, check if it's unowned and the user is trying to delete with related data (dev mode)
-      // This allows cleanup in dev mode even if ownership is null
-      const isUnownedDevDelete = drill.created_by === null && options.deleteRelated;
-      if (!isUnownedDevDelete) {
-         // Throw ForbiddenError instead of generic Error
+    return this.withTransaction(async (client) => {
+      // Check if user created the drill (or maybe if they can edit? Deletion is stricter)
+      const drill = await this.getById(id, [this.permissionConfig.userIdColumn, 'skills_focused_on'], userId, client);
+      if (!drill) {
+        // getById should throw NotFoundError, but let's be safe
+        throw new NotFoundError('Drill not found to delete');
+      }
+      
+      // Authorization: Only creator can delete
+      if (drill[this.permissionConfig.userIdColumn] !== userId) {
          throw new ForbiddenError('Unauthorized to delete this drill');
       }
-    }
-    
-    return this.withTransaction(async (client) => {
+
       // Delete related items first if requested
       if (options.deleteRelated) {
           // Delete related votes
@@ -174,14 +178,8 @@ export class DrillService extends BaseEntityService {
       }
 
       // Delete the drill itself using the base service method with the client
-      const deleted = await this.delete(id, client);
+      await this.delete(id, client);
       
-      // If base delete returns false but no error, it means not found (shouldn't happen after getById check)
-      if (!deleted) {
-         console.warn(`DrillService.deleteDrill: Drill ${id} found initially but base delete returned false.`);
-         return false;
-      }
-
       // Decrement skill counts (only if deletion was successful)
       const skillsToDecrement = drill.skills_focused_on || [];
       if (skillsToDecrement.length > 0) {
@@ -364,7 +362,7 @@ export class DrillService extends BaseEntityService {
     const searchColumns = ['name', 'brief_description', 'detailed_description'];
     
     // Add variation count to results
-    const results = await this.search(searchTerm, searchColumns, options);
+    const results = await this.search(searchTerm, null, options);
     
     // Add variation counts if there are results
     if (results && results.items && results.items.length > 0) {
@@ -396,6 +394,7 @@ export class DrillService extends BaseEntityService {
    * @param {'asc'|'desc'} [options.sortOrder='desc'] - Sort order
    * @param {number} [options.page=1] - Page number
    * @param {number} [options.limit=10] - Items per page
+   * @param {number|null} [options.userId] - User ID for permission filtering
    * @param {string[]} [options.columns] - Columns to include in the result
    * @returns {Promise<Object>} - Object containing `items` array and `pagination` info
    */
@@ -404,167 +403,99 @@ export class DrillService extends BaseEntityService {
       skill_level, complexity, skills_focused_on, positions_focused_on, 
       drill_type, number_of_people_min, number_of_people_max, 
       suggested_length_min, suggested_length_max, hasVideo, 
-      hasDiagrams, hasImages, searchQuery,
-      userId // Added userId filter
+      hasDiagrams, hasImages, searchQuery
     } = filters;
-    const { sortBy = 'date_created', sortOrder = 'desc', page = 1, limit = 10, columns = ['*'] } = options;
+    const { 
+      sortBy = 'date_created', 
+      sortOrder = 'desc', 
+      page = 1, 
+      limit = 10, 
+      columns = ['*'], 
+      userId = null // Extract userId for permission check
+    } = options;
 
-    // Validate sort column and order
-    // Added columns based on indexes from performance.md for potential sorting
-    const allowedSortColumns = [
-      'name', 'date_created', 'complexity', 'suggested_length', 
-      'number_of_people_min', 'number_of_people_max', 
-      // Cannot easily sort by hasVideo/hasDiagrams/hasImages as they rely on expressions/partial indexes
-      // Cannot easily sort by array fields (skill_level, etc.) without complex queries
-    ]; 
-    const validSortBy = allowedSortColumns.includes(sortBy) ? sortBy : 'date_created';
-    const validSortOrder = this.validateSortOrder(sortOrder);
+    // --- Map application-level filters to BaseEntityService filter format ---
+    const baseFilters = {};
+    const customConditions = []; // Store custom SQL conditions here
 
-    const conditions = [];
-    const queryParams = [];
-    let paramIndex = 1;
+    // Array filters -> use __any (array overlap '&&')
+    if (skill_level?.length) baseFilters['skill_level__any'] = skill_level;
+    if (skills_focused_on?.length) baseFilters['skills_focused_on__any'] = skills_focused_on;
+    if (positions_focused_on?.length) baseFilters['positions_focused_on__any'] = positions_focused_on;
+    if (drill_type?.length) baseFilters['drill_type__any'] = drill_type;
 
-    // Array filters (using ANY operator - @@ GIN operator might be better? Checking ANY first)
-    const addArrayFilter = (field, values) => {
-      if (values && Array.isArray(values) && values.length > 0) {
-        // Check if ANY value in the filter array is present in the column array
-        conditions.push(`${field} && $${paramIndex++}`); // && is the array overlap operator
-        queryParams.push(values);
-      }
-    };
-    addArrayFilter('skill_level', skill_level);
-    addArrayFilter('skills_focused_on', skills_focused_on);
-    addArrayFilter('positions_focused_on', positions_focused_on);
-    addArrayFilter('drill_type', drill_type);
-
-    // Simple equality filters
+    // Simple equality
     if (complexity) {
-      conditions.push(`complexity = $${paramIndex++}`);
-      queryParams.push(complexity);
+      baseFilters['complexity'] = complexity; // Uses 'exact'/'eq' by default
     }
 
     // Range filters
     if (number_of_people_min !== undefined) {
-      // Find drills where *some* overlap exists with the requested range
-      // A drill range [min_drill, max_drill] overlaps [min_filter, max_filter] if:
-      // min_drill <= max_filter AND max_drill >= min_filter
-      // Assuming number_of_people_min/max define the *required* range for participants
-      // We want drills where the drill's min <= required_min AND drill's max >= required_min
-      // OR drills where drill's min <= required_max AND drill's max >= required_max
-      // OR drills where drill's min >= required_min AND drill's max <= required_max
-      // Simpler: Find drills where the drill range is *compatible* with the filter range
-      // A drill [d_min, d_max] can accommodate f_min people if d_min <= f_min <= d_max
-      // A drill [d_min, d_max] can accommodate f_max people if d_min <= f_max <= d_max
-      // If both f_min and f_max are provided, we need a drill that can handle *at least* f_min and *at most* f_max?
-      // Let's interpret as: find drills whose [min, max] range *overlaps* with the filter range [minPeople, maxPeople].
-      // This seems complex. Let's simplify: find drills where *at least* minPeople can participate.
-      // And if maxPeople is given, find drills where *at most* maxPeople can participate.
-      // This means: drill.min <= minPeople AND drill.max >= minPeople (can handle min requirement)
-      // AND drill.min <= maxPeople AND drill.max >= maxPeople (can handle max requirement)
-      // Let's refine: Find drills where number_of_people_min <= filter_min
-      conditions.push(`number_of_people_min <= $${paramIndex++}`);
-      queryParams.push(number_of_people_min);
+      baseFilters['number_of_people_min__lte'] = number_of_people_min;
     }
     if (number_of_people_max !== undefined) {
-       // And number_of_people_max >= filter_max (if max is not null)
-      conditions.push(`(number_of_people_max IS NULL OR number_of_people_max >= $${paramIndex++})`);
-      queryParams.push(number_of_people_max);
+      baseFilters['number_of_people_max__gte'] = number_of_people_max;
     }
 
     // Similar logic for suggested length
     if (suggested_length_min !== undefined) {
-      conditions.push(`suggested_length >= $${paramIndex++}`);
-      queryParams.push(suggested_length_min);
+      baseFilters['suggested_length__gte'] = suggested_length_min;
     }
     if (suggested_length_max !== undefined) {
-      conditions.push(`suggested_length <= $${paramIndex++}`);
-      queryParams.push(suggested_length_max);
+      baseFilters['suggested_length__lte'] = suggested_length_max;
     }
 
     // Boolean filters based on index conditions from performance.md
     if (hasVideo === true) {
-      conditions.push(`(video_link IS NOT NULL AND video_link != '')`);
+      baseFilters['video_link__isnull'] = false; // Assuming empty string means no video
     } else if (hasVideo === false) {
-      conditions.push(`(video_link IS NULL OR video_link = '')`);
+      baseFilters['video_link__isnull'] = true;
     }
 
+    // Handle hasDiagrams/hasImages filters separately
     if (hasDiagrams === true) {
-      conditions.push(`(jsonb_array_length(diagrams) > 0)`); // Match index expression
+      // Check for non-null, non-empty JSON array using exists operator for the first element
+      customConditions.push("diagrams IS NOT NULL AND array_length(diagrams,1) > 0");
     } else if (hasDiagrams === false) {
-      conditions.push(`(diagrams IS NULL OR jsonb_array_length(diagrams) = 0)`);
+      // Check for null or does not have a 0th element (meaning empty or not an array)
+      customConditions.push("(diagrams IS NULL OR array_length(diagrams,1) IS NULL)");
     }
 
     if (hasImages === true) {
-      conditions.push(`(jsonb_array_length(images) > 0)`); // Match index expression
+      // Check for non-null, non-empty text array
+      customConditions.push("images IS NOT NULL AND array_length(images, 1) > 0");
     } else if (hasImages === false) {
-      conditions.push(`(images IS NULL OR jsonb_array_length(images) = 0)`);
+      // Check for null or empty array
+      customConditions.push("(images IS NULL OR array_length(images, 1) = 0)");
     }
 
-    // Search query
-    if (searchQuery) {
-      const searchPattern = `%${searchQuery.toLowerCase()}%`;
-      conditions.push(`(
-        LOWER(name) ILIKE $${paramIndex} OR 
-        LOWER(brief_description) ILIKE $${paramIndex} OR 
-        LOWER(detailed_description) ILIKE $${paramIndex}
-      )`);
-      queryParams.push(searchPattern);
-      paramIndex++;
-    }
+    // --- Call BaseEntityService.getAll or BaseEntityService.search ---
+    let resultsPromise;
+    const baseOptions = { page, limit, sortBy, sortOrder, columns, userId, filters: baseFilters };
 
-    // Visibility filter (apply default logic unless overridden by specific filters)
-    // Allows public, unlisted, or private if created_by matches userId
-    const visibilityConditions = [
-      "(visibility = 'public' OR visibility IS NULL)", // Treat NULL as public
-      "visibility = 'unlisted'"
-    ];
-    if (userId) {
-      visibilityConditions.push(`(visibility = 'private' AND created_by = $${paramIndex++})`);
-      queryParams.push(userId);
+    // If custom conditions exist, we need to bypass the base search/getAll and construct a custom query
+    if (customConditions.length > 0 || searchQuery) {
+        resultsPromise = this._executeFilteredQuery(searchQuery, baseFilters, customConditions, baseOptions);
+    } else {
+      // Use the enhanced getAll method if no search or custom filters
+      resultsPromise = this.getAll(baseOptions);
     }
-    conditions.push(`(${visibilityConditions.join(' OR ')})`);
-    
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const orderByClause = `ORDER BY ${validSortBy} ${validSortOrder}, ${this.primaryKey} ${validSortOrder}`;
-    const offset = (page - 1) * limit;
 
     try {
-      // Get total count for pagination
-      const countQuery = `SELECT COUNT(*) FROM ${this.tableName} ${whereClause}`;
-      const countResult = await db.query(countQuery, queryParams);
-      const totalItems = parseInt(countResult.rows[0].count);
-      const totalPages = Math.ceil(totalItems / limit);
+      const results = await resultsPromise;
 
-      // Get the actual items
-      // Build the SELECT clause based on requested columns
-      let safeColumns = '*'; // Default to selecting all columns
-      // Check if 'columns' is provided, is an array, has elements, and isn't just ['*']
-      if (Array.isArray(columns) && columns.length > 0 && !(columns.length === 1 && columns[0] === '*')) {
-        // If specific columns are requested, quote them properly for SQL
-        // Escape any internal double quotes within column names (though unlikely)
-        safeColumns = columns.map(col => `"${col.replace(/"/g, '""' )}"`).join(', '); 
+      // Add variation counts (this logic remains drill-specific)
+      if (results && results.items && results.items.length > 0) {
+        await this._addVariationCounts(results.items);
       }
-      
-      const itemsQuery = `
-        SELECT ${safeColumns}
-        FROM ${this.tableName}
-        ${whereClause}
-        ${orderByClause}
-        LIMIT $${paramIndex++} OFFSET $${paramIndex++}
-      `;
-      const itemsResult = await db.query(itemsQuery, [...queryParams, limit, offset]);
-      const items = itemsResult.rows;
-
-      // Add variation counts
-      await this._addVariationCounts(items);
 
       return {
-        items,
+        items: results.items,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          totalItems,
-          totalPages
+          totalItems: results.pagination.totalItems,
+          totalPages: results.pagination.totalPages
         }
       };
     } catch (error) {
@@ -572,6 +503,85 @@ export class DrillService extends BaseEntityService {
       // Consider re-throwing or returning a specific error structure
       throw new DatabaseError('Failed to retrieve filtered drills.', error);
     }
+  }
+  
+  /**
+   * Executes the filtered query, combining base filters, custom conditions, and FTS.
+   * @private
+   */
+  async _executeFilteredQuery(searchQuery, baseFilters, customConditions, options) {
+    const { page = 1, limit = 10, sortBy = 'date_created', sortOrder = 'desc', columns = ['*'], userId = null } = options;
+    const offset = (page - 1) * limit;
+    
+    // Build WHERE clause from base filters and permissions
+    const { whereClause: baseWhereClause, queryParams: baseQueryParams, paramCount: baseParamCount } = 
+        this._buildWhereClause(baseFilters, userId, 0);
+        
+    let finalConditions = [];
+    let queryParams = [...baseQueryParams];
+    let currentParamCount = baseParamCount;
+    
+    // Add base conditions (remove initial 'WHERE ' if present)
+    if (baseWhereClause.trim()) {
+        finalConditions.push(baseWhereClause.trim().substring(6)); // Remove 'WHERE '
+    }
+    
+    // Add Full-Text Search condition if applicable
+    let ftsCondition = '';
+    if (searchQuery) {
+        const searchConfig = 'english'; // Or make configurable
+        ftsCondition = `search_vector @@ plainto_tsquery($${currentParamCount + 1}, $${currentParamCount + 2})`;
+        queryParams.push(searchConfig, searchQuery);
+        currentParamCount += 2;
+        finalConditions.push(ftsCondition);
+    }
+    
+    // Add custom conditions
+    finalConditions.push(...customConditions);
+    
+    const finalWhereClause = finalConditions.length > 0 ? `WHERE ${finalConditions.join(' AND ')}` : '';
+    
+    // Build ORDER BY clause
+    let orderBy;
+    if (searchQuery && (!sortBy || sortBy === 'relevance')) {
+        // Default sort by relevance when searching, ensure FTS params are first
+        orderBy = `ORDER BY ts_rank_cd(search_vector, plainto_tsquery($1, $2)) DESC, ${this.primaryKey} DESC`;
+    } else if (sortBy && this.isColumnAllowed(sortBy)) {
+        const sanitizedSortOrder = this.validateSortOrder(sortOrder);
+        orderBy = `ORDER BY ${sortBy} ${sanitizedSortOrder}, ${this.primaryKey} ${sanitizedSortOrder}`;
+    } else {
+        orderBy = `ORDER BY ${this.primaryKey} DESC`; // Default sort
+    }
+    
+    // Validate columns
+    const validColumns = columns.filter(col => col === '*' || this.isColumnAllowed(col));
+    if (validColumns.length === 0) validColumns.push(this.primaryKey);
+    
+    // Count total items
+    const countQuery = `SELECT COUNT(*) FROM ${this.tableName} ${finalWhereClause}`;
+    const countResult = await db.query(countQuery, queryParams);
+    const totalItems = parseInt(countResult.rows[0].count);
+    
+    // Fetch items with pagination
+    const selectQuery = `
+        SELECT ${validColumns.join(', ')}
+        FROM ${this.tableName}
+        ${finalWhereClause}
+        ${orderBy}
+        LIMIT $${currentParamCount + 1} OFFSET $${currentParamCount + 2}
+    `;
+    queryParams.push(limit, offset);
+    const itemsResult = await db.query(selectQuery, queryParams);
+    
+    return {
+        items: itemsResult.rows,
+        pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit)
+        }
+    };
   }
   
   /**
@@ -648,34 +658,25 @@ export class DrillService extends BaseEntityService {
    * @throws {ForbiddenError} - If user not authorized
    */
   async setAsPrimaryVariant(drillId, userId) {
-    const drill = await this.getById(drillId);
-    if (!drill) {
-      // Throw NotFoundError instead of generic Error
-      throw new NotFoundError('Drill not found');
-    }
-    
-    if (!drill.parent_drill_id) {
-      // Throw ValidationError instead of generic Error
-      throw new ValidationError('This drill is not a variation');
-    }
-    
-    const parentDrill = await this.getById(drill.parent_drill_id);
-    // Add check for parentDrill existence (though getById should handle it)
-    if (!parentDrill) {
-       throw new NotFoundError('Parent drill not found');
-    }
-    
-    // Check if user can edit the parent using standard permission model
-    const canEdit = await this.canUserEdit(parentDrill.id, userId);
-    if (!canEdit) {
-      // Throw ForbiddenError instead of generic Error
-      throw new ForbiddenError('Unauthorized to modify drill variants');
-    }
-    
-    // Use transaction helper for the swap operation
     return this.withTransaction(async (client) => {
-      // Swap this drill with its parent
-      // Use temporary negative ID to avoid unique constraint violations
+      const drill = await this.getById(drillId, ['*', 'parent_drill_id'], userId, client);
+      if (!drill) {
+        // Throw NotFoundError instead of generic Error
+        throw new NotFoundError('Drill not found');
+      }
+      
+      if (!drill.parent_drill_id) {
+        // Throw ValidationError instead of generic Error
+        throw new ValidationError('This drill is not a variation');
+      }
+      
+      const parentDrill = await this.getById(drill.parent_drill_id, ['*'], userId, client);
+      // Add check for parentDrill existence (though getById should handle it)
+      if (!parentDrill) {
+         throw new NotFoundError('Parent drill not found');
+      }
+      
+      // Use transaction helper for the swap operation
       const tempId = -drill.id;
       
       // Set drill ID to temporary ID
@@ -1111,13 +1112,18 @@ export class DrillService extends BaseEntityService {
           // Use base create method logic for consistency (handles timestamps etc.)
           // Instead of direct INSERT, we call the internal create method
           // We need to adapt the base create method or replicate its INSERT logic here
-          // Replicating INSERT logic here for simplicity in this refactor:
+          // Base `create` should handle this now, let's try using it.
+          /* Replicating INSERT logic here for simplicity in this refactor:
           const columns = Object.keys(drillToInsert);
           const values = Object.values(drillToInsert);
           const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
           const queryText = `INSERT INTO ${this.tableName} (${columns.map(col => `"${col}"`).join(', ')}) VALUES (${placeholders}) RETURNING *`;
           
           return client.query(queryText, values);
+          */
+          // Assuming base `create` can work within the transaction using the passed client.
+          // Need to ensure base `create` can accept a client argument.
+          return this.create(drillToInsert, client);
         });
 
         // Wait for all insertions to complete

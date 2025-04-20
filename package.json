@@ -18,7 +18,8 @@
 		"tailwind:build": "tailwindcss build src/routes/styles.css -o public/build/tailwind.css",
 		"tailwind:watch": "tailwindcss build src/routes/styles.css -o public/build/tailwind.css --watch",
 		"migrate:create": "npx node-pg-migrate create",
-		"migrate:up": "dotenv -e .env.local -- npx @better-auth/cli migrate --config src/lib/auth.js",
+		"migrate:up": "dotenv -e .env.local -- npx node-pg-migrate up",
+		"migrate:auth:up": "dotenv -e .env.local -- npx @better-auth/cli migrate --config src/lib/auth.js",
 		"migrate:down": "dotenv -e .env.local -- npx node-pg-migrate down"
 	},
 	"devDependencies": {

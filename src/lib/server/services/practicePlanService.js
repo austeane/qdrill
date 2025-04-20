@@ -14,14 +14,28 @@ export class PracticePlanService extends BaseEntityService {
    * Creates a new PracticePlanService
    */
   constructor() {
-    super('practice_plans', 'id', ['*'], [
+    const allowedColumns = [
       'name', 'description', 'practice_goals', 'phase_of_season',
       'estimated_number_of_participants', 'created_by', 'visibility',
-      'is_editable_by_others', 'start_time', 'created_at', 'updated_at'
-    ], {});
+      'is_editable_by_others', 'start_time', 'created_at', 'updated_at',
+      'search_vector' // Add search_vector for FTS
+    ];
     
-    // Enable standard permissions model
-    this.enableStandardPermissions();
+    const columnTypes = {
+        practice_goals: 'array' // Assuming practice_goals is stored as text[]
+    };
+    
+    // Configure standard permissions (using default column names/values)
+    const permissionConfig = {
+      // userIdColumn: 'created_by', // default
+      // visibilityColumn: 'visibility', // default
+      // publicValue: 'public', // default
+      // unlistedValue: 'unlisted', // default
+      // privateValue: 'private', // default
+      // editableByOthersColumn: 'is_editable_by_others' // default
+    };
+    
+    super('practice_plans', 'id', ['*'], allowedColumns, columnTypes, permissionConfig);
   }
 
   /**
@@ -75,16 +89,18 @@ export class PracticePlanService extends BaseEntityService {
       .offset(offset);
 
     // Apply visibility filters
+    // Use configured column names/values from permissionConfig
+    const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } = this.permissionConfig;
     query = query.where((eb) => {
       const conditions = [
-        eb('pp.visibility', '=', 'public'),
-        eb('pp.visibility', '=', 'unlisted')
+        eb(`pp.${visibilityColumn}`, '=', publicValue),
+        eb(`pp.${visibilityColumn}`, '=', unlistedValue)
       ];
       if (userId) {
         conditions.push(
           eb.and([
-            eb('pp.visibility', '=', 'private'),
-            eb('pp.created_by', '=', userId)
+            eb(`pp.${visibilityColumn}`, '=', privateValue),
+            eb(`pp.${userIdColumn}`, '=', userId)
           ])
         );
       }
@@ -136,11 +152,10 @@ export class PracticePlanService extends BaseEntityService {
 
     // Search Query
     if (filters.searchQuery) {
-      const searchTerm = `%${filters.searchQuery.toLowerCase()}%`;
-      query = query.where((eb) => eb.or([
-        eb(sql`lower(pp.name)`, 'like', searchTerm),
-        eb(sql`lower(pp.description)`, 'like', searchTerm)
-      ]));
+      // Use Full-Text Search assuming 'search_vector' column
+      const searchTerm = filters.searchQuery;
+      const searchConfig = 'english'; // Or make configurable
+      query = query.where(sql`pp.search_vector @@ plainto_tsquery(${searchConfig}, ${searchTerm})`);
     }
 
     // Apply sorting
@@ -169,14 +184,14 @@ export class PracticePlanService extends BaseEntityService {
     // Apply the same visibility and filters as the main query
     countQuery = countQuery.where((eb) => {
       const conditions = [
-        eb('pp.visibility', '=', 'public'),
-        eb('pp.visibility', '=', 'unlisted')
+        eb(`pp.${visibilityColumn}`, '=', publicValue),
+        eb(`pp.${visibilityColumn}`, '=', unlistedValue)
       ];
       if (userId) {
         conditions.push(
           eb.and([
-            eb('pp.visibility', '=', 'private'),
-            eb('pp.created_by', '=', userId)
+            eb(`pp.${visibilityColumn}`, '=', privateValue),
+            eb(`pp.${userIdColumn}`, '=', userId)
           ])
         );
       }
@@ -215,11 +230,10 @@ export class PracticePlanService extends BaseEntityService {
        ));
     }
     if (filters.searchQuery) {
-      const searchTerm = `%${filters.searchQuery.toLowerCase()}%`;
-      countQuery = countQuery.where((eb) => eb.or([
-        eb(sql`lower(pp.name)`, 'like', searchTerm),
-        eb(sql`lower(pp.description)`, 'like', searchTerm)
-      ]));
+      // Apply FTS condition to count query too
+      const searchTerm = filters.searchQuery;
+      const searchConfig = 'english'; // Or make configurable
+      countQuery = countQuery.where(sql`pp.search_vector @@ plainto_tsquery(${searchConfig}, ${searchTerm})`);
     }
 
 
@@ -413,15 +427,10 @@ export class PracticePlanService extends BaseEntityService {
   async getPracticePlanById(id, userId = null) {
     try {
       // First fetch the practice plan using base service method
+      // Pass userId here to enforce view permissions early via getById
       // This will throw NotFoundError if the plan doesn't exist.
-      const practicePlan = await this.getById(id);
-
-      // Check view permission using standard permission check
-      // This relies on the entity being fetched first.
-      if (!this.canUserView(practicePlan, userId)) {
-        // Use ForbiddenError
-        throw new ForbiddenError('You do not have permission to view this practice plan');
-      }
+      // It will throw ForbiddenError if user cannot view.
+      const practicePlan = await this.getById(id, ['*'], userId); 
 
       // Fetch sections and items within a transaction for consistency
       return this.withTransaction(async (client) => {
@@ -530,9 +539,7 @@ export class PracticePlanService extends BaseEntityService {
       throw new ValidationError('Invalid update data provided.');
     }
 
-    // Check edit permissions *before* fetching the plan for update
-    // This relies on canUserEdit throwing NotFoundError if the plan doesn't exist,
-    // or ForbiddenError if the user cannot edit.
+    // Use base canUserEdit which now throws errors
     try {
       await this.canUserEdit(id, userId);
     } catch (error) {
@@ -553,55 +560,66 @@ export class PracticePlanService extends BaseEntityService {
     
     // Use transaction helper
     return this.withTransaction(async (client) => {
-      // Add updated timestamp
-      const planWithTimestamp = this.addTimestamps(planData, false);
+      // --- Check permissions again inside transaction --- 
+      await this.canUserEdit(id, userId, client);
       
-      // Update practice plan
-      const result = await client.query(
-        `UPDATE practice_plans SET 
-         name = $1,
-         description = $2,
-         practice_goals = $3,
-         phase_of_season = $4,
-         estimated_number_of_participants = $5,
-         is_editable_by_others = $6,
-         visibility = $7,
-         start_time = $8,
-         updated_at = $9
-         WHERE id = $10 AND (created_by = $11 OR is_editable_by_others = true)
-         RETURNING *`,
-        [
-          planWithTimestamp.name, 
-          planWithTimestamp.description, 
-          planWithTimestamp.practice_goals, 
-          planWithTimestamp.phase_of_season, 
-          planWithTimestamp.estimated_number_of_participants,
-          planWithTimestamp.is_editable_by_others, 
-          planWithTimestamp.visibility, 
-          planWithTimestamp.start_time,
-          planWithTimestamp.updated_at,
-          id, 
-          userId
-        ]
-      );
+      // --- Prepare data for update --- 
+      // Exclude sections and items from the main plan update data
+      const { sections, ...planUpdateData } = planData;
+      const planWithTimestamp = this.addTimestamps(planUpdateData, false);
 
-      if (result.rowCount === 0) {
-        throw new Error('Unauthorized');
-      }
+      // Remove fields that shouldn't be directly updated or are handled by permissions/logic
+      delete planWithTimestamp.created_by; // Don't allow changing creator
+      // visibility and is_editable_by_others might be updated based on logic above
+      
+      // --- Update the main practice_plans table using base method --- 
+      // const result = await client.query(
+      //   `UPDATE practice_plans SET 
+      //    name = $1,
+      //    description = $2,
+      //    practice_goals = $3,
+      //    phase_of_season = $4,
+      //    estimated_number_of_participants = $5,
+      //    is_editable_by_others = $6,
+      //    visibility = $7,
+      //    start_time = $8,
+      //    updated_at = $9
+      //    WHERE id = $10 -- Permission check moved to canUserEdit
+      //    RETURNING *`,
+      //   [
+      //     planWithTimestamp.name, 
+      //     planWithTimestamp.description, 
+      //     planWithTimestamp.practice_goals, 
+      //     planWithTimestamp.phase_of_season, 
+      //     planWithTimestamp.estimated_number_of_participants,
+      //     planWithTimestamp.is_editable_by_others, 
+      //     planWithTimestamp.visibility, 
+      //     planWithTimestamp.start_time,
+      //     planWithTimestamp.updated_at,
+      //     id
+      //   ]
+      // );
 
-      // Delete existing sections and drills
-      await client.query(
-        `DELETE FROM practice_plan_sections WHERE practice_plan_id = $1`,
-        [id]
-      );
+      // Use base update method, passing the client
+      const updatedPlan = await this.update(id, planWithTimestamp, client);
+
+      // --- Update sections and drills (delete and re-insert) --- 
+      // Note: This delete/re-insert is simple but can be inefficient for large plans.
+      // A more complex update strategy could compare/update/insert/delete rows individually.
+
+      // Delete existing sections and drills for this plan
       await client.query(
         `DELETE FROM practice_plan_drills WHERE practice_plan_id = $1`,
         [id]
       );
+      await client.query(
+        `DELETE FROM practice_plan_sections WHERE practice_plan_id = $1`,
+        [id]
+      );
 
       // Insert sections
-      if (planData.sections?.length > 0) {
-        for (const section of planData.sections) {
+      if (sections?.length > 0) {
+        for (const section of sections) {
           // Validate section data before inserting?
           if (!section || typeof section.name !== 'string' || typeof section.order !== 'number') {
             throw new ValidationError('Invalid section data provided during update.', { section: section?.name || 'unknown' });
@@ -667,12 +685,8 @@ export class PracticePlanService extends BaseEntityService {
         }
       }
 
-      // Fetch the newly updated plan to return it (including sections/drills potentially)
-      // Using getPracticePlanById ensures consistency and applies view permissions
-      // However, this might be inefficient. Returning result.rows[0] is faster but less complete.
-      // Let's return the raw update result for now, assuming the caller might re-fetch if needed.
-      // return await this.getPracticePlanById(id, userId);
-      return result.rows[0];
+      // Return the result from the base update method
+      return updatedPlan;
 
     }); // Transaction handles rollback
   }
@@ -690,13 +704,15 @@ export class PracticePlanService extends BaseEntityService {
     // Check delete permissions (uses canUserEdit logic, should ideally be canUserDelete if different)
     // This relies on canUserEdit throwing NotFoundError or ForbiddenError.
     try {
-      const canEdit = await this.canUserEdit(id, userId);
+      // Check if user can edit first (base method throws if not found or forbidden)
+      await this.canUserEdit(id, userId);
+      
       // Add specific check: Only the creator can delete (is_editable_by_others doesn't grant delete rights)
-      const plan = await this.getById(id); // Fetch again to check creator explicitly
-      if (plan.created_by !== userId) {
+      // Fetch only the creator column using base getById
+      const plan = await this.getById(id, [this.permissionConfig.userIdColumn], userId);
+      if (plan[this.permissionConfig.userIdColumn] !== userId) {
         throw new ForbiddenError('Only the creator can delete this practice plan');
       }
-      // Note: If canUserEdit already threw, this won't be reached.
     } catch (error) {
       // Re-throw known errors from permission check/getById
       if (error instanceof NotFoundError || error instanceof ForbiddenError) {
@@ -722,8 +738,8 @@ export class PracticePlanService extends BaseEntityService {
         );
 
         // Finally delete the practice plan using the base method
-        // The base delete method now throws NotFoundError if the plan was already deleted.
-        await super.delete(id);
+        // Pass client to base delete
+        await this.delete(id, client);
 
         // No return value needed, implicit resolution indicates success
       });
@@ -1016,23 +1032,24 @@ export class PracticePlanService extends BaseEntityService {
    */
   async associatePracticePlan(id, userId) {
     // getById will throw NotFoundError if plan doesn't exist
-    const plan = await this.getById(id);
+    // Pass userId=null initially to fetch regardless of current owner, but check visibility
+    const plan = await this.getById(id, [this.permissionConfig.userIdColumn], null); 
 
     // Check if already owned by a *different* user
-    if (plan.created_by !== null && plan.created_by !== userId) {
+    if (plan[this.permissionConfig.userIdColumn] !== null && plan[this.permissionConfig.userIdColumn] !== userId) {
       // Use ConflictError as the resource state prevents association
       throw new ConflictError('Practice plan is already associated with another user.');
     }
 
     // If already owned by the *same* user, return the plan (idempotent)
-    if (plan.created_by === userId) {
+    if (plan[this.permissionConfig.userIdColumn] === userId) {
       return plan;
     }
 
     // Update the created_by field using base update method
     // This will also throw NotFoundError if the plan disappears mid-operation
     try {
-      return await this.update(id, { created_by: userId });
+      return await this.update(id, { [this.permissionConfig.userIdColumn]: userId });
     } catch (error) {
       // Re-throw known errors (like NotFoundError from update)
       if (error instanceof NotFoundError) {

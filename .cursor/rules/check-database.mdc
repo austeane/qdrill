@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+When useful, check the database by running psql with the DATABASE_URL in .env.local

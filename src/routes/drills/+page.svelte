@@ -141,9 +141,9 @@
         }
     };
 
-    // Helper to set params for simple values (null check)
-    const updateSimpleParam = (paramName, value, defaultValue = null) => {
-        if (value !== null && value !== undefined && value !== '' && value !== defaultValue) { // Only add if not default
+    // Helper to set params for simple values (considering default)
+    const updateSimpleParam = (paramName, value, defaultValue = undefined) => {
+        if (value !== null && value !== undefined && value !== defaultValue) {
             params.set(paramName, value.toString());
         }
     };
@@ -160,16 +160,23 @@
     updateCommaSeparatedParam('positions', $selectedPositionsFocusedOn);
     updateCommaSeparatedParam('types', $selectedDrillTypes);
 
-    updateSimpleParam('minPeople', $selectedNumberOfPeopleMin);
-    updateSimpleParam('maxPeople', $selectedNumberOfPeopleMax);
-    updateSimpleParam('minLength', $selectedSuggestedLengthsMin);
-    updateSimpleParam('maxLength', $selectedSuggestedLengthsMax);
+    // Range params – only include if they differ from the defaults
+    const defaultMinPeople = filterOptions.numberOfPeopleOptions?.min ?? 0;
+    const defaultMaxPeople = filterOptions.numberOfPeopleOptions?.max ?? 100;
+    const defaultMinLength = filterOptions.suggestedLengths?.min ?? 0;
+    const defaultMaxLength = filterOptions.suggestedLengths?.max ?? 120;
+
+    updateSimpleParam('minPeople', $selectedNumberOfPeopleMin, defaultMinPeople);
+    updateSimpleParam('maxPeople', $selectedNumberOfPeopleMax, defaultMaxPeople);
+    updateSimpleParam('minLength', $selectedSuggestedLengthsMin, defaultMinLength);
+    updateSimpleParam('maxLength', $selectedSuggestedLengthsMax, defaultMaxLength);
     
     updateBooleanParam('hasVideo', $selectedHasVideo);
     updateBooleanParam('hasDiagrams', $selectedHasDiagrams);
     updateBooleanParam('hasImages', $selectedHasImages);
 
-    updateSimpleParam('q', $searchQuery, '');
+    // Pass null for searchQuery if it's empty to avoid adding '?q='
+    updateSimpleParam('q', $searchQuery === '' ? null : $searchQuery);
 
     goto(`/drills?${params.toString()}`, { keepFocus: true, noScroll: true });
   }

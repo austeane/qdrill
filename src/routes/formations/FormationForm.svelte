@@ -4,8 +4,9 @@
   import { goto } from '$app/navigation';
   import ExcalidrawWrapper from '../../components/ExcalidrawWrapper.svelte';
   import { page } from '$app/stores';
-  import { signIn } from '@auth/sveltekit/client';
-  import { toast } from '@zerodevx/svelte-toast'
+  import { SvelteToast, toast } from '@zerodevx/svelte-toast';
+  import { authClient } from '$lib/auth-client';
+  import { createForm } from 'svelte-forms-lib';
 
   // Initialize stores
   export let formation = {
@@ -236,113 +237,207 @@
     return Object.keys(newErrors).length === 0;
   }
 
-  // Handle form submission
-  async function handleSubmit() {
-    // Trigger saveDiagram on each component to dispatch 'save' events
-    diagramRefs.forEach(ref => {
-      if (ref && typeof ref.saveDiagram === 'function') {
-        ref.saveDiagram(); // This dispatches the event handled by handleDiagramSave
-      }
-    });
+  // Use Better Auth session store
+  const session = authClient.useSession();
+  $: isLoggedIn = !!$session.data?.user; // Reactive boolean for login state
 
-    // Wait for Svelte store updates triggered by handleDiagramSave to complete
-    await tick();
-
-    if (!validateForm()) return;
-
-    // If not logged in and trying to create private/unlisted formation
-    if (!$page.data.session && $visibility !== 'public') {
-      const confirmed = confirm(
-        `Log in to create a ${$visibility} formation.\n\n` +
-        'Click OK to log in with Google\n' +
-        'Click Cancel to create as public instead'
-      );
-      
-      if (confirmed) {
-        // Store form data in sessionStorage
-        const formData = {
-          name: $name,
-          brief_description: $brief_description,
-          detailed_description: $detailed_description,
-          diagrams: $diagrams,
-          tags: $tags,
-          visibility: $visibility,
-          is_editable_by_others: $is_editable_by_others,
-          formation_type: $formation_type
-        };
-        sessionStorage.setItem('pendingFormationData', JSON.stringify(formData));
-        await signIn('google');
-        return;
-      } else {
-        $visibility = 'public';
-      }
-    }
-
-    // If not logged in, force is_editable_by_others to true
-    if (!$page.data.session) {
-      $is_editable_by_others = true;
-    }
-
-    try {
-      const method = formation.id ? 'PUT' : 'POST';
-      // Always use the /api/formations endpoint for both POST and PUT
-      const url = '/api/formations'; 
-      
-      const requestBody = {
-        id: formation.id, // The ID is included in the body for PUT requests
-        name: $name,
-        brief_description: $brief_description,
-        detailed_description: $detailed_description,
-        diagrams: $diagrams,
-        tags: $tags,
-        is_editable_by_others: $is_editable_by_others,
-        visibility: $visibility,
-        formation_type: $formation_type
-      };
-
-      // Log the data being sent, excluding the potentially large diagrams array
-      const { diagrams: _, ...loggableData } = requestBody;
-      console.log('Submitting formation data:', loggableData);
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+  const { form, state, handleSubmit, updateField } = createForm({
+    initialValues: {
+      name: formation.name ?? '',
+      brief_description: formation.brief_description ?? '',
+      detailed_description: formation.detailed_description ?? '',
+      diagrams: parseDiagrams(formation.diagrams),
+      tags: formation.tags ?? [],
+      is_editable_by_others: formation.is_editable_by_others ?? false,
+      visibility: formation.visibility ?? 'public',
+      formation_type: formation.formation_type ?? 'offense'
+    },
+    onSubmit: async (values) => {
+      // Trigger saveDiagram on each component to dispatch 'save' events
+      diagramRefs.forEach(ref => {
+        if (ref && typeof ref.saveDiagram === 'function') {
+          ref.saveDiagram(); // This dispatches the event handled by handleDiagramSave
+        }
       });
 
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
+      // Wait for Svelte store updates triggered by handleDiagramSave to complete
+      await tick();
 
-      const result = await response.json();
+      if (!validateForm()) return;
 
-      // After successful submission for non-logged in users
-      if (!$page.data.session) {
+      // Check login status using reactive variable from Better Auth
+      if (!isLoggedIn && values.visibility !== 'public') {
         const confirmed = confirm(
-          'Would you like to log in so that you can own this formation?\n\n' +
+          `Log in to create a ${values.visibility} formation.\n\n` +
           'Click OK to log in with Google\n' +
-          'Click Cancel to continue without logging in'
+          'Click Cancel to create as public instead'
         );
-
+        
         if (confirmed) {
-          sessionStorage.setItem('formationToAssociate', result.id);
-          await signIn('google');
-          return;
+          // Store form data in sessionStorage
+          const formData = {
+            name: values.name,
+            brief_description: values.brief_description,
+            detailed_description: values.detailed_description,
+            diagrams: values.diagrams,
+            tags: values.tags,
+            visibility: values.visibility,
+            is_editable_by_others: values.is_editable_by_others,
+            formation_type: values.formation_type
+          };
+          sessionStorage.setItem('pendingFormationData', JSON.stringify(formData));
+          try {
+            // Use Better Auth sign in
+            await authClient.signIn.social({ provider: 'google' }); 
+            // If sign-in is successful, the page will likely reload, 
+            // and the onMount logic should pick up the pending data.
+          } catch (error) {
+            console.error("Sign in error:", error);
+            toast.push('Sign in failed. Please try again.', { theme: { '--toastBackground': '#F56565' } });
+          }
+          return; // Stop submission if redirecting to login
+        } else {
+          updateField('visibility', 'public');
+          values.visibility = 'public'; // Update local values for this submission
         }
       }
 
-      toast.push('Formation saved successfully!');
-      goto(`/formations/${result.id}`);
-    } catch (error) {
-      console.error('Error submitting formation:', error);
-      toast.push('Error saving formation. Please try again.', {
-        theme: {
-          '--toastBackground': '#F56565',
-          '--toastColor': 'white',
+      // If not logged in (after the check), force public/editable
+      if (!isLoggedIn) {
+         updateField('is_editable_by_others', true);
+         values.is_editable_by_others = true;
+      }
+      
+      try {
+        const method = formation.id ? 'PUT' : 'POST';
+        // Always use the /api/formations endpoint for both POST and PUT
+        const url = '/api/formations'; 
+        
+        const requestBody = {
+          id: formation.id, // The ID is included in the body for PUT requests
+          name: values.name,
+          brief_description: values.brief_description,
+          detailed_description: values.detailed_description,
+          diagrams: values.diagrams,
+          tags: values.tags,
+          is_editable_by_others: values.is_editable_by_others,
+          visibility: values.visibility,
+          formation_type: values.formation_type
+        };
+
+        // Log the data being sent, excluding the potentially large diagrams array
+        const { diagrams: _, ...loggableData } = requestBody;
+        console.log('Submitting formation data:', loggableData);
+
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
         }
-      });
+
+        const result = await response.json();
+
+        // After successful submission for non-logged in users
+        if (!isLoggedIn) { // Use the reactive boolean here too
+          const confirmedAssociate = confirm(
+            'Would you like to log in so that you can own this formation?\n\n' +
+            'Click OK to log in with Google\n' +
+            'Click Cancel to continue without logging in'
+          );
+
+          if (confirmedAssociate) {
+            sessionStorage.setItem('formationToAssociate', result.id);
+            try {
+              // Use Better Auth sign in again
+              await authClient.signIn.social({ provider: 'google' });
+            } catch (error) {
+               console.error("Sign in error during association:", error);
+               toast.push('Sign in failed. You can associate this formation later from your profile.', { theme: { '--toastBackground': '#F56565' } });
+               // Navigate even if association sign-in fails, to avoid losing the creation
+               goto(`/formations/${result.id}`);
+            }
+            return; // Stop if redirecting to login
+          }
+        }
+
+        toast.push('Formation saved successfully!');
+        goto(`/formations/${result.id}`);
+      } catch (error) {
+        console.error('Error submitting formation:', error);
+        toast.push('Error saving formation. Please try again.', {
+          theme: {
+            '--toastBackground': '#F56565',
+            '--toastColor': 'white',
+          }
+        });
+      }
+    }
+  });
+
+  // Update visibility and editable status based on login state changes
+  $: {
+    if (!isLoggedIn) { // Use reactive boolean
+      updateField('visibility', 'public');
+      updateField('is_editable_by_others', true);
     }
   }
+
+  onMount(() => {
+    // Restore form data after login
+    const pendingData = sessionStorage.getItem('pendingFormationData');
+    if (pendingData) {
+      try {
+        const data = JSON.parse(pendingData);
+        // Restore all the form values
+        name.set(data.name);
+        brief_description.set(data.brief_description);
+        detailed_description.set(data.detailed_description);
+        diagrams.set(parseDiagrams(data.diagrams));
+        tags.set(data.tags);
+        is_editable_by_others.set(data.is_editable_by_others);
+        visibility.set(data.visibility);
+        formation_type.set(data.formation_type || 'offense');
+        toast.push('Resuming formation creation...');
+      } catch (e) {
+        console.error('Error parsing pending formation data:', e);
+        toast.push('Could not restore previous form data.', { theme: { '--toastBackground': '#F56565' } });
+      }
+      sessionStorage.removeItem('pendingFormationData');
+    }
+
+    // Check for formation to associate
+    const formationToAssociate = sessionStorage.getItem('formationToAssociate');
+    if (formationToAssociate && isLoggedIn) { // Use reactive boolean
+        // Call API to associate the formation with the current user
+        fetch(`/api/formations/associate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ formationId: formationToAssociate })
+        }).then(response => {
+            if (response.ok) {
+                toast.push('Formation successfully associated with your account!');
+            } else {
+                toast.push('Failed to associate formation.', { theme: { '--toastBackground': '#F56565' } });
+            }
+        }).catch(err => {
+            console.error('Association API error:', err);
+            toast.push('Error associating formation.', { theme: { '--toastBackground': '#F56565' } });
+        });
+        sessionStorage.removeItem('formationToAssociate');
+    }
+    
+    // Load TinyMCE editor component dynamically
+    import('@tinymce/tinymce-svelte').then(module => {
+      Editor = module.default;
+    }).catch(error => {
+      console.error("Failed to load TinyMCE Editor:", error);
+      toast.push("Error loading text editor.", { theme: { '--toastBackground': '#F56565' } });
+    });
+  });
 
   // Update form when formation prop changes
   $: {
@@ -357,26 +452,6 @@
       formation_type.set(formation.formation_type ?? 'offense');
     }
   }
-
-  // Restore form data after login
-  onMount(() => {
-    const pendingData = sessionStorage.getItem('pendingFormationData');
-    if (pendingData) {
-      const data = JSON.parse(pendingData);
-      // Restore all the form values
-      name.set(data.name);
-      brief_description.set(data.brief_description);
-      detailed_description.set(data.detailed_description);
-      diagrams.set(parseDiagrams(data.diagrams));
-      tags.set(data.tags);
-      is_editable_by_others.set(data.is_editable_by_others);
-      visibility.set(data.visibility);
-      formation_type.set(data.formation_type || 'offense');
-
-      // Clear the stored data
-      sessionStorage.removeItem('pendingFormationData');
-    }
-  });
 </script>
 
 <svelte:head>

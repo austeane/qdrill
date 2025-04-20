@@ -1,6 +1,7 @@
 // src/lib/auth.js - Moved from server directory
 import { betterAuth } from "better-auth";
-import { kyselyDb } from '$lib/server/db'; // Import the Kysely instance
+// Adjust import path to be Node.js friendly for the CLI
+import { kyselyDb }   from "./server/db.js"; // Use relative path
 
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
@@ -17,8 +18,7 @@ export const auth = betterAuth({
   // Pass the Kysely instance directly
   database: {
     db: kyselyDb, // Use the imported Kysely instance
-    // dialect: new VercelPostgresDialect({ pool: vercelPool }), // Remove dialect config
-    // type: "postgres" // Type is inferred when passing 'db'
+    type: "postgres" // Add type hint for the CLI
   },
   // Uncommented after successful migration
   callbacks: {

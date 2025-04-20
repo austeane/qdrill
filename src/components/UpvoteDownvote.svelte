@@ -2,7 +2,7 @@
     import { onMount } from 'svelte';
     import { writable } from 'svelte/store';
     import { page } from '$app/stores';
-    import { signIn } from '@auth/sveltekit/client';
+    import { authClient } from '$lib/auth-client';
     import { ThumbsUpIcon, ThumbsDownIcon } from 'svelte-feather-icons';
     import { toast } from '@zerodevx/svelte-toast';
 
@@ -12,11 +12,17 @@
     let upvotes = writable(0);
     let downvotes = writable(0);
     let userVote = writable(0); // 1 for upvote, -1 for downvote, 0 for no vote
-    let user = $page.data.session?.user;
+
+    const session = authClient.useSession();
+    const user = $session.data?.user;
 
     onMount(async () => {
         await loadVotes();
     });
+
+    $: if (user !== undefined) {
+        loadVotes();
+    }
 
     async function loadVotes() {
         if (!drillId && !practicePlanId) return;
@@ -44,14 +50,22 @@
         }
     }
 
-    async function castVote(value) {
+    async function handleVote(voteType) {
         if (!user) {
-            const wantsToLogin = confirm('You need to be logged in to vote. Would you like to log in now?');
-            if (wantsToLogin) {
-                await signIn('google');
+            const confirmed = confirm('Please sign in to vote. Click OK to sign in with Google.');
+            if (confirmed) {
+                try {
+                    await authClient.signIn.social({ provider: 'google' });
+                } catch (error) {
+                    console.error("Sign in error:", error);
+                    toast.push('Sign in failed.', { theme: { '--toastBackground': '#F56565' } });
+                }
             }
             return;
         }
+
+        const currentVote = $userVote;
+        const newVote = currentVote === voteType ? 0 : voteType; // Toggle or set new vote
 
         if (!drillId && !practicePlanId) {
             console.error('No ID provided for voting');
@@ -60,7 +74,7 @@
         }
 
         try {
-            if ($userVote === value) {
+            if (currentVote === newVote) {
                 // Remove vote - Add the proper query parameter
                 const queryParam = drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`;
                 const res = await fetch(`/api/votes?${queryParam}`, {
@@ -77,7 +91,7 @@
 
                 if (res.ok) {
                     userVote.set(0);
-                    if (value === 1) {
+                    if (newVote === 1) {
                         upvotes.update(n => n - 1);
                     } else {
                         downvotes.update(n => n - 1);
@@ -90,7 +104,7 @@
             } else {
                 // Prepare the request body with proper ID parsing
                 const requestBody = {
-                    vote: value
+                    vote: newVote
                 };
 
                 if (drillId) {
@@ -123,11 +137,11 @@
                 }
 
                 // Update previous vote counts
-                if ($userVote === 1) upvotes.update(n => n - 1);
-                if ($userVote === -1) downvotes.update(n => n - 1);
+                if (currentVote === 1) upvotes.update(n => n - 1);
+                if (currentVote === -1) downvotes.update(n => n - 1);
 
                 // Update new vote count
-                if (value === 1) {
+                if (newVote === 1) {
                     upvotes.update(n => n + 1);
                     toast.push('Upvoted!');
                 } else {
@@ -135,7 +149,7 @@
                     toast.push('Downvoted!');
                 }
 
-                userVote.set(value);
+                userVote.set(newVote);
             }
         } catch (error) {
             console.error('Error casting vote:', error);
@@ -146,7 +160,7 @@
 
 <div class="flex flex-col items-center space-y-1 text-sm">
     <button
-        on:click={() => castVote(1)}
+        on:click={() => handleVote(1)}
         class="p-1 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
         class:text-blue-600={$userVote === 1}
         class:bg-blue-100={$userVote === 1}
@@ -163,7 +177,7 @@
     </span>
     
     <button
-        on:click={() => castVote(-1)}
+        on:click={() => handleVote(-1)}
         class="p-1 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500"
         class:text-red-600={$userVote === -1}
         class:bg-red-100={$userVote === -1}

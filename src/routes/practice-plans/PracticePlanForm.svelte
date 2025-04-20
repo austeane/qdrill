@@ -5,7 +5,7 @@
   import { page } from '$app/stores';
   import { cart } from '$lib/stores/cartStore';
   import { undo, redo, canUndo, canRedo, initializeHistory } from '$lib/stores/historyStore';
-  import { signIn } from '@auth/sveltekit/client';
+  import { authClient } from '$lib/auth-client';
   
   // Import stores
   import { 
@@ -108,7 +108,7 @@
         };
         console.log('Storing pending practice plan data:', formData);
         sessionStorage.setItem('pendingPracticePlanData', JSON.stringify(formData));
-        await signIn('google');
+        await authClient.signIn.social({ provider: 'google' });
         return;
       } else {
         visibility.set('public');
@@ -137,7 +137,7 @@
         if (confirmedAssociate) {
           console.log('Setting practicePlanToAssociate:', resultPlanId);
           sessionStorage.setItem('practicePlanToAssociate', resultPlanId);
-          await signIn('google');
+          await authClient.signIn.social({ provider: 'google' });
           return; // Stop further execution, redirecting to login
         }
       }

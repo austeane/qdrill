@@ -579,7 +579,17 @@
         >
             Suggested Lengths
             <span class="ml-2 text-sm font-semibold">
-            {$selectedSuggestedLengthsMin === effectiveSuggestedLengths.min ? 'Any' : $selectedSuggestedLengthsMin} - {$selectedSuggestedLengthsMax === effectiveSuggestedLengths.max ? 'Any' : $selectedSuggestedLengthsMax} mins
+            <!-- Debug Log -->
+            {#if ($selectedSuggestedLengthsMin === null || $selectedSuggestedLengthsMin === effectiveSuggestedLengths.min) && 
+                 ($selectedSuggestedLengthsMax === null || $selectedSuggestedLengthsMax === effectiveSuggestedLengths.max)}
+                Any Length
+            {:else if ($selectedSuggestedLengthsMin === null || $selectedSuggestedLengthsMin === effectiveSuggestedLengths.min)}
+                Up to {$selectedSuggestedLengthsMax} mins
+            {:else if ($selectedSuggestedLengthsMax === null || $selectedSuggestedLengthsMax === effectiveSuggestedLengths.max)}
+                {$selectedSuggestedLengthsMin}+ mins
+            {:else}
+                {$selectedSuggestedLengthsMin}-{$selectedSuggestedLengthsMax} mins
+            {/if}
             </span>
         </button>
         

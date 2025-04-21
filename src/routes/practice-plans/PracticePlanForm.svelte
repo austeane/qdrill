@@ -36,7 +36,13 @@
     addSection,
     initializeSections,
     formatDrillItem,
-    initializeTimelinesFromPlan
+    initializeTimelinesFromPlan,
+    removeSection,
+    removeItem,
+    handleDurationChange,
+    handleUngroup,
+    getTimelineName,
+    customTimelineNames
   } from '$lib/stores/sectionsStore';
   
   // Import component modules
@@ -327,6 +333,22 @@
     };
 
   });
+
+  function onRemoveSection(sectionId) {
+    removeSection(sectionId);
+  }
+
+  function onRemoveItem(sectionIndex, itemIndex) {
+    removeItem(sectionIndex, itemIndex);
+  }
+
+  function onDurationChange(sectionIndex, itemIndex, newDuration) {
+    handleDurationChange(sectionIndex, itemIndex, newDuration);
+  }
+
+  function onUngroup(groupId) {
+    handleUngroup(groupId);
+  }
 </script>
 
 <div class="container mx-auto p-4">
@@ -485,6 +507,12 @@
         {sectionIndex}
         on:openDrillSearch={handleOpenDrillSearch}
         on:openTimelineSelector={handleOpenTimelineSelector}
+        {onRemoveSection}
+        {onRemoveItem}
+        {onDurationChange}
+        {onUngroup}
+        timelineNameGetter={getTimelineName}
+        customTimelineNamesData={$customTimelineNames}
       />
     {/each}
 

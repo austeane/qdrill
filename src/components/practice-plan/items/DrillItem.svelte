@@ -8,12 +8,14 @@
     dragState,
     isItemDrag
   } from '$lib/stores/dragManager';
-  import { handleDurationChange } from '$lib/stores/sectionsStore';
   
   export let item;
   export let itemIndex;
   export let sectionIndex;
   export let onRemove;
+  export let onDurationChange = (sectionIndex, itemIndex, newDuration) => {
+    console.warn('onDurationChange prop not provided to DrillItem', sectionIndex, itemIndex, newDuration);
+  };
   export let timelineItemIndex = null;
   export let timeline = null;
   export let parallelGroupId = null;
@@ -87,7 +89,7 @@
             max="120"
             class="w-16 px-2 py-1 border rounded mr-2"
             value={item.selected_duration || item.duration}
-            on:blur={(e) => handleDurationChange(sectionIndex, itemIndex, parseInt(e.target.value) || 15)}
+            on:blur={(e) => onDurationChange(sectionIndex, itemIndex, parseInt(e.target.value) || 15)}
           />
           <span class="text-sm text-gray-600">min</span>
         </div>

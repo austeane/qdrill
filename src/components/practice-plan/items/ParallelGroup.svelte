@@ -7,50 +7,36 @@
     handleDragEnd,
     dragState
   } from '$lib/stores/dragManager';
-  import { 
-    handleUngroup, 
-    getParallelBlockDuration,
-    calculateTimelineDurations,
-    getTimelineName,
-    customTimelineNames
-  } from '$lib/stores/sectionsStore';
   import TimelineColumn from './TimelineColumn.svelte';
   
   export let groupId;
   export let items = [];
   export let sectionIndex;
   export let sectionId;
+  export let onUngroup = (groupId) => { 
+    console.warn('onUngroup prop not provided to ParallelGroup', groupId);
+  };
+  export let timelineNameGetter = (timeline) => timeline;
+  export let customTimelineNamesData = {};
   
-  // Subscribe to customTimelineNames store to make the component reactive
-  let timelineNamesStore;
-  $: timelineNamesStore = $customTimelineNames;
-  
-  // Get group timelines and name
   $: firstGroupItem = items.find(item => item.parallel_group_id === groupId);
   $: groupTimelines = firstGroupItem?.groupTimelines || [];
   
-  // Try to create a better group name based on included timelines
   $: groupName = (() => {
-    // If there's an explicit group name, use it
     if (firstGroupItem?.group_name && firstGroupItem.group_name !== 'Parallel Activities') {
       return firstGroupItem.group_name;
     }
     
-    // Otherwise, construct a name from the timelines
     if (groupTimelines && groupTimelines.length) {
-      // Get each timeline's custom name
-      const timelineNames = groupTimelines.map(t => getTimelineName(t));
+      const timelineNames = groupTimelines.map(t => timelineNameGetter(t));
       
-      // For more than 2 timelines, use a generic name
       if (timelineNames.length > 2) {
         return "Multiple Timelines";
       }
       
-      // For 1-2 timelines, show their names
       return timelineNames.join(' & ');
     }
     
-    // Fallback name
     return 'Parallel Activities';
   })();
   
@@ -68,26 +54,24 @@
     itemsCount: items.filter(item => item.parallel_group_id === groupId).length
   });
   
-  // Calculate durations - memoize to prevent multiple recalculations
-  let lastGroupItems = [];
-  let cachedDurations = {};
-  
-  $: {
-    // Only recalculate if the items actually changed
-    const groupItems = items.filter(item => item.parallel_group_id === groupId);
-    const itemsChanged = groupItems.length !== lastGroupItems.length || 
-                         JSON.stringify(groupItems.map(i => i.id)) !== 
-                         JSON.stringify(lastGroupItems.map(i => i.id));
-    
-    if (itemsChanged) {
-      cachedDurations = calculateTimelineDurations(items, groupId);
-      lastGroupItems = [...groupItems];
-    }
+  function calculateLocalTimelineDurations(groupItems, groupId) {
+    if (!groupId) return {};
+    const groupItemsInThisGroup = groupItems.filter(item => item.parallel_group_id === groupId);
+    if (groupItemsInThisGroup.length === 0) return {};
+    const firstItem = groupItemsInThisGroup[0];
+    const timelinesInGroup = firstItem?.groupTimelines || [];
+    const durations = {};
+    timelinesInGroup.forEach(timeline => {
+      const timelineItems = groupItemsInThisGroup.filter(item => item.parallel_timeline === timeline);
+      durations[timeline] = timelineItems.reduce((total, item) => 
+        total + (parseInt(item.selected_duration) || parseInt(item.duration) || 0), 0
+      );
+    });
+    return durations;
   }
+
+  $: durations = calculateLocalTimelineDurations(items, groupId);
   
-  $: durations = cachedDurations;
-  
-  // Reactive drag states for this group
   $: isBeingDragged = $dragState.isDragging && 
                       $dragState.dragType === 'group' && 
                       $dragState.sourceSection === sectionIndex && 
@@ -111,7 +95,7 @@
       <div class="group-drag-handle">Drag Entire Block</div>
       <h3 class="text-md font-medium">{groupName}</h3>
     </div>
-    <button on:click={() => handleUngroup(groupId)}>Ungroup</button>
+    <button on:click={() => onUngroup(groupId)}>Ungroup</button>
   </div>
 
   {#if groupTimelines?.length > 0}
@@ -128,11 +112,12 @@
           {sectionId}
           parallelGroupId={groupId}
           totalDuration={durations[timeline] || 0}
+          {timelineNameGetter}
+          {customTimelineNamesData}
         />
       {/each}
     </div>
   {:else}
-    <!-- Show a message when no timelines are configured -->
     <div class="text-center text-gray-500 py-4">
       No timelines configured. Click "Create Parallel Block" to add timelines.
     </div>
@@ -193,7 +178,6 @@
     border-color: #93c5fd;
   }
 
-  /* Mobile layout */
   @media (max-width: 767px) {
     .grid {
       grid-template-columns: 1fr !important;

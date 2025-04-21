@@ -11,10 +11,24 @@
   import SectionHeader from './SectionHeader.svelte';
   import DrillItem from '../items/DrillItem.svelte';
   import ParallelGroup from '../items/ParallelGroup.svelte';
-  import { removeSection, removeItem } from '$lib/stores/sectionsStore';
   
   export let section;
   export let sectionIndex;
+  
+  export let onRemoveSection = (sectionId) => { 
+    console.warn('onRemoveSection prop not provided to SectionContainer', sectionId);
+  };
+  export let onRemoveItem = (sectionIndex, itemIndex) => { 
+    console.warn('onRemoveItem prop not provided to SectionContainer', sectionIndex, itemIndex);
+  };
+  export let onDurationChange = (sectionIndex, itemIndex, newDuration) => {
+     console.warn('onDurationChange prop not provided to SectionContainer', sectionIndex, itemIndex, newDuration);
+  };
+  export let onUngroup = (groupId) => { 
+    console.warn('onUngroup prop not provided to SectionContainer', groupId);
+  };
+  export let timelineNameGetter = (timeline) => timeline;
+  export let customTimelineNamesData = {};
   
   const dispatch = createEventDispatcher();
   
@@ -63,7 +77,7 @@
 >
   <SectionHeader 
     {section} 
-    onRemove={removeSection}
+    onRemove={() => onRemoveSection(section.id)}
     on:openDrillSearch={handleOpenDrillSearch}
     on:openTimelineSelector={handleOpenTimelineSelector}
   />
@@ -92,6 +106,9 @@
               items={section.items} 
               {sectionIndex} 
               sectionId={section.id}
+              {onUngroup}
+              {timelineNameGetter}
+              {customTimelineNamesData}
             />
           {/if}
         {:else}
@@ -100,7 +117,8 @@
             {item} 
             {itemIndex} 
             {sectionIndex}
-            onRemove={() => removeItem(sectionIndex, itemIndex)} 
+            {onDurationChange}
+            onRemove={() => onRemoveItem(sectionIndex, itemIndex)}
           />
         {/if}
       {/each}

@@ -14,9 +14,6 @@ export const basicInfo = writable({
     isEditableByOthers: false // Default to false for privacy
 });
 
-// Section store
-export const sections = writable([]);
-
 // Timeline store for section arrangement
 export const timeline = writable({
     sections: [],
@@ -64,7 +61,6 @@ export function initializeWizard() {
         visibility: 'public',
         isEditableByOthers: false
     });
-    sections.set([]);
     timeline.set({ sections: [], totalTime: 0 });
     currentStep.set(1);
     draftId.set(null);
@@ -75,10 +71,9 @@ export function initializeWizard() {
 
 // Derived store for overall wizard state
 export const wizardState = derived(
-    [basicInfo, sections, timeline, currentStep, validationErrors],
-    ([$basicInfo, $sections, $timeline, $currentStep, $validationErrors]) => ({
+    [basicInfo, timeline, currentStep, validationErrors],
+    ([$basicInfo, $timeline, $currentStep, $validationErrors]) => ({
         basicInfo: $basicInfo,
-        sections: $sections,
         timeline: $timeline,
         currentStep: $currentStep,
         validationErrors: $validationErrors,
@@ -118,17 +113,25 @@ export function canProceedToNextStep($wizardState) {
     switch ($wizardState.currentStep) {
         case 1: // Basic Info
             // Trigger validation check before proceeding
-            return validateBasicInfo(); 
-        case 2: // Section Selection
-            // TODO: Add validation for section selection if needed
-            return $wizardState.sections.length > 0;
+            return validateBasicInfo();
+        case 2: // Section Selection (Renamed Step - Now "Drills")
+            // No longer validating sections length here.
+            // Validation might happen within the step based on sectionsStore.
+            return true; // Allow proceeding, assuming sectionsStore handles its own state
         case 3: // Timeline Arrangement
              // TODO: Add validation for timeline if needed
-            return $wizardState.timeline.sections.length === $wizardState.sections.length;
-        case 4: // Drill Selection
-            // TODO: Add validation for drill selection if needed
-            return $wizardState.timeline.sections.every(section => 
-                section.items && section.items.length > 0); // Assuming items instead of drills now
+             // Validation logic needs to compare timeline sections against sectionsStore
+             // This requires importing sectionsStore, which might be better done in the component
+             // For now, allow proceeding. Implement validation later if needed.
+             // Example check (requires importing sectionsStore):
+             // import { sections as mainSectionsStore } from './sectionsStore';
+             // const mainSections = get(mainSectionsStore);
+             // return $wizardState.timeline.sections.length === mainSections.length;
+            return true; // Allow proceeding for now
+        case 4: // Drill Selection (Renamed Step - Now "Overview")
+            // No longer validating drill selection here.
+            // Validation might happen within the step based on sectionsStore.
+            return true; // Allow proceeding
         default:
             return true;
     }

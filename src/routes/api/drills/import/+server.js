@@ -5,7 +5,7 @@ import { json } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
 import { drillService } from '$lib/server/services/drillService'; // Import drill service
 // import * as db from '$lib/server/db'; // No longer need db directly
-import { handleApiError } from '../utils/handleApiError.js'; // Import the helper
+import { handleApiError } from '../../utils/handleApiError.js'; // Import the helper
 import { ValidationError } from '$lib/server/errors.js';
 
 // Remove manual pool creation

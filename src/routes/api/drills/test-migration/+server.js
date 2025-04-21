@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { fabricToExcalidraw } from '$lib/utils/diagramMigration';
 import { dev } from '$app/environment';
-import { handleApiError } from '../utils/handleApiError.js';
+import { handleApiError } from '../../utils/handleApiError.js';
 import { ForbiddenError, ValidationError, InternalServerError } from '$lib/server/errors.js';
 
 export async function POST({ request }) {

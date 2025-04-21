@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
 import { userService } from '$lib/server/services/userService';
-import { handleApiError } from '../../utils/handleApiError';
+import { handleApiError } from '../../utils/handleApiError.js';
 
 export const GET = authGuard(async ({ locals }) => {
     try {

@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { formationService } from '$lib/server/services/formationService';
-import { handleApiError } from '../../../utils/handleApiError';
+import { handleApiError } from '../../../utils/handleApiError.js';
 
 /**
  * @type {import('./$types').RequestHandler}

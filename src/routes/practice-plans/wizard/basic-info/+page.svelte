@@ -1,7 +1,6 @@
 <script>
     import { onMount } from 'svelte';
-    import { basicInfo } from '$lib/stores/wizardStore';
-    import { validationErrors, getFieldError } from '$lib/stores/wizardValidation';
+    import { basicInfo, validationErrors } from '$lib/stores/wizardStore';
     import { scheduleAutoSave } from '$lib/stores/wizardStore';
     
     // Change Editor import to be loaded dynamically
@@ -27,26 +26,8 @@
         'End of season, peaking'
     ];
 
-    // Skill level options
-    const skillLevelOptions = [
-        'Beginner',
-        'Intermediate',
-        'Advanced',
-        'Elite'
-    ];
-
-    // Track which fields have been touched by the user
-    let touched = {
-        name: false,
-        participants: false,
-        phaseOfSeason: false,
-        skillLevel: false,
-        totalTime: false
-    };
-
     // Handle input changes
-    function handleChange(field) {
-        touched[field] = true;
+    function handleChange() {
         scheduleAutoSave();
     }
 
@@ -64,8 +45,8 @@
 
     // Handle description change
     function handleDescriptionChange(e) {
-        $basicInfo.description = e.detail.content;
-        handleChange('description');
+        $basicInfo.description = e.target.getContent();
+        handleChange();
     }
 </script>
 
@@ -81,20 +62,21 @@
         <!-- Plan Name -->
         <div>
             <label for="name" class="block text-sm font-medium text-gray-700">
-                Practice Plan Name
+                Practice Plan Name <span class="text-red-500">*</span>
             </label>
             <div class="mt-1">
                 <input
                     type="text"
                     id="name"
                     bind:value={$basicInfo.name}
-                    on:input={() => handleChange('name')}
-                    on:blur={() => touched.name = true}
+                    on:input={handleChange}
                     class="bg-white text-gray-900 placeholder-gray-400 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
                     aria-label="Practice Plan Name"
+                    aria-invalid={$validationErrors.name ? 'true' : 'false'} 
+                    aria-describedby={$validationErrors.name ? 'name-error' : undefined}
                 />
-                {#if getFieldError('name', touched, $validationErrors)}
-                    <p class="mt-1 text-sm text-red-600">{$validationErrors.basicInfo.name}</p>
+                {#if $validationErrors.name}
+                    <p id="name-error" class="mt-1 text-sm text-red-600">{$validationErrors.name[0]}</p>
                 {/if}
             </div>
         </div>
@@ -102,21 +84,22 @@
         <!-- Number of Participants -->
         <div>
             <label for="participants" class="block text-sm font-medium text-gray-700">
-                Number of Participants
+                Estimated Number of Participants
             </label>
             <div class="mt-1">
                 <input
                     type="number"
                     id="participants"
                     bind:value={$basicInfo.participants}
-                    on:input={() => handleChange('participants')}
-                    on:blur={() => touched.participants = true}
+                    on:input={handleChange}
                     min="1"
                     class="bg-white text-gray-900 placeholder-gray-400 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
                     aria-label="Number of Participants"
+                    aria-invalid={$validationErrors.participants ? 'true' : 'false'} 
+                    aria-describedby={$validationErrors.participants ? 'participants-error' : undefined}
                 />
-                {#if getFieldError('participants', touched, $validationErrors)}
-                    <p class="mt-1 text-sm text-red-600">{$validationErrors.basicInfo.participants}</p>
+                {#if $validationErrors.participants}
+                    <p id="participants-error" class="mt-1 text-sm text-red-600">{$validationErrors.participants[0]}</p>
                 {/if}
             </div>
         </div>
@@ -129,66 +112,20 @@
             <div class="mt-1">
                 <select
                     id="phase"
-                    bind:value={$basicInfo.phaseOfSeason}
-                    on:change={() => handleChange('phaseOfSeason')}
-                    on:blur={() => touched.phaseOfSeason = true}
+                    bind:value={$basicInfo.phaseOfSeason} 
+                    on:change={handleChange}
                     class="bg-white text-gray-900 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
                     aria-label="Phase of Season"
+                     aria-invalid={$validationErrors.phaseOfSeason ? 'true' : 'false'} 
+                    aria-describedby={$validationErrors.phaseOfSeason ? 'phase-error' : undefined}
                 >
-                    <option value="">Select a phase</option>
+                    <option value={null}>Select a phase (optional)</option>
                     {#each phaseOptions as phase}
                         <option value={phase}>{phase}</option>
                     {/each}
                 </select>
-                {#if getFieldError('phaseOfSeason', touched, $validationErrors)}
-                    <p class="mt-1 text-sm text-red-600">{$validationErrors.basicInfo.phaseOfSeason}</p>
-                {/if}
-            </div>
-        </div>
-
-        <!-- Skill Level -->
-        <div>
-            <label for="skill" class="block text-sm font-medium text-gray-700">
-                Skill Level
-            </label>
-            <div class="mt-1">
-                <select
-                    id="skill"
-                    bind:value={$basicInfo.skillLevel}
-                    on:change={() => handleChange('skillLevel')}
-                    on:blur={() => touched.skillLevel = true}
-                    class="bg-white text-gray-900 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
-                    aria-label="Skill Level"
-                >
-                    <option value="">Select skill level</option>
-                    {#each skillLevelOptions as level}
-                        <option value={level}>{level}</option>
-                    {/each}
-                </select>
-                {#if getFieldError('skillLevel', touched, $validationErrors)}
-                    <p class="mt-1 text-sm text-red-600">{$validationErrors.basicInfo.skillLevel}</p>
-                {/if}
-            </div>
-        </div>
-
-        <!-- Total Time -->
-        <div>
-            <label for="time" class="block text-sm font-medium text-gray-700">
-                Total Practice Time (minutes)
-            </label>
-            <div class="mt-1">
-                <input
-                    type="number"
-                    id="time"
-                    bind:value={$basicInfo.totalTime}
-                    on:input={() => handleChange('totalTime')}
-                    on:blur={() => touched.totalTime = true}
-                    min="1"
-                    class="bg-white text-gray-900 placeholder-gray-400 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
-                    aria-label="Total Practice Time"
-                />
-                {#if getFieldError('totalTime', touched, $validationErrors)}
-                    <p class="mt-1 text-sm text-red-600">{$validationErrors.basicInfo.totalTime}</p>
+                {#if $validationErrors.phaseOfSeason}
+                    <p id="phase-error" class="mt-1 text-sm text-red-600">{$validationErrors.phaseOfSeason[0]}</p>
                 {/if}
             </div>
         </div>
@@ -197,7 +134,7 @@
         <div>
             <div class="flex justify-between items-center">
                 <label class="block text-sm font-medium text-gray-700">
-                    Practice Goals
+                    Practice Goals <span class="text-red-500">*</span>
                 </label>
                 <button
                     type="button"
@@ -207,7 +144,10 @@
                     Add Goal
                 </button>
             </div>
-            <div class="mt-2 space-y-3">
+            <div class="mt-2 space-y-3" 
+                 role="group" 
+                 aria-labelledby="practice-goals-label" 
+                 aria-describedby={$validationErrors.practiceGoals ? 'practice-goals-error' : undefined}>
                 {#each $basicInfo.practiceGoals as goal, index}
                     <div class="flex gap-2">
                         <input
@@ -217,11 +157,13 @@
                             placeholder="Enter a practice goal"
                             class="bg-white text-gray-900 placeholder-gray-400 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
                             aria-label={`Practice Goal ${index + 1}`}
+                            aria-invalid={$validationErrors.practiceGoals?.[index] ? 'true' : undefined}
                         />
                         <button
                             type="button"
                             on:click={() => removePracticeGoal(index)}
                             class="inline-flex items-center p-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200"
+                            aria-label={`Remove Practice Goal ${index + 1}`}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -230,21 +172,22 @@
                     </div>
                 {/each}
             </div>
-            {#if $validationErrors.basicInfo?.practiceGoals}
-                <p class="mt-1 text-sm text-red-600">{$validationErrors.basicInfo.practiceGoals}</p>
+            {#if $validationErrors.practiceGoals}
+                <p id="practice-goals-error" class="mt-1 text-sm text-red-600">{$validationErrors.practiceGoals[0]}</p> 
             {/if}
         </div>
 
         <!-- Description field -->
         <div>
             <label for="description" class="block text-sm font-medium text-gray-700">
-                Description
+                Description (Optional)
             </label>
             <div class="mt-1">
                 {#if Editor}
                     <div class="min-h-[300px]">
                         <svelte:component
                             this={Editor}
+                            id="description"
                             apiKey={import.meta.env.VITE_TINY_API_KEY}
                             init={{
                                 height: 300,
@@ -259,19 +202,32 @@
                                         'alignright alignjustify | bullist numlist outdent indent | ' +
                                         'removeformat | help',
                                 content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
-                                branding: false
+                                branding: false,
+                                setup: (editor) => {
+                                    editor.on('change keyup', (e) => {
+                                         $basicInfo.description = editor.getContent();
+                                         handleChange();
+                                    });
+                                }
                             }}
                             value={$basicInfo.description}
-                            on:change={handleDescriptionChange}
+                            aria-invalid={$validationErrors.description ? 'true' : 'false'} 
+                            aria-describedby={$validationErrors.description ? 'description-error' : undefined}
                         />
                     </div>
                 {:else}
                     <textarea
                         id="description"
                         bind:value={$basicInfo.description}
+                        on:input={handleChange}
                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
                         rows="8"
+                        aria-invalid={$validationErrors.description ? 'true' : 'false'} 
+                        aria-describedby={$validationErrors.description ? 'description-error' : undefined}
                     ></textarea>
+                {/if}
+                {#if $validationErrors.description}
+                    <p id="description-error" class="mt-1 text-sm text-red-600">{$validationErrors.description[0]}</p>
                 {/if}
             </div>
         </div>
@@ -281,12 +237,18 @@
             <label class="block text-sm font-medium text-gray-700">Visibility</label>
             <select
                 bind:value={$basicInfo.visibility}
+                on:change={handleChange}
                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                aria-invalid={$validationErrors.visibility ? 'true' : 'false'} 
+                aria-describedby={$validationErrors.visibility ? 'visibility-error' : undefined}
             >
                 <option value="public">Public</option>
                 <option value="private">Private</option>
                 <option value="unlisted">Unlisted</option>
             </select>
+            {#if $validationErrors.visibility}
+                <p id="visibility-error" class="mt-1 text-sm text-red-600">{$validationErrors.visibility[0]}</p>
+            {/if}
         </div>
 
         <!-- Editability settings -->
@@ -295,10 +257,16 @@
                 <input
                     type="checkbox"
                     bind:checked={$basicInfo.isEditableByOthers}
+                    on:change={handleChange}
                     class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    aria-invalid={$validationErrors.isEditableByOthers ? 'true' : 'false'} 
+                    aria-describedby={$validationErrors.isEditableByOthers ? 'editable-error' : undefined}
                 />
                 <span class="text-sm text-gray-700">Allow others to edit this practice plan</span>
             </label>
+             {#if $validationErrors.isEditableByOthers}
+                <p id="editable-error" class="mt-1 text-sm text-red-600">{$validationErrors.isEditableByOthers[0]}</p>
+            {/if}
         </div>
     </div>
 </div> 

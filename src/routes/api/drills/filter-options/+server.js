@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 // import * as db from '$lib/server/db'; // No longer needed directly
 import { drillService } from '$lib/server/services/drillService'; // Import the service
-import { handleApiError } from '/src/routes/api/utils/handleApiError.js'; // Import the helper using absolute path
+import { handleApiError } from '../../utils/handleApiError.js'; // Import the helper using relative path
 
 export async function GET() {
     try {

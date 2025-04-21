@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 // import { fabricToExcalidraw } from '$lib/utils/diagramMigration'; // No longer needed directly
 // import * as db from '$lib/server/db'; // No longer needed directly
 import { drillService } from '$lib/server/services/drillService'; // Import the service
-import { handleApiError } from '../utils/handleApiError.js'; // Import the helper
+import { handleApiError } from '../../utils/handleApiError.js'; // Import the helper
 import { dev } from '$app/environment'; // Import dev
 import { ForbiddenError } from '$lib/server/errors.js'; // Import ForbiddenError
 

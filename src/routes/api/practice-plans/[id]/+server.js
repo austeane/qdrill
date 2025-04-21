@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
 import { dev } from '$app/environment';
 import { practicePlanService } from '$lib/server/services/practicePlanService.js';
-import { handleApiError } from '../../utils/handleApiError';
+import { handleApiError } from '../../utils/handleApiError.js';
 
 export async function GET({ params, locals }) {
   const id = params.id;

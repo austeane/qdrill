@@ -3,7 +3,8 @@ import { basicInfo, sections, timeline } from './wizardStore';
 
 export const validationErrors = writable({});
 
-// Validation functions for each step
+// Validation functions for each step - REMOVE ALL THESE
+/*
 export function validateBasicInfo($basicInfo) {
     const errors = {};
     
@@ -97,8 +98,11 @@ export function validateDrills($timeline) {
     
     return errors;
 }
+*/
 
-// Helper function to check if a step has validation errors
+// Helper function to check if a step has validation errors - REMOVE OR MODIFY
+// This will need to be adapted if using Zod Schemas later
+/*
 function hasStepErrors(step, errors) {
     switch (step) {
         case 1:
@@ -113,8 +117,11 @@ function hasStepErrors(step, errors) {
             return false;
     }
 }
+*/
 
-// Check if we can navigate to a specific step
+// Check if we can navigate to a specific step - REMOVE OR MODIFY
+// This depends on hasStepErrors
+/*
 export function canNavigateToStep(targetStep, wizardState) {
     // Can always go back
     if (targetStep <= wizardState.currentStep) {
@@ -129,21 +136,28 @@ export function canNavigateToStep(targetStep, wizardState) {
     // Check if current step is valid before allowing navigation
     return !hasStepErrors(wizardState.currentStep, wizardState.validationErrors);
 }
+*/
 
-// Check if we can proceed to the next step
+// Check if we can proceed to the next step - REMOVE OR MODIFY
+// This depends on hasStepErrors
+/*
 export function canProceedToNextStep(wizardState) {
     return !hasStepErrors(wizardState.currentStep, wizardState.validationErrors);
 }
+*/
 
-// Subscribe to store changes and validate
+// Subscribe to store changes and validate - REMOVE SUBSCRIPTIONS
+/*
 let unsubscribeBasicInfo = basicInfo.subscribe($basicInfo => {
-    const errors = validateBasicInfo($basicInfo);
-    validationErrors.update(current => ({ ...current, basicInfo: errors }));
+    // const errors = validateBasicInfo($basicInfo);
+    // validationErrors.update(current => ({ ...current, basicInfo: errors }));
+    validationErrors.update(current => ({ ...current, basicInfo: {} })); // Clear errors for now
 });
 
 let unsubscribeSections = sections.subscribe($sections => {
-    const errors = validateSections($sections);
-    validationErrors.update(current => ({ ...current, sections: errors }));
+    // const errors = validateSections($sections);
+    // validationErrors.update(current => ({ ...current, sections: errors }));
+    validationErrors.update(current => ({ ...current, sections: {} })); // Clear errors for now
 });
 
 // Track the latest values from both stores
@@ -154,12 +168,12 @@ let latestSections;
 let unsubscribeTimeline = timeline.subscribe($timeline => {
     latestTimeline = $timeline;
     if (latestSections) {
-        const timelineErrors = validateTimeline(latestTimeline, latestSections);
-        const drillErrors = validateDrills(latestTimeline);
+        // const timelineErrors = validateTimeline(latestTimeline, latestSections);
+        // const drillErrors = validateDrills(latestTimeline);
         validationErrors.update(current => ({ 
             ...current, 
-            timeline: timelineErrors,
-            drills: drillErrors 
+            timeline: {}, // Clear errors for now
+            drills: {} // Clear errors for now
         }));
     }
 });
@@ -168,22 +182,27 @@ let unsubscribeTimeline = timeline.subscribe($timeline => {
 let unsubscribeTimelineSections = sections.subscribe($sections => {
     latestSections = $sections;
     if (latestTimeline) {
-        const errors = validateTimeline(latestTimeline, latestSections);
-        validationErrors.update(current => ({ ...current, timeline: errors }));
+        // const errors = validateTimeline(latestTimeline, latestSections);
+        // validationErrors.update(current => ({ ...current, timeline: errors }));
+        validationErrors.update(current => ({ ...current, timeline: {} })); // Clear errors for now
     }
 });
+*/
 
-// Cleanup function
+// Cleanup function - REMOVE SUBSCRIPTION CLEANUP
+/*
 export function cleanup() {
-    unsubscribeBasicInfo();
-    unsubscribeSections();
-    unsubscribeTimeline();
-    unsubscribeTimelineSections();
+    // unsubscribeBasicInfo();
+    // unsubscribeSections();
+    // unsubscribeTimeline();
+    // unsubscribeTimelineSections();
 }
+*/
 
-// Add this new function to check if a field has been touched and has an error
+// Add this new function to check if a field has been touched and has an error - REMOVE OR MODIFY
+/*
 export function getFieldError(fieldName, touched, validationErrors) {
-    return touched[fieldName] && validationErrors.basicInfo?.[fieldName] 
-        ? validationErrors.basicInfo[fieldName] 
-        : null;
+    // This needs updating for Zod errors structure
+    return null; // Placeholder
 } 
+*/ 

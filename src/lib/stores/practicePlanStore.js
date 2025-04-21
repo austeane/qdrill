@@ -2,6 +2,8 @@ import { writable, derived, get } from 'svelte/store';
 import { FILTER_STATES } from '$lib/constants';
 import { toast } from '@zerodevx/svelte-toast';
 import { sections } from './sectionsStore';
+import { z } from 'zod';
+import { practicePlanMetadataSchema } from '$lib/validation/practicePlanSchema';
 
 // Filter-related stores (existing)
 export const selectedPhaseOfSeason = writable({});
@@ -92,27 +94,34 @@ export const totalPlanDuration = derived(sections, ($sections) => {
   return total;
 });
 
-// Form validation
+// Restore form validation for metadata fields
 export function validateForm() {
-  const formErrors = {};
-  
-  if (!get(planName)) {
-    formErrors.planName = 'Plan name is required';
-  }
+  // Gather data from stores
+  const formData = {
+    name: get(planName),
+    description: get(planDescription),
+    phase_of_season: get(phaseOfSeason) || null, // Ensure null if empty string
+    estimated_number_of_participants: get(estimatedNumberOfParticipants) ? parseInt(get(estimatedNumberOfParticipants)) : null,
+    practice_goals: get(practiceGoals).filter(goal => goal.trim() !== ''),
+    visibility: get(visibility),
+    is_editable_by_others: get(isEditableByOthers),
+    start_time: get(startTime) ? get(startTime) + ':00' : null, // Add seconds if needed by schema
+  };
 
-  if (get(phaseOfSeason) && !phaseOfSeasonOptions.includes(get(phaseOfSeason))) {
-    formErrors.phaseOfSeason = 'Invalid phase of season selected';
-  }
+  // Validate using Zod schema
+  const result = practicePlanMetadataSchema.safeParse(formData);
 
-  if (get(estimatedNumberOfParticipants) !== '') {
-    const numParticipants = parseInt(get(estimatedNumberOfParticipants), 10);
-    if (isNaN(numParticipants) || numParticipants <= 0 || !Number.isInteger(parseFloat(get(estimatedNumberOfParticipants)))) {
-      formErrors.estimatedNumberOfParticipants = 'Estimated number of participants must be a positive integer';
-    }
+  if (!result.success) {
+    // Update errors store with Zod errors
+    const formattedErrors = result.error.flatten().fieldErrors;
+    errors.set(formattedErrors); 
+    console.warn('[Store Validation Warn] Metadata validation failed:', formattedErrors);
+    return false;
+  } else {
+    // Clear errors if valid
+    errors.set({});
+    return true;
   }
-
-  errors.set(formErrors);
-  return Object.keys(formErrors).length === 0;
 }
 
 // Form submission
@@ -121,8 +130,12 @@ export async function submitPracticePlan(sectionsData, practicePlan) {
     isSubmitting.set(true);
     errors.set({});
 
-    // Validate form
+    // Reinstate validation call
     if (!validateForm()) {
+      // Display toast notification for validation errors
+      toast.push('Please fix the errors in the form fields.', { theme: { '--toastBackground': 'orange' } });
+      // Ensure isSubmitting is reset if validation fails early
+      isSubmitting.set(false);
       return false;
     }
 

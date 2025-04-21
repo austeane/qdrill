@@ -376,8 +376,8 @@
   <div class="mb-4">
     <label for="planName" class="block text-sm font-medium text-gray-700">Plan Name:</label>
     <input id="planName" bind:value={$planName} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
-    {#if $errors.planName}
-      <p class="text-red-500 text-sm mt-1">{$errors.planName}</p>
+    {#if $errors.name?.[0]}
+      <p class="text-red-500 text-sm mt-1">{$errors.name[0]}</p>
     {/if}
   </div>
 
@@ -414,6 +414,10 @@
         rows="3"
       ></textarea>
     {/if}
+    <!-- Add error display for description if needed by schema -->
+    {#if $errors.description?.[0]}
+        <p class="text-red-500 text-sm mt-1">{$errors.description[0]}</p>
+    {/if}
   </div>
 
   <div class="mb-4">
@@ -424,16 +428,16 @@
         <option value={option}>{option}</option>
       {/each}
     </select>
-    {#if $errors.phaseOfSeason}
-      <p class="text-red-500 text-sm mt-1">{$errors.phaseOfSeason}</p>
+    {#if $errors.phase_of_season?.[0]}
+      <p class="text-red-500 text-sm mt-1">{$errors.phase_of_season[0]}</p>
     {/if}
   </div>
 
   <div class="mb-4">
     <label for="estimatedNumberOfParticipants" class="block text-sm font-medium text-gray-700">Estimated Number of Participants:</label>
     <input id="estimatedNumberOfParticipants" type="number" min="1" bind:value={$estimatedNumberOfParticipants} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
-    {#if $errors.estimatedNumberOfParticipants}
-      <p class="text-red-500 text-sm mt-1">{$errors.estimatedNumberOfParticipants}</p>
+    {#if $errors.estimated_number_of_participants?.[0]}
+      <p class="text-red-500 text-sm mt-1">{$errors.estimated_number_of_participants[0]}</p>
     {/if}
   </div>
 
@@ -445,6 +449,10 @@
       bind:value={$startTime}
       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" 
     />
+     <!-- Add error display for start_time if needed by schema -->
+    {#if $errors.start_time?.[0]}
+        <p class="text-red-500 text-sm mt-1">{$errors.start_time[0]}</p>
+    {/if}
   </div>
 
   <div class="mb-4">
@@ -464,8 +472,8 @@
       </div>
     {/each}
     <button type="button" on:click={addPracticeGoal} class="mt-2 text-blue-600 hover:text-blue-800">Add Practice Goal</button>
-    {#if $errors.practice_goals}
-      <p class="text-red-500 text-sm mt-1">{$errors.practice_goals}</p>
+    {#if $errors.practice_goals?.[0]}
+      <p class="text-red-500 text-sm mt-1">{$errors.practice_goals[0]}</p>
     {/if}
   </div>
 

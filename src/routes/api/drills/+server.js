@@ -1,23 +1,32 @@
 import { json, error as svelteKitError } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
 import { drillService } from '$lib/server/services/drillService';
-import { AppError, DatabaseError, ValidationError } from '$lib/server/errors'; // Import AppError and specific types if needed
+import { AppError, DatabaseError, ValidationError, NotFoundError } from '$lib/server/errors'; // Import NotFoundError
+import { z } from 'zod'; // Import zod
+import { createDrillSchema, updateDrillSchema } from '$lib/validation/drillSchema'; // Import Zod schemas
 
 // Helper function to convert AppError to SvelteKit error response
 function handleApiError(err) {
-  if (err instanceof AppError) {
+  // Handle Zod validation errors specifically
+  if (err instanceof z.ZodError) {
+    console.warn(`[API Warn] Validation failed:`, err.flatten());
+    // Convert Zod errors to the format expected by the frontend/ValidationError
+    const details = err.flatten().fieldErrors;
+    const validationError = new ValidationError('Validation failed', details);
+    return json({ error: { code: validationError.code, message: validationError.message, details: validationError.details } }, { status: validationError.status });
+  } 
+  // Handle custom AppErrors
+  else if (err instanceof AppError) {
     console.warn(`[API Warn] (${err.status} ${err.code}): ${err.message}`);
-    // Use SvelteKit's error helper for standard errors, or json for custom structure
-    // Let's stick to the custom structure: { error: { code, message } }
     const body = { error: { code: err.code, message: err.message } };
-    // Add details for validation errors
     if (err instanceof ValidationError && err.details) {
       body.error.details = err.details;
     }
     return json(body, { status: err.status });
-  } else {
+  } 
+  // Handle generic errors
+  else {
     console.error('[API Error] Unexpected error:', err);
-    // Default to 500 Internal Server Error for unknown errors
     return json({ error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected internal server error occurred' } }, { status: 500 });
   }
 }
@@ -95,17 +104,27 @@ export const GET = async ({ url, locals }) => {
 
 export const POST = async (event) => {
   try {
-    const drillData = await event.request.json();
+    const rawData = await event.request.json();
     const session = event.locals.session;
     const userId = session?.user?.id || null;
     
-    // Basic validation at API boundary (example)
-    if (!drillData.name || !drillData.brief_description) {
-      throw new ValidationError('Missing required fields: name, brief_description');
+    // Add userId to the data before validation if not present
+    const dataWithUser = { ...rawData, created_by: userId };
+
+    // Validate data using Zod schema
+    // Use safeParse to handle validation errors explicitly
+    const validationResult = createDrillSchema.safeParse(dataWithUser);
+
+    if (!validationResult.success) {
+      // Throw ZodError to be caught by handleApiError
+      throw validationResult.error;
     }
 
+    // Use the validated data
+    const validatedData = validationResult.data;
+
     // Use the DrillService to create the drill
-    const drill = await drillService.createDrill(drillData, userId);
+    const drill = await drillService.createDrill(validatedData, userId); // Pass validatedData
     
     return json(drill, { status: 201 }); // Return 201 Created
   } catch (err) { // Renamed variable to err
@@ -116,17 +135,24 @@ export const POST = async (event) => {
 
 export const PUT = authGuard(async ({ request, locals }) => {
   try {
-    const drillData = await request.json();
+    const rawData = await request.json();
     const session = locals.session;
     const userId = session.user.id;
     
-    // Basic validation
-    if (!drillData.id) {
-      throw new ValidationError('Drill ID is required for update');
+    // Validate data using Zod schema
+    const validationResult = updateDrillSchema.safeParse(rawData);
+
+    if (!validationResult.success) {
+      // Throw ZodError to be caught by handleApiError
+      throw validationResult.error;
     }
+    
+    // Use the validated data
+    const validatedData = validationResult.data;
 
     // Use the DrillService to update the drill
-    const updatedDrill = await drillService.updateDrill(drillData.id, drillData, userId);
+    // Pass the drill ID and the rest of the validated data separately
+    const updatedDrill = await drillService.updateDrill(validatedData.id, validatedData, userId);
     
     return json(updatedDrill);
   } catch (err) { // Renamed variable to err
@@ -136,15 +162,21 @@ export const PUT = authGuard(async ({ request, locals }) => {
 });
 
 export const DELETE = authGuard(async ({ params, request, locals }) => {
-  // In SvelteKit, for API routes with dynamic parameters, the parameter comes from params.id 
-  // But this is the collection route, DELETE on /api/drills doesn't make sense semantically
-  // It should likely be on /api/drills/[id]
-  // Keeping the logic as it was, but noting this route might be incorrect
-  const idParam = params.id; // This will likely be undefined here
-  const { id } = await request.json(); // Assume ID comes from body for now
+  // Prefer ID from URL parameter if available (e.g., if route was /api/drills/[id])
+  let drillId = params.id ? parseInt(params.id) : null;
   
-  if (!id) {
-    return handleApiError(new ValidationError('Drill ID must be provided in the request body for DELETE'));
+  // If ID not in params, try getting from body (less standard for DELETE)
+  if (!drillId) {
+    try {
+      const { id } = await request.json(); 
+      if (id) drillId = parseInt(id);
+    } catch (e) {
+      // Ignore errors reading body if it's empty or not JSON
+    }
+  }
+  
+  if (!drillId || isNaN(drillId)) {
+    return handleApiError(new ValidationError('Valid Drill ID must be provided either in the URL or request body for DELETE'));
   }
   
   const session = locals.session;
@@ -152,12 +184,12 @@ export const DELETE = authGuard(async ({ params, request, locals }) => {
 
   try {
     // Use the DrillService to delete the drill
-    const success = await drillService.deleteDrill(id, userId, { deleteRelated: false }); // Default to not deleting related
+    const success = await drillService.deleteDrill(drillId, userId, { deleteRelated: false }); // Default to not deleting related
 
     if (!success) {
-      // If deleteDrill returns false, it means not found (based on current service logic)
-      // Convert this to a NotFoundError for consistency
-      return handleApiError(new NotFoundError(`Drill with ID ${id} not found for deletion.`));
+      // If deleteDrill returns false, it means not found or not permitted
+      // Distinguish between NotFound and Forbidden if possible, otherwise default to NotFound
+      return handleApiError(new NotFoundError(`Drill with ID ${drillId} not found or access denied for deletion.`));
     }
 
     return json({ message: 'Drill deleted successfully' }, { status: 200 }); // Use 200 OK or 204 No Content

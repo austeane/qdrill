@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 // import { error } from '@sveltejs/kit'; // No longer using SvelteKit error helper directly
 import { drillService } from '$lib/server/services/drillService';
 import { authGuard } from '$lib/server/authGuard'; // Import authGuard
-import { handleApiError } from '../../utils/handleApiError.js'; // Import the helper
+import { handleApiError } from '../../../utils/handleApiError.js'; // Import the helper
 import { UnauthorizedError, ValidationError } from '$lib/server/errors.js';
 
 // Apply authGuard

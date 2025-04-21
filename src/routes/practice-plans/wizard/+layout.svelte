@@ -1,6 +1,6 @@
 <script>
     import { currentStep, maxSteps, wizardState } from '$lib/stores/wizardStore';
-    import { validationErrors, canNavigateToStep, canProceedToNextStep } from '$lib/stores/wizardValidation';
+    import { validationErrors } from '$lib/stores/wizardValidation';
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
 
@@ -15,14 +15,17 @@
 
     // Navigation functions
     function goToStep(step) {
-        if (canNavigateToStep(step, $wizardState)) {
+        // TODO: Re-implement navigation logic based on validation
+        // if (canNavigateToStep(step, $wizardState)) { 
             currentStep.set(step);
             goto(steps[step - 1].path);
-        }
+        // }
     }
 
     function nextStep() {
-        if ($currentStep < maxSteps && canProceedToNextStep($wizardState)) {
+        // TODO: Re-implement navigation logic based on validation
+        // if ($currentStep < maxSteps && canProceedToNextStep($wizardState)) {
+        if ($currentStep < maxSteps) { // Temporary: Allow next without validation
             goToStep($currentStep + 1);
         }
     }
@@ -90,10 +93,9 @@
                 </button>
                 
                 <button
-                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700
-                           {!canProceedToNextStep($wizardState) ? 'opacity-50 cursor-not-allowed' : ''}"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
                     on:click={nextStep}
-                    disabled={!canProceedToNextStep($wizardState) || $currentStep === maxSteps}
+                    disabled={/* TODO: Add back validation check */ $currentStep === maxSteps}
                 >
                     Next
                 </button>

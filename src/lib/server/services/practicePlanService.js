@@ -4,6 +4,8 @@ import { kyselyDb } from '$lib/server/db.js'; // Import Kysely instance
 import { jsonObjectFrom } from 'kysely/helpers/postgres';
 import { sql } from 'kysely'; // Import sql tag
 import { NotFoundError, ForbiddenError, ValidationError, DatabaseError, ConflictError } from '$lib/server/errors';
+import { z } from 'zod'; // Import Zod
+import { practicePlanSchema } from '$lib/validation/practicePlanSchema'; // Import the Zod schema
 
 /**
  * Service for managing practice plans
@@ -263,8 +265,10 @@ export class PracticePlanService extends BaseEntityService {
    * @throws {DatabaseError} On database error
    */
   async createPracticePlan(planData, userId = null) {
-    // Validate the practice plan - this will throw ValidationError if invalid
-    this.validatePracticePlan(planData);
+    // Reinstate validation call - Now using Zod schema at the API boundary, but keep internal check for direct service usage?
+    // Decide whether to keep this internal validation. For now, let's assume validation happens *before* calling the service.
+    // If direct service calls are possible elsewhere without API validation, this should be reinstated:
+    // this.validatePracticePlan(planData);
     
     // If user is not logged in, force public visibility and editable by others
     if (!userId) {
@@ -413,6 +417,23 @@ export class PracticePlanService extends BaseEntityService {
 
       return { id: planId };
     }); // Transaction automatically handles rollback on error
+  }
+  
+  /**
+   * Validate a practice plan using the Zod schema.
+   * This is kept for potential direct service usage, but primary validation should be at API boundary.
+   * @param {Object} plan - Practice plan to validate
+   * @throws {ValidationError} If validation fails
+   */
+  validatePracticePlan(plan) {
+    const result = practicePlanSchema.safeParse(plan);
+    if (!result.success) {
+      // Format Zod errors into the structure expected by ValidationError
+      const formattedErrors = result.error.flatten().fieldErrors;
+      console.warn('[Service Validation Warn] Practice plan validation failed:', formattedErrors);
+      throw new ValidationError('Practice plan validation failed', formattedErrors);
+    }
+    // No return value needed, throws on failure
   }
   
   /**
@@ -880,64 +901,6 @@ export class PracticePlanService extends BaseEntityService {
       // Wrap errors during the duplication transaction
       throw new DatabaseError('Failed to duplicate practice plan', error);
     }
-  }
-  
-  /**
-   * Validate a practice plan
-   * @param {Object} plan - Practice plan to validate
-   * @throws {ValidationError} If validation fails
-   */
-  validatePracticePlan(plan) {
-    const errors = {};
-
-    // Check if the name is valid
-    if (!plan.name?.trim()) {
-      // Use ValidationError
-      // throw new ValidationError('Practice plan name is required');
-      errors.name = 'Name is required';
-    }
-
-    // Basic check for sections structure
-    if (!Array.isArray(plan.sections)) {
-      // Allow empty sections array for now, create assumes it exists
-      // throw new ValidationError('Plan sections must be an array.');
-      // errors.sections = 'Sections must be an array';
-    }
-
-    // Check if there are any actual drill items (not breaks or empty one-offs)
-    const hasAnyDrills = plan.sections?.some(section =>
-      section.items?.some(item =>
-        item.type === 'drill' && (item.drill_id || item.drill?.id)
-      )
-    );
-
-    if (!hasAnyDrills) {
-      // Use ValidationError
-      // throw new ValidationError('At least one drill item is required in the practice plan');
-      errors.items = 'At least one drill is required';
-    }
-
-    // Validate phase_of_season
-    const validPhases = [
-      'Offseason',
-      'Early season, new players',
-      'Mid season, skill building',
-      'Tournament tuneup',
-      'End of season, peaking'
-    ];
-
-    if (plan.phase_of_season && !validPhases.includes(plan.phase_of_season)) {
-      // Use ValidationError
-      // throw new ValidationError(`Invalid phase of season. Must be one of: ${validPhases.join(', ')}`);
-      errors.phase_of_season = `Invalid phase of season. Must be one of: ${validPhases.join(', ')}`;
-    }
-
-    // Check for overall validation errors
-    if (Object.keys(errors).length > 0) {
-      throw new ValidationError('Practice plan validation failed', errors);
-    }
-
-    // Add more validation rules as needed (e.g., item duration > 0?)
   }
   
   /**

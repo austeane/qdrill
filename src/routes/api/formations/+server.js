@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { formationService } from '$lib/server/services/formationService.js';
 import { authGuard } from '$lib/server/authGuard';
 import { dev } from '$app/environment';
-import { handleApiError } from '../utils/handleApiError';
+import { handleApiError } from '../utils/handleApiError.js';
 
 /**
  * GET handler for formations

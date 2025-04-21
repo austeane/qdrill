@@ -1,7 +1,37 @@
 import { json } from '@sveltejs/kit';
 import { practicePlanService } from '$lib/server/services/practicePlanService.js';
 import { FILTER_STATES } from '$lib/constants'; // Import FILTER_STATES
-import { handleApiError } from '../utils/handleApiError'; // Import the error handler
+import { z } from 'zod'; // Import zod
+import { createPracticePlanSchema } from '$lib/validation/practicePlanSchema'; // Import Zod schema
+import { AppError, DatabaseError, ValidationError, NotFoundError } from '$lib/server/errors'; // Import error types
+
+// --- Replicated handleApiError from /api/drills --- 
+// (Consider moving to a shared ../utils location)
+function handleApiError(err) {
+  // Handle Zod validation errors specifically
+  if (err instanceof z.ZodError) {
+    console.warn(`[API Warn] Validation failed:`, err.flatten());
+    // Convert Zod errors to the format expected by the frontend/ValidationError
+    const details = err.flatten().fieldErrors;
+    const validationError = new ValidationError('Validation failed', details);
+    return json({ error: { code: validationError.code, message: validationError.message, details: validationError.details } }, { status: validationError.status });
+  } 
+  // Handle custom AppErrors
+  else if (err instanceof AppError) {
+    console.warn(`[API Warn] (${err.status} ${err.code}): ${err.message}`);
+    const body = { error: { code: err.code, message: err.message } };
+    if (err instanceof ValidationError && err.details) {
+      body.error.details = err.details;
+    }
+    return json(body, { status: err.status });
+  } 
+  // Handle generic errors
+  else {
+    console.error('[API Error] Unexpected error:', err);
+    return json({ error: { code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected internal server error occurred' } }, { status: 500 });
+  }
+}
+// --- End replicated handleApiError ---
 
 // Custom error class for better error handling
 class PracticePlanError extends Error {
@@ -89,11 +119,26 @@ function extractFilterParam(searchParams, baseParamName) {
 
 export const POST = async ({ request, locals }) => {
   try {
-    const practicePlan = await request.json();
+    const rawData = await request.json();
     const userId = locals.user?.id;
 
+    // Add userId before validation
+    const dataWithUser = { ...rawData, created_by: userId };
+
+    // Validate using Zod schema
+    const validationResult = createPracticePlanSchema.safeParse(dataWithUser);
+
+    if (!validationResult.success) {
+      // Throw ZodError to be caught by handleApiError
+      throw validationResult.error;
+    }
+
+    // Use the validated data
+    const validatedData = validationResult.data;
+
     // Create practice plan using the service
-    const result = await practicePlanService.createPracticePlan(practicePlan, userId);
+    // Pass validated data to the service
+    const result = await practicePlanService.createPracticePlan(validatedData, userId);
     
     return json(
       { id: result.id, message: 'Practice plan created successfully' }, 

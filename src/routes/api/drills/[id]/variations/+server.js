@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService';
-import { handleApiError } from '../../utils/handleApiError.js';
+import { handleApiError } from '../../../utils/handleApiError.js';
 import { authGuard } from '$lib/server/authGuard.js';
 import { ValidationError, NotFoundError } from '$lib/server/errors.js';
 

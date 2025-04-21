@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService';
-import { handleApiError } from '../utils/handleApiError.js';
+import { handleApiError } from '../../utils/handleApiError.js';
 
 export const GET = async ({ url, locals }) => {
   const session = locals.session;

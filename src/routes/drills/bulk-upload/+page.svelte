@@ -5,6 +5,8 @@
   import { toast } from '@zerodevx/svelte-toast';
   import ExcalidrawWrapper from '$components/ExcalidrawWrapper.svelte';
   import { apiFetch } from '$lib/utils/apiFetch.js';
+  import { z } from 'zod';
+  import { bulkUploadDrillInputSchema } from '$lib/validation/drillSchema';
 
   let fileInput;
   let uploadedFile = writable(null);
@@ -36,7 +38,6 @@
 
   const positionOptions = ['Chaser', 'Beater', 'Keeper', 'Seeker'];
 
-  // Add drillTypeOptions
   const drillTypeOptions = [
     'Competitive', 
     'Skill-focus', 
@@ -65,8 +66,8 @@
     }
 
     isUploading.set(true);
-    uploadSummary.set(null); // Reset summary
-    parsedDrills.set([]); // Reset drills
+    uploadSummary.set(null);
+    parsedDrills.set([]);
     const formData = new FormData();
     formData.append('file', $uploadedFile);
     formData.append('visibility', $visibility);
@@ -118,11 +119,19 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
   function saveDrill(index) {
     parsedDrills.update((drills) => {
       const newDrills = [...drills];
-      const drill = { ...newDrills[index] };
-      validateDrill(drill);
-      if (drill.errors.length === 0) {
+      let drill = { ...newDrills[index] };
+      
+      const validationResult = bulkUploadDrillInputSchema.safeParse(drill);
+      
+      if (validationResult.success) {
+        drill.errors = [];
         drill.isEditing = false;
+        drill = { ...validationResult.data, isEditing: false }; 
+      } else {
+        drill.errors = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+        toast.push('Please fix the validation errors before saving.', { theme: { '--toastBackground': 'orange' } });
       }
+      
       newDrills[index] = drill;
       return newDrills;
     });
@@ -135,122 +144,11 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
     });
   }
 
-  function validateDrill(drill) {
-    drill.errors = [];
-
-    // 1. Name: Required
-    if (!drill.name || drill.name.trim() === '') {
-      drill.errors.push('Name is required');
-    }
-
-    // 2. Brief Description: Required
-    if (!drill.brief_description || drill.brief_description.trim() === '') {
-      drill.errors.push('Brief description is required');
-    }
-
-    // 3. Skill Level: Required, array of numbers [1-5]
-    if (!Array.isArray(drill.skill_level) || drill.skill_level.length === 0) {
-      drill.errors.push('Skill level is required and must be an array');
-    } else {
-      const invalidLevels = drill.skill_level.filter(
-        (level) => !skillLevelOptions.includes(level)
-      );
-      if (invalidLevels.length > 0) {
-        drill.errors.push(`Invalid skill levels: ${invalidLevels.join(', ')}`);
-      }
-    }
-
-    // 4. Complexity: Optional, must be 1, 2, or 3
-    if (drill.complexity && !complexityOptions.includes(drill.complexity)) {
-      drill.errors.push('Complexity must be Low, Medium, or High');
-    }
-
-    // 5. Suggested Length: Required, positive integers, max >= min
-    const minLength = drill.suggested_length.min;
-    const maxLength = drill.suggested_length.max;
-    if (!Number.isInteger(Number(minLength)) || Number(minLength) <= 0) {
-      drill.errors.push('Suggested length min must be a positive integer');
-    }
-    if (!Number.isInteger(Number(maxLength)) || Number(maxLength) <= 0) {
-      drill.errors.push('Suggested length max must be a positive integer');
-    }
-    if (Number(maxLength) < Number(minLength)) {
-      drill.errors.push('Suggested length max must be greater than or equal to min');
-    }
-
-    // 6. Number of People: Optional, positive integers, max >= min or empty (for "any")
-    const minPeople = drill.number_of_people.min;
-    const maxPeople = drill.number_of_people.max;
-    if (minPeople != null || maxPeople != null) {
-      if (minPeople !== null && (!Number.isInteger(Number(minPeople)) || Number(minPeople) <= 0)) {
-        drill.errors.push('Number of people min must be a positive integer');
-      }
-      if (maxPeople !== null && maxPeople !== '' && (!Number.isInteger(Number(maxPeople)) || Number(maxPeople) <= 0)) {
-        drill.errors.push('Number of people max must be a positive integer or empty for "any"');
-      }
-      if (maxPeople !== null && maxPeople !== '' && Number(maxPeople) < Number(minPeople)) {
-        drill.errors.push('Number of people max must be greater than or equal to min');
-      }
-    }
-
-    // 7. Skills Focused On: Required, must be an array
-    if (!Array.isArray(drill.skills_focused_on) || drill.skills_focused_on.length === 0) {
-      drill.errors.push('Skills focused on is required and must be an array');
-    }
-
-    // 8. Positions Focused On: Required, valid positions
-    if (
-      !Array.isArray(drill.positions_focused_on) ||
-      drill.positions_focused_on.length === 0
-    ) {
-      drill.errors.push('Positions focused on is required and must be an array');
-    } else {
-      const invalidPositions = drill.positions_focused_on.filter(
-        (pos) => !positionOptions.includes(pos)
-      );
-      if (invalidPositions.length > 0) {
-        drill.errors.push(`Invalid positions: ${invalidPositions.join(', ')}`);
-      }
-    }
-
-    // 9. Video Link: Optional, must be a valid URL if provided
-    if (drill.video_link) {
-      try {
-        new URL(drill.video_link);
-      } catch {
-        drill.errors.push('Video link must be a valid URL');
-      }
-    }
-
-    // Initialize diagrams as an empty array if not present
-    if (!Array.isArray(drill.diagrams)) {
-      drill.diagrams = [];
-    }
-
-    // Drill Type validation
-    if (!Array.isArray(drill.drill_type) || drill.drill_type.length === 0) {
-      drill.errors.push('At least one drill type is required');
-    } else {
-      const invalidTypes = drill.drill_type.filter(
-        (type) => !drillTypeOptions.includes(type)
-      );
-      if (invalidTypes.length > 0) {
-        drill.errors.push(`Invalid drill types: ${invalidTypes.join(', ')}`);
-      }
-    }
-
-    // Add validation for detailed description if required
-    if (!drill.detailed_description || drill.detailed_description.trim() === '') {
-      drill.errors.push('Detailed description is required');
-    }
-  }
-
   function removeDrill(index) {
     parsedDrills.update(drills => drills.filter((_, i) => i !== index));
   }
 
   async function saveChanges() {
-    // Since changes are already saved in the local state, this might be empty
     toast.push('Changes saved successfully', { theme: { '--toastBackground': 'green' } });
   }
 
@@ -275,7 +173,6 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
       toast.push(`Successfully imported ${result.importedCount} drills`, {
         theme: { '--toastBackground': 'green' }
       });
-      // Redirect to drill listing page
       goto('/drills');
     } catch (error) {
       console.error('Error importing drills:', error);
@@ -289,8 +186,8 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
         drills[drillIndex].diagrams = [];
       }
       const newDiagramIndex = drills[drillIndex].diagrams.length;
-      drills[drillIndex].diagrams.push({}); // Add new empty diagram
-      drills[drillIndex].editableDiagramIndex = newDiagramIndex; // Set the new diagram as editable
+      drills[drillIndex].diagrams.push({});
+      drills[drillIndex].editableDiagramIndex = newDiagramIndex;
       return drills;
     });
   }
@@ -336,6 +233,32 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
       array.push(value);
     }
   }
+
+  function validateDrillLocal(index) {
+    parsedDrills.update((drills) => {
+      const newDrills = [...drills];
+      const drill = { ...newDrills[index] };
+      
+      const validationResult = bulkUploadDrillInputSchema.safeParse(drill);
+      
+      if (validationResult.success) {
+        drill.errors = [];
+      } else {
+        drill.errors = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+      }
+      
+      newDrills[index] = drill;
+      return newDrills;
+    });
+  }
+
+  let skillsInput = '';
+  $: if (filteredDrills && filteredDrills.length > 0 && filteredDrills[0].isEditing) {
+    const editingDrill = filteredDrills.find(d => d.isEditing);
+    if (editingDrill) {
+      skillsInput = editingDrill.skills_focused_on.join(', ');
+    }
+  }
 </script>
 
 <svelte:head>
@@ -345,7 +268,6 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 <div class="container mx-auto p-6">
 <h1 class="text-3xl font-bold mb-6">Bulk Drill Upload</h1>
 
-<!-- Add this new section for instructions -->
 <div class="mb-6 p-4 bg-gray-100 rounded">
   <h2 class="text-2xl font-semibold mb-2">Instructions</h2>
   <p class="mb-2">Please note the following when preparing your CSV file:</p>
@@ -369,7 +291,6 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
   </button>
 </div>
 
-<!-- File upload section -->
 <div class="mb-6">
   <input
     type="file"
@@ -380,7 +301,6 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
   />
 </div>
 
-<!-- Show visibility selector and upload button only when a file is selected -->
 {#if $uploadedFile}
   <div class="mb-6">
     <label class="block text-gray-700 font-medium mb-1">Visibility</label>
@@ -430,18 +350,17 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
       {#each filteredDrills as drill, index (index + '-' + drill.name)}
         <div class="border rounded-lg p-6 bg-white shadow-md {drill.errors.length > 0 ? 'border-yellow-500' : 'border-green-500'}">
           {#if drill.isEditing}
-            <!-- Editable Fields -->
             <div class="mb-4">
               <label class="block text-gray-700 font-medium mb-1" for="name">Name</label>
               <input
                 type="text"
                 bind:value={drill.name}
                 placeholder="Name"
-                class={`w-full px-3 py-2 border ${drill.errors.includes('Name is required') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-                on:input={() => validateDrill(drill)}
+                class={`w-full px-3 py-2 border ${drill.errors?.some(e => e.startsWith('name:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
+                on:input={() => validateDrillLocal(index)}
               />
-              {#if drill.errors.includes('Name is required')}
-                <p class="text-red-500 text-sm mt-1">Name is required</p>
+              {#if drill.errors?.find(e => e.startsWith('name:'))}
+                <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('name:')).split(': ')[1]}</p>
               {/if}
             </div>
 
@@ -451,11 +370,11 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
                 type="text"
                 bind:value={drill.brief_description}
                 placeholder="Brief Description"
-                class={`w-full px-3 py-2 border ${drill.errors.includes('Brief description is required') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-                on:input={() => validateDrill(drill)}
+                class={`w-full px-3 py-2 border ${drill.errors?.some(e => e.startsWith('brief_description:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
+                on:input={() => validateDrillLocal(index)}
               />
-              {#if drill.errors.includes('Brief description is required')}
-                <p class="text-red-500 text-sm mt-1">Brief description is required</p>
+              {#if drill.errors?.find(e => e.startsWith('brief_description:'))}
+                <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('brief_description:')).split(': ')[1]}</p>
               {/if}
             </div>
 
@@ -465,16 +384,15 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
                 id="detailed_description"
                 bind:value={drill.detailed_description}
                 placeholder="Detailed Description"
-                class={`w-full px-3 py-2 border ${drill.errors.includes('Detailed description is required') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-                on:input={() => validateDrill(drill)}
+                class={`w-full px-3 py-2 border ${drill.errors?.some(e => e.startsWith('detailed_description:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
+                on:input={() => validateDrillLocal(index)}
                 rows="4"
               ></textarea>
-              {#if drill.errors.includes('Detailed description is required')}
-                <p class="text-red-500 text-sm mt-1">Detailed description is required</p>
+              {#if drill.errors?.find(e => e.startsWith('detailed_description:'))}
+                <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('detailed_description:')).split(': ')[1]}</p>
               {/if}
             </div>
 
-            <!-- Drill Type Field (moved to the top) -->
             <div class="mb-4">
               <label class="block text-gray-700 font-medium mb-1">Drill Type</label>
               <div class="flex flex-wrap gap-2">
@@ -483,72 +401,66 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
                     type="button"
                     class="px-3 py-1 rounded-full border border-gray-300"
                     class:selected={drill.drill_type.includes(type)}
-                    on:click={() => toggleSelection(drill.drill_type, type)}
+                    on:click={() => { toggleSelection(drill.drill_type, type); validateDrillLocal(index); }}
                   >
                     {type}
                   </button>
                 {/each}
               </div>
-              {#if drill.errors.includes('At least one drill type is required')}
-                <p class="text-red-500 text-sm mt-1">At least one drill type is required</p>
+              {#if drill.errors?.find(e => e.startsWith('drill_type:'))}
+                <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('drill_type:')).split(': ')[1]}</p>
               {/if}
             </div>
 
             <div class="mb-4">
               <label class="block text-gray-700 font-medium mb-1" for="skill_level">Skill Level(s)</label>
-              <select
-                id="skill_level"
-                name="skill_level"
-                multiple
-                bind:value={drill.skill_level}
-                class={`w-full px-3 py-2 border ${drill.errors.includes('Skill level is required and must be an array') || drill.errors.some(err => err.startsWith('Invalid skill levels')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-                on:change={() => validateDrill(drill)}
-              >
-                {#each skillLevelOptions as option}
-                  <option value={option}>{option}</option>
+              <div class="flex flex-wrap gap-2">
+                 {#each skillLevelOptions as level}
+                  <button
+                    type="button"
+                    class="px-3 py-1 rounded-full border border-gray-300"
+                    class:selected={drill.skill_level.includes(level)}
+                    on:click={() => { toggleSelection(drill.skill_level, level); validateDrillLocal(index); }}
+                  >
+                    {level}
+                  </button>
                 {/each}
-              </select>
-              {#if drill.errors.includes('Skill level is required and must be an array')}
-                <p class="text-red-500 text-sm mt-1">Skill level is required and must be an array</p>
+              </div>
+               {#if drill.errors?.find(e => e.startsWith('skill_level:'))}
+                <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('skill_level:')).split(': ')[1]}</p>
               {/if}
-              {#each drill.errors as error}
-                {#if error.startsWith('Invalid skill levels')}
-                  <p class="text-red-500 text-sm mt-1">{error}</p>
-                {/if}
-              {/each}
             </div>
 
             <div class="mb-4">
               <label class="block text-gray-700 font-medium mb-1" for="complexity">Complexity</label>
               <select
                 id="complexity"
-                name="complexity"
                 bind:value={drill.complexity}
-                class={`w-full px-3 py-2 border ${drill.errors.includes('Complexity must be Low, Medium, or High') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-                on:change={() => validateDrill(drill)}
+                 class={`w-full px-3 py-2 border ${drill.errors?.some(e => e.startsWith('complexity:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
+                 on:change={() => validateDrillLocal(index)}
               >
-                <option value="">Select Complexity</option>
+                <option value={null}>Select...</option>
                 {#each complexityOptions as option}
                   <option value={option}>{option}</option>
                 {/each}
               </select>
-              {#if drill.errors.includes('Complexity must be Low, Medium, or High')}
-                <p class="text-red-500 text-sm mt-1">Complexity must be Low, Medium, or High</p>
+              {#if drill.errors?.find(e => e.startsWith('complexity:'))}
+                <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('complexity:')).split(': ')[1]}</p>
               {/if}
             </div>
 
-            <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="mb-4 grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-gray-700 font-medium mb-1" for="suggested_length_min">Suggested Length Min</label>
                 <input
                   type="number"
                   bind:value={drill.suggested_length.min}
                   placeholder="Min"
-                  class={`w-full px-3 py-2 border ${drill.errors.includes('Suggested length min must be a positive integer') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-                  on:input={() => validateDrill(drill)}
+                  class={`w-full px-3 py-2 border ${drill.errors?.some(e => e.startsWith('suggested_length.min:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
+                  on:input={() => validateDrillLocal(index)}
                 />
-                {#if drill.errors.includes('Suggested length min must be a positive integer')}
-                  <p class="text-red-500 text-sm mt-1">Must be a positive integer</p>
+                 {#if drill.errors?.find(e => e.startsWith('suggested_length.min:'))}
+                  <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('suggested_length.min:')).split(': ')[1]}</p>
                 {/if}
               </div>
 
@@ -558,18 +470,14 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
                   type="number"
                   bind:value={drill.suggested_length.max}
                   placeholder="Max"
-                  class={`w-full px-3 py-2 border ${drill.errors.includes('Suggested length max must be a positive integer') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-                  on:input={() => validateDrill(drill)}
+                  class={`w-full px-3 py-2 border ${drill.errors?.some(e => e.startsWith('suggested_length.max:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
+                  on:input={() => validateDrillLocal(index)}
                 />
-                {#if drill.errors.includes('Suggested length max must be a positive integer')}
-                  <p class="text-red-500 text-sm mt-1">Must be a positive integer</p>
+                {#if drill.errors?.find(e => e.startsWith('suggested_length.max:'))}
+                  <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('suggested_length.max:')).split(': ')[1]}</p>
                 {/if}
               </div>
             </div>
-
-            {#if drill.errors.some(err => err.includes('Suggested length max must be greater than or equal to min'))}
-              <p class="text-red-500 text-sm mb-4">Suggested length max must be greater than or equal to min</p>
-            {/if}
 
             <div class="grid grid-cols-2 gap-4 mb-4">
               <div>
@@ -578,12 +486,12 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
                   type="number"
                   bind:value={drill.number_of_people.min}
                   placeholder="Min"
-                  class={`w-full px-3 py-2 border ${drill.errors.includes('Number of people min must be a positive integer') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-                  on:input={() => validateDrill(drill)}
+                  class={`w-full px-3 py-2 border ${drill.errors?.some(e => e.startsWith('number_of_people.min:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
+                  on:input={() => validateDrillLocal(index)}
                   min="1"
                 />
-                {#if drill.errors.includes('Number of people min must be a positive integer')}
-                  <p class="text-red-500 text-sm mt-1">Must be a positive integer</p>
+                 {#if drill.errors?.find(e => e.startsWith('number_of_people.min:'))}
+                  <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('number_of_people.min:')).split(': ')[1]}</p>
                 {/if}
               </div>
 
@@ -593,56 +501,46 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
                   type="number"
                   bind:value={drill.number_of_people.max}
                   placeholder="Max (or leave empty for 'any')"
-                  class={`w-full px-3 py-2 border ${drill.errors.includes('Number of people max must be a positive integer or empty for "any"') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-                  on:input={() => validateDrill(drill)}
-                  min="1"
+                  class={`w-full px-3 py-2 border ${drill.errors?.some(e => e.startsWith('number_of_people.max:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
+                   on:input={() => validateDrillLocal(index)}
                 />
-                {#if drill.errors.includes('Number of people max must be a positive integer or empty for "any"')}
-                  <p class="text-red-500 text-sm mt-1">Must be a positive integer or empty for "any"</p>
+                 {#if drill.errors?.find(e => e.startsWith('number_of_people.max:'))}
+                  <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('number_of_people.max:')).split(': ')[1]}</p>
                 {/if}
               </div>
             </div>
 
-            {#if drill.errors.some(err => err.includes('Number of people max must be greater than or equal to min'))}
-              <p class="text-red-500 text-sm mb-4">Number of people max must be greater than or equal to min</p>
-            {/if}
-
             <div class="mb-4">
-              <label class="block text-gray-700 font-medium mb-1" for="skills_focused_on">Skills Focused On</label>
+              <label class="block text-gray-700 font-medium mb-1">Skills Focused On</label>
               <input
                 type="text"
-                bind:value={drill.skills_focused_on}
-                placeholder="Comma-separated skills"
-                class={`w-full px-3 py-2 border ${drill.errors.includes('Skills focused on is required and must be an array') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-                on:input={() => validateDrill(drill)}
+                bind:value={skillsInput}
+                on:change={() => { drill.skills_focused_on = skillsInput.split(',').map(s => s.trim()).filter(s => s); validateDrillLocal(index); }}
+                placeholder="Passing, Catching"
+                class={`w-full px-3 py-2 border ${drill.errors?.some(e => e.startsWith('skills_focused_on:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
               />
-              {#if drill.errors.includes('Skills focused on is required and must be an array')}
-                <p class="text-red-500 text-sm mt-1">At least one skill is required</p>
-              {/if}
+               {#if drill.errors?.find(e => e.startsWith('skills_focused_on:'))}
+                  <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('skills_focused_on:')).split(': ')[1]}</p>
+                {/if}
             </div>
 
             <div class="mb-4">
               <label class="block text-gray-700 font-medium mb-1" for="positions_focused_on">Positions Focused On</label>
-              <select
-                id="positions_focused_on"
-                name="positions_focused_on"
-                multiple
-                bind:value={drill.positions_focused_on}
-                class={`w-full px-3 py-2 border ${drill.errors.includes('Positions focused on is required and must be an array') || drill.errors.some(err => err.startsWith('Invalid positions')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-                on:change={() => validateDrill(drill)}
-              >
-                {#each positionOptions as position}
-                  <option value={position}>{position}</option>
+               <div class="flex flex-wrap gap-2">
+                 {#each positionOptions as pos}
+                  <button
+                    type="button"
+                    class="px-3 py-1 rounded-full border border-gray-300"
+                    class:selected={drill.positions_focused_on.includes(pos)}
+                    on:click={() => { toggleSelection(drill.positions_focused_on, pos); validateDrillLocal(index); }}
+                  >
+                    {pos}
+                  </button>
                 {/each}
-              </select>
-              {#if drill.errors.includes('Positions focused on is required and must be an array')}
-                <p class="text-red-500 text-sm mt-1">At least one position is required</p>
-              {/if}
-              {#each drill.errors as error}
-                {#if error.startsWith('Invalid positions')}
-                  <p class="text-red-500 text-sm mt-1">{error}</p>
+              </div>
+              {#if drill.errors?.find(e => e.startsWith('positions_focused_on:'))}
+                  <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('positions_focused_on:')).split(': ')[1]}</p>
                 {/if}
-              {/each}
             </div>
 
             <div class="mb-4">
@@ -650,16 +548,15 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
               <input
                 type="url"
                 bind:value={drill.video_link}
-                placeholder="https://example.com/video"
-                class={`w-full px-3 py-2 border ${drill.errors.includes('Video link must be a valid URL') ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-                on:input={() => validateDrill(drill)}
+                placeholder="https://example.com"
+                class={`w-full px-3 py-2 border ${drill.errors?.some(e => e.startsWith('video_link:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
+                on:input={() => validateDrillLocal(index)}
               />
-              {#if drill.errors.includes('Video link must be a valid URL')}
-                <p class="text-red-500 text-sm mt-1">Must be a valid URL</p>
-              {/if}
+              {#if drill.errors?.find(e => e.startsWith('video_link:'))}
+                  <p class="text-red-500 text-sm mt-1">{drill.errors.find(e => e.startsWith('video_link:')).split(': ')[1]}</p>
+                {/if}
             </div>
 
-            <!-- Diagrams Section -->
             <div class="mb-4">
               <h4 class="text-lg font-semibold mb-2">Diagrams:</h4>
               {#each drill.diagrams as diagram, diagIndex (diagIndex)}
@@ -681,17 +578,15 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
               </button>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="flex space-x-4 mt-4">
-              <button on:click={() => saveDrill(index)} class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded">
-                Save
-              </button>
-              <button on:click={() => cancelEdit(index)} class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded">
+            <div class="flex justify-end space-x-2 mt-4">
+              <button on:click={() => cancelEdit(index)} class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded">
                 Cancel
+              </button>
+              <button on:click={() => saveDrill(index)} class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded" disabled={drill.errors?.length > 0}>
+                Save Changes
               </button>
             </div>
           {:else}
-            <!-- Display Fields (Always Visible) -->
             <h3 class="text-xl font-semibold mb-2">{drill.name}</h3>
             <p class="text-gray-700 mb-2">{drill.brief_description}</p>
             {#if drill.detailed_description}
@@ -724,7 +619,6 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
               </div>
             {/if}
 
-            <!-- Diagrams Section -->
             <div class="mb-4">
               <h4 class="text-lg font-semibold mb-2">Diagrams:</h4>
               {#each drill.diagrams as diagram, diagIndex (diagIndex)}
@@ -746,7 +640,6 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
               </button>
             </div>
 
-            <!-- Action Buttons -->
             <div class="flex space-x-4 mt-4">
               <button on:click={() => editDrill(index)} class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">
                 Edit

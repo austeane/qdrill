@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { practicePlanService } from '$lib/server/services/practicePlanService';
-import { handleApiError } from '../../../utils/handleApiError';
+import { handleApiError } from '../../../utils/handleApiError.js';
 
 /**
  * @type {import('./$types').RequestHandler}

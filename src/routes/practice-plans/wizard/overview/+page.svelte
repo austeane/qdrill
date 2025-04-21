@@ -1,8 +1,7 @@
 <script>
-    import { basicInfo, timeline } from '$lib/stores/wizardStore';
+    import { basicInfo, sections, timeline, wizardState, currentStep } from '$lib/stores/wizardStore';
     import { validationErrors } from '$lib/stores/wizardValidation';
     import { goto } from '$app/navigation';
-    import { validateBasicInfo, validateSections, validateTimeline, validateDrills } from '$lib/stores/wizardValidation';
 
     // Format time for display
     function formatTime(minutes) {

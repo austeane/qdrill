@@ -3,7 +3,7 @@ import { json } from '@sveltejs/kit';
 // import { PREDEFINED_SKILLS } from '$lib/constants/skills';
 // import * as db from '$lib/server/db';
 import { skillService } from '$lib/server/services/skillService';
-import { handleApiError } from '../utils/handleApiError';
+import { handleApiError } from '../utils/handleApiError.js';
 
 // Remove standardizeSkill helper if service handles standardization.
 // function standardizeSkill(skill) {

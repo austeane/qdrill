@@ -1,6 +1,6 @@
 <script>
     import { sections, timeline, basicInfo } from '$lib/stores/wizardStore';
-    import { validationErrors, getFieldError } from '$lib/stores/wizardValidation';
+    import { validationErrors } from '$lib/stores/wizardValidation';
     import { scheduleAutoSave } from '$lib/stores/wizardStore';
 
     // Add touched state tracking

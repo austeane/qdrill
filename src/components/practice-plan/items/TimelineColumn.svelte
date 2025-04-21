@@ -6,22 +6,29 @@
     handleDragEnd
   } from '$lib/stores/dragManager';
   import DrillItem from './DrillItem.svelte';
-  import { removeItem, getTimelineName, customTimelineNames } from '$lib/stores/sectionsStore';
+  // Remove direct store imports
+  // import { removeItem, getTimelineName, customTimelineNames } from '$lib/stores/sectionsStore';
   
   export let timeline;
   export let groupTimelines;
-  export let timelineItems = [];
+  export let timelineItems = []; // All items passed from parent
   export let sectionIndex;
   export let sectionId;
   export let parallelGroupId;
   export let totalDuration = 0;
+  // Add props for data and actions
+  export let onRemoveItem = (sectionIndex, itemIndex) => { 
+    console.warn('onRemoveItem prop not provided to TimelineColumn', sectionIndex, itemIndex);
+  };
+  export let timelineNameGetter = (timeline) => timeline; // Simple default
+  export let customTimelineNamesData = {}; // Pass the reactive data (not directly used here, but needed by getter)
+
+  // No longer subscribe directly
+  // let timelineNamesStore;
+  // $: timelineNamesStore = $customTimelineNames;
   
-  // Subscribe to customTimelineNames to make component reactive to name changes
-  let timelineNamesStore;
-  $: timelineNamesStore = $customTimelineNames;
-  
-  // Get the timeline name reactively
-  $: timelineName = getTimelineName(timeline);
+  // Get the timeline name reactively using the passed getter
+  $: timelineName = timelineNameGetter(timeline);
   
   // Filter items for this specific timeline
   $: timelineSpecificItems = timelineItems.filter(
@@ -29,16 +36,13 @@
            item.parallel_timeline === timeline
   );
   
-  $: console.log('[DEBUG] TimelineColumn', {
-    timeline,
-    parallelGroupId,
-    itemCount: timelineSpecificItems.length,
-    timelineItems: timelineSpecificItems.map(i => ({
-      name: i.name,
-      parallel_timeline: i.parallel_timeline,
-      groupTimelines: i.groupTimelines
-    }))
-  });
+  // Find the original index of an item within the parent's `timelineItems` array
+  function findOriginalItemIndex(item) {
+    if (!item) return -1;
+    return timelineItems.findIndex(i => i.id === item.id);
+  }
+
+  // Removed debug log for brevity
 </script>
 
 <div 
@@ -107,14 +111,18 @@
       </div>
     {:else}
       {#each timelineSpecificItems as item, timelineItemIndex}
+        {@const originalItemIndex = findOriginalItemIndex(item)}
         <DrillItem 
           {item} 
-          itemIndex={timelineItems.indexOf(item)}
+          itemIndex={originalItemIndex}
           timelineItemIndex={timelineItemIndex} 
           {timeline}
           {parallelGroupId}
           {sectionIndex}
-          onRemove={() => removeItem(sectionIndex, timelineItems.indexOf(item))} 
+          onRemove={() => onRemoveItem(sectionIndex, originalItemIndex)}
+          onDurationChange={(secIdx, itemIdx, duration) => {
+            console.log(`Duration change in TimelineColumn for item ${itemIdx}: ${duration}`);
+          }}
         />
       {/each}
     {/if}

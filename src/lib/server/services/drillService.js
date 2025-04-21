@@ -528,9 +528,15 @@ export class DrillService extends BaseEntityService {
     
     // Add Full-Text Search condition if applicable
     let ftsCondition = '';
+    // Track parameter indexes for searchConfig/searchQuery so we can reuse in ORDER BY
+    let searchConfigParamIndex = null;
+    let searchQueryParamIndex = null;
     if (searchQuery) {
         const searchConfig = 'english'; // Or make configurable
-        ftsCondition = `search_vector @@ plainto_tsquery($${currentParamCount + 1}, $${currentParamCount + 2})`;
+        // Calculate indexes *before* pushing params
+        searchConfigParamIndex = currentParamCount + 1;
+        searchQueryParamIndex = currentParamCount + 2;
+        ftsCondition = `search_vector @@ plainto_tsquery($${searchConfigParamIndex}, $${searchQueryParamIndex})`;
         queryParams.push(searchConfig, searchQuery);
         currentParamCount += 2;
         finalConditions.push(ftsCondition);
@@ -544,8 +550,8 @@ export class DrillService extends BaseEntityService {
     // Build ORDER BY clause
     let orderBy;
     if (searchQuery && (!sortBy || sortBy === 'relevance')) {
-        // Default sort by relevance when searching, ensure FTS params are first
-        orderBy = `ORDER BY ts_rank_cd(search_vector, plainto_tsquery($1, $2)) DESC, ${this.primaryKey} DESC`;
+        // Default sort by relevance when searching
+        orderBy = `ORDER BY ts_rank_cd(search_vector, plainto_tsquery($${searchConfigParamIndex}, $${searchQueryParamIndex})) DESC, ${this.primaryKey} DESC`;
     } else if (sortBy && this.isColumnAllowed(sortBy)) {
         const sanitizedSortOrder = this.validateSortOrder(sortOrder);
         orderBy = `ORDER BY ${sortBy} ${sanitizedSortOrder}, ${this.primaryKey} ${sanitizedSortOrder}`;

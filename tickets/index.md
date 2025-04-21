@@ -5,8 +5,6 @@ This index lists the tickets created based on the findings of the code review, r
 
 ## P1: High Priority (Foundation & Scalability)
 1.  [Ticket 14: Centralize Validation Logic](./14-refactor-validation.md)
-2.  [Ticket 06: Implement Server-Side Pagination/Filtering/Sorting for Drills](./06-api-scalability-drills.md)
-3.  [Ticket 07: Implement Server-Side Pagination/Filtering/Sorting for Practice Plans](./07-api-scalability-practice-plans.md)
 
 ## P2: Architectural Refactors (Maintainability & Coupling)
 

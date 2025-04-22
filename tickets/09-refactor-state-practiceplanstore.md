@@ -2,7 +2,7 @@
 
 **Priority:** High
 
-**Description:** The [`src/lib/stores/practicePlanStore.js`](src/lib/stores/practicePlanStore.js) store violates the single responsibility principle by mixing numerous concerns: form field state, form UI state, form submission logic (including API calls, validation, normalization, navigation, toasts), utility functions, and unrelated state/helpers for filtering and drag-and-drop.
+**Description:** The [`src/lib/stores/practicePlanStore.js`](/src/lib/stores/practicePlanStore.js) store violates the single responsibility principle by mixing numerous concerns: form field state, form UI state, form submission logic (including API calls, validation, normalization, navigation, toasts), utility functions, and unrelated state/helpers for filtering and drag-and-drop.
 
 **Affected Files:**
 

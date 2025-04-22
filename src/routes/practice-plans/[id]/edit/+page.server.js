@@ -1,6 +1,11 @@
-import { error } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { practicePlanService } from '$lib/server/services/practicePlanService';
 import { authGuard } from '$lib/server/authGuard'; // Import authGuard
+import { PracticePlanService } from '$lib/server/services/practicePlanService.js';
+import { normalizeItems } from '$lib/utils/practicePlanUtils.js';
+import { practicePlanSchema } from '$lib/validation/practicePlanSchema.ts';
+import { z } from 'zod';
+import { NotFoundError, ForbiddenError, ValidationError, DatabaseError } from '$lib/server/errors';
 
 const COOKIE_NAME = 'pendingPlanToken'; // Add cookie name constant
 
@@ -89,3 +94,101 @@ export const load = authGuard(async ({ params, locals, cookies, fetch }) => { //
         // isPendingData: !!pendingPlanData 
     };
 });
+
+/** @type {import('./$types').Actions} */
+export const actions = {
+	default: async ({ request, locals, params }) => {
+		const session = await locals.getSession();
+		const userId = session?.user?.userId;
+		const planId = parseInt(params.id);
+
+		if (isNaN(planId)) {
+			return fail(400, { success: false, errors: { general: 'Invalid Practice Plan ID' } });
+		}
+
+		const formData = await request.formData();
+		const data = Object.fromEntries(formData);
+
+		// --- Basic Data Parsing --- 
+		const planData = {
+			name: data.planName,
+			description: data.planDescription,
+			phase_of_season: data.phaseOfSeason || null,
+			estimated_number_of_participants: data.estimatedNumberOfParticipants ? parseInt(data.estimatedNumberOfParticipants) : null,
+			practice_goals: formData.getAll('practiceGoals[]').filter(goal => goal.trim() !== ''),
+			visibility: data.visibility,
+			is_editable_by_others: data.isEditableByOthers === 'on',
+			start_time: data.startTime ? data.startTime + ':00' : null,
+			sections: JSON.parse(data.sections || '[]')
+		};
+
+		console.log(`[Edit Action - Plan ${planId}] Received planData:`, planData);
+
+		// --- Validation --- 
+		try {
+			// 1. Validate Metadata
+			const metadataSchema = practicePlanSchema.pick({
+				name: true, description: true, phase_of_season: true, 
+				estimated_number_of_participants: true, practice_goals: true,
+				visibility: true, is_editable_by_others: true, start_time: true
+			});
+
+			const metadataResult = metadataSchema.safeParse(planData);
+			if (!metadataResult.success) {
+				console.warn(`[Edit Action - Plan ${planId}] Metadata validation failed`, metadataResult.error.flatten().fieldErrors);
+				return fail(400, { 
+					success: false, 
+					errors: metadataResult.error.flatten().fieldErrors, 
+					data: planData 
+				});
+			}
+
+			// 2. Validate Sections Structure
+			if (!Array.isArray(planData.sections)) {
+				throw new ValidationError('Sections data is missing or invalid.', { sections: 'Invalid format' });
+			}
+			const totalItems = planData.sections.reduce((count, section) => count + (section.items?.length || 0), 0);
+			if (totalItems === 0) {
+				console.warn(`[Edit Action - Plan ${planId}] Validation failed: No items in plan`);
+				return fail(400, { 
+					success: false, 
+					errors: { general: 'A practice plan must contain at least one drill or break.' }, 
+					data: planData 
+				});
+			}
+
+			// --- Normalization --- 
+			const normalizedSections = planData.sections.map(section => ({
+				...section,
+				items: normalizeItems(section.items || [])
+			}));
+
+			const finalPlanData = {
+				...metadataResult.data, // Use validated metadata
+				sections: normalizedSections
+			};
+
+			console.log(`[Edit Action - Plan ${planId}] Calling service with data:`, finalPlanData);
+			await practicePlanService.updatePracticePlan(planId, finalPlanData, userId);
+
+			console.log(`[Edit Action - Plan ${planId}] Service call successful.`);
+			// Redirect on success
+			redirect(303, `/practice-plans/${planId}`);
+
+		} catch (error) {
+			console.error(`[Edit Action - Plan ${planId}] Error:`, error);
+			if (error instanceof ValidationError) {
+				return fail(400, { success: false, errors: error.errors || { general: error.message }, data: planData });
+			} else if (error instanceof ForbiddenError) {
+				return fail(403, { success: false, errors: { general: error.message }, data: planData });
+			} else if (error instanceof NotFoundError) {
+				// This could happen if the plan is deleted between load and submit
+				return fail(404, { success: false, errors: { general: 'Practice plan not found.' }, data: planData });
+			} else if (error instanceof DatabaseError) {
+				return fail(500, { success: false, errors: { general: 'Database error occurred.' }, data: planData });
+			} else {
+				return fail(500, { success: false, errors: { general: 'An unexpected error occurred.' }, data: planData });
+			}
+		}
+	}
+};

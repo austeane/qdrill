@@ -1,13 +1,14 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { toast } from '@zerodevx/svelte-toast';
   import { page } from '$app/stores';
+  import { enhance } from '$app/forms'; // Import enhance
   import { cart } from '$lib/stores/cartStore';
   import { undo, redo, canUndo, canRedo, initializeHistory } from '$lib/stores/historyStore';
   import { authClient } from '$lib/auth-client';
   
-  // Import stores
+  // Import NEW stores and utils
   import { 
     planName,
     planDescription,
@@ -17,17 +18,14 @@
     visibility,
     isEditableByOthers,
     startTime,
-    errors,
-    isSubmitting,
-    phaseOfSeasonOptions,
-    initializeForm,
-    submitPracticePlan,
+    errors as metadataErrors, // Rename to avoid conflict with form errors
+    initializeForm, // Keep initializeForm for setting initial state
+    resetForm, // Add resetForm if needed (e.g., on successful create)
     addPracticeGoal,
     removePracticeGoal,
-    updatePracticeGoal,
-    totalPlanDuration,
-    formatTime
-  } from '$lib/stores/practicePlanStore';
+    updatePracticeGoal
+  } from '$lib/stores/practicePlanMetadataStore';
+  import { formatTime } from '$lib/utils/timeUtils';
   
   import {
     sections,
@@ -35,6 +33,7 @@
     selectedSectionId,
     addSection,
     initializeSections,
+    totalPlanDuration, // Moved here
     formatDrillItem,
     initializeTimelinesFromPlan,
     removeSection,
@@ -42,7 +41,8 @@
     handleDurationChange,
     handleUngroup,
     getTimelineName,
-    customTimelineNames
+    customTimelineNames,
+    // handleDrillMove // Dnd logic likely uses this, ensure it's available if needed
   } from '$lib/stores/sectionsStore';
   
   // Import component modules
@@ -63,35 +63,23 @@
   let showDrillSearch = false;
   let showTimelineSelector = false;
   let selectedSectionForDrill = null;
+  let submitting = false; // State for progressive enhancement
 
   // Initialize the form when practice plan or pending data is provided
+  // NOTE: Pending plan data logic might need re-evaluation after store refactor.
+  // The `load` function in `create/+page.server.js` was removed.
+  // For now, focus on initializing from `practicePlan` prop (for edit).
   $: {
-    if (pendingPlanData) {
-      console.log('[PracticePlanForm] Initializing with PENDING plan data:', pendingPlanData);
-      // Restore simple fields
-      planName.set(pendingPlanData.name);
-      planDescription.set(pendingPlanData.description);
-      practiceGoals.set(pendingPlanData.practice_goals);
-      phaseOfSeason.set(pendingPlanData.phase_of_season);
-      estimatedNumberOfParticipants.set(pendingPlanData.estimated_number_of_participants);
-      isEditableByOthers.set(pendingPlanData.is_editable_by_others);
-      visibility.set(pendingPlanData.visibility);
-      startTime.set(pendingPlanData.start_time);
-      
-      // Restore sections and items
-      if (pendingPlanData.sections) {
-        // Assuming initializeSections can handle this structure
-        initializeSections({ sections: pendingPlanData.sections }); 
-      }
-      // Mark form as initialized to prevent overriding by practicePlan prop later if both exist
-      // (though server-side load should handle deleting pending data)
-       initializeHistory(); // Re-initialize history after restoring state
-      
-    } else if (practicePlan) {
+    // Only initialize from practicePlan prop (edit mode)
+    if (practicePlan) {
       console.log('[PracticePlanForm] Initializing with EXISTING plan data:', practicePlan);
       initializeForm(practicePlan);
       initializeSections(practicePlan);
        initializeHistory(); // Initialize history for existing plan too
+    } else {
+      // If creating a new plan (practicePlan is null), ensure form is reset
+      // This might happen if navigating back/forth
+      // resetForm(); // Consider if a full reset is needed or if stores default correctly
     }
   }
   
@@ -113,123 +101,18 @@
     showTimelineSelector = true;
   }
   
-  // Handle form submission
-  async function handleSubmit() {
-    // Check if logged in before potentially saving state
-    if (!$page.data.session && $visibility !== 'public') {
-      const confirmed = confirm(
-        `Log in to create a ${$visibility} practice plan.\n\n` +
-        'Click OK to log in with Google\n' +
-        'Click Cancel to create as public instead'
-      );
-
-      if (confirmed) {
-        // Store form data via API
-        const formData = {
-          name: $planName,
-          description: $planDescription,
-          practice_goals: $practiceGoals,
-          phase_of_season: $phaseOfSeason,
-          estimated_number_of_participants: $estimatedNumberOfParticipants,
-          is_editable_by_others: $isEditableByOthers,
-          visibility: $visibility,
-          sections: $sections, // Include sections and items
-          start_time: $startTime
-        };
-        console.log('[PracticePlanForm] Saving pending practice plan data via API:', formData);
-        try {
-          const response = await fetch('/api/pending-plans', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('[PracticePlanForm] Failed to save pending plan:', errorData);
-            toast.push(`Failed to save draft: ${errorData.error || 'Unknown error'}`, { theme: { '--toastBackground': 'red' } });
-            return; // Stop if saving draft failed
-          }
-
-          // Proceed to sign in
-          await authClient.signIn.social({ provider: 'google' });
-          return; // Stop further execution, redirecting to login
-
-        } catch (error) {
-            console.error('[PracticePlanForm] Error calling /api/pending-plans:', error);
-            toast.push('Error saving draft. Please try again.', { theme: { '--toastBackground': 'red' } });
-            return; // Stop if API call failed
-        }
-
-      } else {
-        visibility.set('public');
-        isEditableByOthers.set(true); // Ensure editable if becoming public
-      }
-    }
-
-    // --- Logic for associating an existing plan after anonymous save ---
-    // This part also needs adjustment if we want anonymous users to be able
-    // to save *first* and *then* associate. Currently, it tries to associate
-    // *after* saving. Let's keep the existing flow for now, which requires
-    // login *before* saving non-public plans. If the user saves a public plan
-    // anonymously, the association prompt remains.
-
-    // If not logged in after the check, ensure settings are correct
-    if (!$page.data.session) {
-      visibility.set('public');
-      isEditableByOthers.set(true);
-    }
-
-    // Call the existing submit function (now assuming logged in or public/editable)
-    // NOTE: submitPracticePlan in the store will need updating to DELETE the pending plan
-    const resultPlanId = await submitPracticePlan($sections, practicePlan); 
-    
-    if (resultPlanId) {
-      // After successful submission for non-logged in users (public plan only)
-      if (!$page.data.session) {
-        const confirmedAssociate = confirm(
-          'Practice plan saved publicly. Would you like to log in to claim ownership?\n\n' +
-          'Click OK to log in with Google\n' +
-          'Click Cancel to view the plan without logging in'
-        );
-
-        if (confirmedAssociate) {
-          console.log('[PracticePlanForm] Setting practicePlanToAssociate (for public plan):', resultPlanId);
-          // Still using sessionStorage for this specific association ID, as it's simpler
-          // than creating another temporary server state just for the ID.
-          sessionStorage.setItem('practicePlanToAssociate', resultPlanId); 
-          await authClient.signIn.social({ provider: 'google' });
-          return; // Stop further execution, redirecting to login
-        }
-      }
-
-      // If not associating or already logged in, clear cart and navigate
-      if (!practicePlan) { // Only clear cart on create
-        cart.clear();
-      }
-      // Clear any potential association ID from sessionStorage if we get here
-      sessionStorage.removeItem('practicePlanToAssociate'); 
-      goto(`/practice-plans/${resultPlanId}`);
-    }
-  }
-  
   // Component initialization
   onMount(async () => {
     // Initialize history store regardless of data source
     // Note: If pendingPlanData exists, it will re-initialize history above in the reactive block.
     // If only practicePlan exists, it also initializes above.
     // If neither exists (fresh create), initialize here.
-    if (!pendingPlanData && !practicePlan) {
+    if (!practicePlan) {
         initializeHistory();
     }
 
-    // --- Removed sessionStorage restoration logic ---
-    // const pendingData = sessionStorage.getItem('pendingPracticePlanData');
-    // if (pendingData) { ... } 
-    // else { ... } 
-
-    // Original onMount logic if no pending data AND no existing plan
-    if (!pendingPlanData && !practicePlan) {
+    // Removed pendingPlanData logic
+    if (!practicePlan) {
       if ($cart.length === 0) {
         showEmptyCartModal = true;
       } else {
@@ -284,19 +167,20 @@
           
           selectedItems.set(cartItems);
       }
-    } else if (practicePlan && !pendingPlanData) { 
+    } else if (practicePlan) { 
         // If editing an existing plan (and not restoring pending), initialize timelines
         initializeTimelinesFromPlan(practicePlan);
-    } else if (pendingPlanData) {
-        // If restoring pending data, timelines should be part of the section data already
-        // No specific timeline init needed here, handled by initializeSections
-        console.log('[PracticePlanForm] Timelines restored from pending data via initializeSections.');
     }
 
     // Add keyboard shortcuts
     function handleKeydown(e) {
       // Check if the active element is an input field or textarea
-      const isEditing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+      const activeElement = document.activeElement;
+      const isEditing = activeElement && 
+                        (activeElement.tagName === 'INPUT' || 
+                         activeElement.tagName === 'TEXTAREA' || 
+                         activeElement.tagName === 'SELECT' ||
+                         activeElement.closest('.tox-tinymce')); // Check if inside TinyMCE
       
       // Only process shortcuts if we're not in an input field
       if (!isEditing) {
@@ -330,6 +214,8 @@
     // Clean up event listener on component destruction
     return () => {
       window.removeEventListener('keydown', handleKeydown);
+      // Consider resetting form state if navigating away?
+      // resetForm(); 
     };
 
   });
@@ -351,7 +237,25 @@
   }
 </script>
 
-<div class="container mx-auto p-4">
+<!-- Wrap form in <form> tag and apply enhance -->
+<form method="POST" use:enhance={() => {
+  submitting = true;
+  return async ({ update }) => {
+    // Reset submitting state after form submission completes
+    submitting = false;
+    await update();
+    // Optional: Clear cart only on successful *create* action
+    // Check $page.form?.success and if !practicePlan (create mode)
+    if (!practicePlan && $page.form?.success) {
+      cart.clear();
+    }
+    // Redirect is handled by server action
+  };
+}} class="container mx-auto p-4">
+  
+  <!-- Add hidden input to send sections data -->
+  <input type="hidden" name="sections" value={JSON.stringify($sections)} />
+
   <h1 class="text-2xl font-bold mb-4">{practicePlan ? 'Edit Practice Plan' : 'Create Practice Plan'}</h1>
 
   <!-- Duration Summary -->
@@ -397,9 +301,12 @@
   <!-- Basic form fields -->
   <div class="mb-4">
     <label for="planName" class="block text-sm font-medium text-gray-700">Plan Name:</label>
-    <input id="planName" bind:value={$planName} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
-    {#if $errors.name?.[0]}
-      <p class="text-red-500 text-sm mt-1">{$errors.name[0]}</p>
+    <input id="planName" name="planName" bind:value={$planName} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+    <!-- Use $page.form for server-side errors -->
+    {#if $page.form?.errors?.name}
+      <p class="text-red-500 text-sm mt-1">{$page.form.errors.name[0]}</p>
+    {:else if $metadataErrors.name?.[0]} <!-- Fallback to client-side store errors -->
+       <p class="text-red-500 text-sm mt-1">{$metadataErrors.name[0]}</p>
     {/if}
   </div>
 
@@ -409,6 +316,7 @@
       <div class="min-h-[300px]">
         <svelte:component 
           this={Editor}
+          name="planDescription" 
           apiKey={import.meta.env.VITE_TINY_API_KEY}
           bind:value={$planDescription}
           init={{
@@ -437,29 +345,35 @@
       ></textarea>
     {/if}
     <!-- Add error display for description if needed by schema -->
-    {#if $errors.description?.[0]}
-        <p class="text-red-500 text-sm mt-1">{$errors.description[0]}</p>
+    {#if $page.form?.errors?.description}
+        <p class="text-red-500 text-sm mt-1">{$page.form.errors.description[0]}</p>
+    {:else if $metadataErrors.description?.[0]}
+        <p class="text-red-500 text-sm mt-1">{$metadataErrors.description[0]}</p>
     {/if}
   </div>
 
   <div class="mb-4">
     <label for="phaseOfSeason" class="block text-sm font-medium text-gray-700">Phase of Season:</label>
-    <select id="phaseOfSeason" bind:value={$phaseOfSeason} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+    <select id="phaseOfSeason" name="phaseOfSeason" bind:value={$phaseOfSeason} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
       <option value="">Select Phase</option>
       {#each phaseOfSeasonOptions as option}
         <option value={option}>{option}</option>
       {/each}
     </select>
-    {#if $errors.phase_of_season?.[0]}
-      <p class="text-red-500 text-sm mt-1">{$errors.phase_of_season[0]}</p>
+    {#if $page.form?.errors?.phase_of_season}
+      <p class="text-red-500 text-sm mt-1">{$page.form.errors.phase_of_season[0]}</p>
+    {:else if $metadataErrors.phase_of_season?.[0]}
+       <p class="text-red-500 text-sm mt-1">{$metadataErrors.phase_of_season[0]}</p>
     {/if}
   </div>
 
   <div class="mb-4">
     <label for="estimatedNumberOfParticipants" class="block text-sm font-medium text-gray-700">Estimated Number of Participants:</label>
-    <input id="estimatedNumberOfParticipants" type="number" min="1" bind:value={$estimatedNumberOfParticipants} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
-    {#if $errors.estimated_number_of_participants?.[0]}
-      <p class="text-red-500 text-sm mt-1">{$errors.estimated_number_of_participants[0]}</p>
+    <input id="estimatedNumberOfParticipants" name="estimatedNumberOfParticipants" type="number" min="1" bind:value={$estimatedNumberOfParticipants} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
+    {#if $page.form?.errors?.estimated_number_of_participants}
+      <p class="text-red-500 text-sm mt-1">{$page.form.errors.estimated_number_of_participants[0]}</p>
+    {:else if $metadataErrors.estimated_number_of_participants?.[0]}
+       <p class="text-red-500 text-sm mt-1">{$metadataErrors.estimated_number_of_participants[0]}</p>
     {/if}
   </div>
 
@@ -467,13 +381,16 @@
     <label for="startTime" class="block text-sm font-medium text-gray-700">Practice Start Time:</label>
     <input 
       id="startTime" 
+      name="startTime"
       type="time" 
       bind:value={$startTime}
       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" 
     />
      <!-- Add error display for start_time if needed by schema -->
-    {#if $errors.start_time?.[0]}
-        <p class="text-red-500 text-sm mt-1">{$errors.start_time[0]}</p>
+    {#if $page.form?.errors?.start_time}
+        <p class="text-red-500 text-sm mt-1">{$page.form.errors.start_time[0]}</p>
+    {:else if $metadataErrors.start_time?.[0]}
+        <p class="text-red-500 text-sm mt-1">{$metadataErrors.start_time[0]}</p>
     {/if}
   </div>
 
@@ -483,19 +400,22 @@
       <div class="flex items-center mt-2">
         <input
           type="text"
+          name="practiceGoals[]"
           bind:value={$practiceGoals[index]}
           on:input={(e) => updatePracticeGoal(index, e.target.value)}
           placeholder="Enter practice goal"
           class="flex-1 mr-2 border-gray-300 rounded-md shadow-sm"
         />
         {#if $practiceGoals.length > 1}
-          <button type="button" on:click={() => removePracticeGoal(index)} class="text-red-600 hover:text-red-800">Remove</button>
+          <button type="button" on:click={() => removePracticeGoal(index)} class="text-red-600 hover:text-red-800 transition-colors">Remove</button>
         {/if}
       </div>
     {/each}
-    <button type="button" on:click={addPracticeGoal} class="mt-2 text-blue-600 hover:text-blue-800">Add Practice Goal</button>
-    {#if $errors.practice_goals?.[0]}
-      <p class="text-red-500 text-sm mt-1">{$errors.practice_goals[0]}</p>
+    <button type="button" on:click={addPracticeGoal} class="mt-2 text-blue-600 hover:text-blue-800 transition-colors">+ Add Practice Goal</button>
+    {#if $page.form?.errors?.practice_goals}
+      <p class="text-red-500 text-sm mt-1">{$page.form.errors.practice_goals[0]}</p>
+    {:else if $metadataErrors.practice_goals?.[0]}
+       <p class="text-red-500 text-sm mt-1">{$metadataErrors.practice_goals[0]}</p>
     {/if}
   </div>
 
@@ -539,14 +459,6 @@
     </div>
   </div>
 
-  {#if $errors.selectedItems}
-    <p class="text-red-500 text-sm mb-2">{$errors.selectedItems}</p>
-  {/if}
-
-  {#if $errors.general}
-    <p class="text-red-500 text-sm mb-2">{$errors.general}</p>
-  {/if}
-
   <!-- Visibility settings -->
   <div class="mb-6">
     <label class="block text-gray-700 font-medium mb-1">Visibility</label>
@@ -586,13 +498,13 @@
 
   <!-- Submit button -->
   <button 
-    on:click={handleSubmit} 
+    type="submit"
     class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-    disabled={$isSubmitting}
+    disabled={submitting}
   >
-    {$isSubmitting ? (practicePlan ? 'Updating Plan...' : 'Creating Plan...') : (practicePlan ? 'Update Plan' : 'Create Plan')}
+    {submitting ? (practicePlan ? 'Updating Plan...' : 'Creating Plan...') : (practicePlan ? 'Update Plan' : 'Create Plan')}
   </button>
-</div>
+</form>
 
 <!-- Modals -->
 <EmptyCartModal bind:show={showEmptyCartModal} />
@@ -601,3 +513,8 @@
   bind:selectedSectionId={selectedSectionForDrill} 
 />
 <TimelineSelectorModal bind:show={showTimelineSelector} />
+
+<!-- Display general form errors from server action -->
+{#if $page.form?.errors?.general}
+  <p class="text-red-500 text-sm mb-4 bg-red-100 p-2 rounded">{$page.form.errors.general}</p>
+{/if}

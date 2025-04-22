@@ -24,8 +24,9 @@
         selectedPhaseOfSeason,
         selectedPracticeGoals,
         selectedEstimatedParticipantsMin,
-        selectedEstimatedParticipantsMax
-    } from '$lib/stores/practicePlanStore';
+        selectedEstimatedParticipantsMax,
+        updateFilterState as updatePracticePlanFilterState
+    } from '$lib/stores/practicePlanFilterStore';
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
     import { browser } from '$app/environment';
@@ -274,7 +275,7 @@
       dispatch('filterChange');
     }
   
-    // Helper function for updating filter states
+    // Helper function for updating DRILL filter states
     function updateFilterState(store) {
         return (value, newState) => {
             store.update(current => {
@@ -295,8 +296,8 @@
     const updateComplexity = updateFilterState(selectedComplexities);
     const updateSkillsFocused = updateFilterState(selectedSkillsFocusedOn);
     const updatePositionsFocused = updateFilterState(selectedPositionsFocusedOn);
-    const updatePhaseOfSeason = updateFilterState(selectedPhaseOfSeason);
-    const updatePracticeGoals = updateFilterState(selectedPracticeGoals);
+    const updatePhaseOfSeason = updatePracticePlanFilterState(selectedPhaseOfSeason);
+    const updatePracticeGoals = updatePracticePlanFilterState(selectedPracticeGoals);
 
     // Add handlers for estimated participants changes
     function handleEstimatedParticipantsChange(event) {

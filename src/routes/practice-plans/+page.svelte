@@ -14,7 +14,7 @@
         selectedPracticeGoals,
         selectedEstimatedParticipantsMin,
         selectedEstimatedParticipantsMax
-    } from '$lib/stores/practicePlanStore';
+    } from '$lib/stores/practicePlanFilterStore';
     import DeletePracticePlan from '$components/DeletePracticePlan.svelte';
     import Pagination from '$components/Pagination.svelte';
 

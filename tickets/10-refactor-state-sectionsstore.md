@@ -2,7 +2,7 @@
 
 **Priority:** High
 
-**Description:** The [`src/lib/stores/sectionsStore.js`](src/lib/stores/sectionsStore.js) is extremely large (>1000 lines) and complex. It manages the intricate nested state of practice plan sections, items, parallel groups, and timelines. This complexity makes it difficult to understand, maintain, debug, and test. It also uses some non-standard practices like module-level counters for IDs.
+**Description:** The [`src/lib/stores/sectionsStore.js`](/src/lib/stores/sectionsStore.js) is extremely large (>1000 lines) and complex. It manages the intricate nested state of practice plan sections, items, parallel groups, and timelines. This complexity makes it difficult to understand, maintain, debug, and test. It also uses some non-standard practices like module-level counters for IDs.
 
 **Affected Files:**
 

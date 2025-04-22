@@ -1,4 +1,4 @@
-import { writable, get } from 'svelte/store';
+import { writable, get, derived } from 'svelte/store';
 import { toast } from '@zerodevx/svelte-toast';
 import { addToHistory } from './historyStore';
 
@@ -1029,4 +1029,178 @@ export function debugTimelineNames() {
   });
   
   return customNames;
+}
+
+// Create a derived store for total duration
+export const totalPlanDuration = derived(sections, ($sections) => {
+  let total = 0;
+  
+  for (const section of $sections) {
+    for (const item of section.items) {
+      // For parallel groups, only count the maximum duration per group
+      if (item.parallel_group_id) {
+        // Get all items in this group
+        const groupItems = section.items.filter(i => i.parallel_group_id === item.parallel_group_id);
+        // Group items by timeline
+        const timelineDurations = {};
+        groupItems.forEach(groupItem => {
+          const timeline = groupItem.parallel_timeline;
+          if (!timeline) return;
+          
+          if (!timelineDurations[timeline]) {
+            timelineDurations[timeline] = 0;
+          }
+          
+          timelineDurations[timeline] += parseInt(groupItem.selected_duration) || 0;
+        });
+        
+        // Find the max duration across timelines
+        const maxDuration = Math.max(...Object.values(timelineDurations), 0);
+        
+        // Only add to total once per group
+        if (item === groupItems[0]) {
+          total += maxDuration;
+        }
+      } else {
+        // For regular items, add the duration
+        total += parseInt(item.selected_duration) || 0;
+      }
+    }
+  }
+  
+  return total;
+});
+
+// === Drag/Drop Helper Functions (Moved from practicePlanStore) ===
+
+/**
+ * Handles reordering or grouping of items within a section's items list based on drag-and-drop.
+ * @param {number} sourceIndex - The original index of the item being moved.
+ * @param {number} targetIndex - The index where the item is being dropped.
+ * @param {Array} items - The current array of items in the section.
+ * @param {boolean} isGrouping - True if the drop target indicates grouping (e.g., dropping onto an item), false for reordering (dropping between items).
+ * @returns {Array} The new array of items after the move.
+ */
+export function handleDrillMove(sourceIndex, targetIndex, items, isGrouping) {
+    if (isGrouping) {
+        // Handle grouping (when dragged on top)
+        return mergeIntoParallelGroup(sourceIndex, targetIndex, items);
+    } else {
+        // Handle reordering (when dragged between)
+        const newItems = [...items];
+        const [removed] = newItems.splice(sourceIndex, 1);
+        newItems.splice(targetIndex, 0, removed);
+        return newItems;
+    }
+}
+
+/**
+ * Merges a source item into a parallel group with a target item.
+ * If the target item is already in a group, the source item is added to that group.
+ * If the target item is not in a group, a new group is created containing both items.
+ * Handles duration updates for the group.
+ * @param {number} sourceIndex - The index of the item being dragged.
+ * @param {number} targetIndex - The index of the item being dropped onto.
+ * @param {Array} items - The current array of items in the section.
+ * @returns {Array} The new array of items with the merged/new group.
+ */
+export function mergeIntoParallelGroup(sourceIndex, targetIndex, items) {
+    const sourceItem = items[sourceIndex];
+    const targetItem = items[targetIndex];
+    
+    if (!sourceItem || !targetItem || sourceIndex === targetIndex) return items;
+    
+    // Prevent merging an item into its own group again
+    if (sourceItem.parallel_group_id && sourceItem.parallel_group_id === targetItem.parallel_group_id) {
+        return items;
+    }
+    
+    const newItems = [...items];
+    let groupId;
+    
+    if (targetItem.parallel_group_id) {
+        // Add to existing group
+        groupId = targetItem.parallel_group_id;
+        newItems[sourceIndex] = {
+            ...sourceItem,
+            parallel_group_id: groupId
+        };
+    } else {
+        // Create new group
+        groupId = `group_${Date.now()}`;
+        newItems[sourceIndex] = {
+            ...sourceItem,
+            parallel_group_id: groupId
+        };
+        newItems[targetIndex] = {
+            ...targetItem,
+            parallel_group_id: groupId
+        };
+    }
+    
+    // Update durations for all items in the group - This logic likely needs refinement
+    // based on how parallel duration should actually work (max of timelines?)
+    // For now, keep the original logic (max of the two merged items)
+    // A better approach might recalculate based on *all* items in the group
+    const groupDuration = Math.max(
+        parseInt(sourceItem.selected_duration || sourceItem.duration || 0),
+        parseInt(targetItem.selected_duration || targetItem.duration || 0)
+    );
+    
+    return newItems.map(item => {
+        if (item.parallel_group_id === groupId) {
+            return {
+                ...item,
+                selected_duration: groupDuration, // Apply the calculated max duration
+                // Consider if original `duration` should also be updated or kept separate
+            };
+        }
+        return item;
+    });
+}
+
+/**
+ * Removes an item from its parallel group.
+ * If removing the item leaves only one other item in the group, the group is dissolved entirely.
+ * @param {string|number} itemId - The ID of the item to remove from its group.
+ * @param {Array} items - The current array of items in the section.
+ * @returns {Array} The new array of items with the item removed from the group.
+ */
+export function removeFromParallelGroup(itemId, items) {
+    // Find the item being removed and its group ID
+    const itemIndex = items.findIndex(item => item.id === itemId);
+    if (itemIndex === -1) return items; // Item not found
+    
+    const itemToRemove = items[itemIndex];
+    const groupId = itemToRemove?.parallel_group_id;
+    
+    if (!groupId) return items; // Item is not in a group
+
+    // Count how many items will remain in the group
+    const remainingGroupItems = items.filter(
+        item => item.parallel_group_id === groupId && item.id !== itemId
+    );
+
+    // If only one item would remain, dissolve the group
+    if (remainingGroupItems.length <= 1) {
+        return items.map(item => {
+            if (item.parallel_group_id === groupId) {
+                // Remove group properties
+                const { parallel_group_id, parallel_timeline, groupTimelines, ...rest } = item;
+                // Restore original duration? Or keep selected_duration?
+                // Let's keep selected_duration for now, assuming it was manually set.
+                return rest;
+            }
+            return item;
+        });
+    }
+
+    // Otherwise, just remove the one item from the group
+    return items.map(item => {
+        if (item.id === itemId) {
+            const { parallel_group_id, parallel_timeline, groupTimelines, ...rest } = item;
+            return rest;
+        }
+        return item;
+    });
 } 

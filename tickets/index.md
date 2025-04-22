@@ -8,15 +8,13 @@ This index lists the tickets created based on the findings of the code review, r
 
 ## P2: Architectural Refactors (Maintainability & Coupling)
 
-13. [Ticket 08: Unify Practice Plan State Management (Eliminate Wizard Section Duplication)](./08-refactor-state-unify-sections.md)
-14. [Ticket 09: Refactor Bloated `practicePlanStore`](./09-refactor-state-practiceplanstore.md)
-15. [Ticket 10: Simplify/Refactor Complex `sectionsStore`](./10-refactor-state-sectionsstore.md)
-16. [Ticket 15: Decouple Shared Components from Stores](./15-refactor-component-coupling.md)
-17. [Ticket 16: Simplify and Decouple `dragManager`](./16-refactor-dragmanager.md)
-18. [Ticket 18: Refactor Complex `PracticePlanForm` Component](./18-refactor-practiceplanform.md)
-19. [Ticket 17: Refactor Complex `ExcalidrawWrapper` Component](./17-refactor-excalidrawwrapper.md)
-20. [Ticket 19: Refactor Complex `FilterPanel` Component](./19-refactor-filterpanel.md)
-21. [Ticket 21: Review/Refactor `PracticePlanService` Update Strategy](./21-refactor-ppservice-update.md)
+1.  [Ticket 10: Simplify/Refactor Complex `sectionsStore`](./10-refactor-state-sectionsstore.md)
+2.  [Ticket 15: Decouple Shared Components from Stores](./15-refactor-component-coupling.md)
+3.  [Ticket 16: Simplify and Decouple `dragManager`](./16-refactor-dragmanager.md)
+4.  [Ticket 18: Refactor Complex `PracticePlanForm` Component](./18-refactor-practiceplanform.md)
+5.  [Ticket 17: Refactor Complex `ExcalidrawWrapper` Component](./17-refactor-excalidrawwrapper.md)
+6.  [Ticket 19: Refactor Complex `FilterPanel` Component](./19-refactor-filterpanel.md)
+7.  [Ticket 21: Review/Refactor `PracticePlanService` Update Strategy](./21-refactor-ppservice-update.md)
 
 
 ## P3: Nice-to-Haves / Clean-up

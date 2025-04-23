@@ -19,7 +19,7 @@ export const GET = async ({ url, locals }) => {
     const options = {
       page,
       limit,
-      columns: ['id', 'name'] // Only return id and name for search results
+      columns: ['id', 'name', 'brief_description'] // Return id, name, and brief description
     };
     
     const results = await drillService.getFilteredDrills(filters, options);

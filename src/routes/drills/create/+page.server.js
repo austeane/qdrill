@@ -5,8 +5,24 @@ import { skillService } from '$lib/server/services/skillService.js'; // Assuming
 /** @type {import('./$types').PageServerLoad} */
 export async function load() {
   try {
-    const allSkills = await skillService.getAllSkills(); // Fetch all skills
-    const allDrillNames = await drillService.getDrillNames(); // Fetch all drill names
+    const skillsResult = await skillService.getAllSkills(); // Fetch all skills
+    const namesResult = await drillService.getDrillNames(); // Fetch all drill names
+
+    // Extract items if the service returns the { items: [...] } structure,
+    // otherwise, assume it's already the array (or handle other cases if necessary).
+    let allSkills = Array.isArray(skillsResult?.items) ? skillsResult.items : 
+                    Array.isArray(skillsResult) ? skillsResult : [];
+                    
+    let allDrillNames = Array.isArray(namesResult?.items) ? namesResult.items :
+                        Array.isArray(namesResult) ? namesResult : [];
+
+    // Log warnings if the data wasn't in the expected { items: [...] } format or an array
+    if (!Array.isArray(skillsResult?.items) && !Array.isArray(skillsResult)) {
+      console.warn('skillService.getAllSkills() did not return an array or {items: [...]}, defaulting to []. Received:', skillsResult);
+    }
+    if (!Array.isArray(namesResult?.items) && !Array.isArray(namesResult)) {
+      console.warn('drillService.getDrillNames() did not return an array or {items: [...]}, defaulting to []. Received:', namesResult);
+    }
 
     return {
       allSkills,

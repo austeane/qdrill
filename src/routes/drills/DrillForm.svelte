@@ -28,7 +28,6 @@
   let number_of_people_max = writable(drill.number_of_people_max ?? '');
   let selectedSkills = writable(drill.skills_focused_on ?? []);
   let newSkill = writable('');
-  let skillSuggestions = writable([]);
   let skillSearchTerm = writable('');
   let positions_focused_on = writable(drill.positions_focused_on ?? []);
   let video_link = writable(drill.video_link ?? '');
@@ -60,36 +59,40 @@
   let isVariation = writable(!!drill.parent_drill_id);
   let parentDrillId = writable(drill.parent_drill_id ?? null);
 
-  $: availableSkills = allSkills.filter(skill => 
-    !$selectedSkills.includes(skill.skill)
-  );
+  // Derived store for available skills - depends on selectedSkills store and allSkills prop
+  const availableSkills = derived(selectedSkills, ($selectedSkills) => {
+    return Array.isArray(allSkills) ? allSkills.filter(skill => 
+      !$selectedSkills.includes(skill.skill)
+    ) : [];
+  });
 
-  $: skillSuggestionsDerived = derived(
+  // Derived store for skill suggestions - depends on availableSkills derived store and skillSearchTerm store
+  const skillSuggestionsDerived = derived(
     [availableSkills, skillSearchTerm],
     ([$availableSkills, $skillSearchTerm]) => {
-      const input = $skillSearchTerm.toLowerCase().trim();
-      if (!input) return [];
-      return $availableSkills.filter(skill => 
-        skill.skill.toLowerCase().includes(input)
-      ).slice(0, 10);
+      const $term = $skillSearchTerm.toLowerCase().trim();
+      if (!$term) return [];
+      return $availableSkills
+        .filter(skill => skill.skill.toLowerCase().includes($term))
+        .slice(0, 10);
     }
   );
 
-  $: modalSkillSuggestionsDerived = derived(
+  // Derived store for modal skill suggestions - depends on availableSkills derived store and modalSkillSearchTerm store
+  const modalSkillSuggestionsDerived = derived(
     [availableSkills, modalSkillSearchTerm],
     ([$availableSkills, $modalSkillSearchTerm]) => {
-      const input = $modalSkillSearchTerm.toLowerCase().trim();
-      if (!input) return $availableSkills;
-      return $availableSkills.filter(skill => 
-        skill.skill.toLowerCase().includes(input)
-      ).slice(0, 20);
+      const $term = $modalSkillSearchTerm.toLowerCase().trim();
+      if (!$term) return $availableSkills; // Return all available if no term
+      return $availableSkills
+        .filter(skill => skill.skill.toLowerCase().includes($term))
+        .slice(0, 20);
     }
   );
   
-  $: parentDrillOptions = derived(allDrillNames, ($allDrillNames) => {
-    const currentDrillId = drill?.id;
-    return $allDrillNames.filter(d => d.id !== currentDrillId);
-  });
+  // Reactive statement for parent drill options - depends on prop allDrillNames and drill prop
+  // Cannot be a derived store used with $ in template as it doesn't derive from stores.
+  $: parentDrillOptions = Array.isArray(allDrillNames) ? allDrillNames.filter(d => d.id !== drill?.id) : [];
 
   let diagramRefs = [];
 
@@ -600,11 +603,11 @@
               <p class="text-xs text-gray-500 mb-1">When done correctly, what levels of player would benefit from this drill.</p>
 
               <div class="flex flex-wrap gap-2">
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'new to sport')}>New to Sport</button>
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'beginner')}>Beginner</button>
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'intermediate')}>Intermediate</button>
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'advanced')}>Advanced</button>
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" on:click={() => toggleSelection(skill_level, 'elite')}>Elite</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('new to sport')} on:click={() => toggleSelection(skill_level, 'new to sport')}>New to Sport</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('beginner')} on:click={() => toggleSelection(skill_level, 'beginner')}>Beginner</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('intermediate')} on:click={() => toggleSelection(skill_level, 'intermediate')}>Intermediate</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('advanced')} on:click={() => toggleSelection(skill_level, 'advanced')}>Advanced</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('elite')} on:click={() => toggleSelection(skill_level, 'elite')}>Elite</button>
               </div>
             </div>
             {#if $errors.skill_level}
@@ -726,10 +729,10 @@
             <div class="flex flex-col">
               <label for="positions_focused_on" class="mb-1 text-sm font-medium text-gray-700">Positions Focused On:</label>
               <div class="flex flex-wrap gap-2">
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Beater')}>Beater</button>
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Chaser')}>Chaser</button>
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Keeper')}>Keeper</button>
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" on:click={() => toggleSelection(positions_focused_on, 'Seeker')}>Seeker</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" class:selected={$positions_focused_on.includes('Beater')} on:click={() => toggleSelection(positions_focused_on, 'Beater')}>Beater</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" class:selected={$positions_focused_on.includes('Chaser')} on:click={() => toggleSelection(positions_focused_on, 'Chaser')}>Chaser</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" class:selected={$positions_focused_on.includes('Keeper')} on:click={() => toggleSelection(positions_focused_on, 'Keeper')}>Keeper</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 position-button" class:selected={$positions_focused_on.includes('Seeker')} on:click={() => toggleSelection(positions_focused_on, 'Seeker')}>Seeker</button>
               </div>
             </div>
             {#if $errors.positions_focused_on}
@@ -797,7 +800,7 @@
                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                 >
                   <option value="">Select a parent drill</option>
-                  {#each $parentDrillOptions as parent (parent.id)}
+                  {#each parentDrillOptions as parent (parent.id)}
                     <option value={parent.id}>{parent.name}</option>
                   {/each}
                 </select>

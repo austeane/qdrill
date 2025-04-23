@@ -27,3 +27,6 @@
     *   **Move Utility Functions:** Move generic utility functions like `formatTime`, `addMinutes` to a shared `src/lib/utils/` directory if they are used elsewhere, or keep them co-located with the store/component that primarily uses them if not.
 2.  **Refactor Consumers:** Update components ([`PracticePlanForm`](src/routes/practice-plans/PracticePlanForm.svelte), [`practice-plans/+page.svelte`](src/routes/practice-plans/+page.svelte), [`FilterPanel`](src/components/FilterPanel.svelte)) to import state and functions from the new, refactored stores or use the new Form Action for submission.
 3.  **Remove Original Store:** Once all functionality is migrated, the original [`practicePlanStore.js`](src/lib/stores/practicePlanStore.js) can be significantly simplified or potentially removed if all its responsibilities are delegated. 
+4.  
+
+DONE

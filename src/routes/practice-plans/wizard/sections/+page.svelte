@@ -1,6 +1,6 @@
 <script>
     // Import the main sections store
-    import { sections as sectionsStore, addSection as addStoreSection, removeSection as removeStoreSection, updateSectionGoals } from '$lib/stores/sectionsStore';
+    import { sections as sectionsStore, addSection as addStoreSection, removeSection as removeStoreSection } from '$lib/stores/sectionsStore';
     // Removed import from wizardStore
     // Removed import from wizardValidation (assuming it was only for sections)
     // Removed import for scheduleAutoSave as section state is now global
@@ -126,6 +126,7 @@
             return current;
         });
         // Call scheduleAutoSave() if needed for other wizard state changes
+        // Autosave is handled globally or potentially removed if draft saving covers it
     }
 
     function removeGoal(sectionId, goalIndex) {
@@ -137,21 +138,15 @@
             return current;
         });
        // Call scheduleAutoSave() if needed for other wizard state changes
+       // Autosave is handled globally or potentially removed if draft saving covers it
     }
 
     // Direct binding for section name (assuming name is editable here, though UI doesn't show it)
-    // function handleNameChange(sectionId, event) {
-    //     const newName = event.target.value;
-    //     sectionsStore.update(current => {
-    //         const sectionIndex = current.findIndex(s => s.id === sectionId);
-    //         if (sectionIndex > -1) {
-    //              current[sectionIndex].name = newName;
-    //         }
-    //         return current;
-    //     });
-    // }
+    // Note: Need to ensure this reactivity updates the store correctly
+    // If direct bind:value doesn't trigger store updates, might need an explicit update function
 
     // Direct binding for notes should work with bind:value=$section.notes
+    // Svelte's `bind:value` on a store property should update the store
 
 </script>
 
@@ -166,14 +161,15 @@
     <!-- Selected Sections -->
     <div class="space-y-4">
         <h3 class="text-sm font-medium text-gray-700">Plan Sections</h3>
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Current Sections</h3>
         {#if $sectionsStore.length === 0}
             <p class="text-sm text-gray-500 italic">No sections added yet. Use the options below.</p>
         {:else}
-            <div class="space-y-2">
-                {#each $sectionsStore as section (section.id)}  <!-- Use section.id as key -->
-                    {@const sectionId = section.id} <!-- Capture sectionId for closures -->
-                    {@const sectionIndex = $sectionsStore.findIndex(s => s.id === sectionId)} <!-- Find index for drag/drop -->
-                     <div
+            <div role="list" class="space-y-4">
+                {#each $sectionsStore as section (section.id)}
+                    {@const sectionIndex = $sectionsStore.findIndex(s => s.id === section.id)} <!-- Find index for drag/drop -->
+                    <div
+                        role="listitem"
                         class="flex flex-col space-y-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
                         draggable="true"
                         on:dragstart={(e) => handleDragStart(e, sectionIndex)}
@@ -198,7 +194,7 @@
                             </div>
                              <button
                                 type="button"
-                                on:click={() => removeSection(sectionId)}
+                                on:click={() => removeSection(section.id)}
                                 class="p-1 text-gray-400 hover:text-red-500"
                                 aria-label="Remove section"
                             >
@@ -210,13 +206,13 @@
 
                         <!-- Section Goals -->
                         <div class="pl-5"> <!-- Indent goal/notes -->
-                            <label for="section-goals-{sectionId}" class="block text-sm font-medium text-gray-700">Section Goals</label>
+                            <label for="section-goals-{section.id}" class="block text-sm font-medium text-gray-700">Section Goals</label>
                             <div class="mt-1 space-y-2">
                                 {#if section.goals && section.goals.length > 0}
                                     {#each section.goals as goal, goalIndex (goalIndex)} <!-- Use index as key for goals -->
                                         <div class="flex items-center space-x-2">
                                             <input
-                                                id="section-goals-{sectionId}-{goalIndex}"
+                                                id="section-goals-{section.id}-{goalIndex}"
                                                 type="text"
                                                 bind:value={section.goals[goalIndex]}
                                                 placeholder="e.g., Improve transition defense"
@@ -224,7 +220,7 @@
                                             />
                                             <button
                                                 type="button"
-                                                on:click={() => removeGoal(sectionId, goalIndex)}
+                                                on:click={() => removeGoal(section.id, goalIndex)}
                                                 class="text-xs text-red-600 hover:text-red-800"
                                                 aria-label="Remove goal"
                                             >
@@ -237,7 +233,7 @@
                                 {/if}
                                 <button
                                     type="button"
-                                    on:click={() => addGoal(sectionId)}
+                                    on:click={() => addGoal(section.id)}
                                     class="text-xs text-blue-600 hover:text-blue-800"
                                 >
                                     + Add Goal
@@ -247,9 +243,9 @@
 
                         <!-- Section Notes -->
                          <div class="pl-5">
-                            <label for="section-notes-{sectionId}" class="block text-sm font-medium text-gray-700">Notes</label>
+                            <label for="section-notes-{section.id}" class="block text-sm font-medium text-gray-700">Notes</label>
                             <textarea
-                                id="section-notes-{sectionId}"
+                                id="section-notes-{section.id}"
                                 bind:value={section.notes}
                                 rows="2"
                                 placeholder="Optional notes for this section..."

@@ -61,7 +61,7 @@
 			  height="900"
 			  loading="eager"
 			  decoding="async" 
-		  alt="Emma Sherwood asking a question at a Team Canada practice. Photo credit Soleil Heaney." 
+		  alt="Emma Sherwood asking a question at a Team Canada practice."
 		  class="w-full max-w-md h-auto object-contain"
 		/>
 	  </div>

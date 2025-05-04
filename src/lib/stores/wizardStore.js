@@ -16,9 +16,12 @@ export const basicInfo = writable({
 
 // Timeline store for section arrangement
 export const timeline = writable({
-    sections: [],
+    sections: [], // This timeline.sections array still needs to sync with sectionsStore in the component
     totalTime: 0
 });
+
+// // Removed sections writable store
+// export const sections = writable([]);
 
 // Current step tracking
 export const currentStep = writable(1);
@@ -61,6 +64,7 @@ export function initializeWizard() {
         visibility: 'public',
         isEditableByOthers: false
     });
+    // sections.set([]); // Removed initialization of wizard sections
     timeline.set({ sections: [], totalTime: 0 });
     currentStep.set(1);
     draftId.set(null);
@@ -71,9 +75,11 @@ export function initializeWizard() {
 
 // Derived store for overall wizard state
 export const wizardState = derived(
+    // Removed sections from derived dependencies
     [basicInfo, timeline, currentStep, validationErrors],
     ([$basicInfo, $timeline, $currentStep, $validationErrors]) => ({
         basicInfo: $basicInfo,
+        // sections: $sections, // Removed sections from derived state
         timeline: $timeline,
         currentStep: $currentStep,
         validationErrors: $validationErrors,
@@ -86,7 +92,14 @@ let autoSaveTimeout;
 export function scheduleAutoSave() {
     if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
     autoSaveTimeout = setTimeout(async () => {
-        const state = get(wizardState);
+        // Get current state, excluding the removed sections store
+        const state = {
+            basicInfo: get(basicInfo),
+            timeline: get(timeline),
+            currentStep: get(currentStep),
+            draftId: get(draftId)
+            // validationErrors: get(validationErrors) // Avoid saving validation errors
+        };
         try {
             // Create FormData and append the stringified state
             const formData = new FormData();
@@ -114,24 +127,18 @@ export function canProceedToNextStep($wizardState) {
         case 1: // Basic Info
             // Trigger validation check before proceeding
             return validateBasicInfo();
-        case 2: // Section Selection (Renamed Step - Now "Drills")
-            // No longer validating sections length here.
-            // Validation might happen within the step based on sectionsStore.
-            return true; // Allow proceeding, assuming sectionsStore handles its own state
-        case 3: // Timeline Arrangement
-             // TODO: Add validation for timeline if needed
-             // Validation logic needs to compare timeline sections against sectionsStore
-             // This requires importing sectionsStore, which might be better done in the component
-             // For now, allow proceeding. Implement validation later if needed.
-             // Example check (requires importing sectionsStore):
-             // import { sections as mainSectionsStore } from './sectionsStore';
-             // const mainSections = get(mainSectionsStore);
-             // return $wizardState.timeline.sections.length === mainSections.length;
-            return true; // Allow proceeding for now
-        case 4: // Drill Selection (Renamed Step - Now "Overview")
-            // No longer validating drill selection here.
-            // Validation might happen within the step based on sectionsStore.
+        case 2: // Section Selection (Now 'Sections')
+            // No longer validating sections length here, as it's managed by sectionsStore.
             return true; // Allow proceeding
+        case 3: // Timeline Arrangement
+             // Timeline syncs with sectionsStore, so basic check is sufficient.
+             // Complex validation (e.g., duration) might happen in the component.
+            return true; // Allow proceeding
+        case 4: // Drill Selection (Now 'Drills')
+            // Step for adding drills - relies on sectionsStore structure.
+            return true; // Allow proceeding
+        case 5: // Overview
+            return true; // Allow proceeding to final review
         default:
             return true;
     }

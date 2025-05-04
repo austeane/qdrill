@@ -198,6 +198,21 @@
     }
   });
 
+  // Helper function to parse "min-max minutes" string
+  function parseLengthRange(rangeString) {
+    if (!rangeString) return null;
+    const match = rangeString.match(/^(\d+)-(\d+)\s+minutes$/);
+    if (match && match.length === 3) {
+      return {
+        min: parseInt(match[1], 10),
+        max: parseInt(match[2], 10),
+      };
+    }
+    // Handle potential other formats or return null/error if needed
+    console.warn('Could not parse suggested length range:', rangeString);
+    return null; 
+  }
+
   function handleSkillInput() {
     skillSearchTerm.set($newSkill);
   }
@@ -342,8 +357,8 @@
           brief_description: $brief_description,
           detailed_description: $detailed_description,
           skill_level: $skill_level,
-          complexity: $complexity,
-          suggested_length: $suggested_length,
+          complexity: $complexity ? ($complexity.charAt(0).toUpperCase() + $complexity.slice(1)) : null,
+          suggested_length: parseLengthRange($suggested_length),
           number_of_people_min: $number_of_people_min,
           number_of_people_max: $number_of_people_max,
           skills_focused_on: $selectedSkills,
@@ -373,6 +388,7 @@
       const url = drill.id ? `/api/drills/${drill.id}` : '/api/drills';
       
       const maxParticipants = ($number_of_people_max === '' || $number_of_people_max === '0') ? null : Number($number_of_people_max);
+      const minParticipants = ($number_of_people_min === '') ? null : Number($number_of_people_min);
       
       const requestBody = {
         id: drill.id,
@@ -381,8 +397,8 @@
         detailed_description: $detailed_description,
         skill_level: $skill_level,
         complexity: $complexity ? ($complexity.charAt(0).toUpperCase() + $complexity.slice(1)) : null,
-        suggested_length: $suggested_length,
-        number_of_people_min: $number_of_people_min || null,
+        suggested_length: parseLengthRange($suggested_length),
+        number_of_people_min: minParticipants,
         number_of_people_max: maxParticipants,
         skills_focused_on: $selectedSkills,
         positions_focused_on: $positions_focused_on,
@@ -579,18 +595,20 @@
             </div>
 
             <div class="flex flex-col">
-              <label class="mb-1 text-sm font-medium text-gray-700">Drill Type:</label>
+              <label id="drill-type-label" class="mb-1 text-sm font-medium text-gray-700">Drill Type:</label>
               <p class="text-xs text-gray-500 mb-1">Select one or more drill types.</p>
-              <div class="flex flex-wrap gap-2">
-                {#each drillTypeOptions as type}
-                  <button
-                    type="button"
-                    class="px-3 py-1 rounded-full border border-gray-300"
-                    class:selected={$drill_type.includes(type)}
-                    on:click={() => toggleSelection(drill_type, type)}
-                  >
-                    {type}
-                  </button>
+              <div role="group" aria-labelledby="drill-type-label" class="flex flex-wrap gap-2">
+                {#each drillTypeOptions as option (option)}
+                  <div class="flex items-center">
+                    <button
+                      type="button"
+                      class="px-3 py-1 rounded-full border border-gray-300"
+                      class:selected={$drill_type.includes(option)}
+                      on:click={() => toggleSelection(drill_type, option)}
+                    >
+                      {option}
+                    </button>
+                  </div>
                 {/each}
               </div>
               {#if $errors.drill_type}
@@ -603,11 +621,11 @@
               <p class="text-xs text-gray-500 mb-1">When done correctly, what levels of player would benefit from this drill.</p>
 
               <div class="flex flex-wrap gap-2">
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('new to sport')} on:click={() => toggleSelection(skill_level, 'new to sport')}>New to Sport</button>
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('beginner')} on:click={() => toggleSelection(skill_level, 'beginner')}>Beginner</button>
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('intermediate')} on:click={() => toggleSelection(skill_level, 'intermediate')}>Intermediate</button>
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('advanced')} on:click={() => toggleSelection(skill_level, 'advanced')}>Advanced</button>
-                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('elite')} on:click={() => toggleSelection(skill_level, 'elite')}>Elite</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('New to Sport')} on:click={() => toggleSelection(skill_level, 'New to Sport')}>New to Sport</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('Beginner')} on:click={() => toggleSelection(skill_level, 'Beginner')}>Beginner</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('Intermediate')} on:click={() => toggleSelection(skill_level, 'Intermediate')}>Intermediate</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('Advanced')} on:click={() => toggleSelection(skill_level, 'Advanced')}>Advanced</button>
+                <button type="button" class="px-3 py-1 rounded-full border border-gray-300 skill-level-button" class:selected={$skill_level.includes('Elite')} on:click={() => toggleSelection(skill_level, 'Elite')}>Elite</button>
               </div>
             </div>
             {#if $errors.skill_level}
@@ -745,10 +763,11 @@
             </div>
 
             <div class="flex flex-col">
-              <label class="mb-1 text-sm font-medium text-gray-700">Visibility:</label>
+              <label for="visibility-select" class="mb-1 text-sm font-medium text-gray-700">Visibility:</label>
               <select 
-                bind:value={$visibility} 
-                class="p-2 border rounded-md" 
+                id="visibility-select"
+                bind:value={$visibility}
+                class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={!$page.data.session}
                 title={!$page.data.session ? 'Log in to create private or unlisted drills' : ''}
               >

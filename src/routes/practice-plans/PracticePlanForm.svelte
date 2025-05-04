@@ -46,7 +46,6 @@
   } from '$lib/stores/sectionsStore';
   
   // Import component modules
-  import EmptyCartModal from '../../components/practice-plan/modals/EmptyCartModal.svelte';
   import DrillSearchModal from '../../components/practice-plan/modals/DrillSearchModal.svelte';
   import TimelineSelectorModal from '../../components/practice-plan/modals/TimelineSelectorModal.svelte';
   import SectionContainer from '../../components/practice-plan/sections/SectionContainer.svelte';
@@ -59,7 +58,6 @@
   export let pendingPlanData = null; // New prop for data loaded server-side
 
   // UI state
-  let showEmptyCartModal = false;
   let showDrillSearch = false;
   let showTimelineSelector = false;
   let selectedSectionForDrill = null;
@@ -113,9 +111,7 @@
 
     // Removed pendingPlanData logic
     if (!practicePlan) {
-      if ($cart.length === 0) {
-        showEmptyCartModal = true;
-      } else {
+      if ($cart.length > 0) {
           const cartItems = $cart.map(drill => ({
               id: drill.id,
               type: 'drill',
@@ -277,6 +273,7 @@
             on:click={undo}
             disabled={!$canUndo}
             title="Undo"
+            aria-label="Undo"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M4 6h16M4 12h16M4 18h16"></path>
@@ -287,6 +284,7 @@
             on:click={redo}
             disabled={!$canRedo}
             title="Redo"
+            aria-label="Redo"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
@@ -395,22 +393,24 @@
   </div>
 
   <div class="mb-4">
-    <label class="block text-sm font-medium text-gray-700">Practice Goals:</label>
-    {#each $practiceGoals as goal, index}
-      <div class="flex items-center mt-2">
-        <input
-          type="text"
-          name="practiceGoals[]"
-          bind:value={$practiceGoals[index]}
-          on:input={(e) => updatePracticeGoal(index, e.target.value)}
-          placeholder="Enter practice goal"
-          class="flex-1 mr-2 border-gray-300 rounded-md shadow-sm"
-        />
-        {#if $practiceGoals.length > 1}
-          <button type="button" on:click={() => removePracticeGoal(index)} class="text-red-600 hover:text-red-800 transition-colors">Remove</button>
-        {/if}
-      </div>
-    {/each}
+    <label id="practice-goals-label" class="block text-sm font-medium text-gray-700">Practice Goals:</label>
+    <div role="list" aria-labelledby="practice-goals-label">
+      {#each $practiceGoals as goal, index}
+        <div class="flex items-center space-x-2 mt-1">
+          <input
+            type="text"
+            name="practiceGoals[]"
+            bind:value={$practiceGoals[index]}
+            on:input={(e) => updatePracticeGoal(index, e.target.value)}
+            placeholder="Enter practice goal"
+            class="flex-1 mr-2 border-gray-300 rounded-md shadow-sm"
+          />
+          {#if $practiceGoals.length > 1}
+            <button type="button" on:click={() => removePracticeGoal(index)} class="text-red-600 hover:text-red-800 transition-colors">Remove</button>
+          {/if}
+        </div>
+      {/each}
+    </div>
     <button type="button" on:click={addPracticeGoal} class="mt-2 text-blue-600 hover:text-blue-800 transition-colors">+ Add Practice Goal</button>
     {#if $page.form?.errors?.practice_goals}
       <p class="text-red-500 text-sm mt-1">{$page.form.errors.practice_goals[0]}</p>
@@ -461,10 +461,11 @@
 
   <!-- Visibility settings -->
   <div class="mb-6">
-    <label class="block text-gray-700 font-medium mb-1">Visibility</label>
+    <label for="visibility-select" class="block text-gray-700 font-medium mb-1">Visibility</label>
     <select
+      id="visibility-select"
       bind:value={$visibility}
-      class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring"
+      class="p-2 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
       disabled={!$page.data.session}
       title={!$page.data.session ? 'Log in to create private or unlisted practice plans' : ''}
     >
@@ -507,7 +508,6 @@
 </form>
 
 <!-- Modals -->
-<EmptyCartModal bind:show={showEmptyCartModal} />
 <DrillSearchModal 
   bind:show={showDrillSearch} 
   bind:selectedSectionId={selectedSectionForDrill} 

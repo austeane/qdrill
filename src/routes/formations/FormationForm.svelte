@@ -554,8 +554,8 @@
 
             <!-- Formation Type Setting -->
             <div class="flex flex-col">
-              <label class="mb-1 text-sm font-medium text-gray-700">Formation Type:</label>
-              <div class="flex items-center space-x-4">
+              <label id="formation-type-label" class="mb-1 text-sm font-medium text-gray-700">Formation Type:</label>
+              <div role="radiogroup" aria-labelledby="formation-type-label" class="flex items-center space-x-4">
                 <label class="inline-flex items-center">
                   <input type="radio" bind:group={$formation_type} value="offense" class="form-radio text-blue-600" />
                   <span class="ml-2">Offense</span>
@@ -569,8 +569,8 @@
 
             <!-- Visibility Setting -->
             <div class="flex flex-col">
-              <label class="mb-1 text-sm font-medium text-gray-700">Visibility:</label>
-              <div class="flex items-center space-x-4">
+              <label id="visibility-label" class="mb-1 text-sm font-medium text-gray-700">Visibility:</label>
+              <div role="radiogroup" aria-labelledby="visibility-label" class="flex items-center space-x-4">
                 <label class="inline-flex items-center">
                   <input type="radio" bind:group={$visibility} value="public" class="form-radio text-blue-600" />
                   <span class="ml-2">Public</span>
@@ -691,8 +691,8 @@
       <h2 class="text-xl font-bold mb-4">Add New Diagram</h2>
       
       <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-2">Template:</label>
-        <div class="space-y-2">
+        <label id="template-label" class="block text-sm font-medium text-gray-700 mb-2">Template:</label>
+        <div role="radiogroup" aria-labelledby="template-label" class="space-y-2">
           <label class="inline-flex items-center">
             <input type="radio" bind:group={selectedTemplate} value="blank" class="form-radio text-blue-600" />
             <span class="ml-2">Blank</span>
@@ -729,9 +729,3 @@
     </div>
   </div>
 {/if}
-
-<style>
-  .selected {
-    @apply bg-blue-500 text-white border-blue-500;
-  }
-</style>

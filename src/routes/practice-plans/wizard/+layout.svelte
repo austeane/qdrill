@@ -1,6 +1,7 @@
 <script>
     import { currentStep, maxSteps, wizardState } from '$lib/stores/wizardStore';
-    import { validationErrors } from '$lib/stores/wizardValidation';
+    // Removed import from the deleted wizardValidation file
+    // import { validationErrors } from '$lib/stores/wizardValidation';
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
 
@@ -16,15 +17,17 @@
     // Navigation functions
     function goToStep(step) {
         // TODO: Re-implement navigation logic based on validation
-        // if (canNavigateToStep(step, $wizardState)) { 
-            currentStep.set(step);
-            goto(steps[step - 1].path);
-        // }
+        // Since wizardValidation is gone, validation needs to be handled differently,
+        // perhaps using the validateBasicInfo from wizardStore or component-level checks.
+        // For now, allow navigation directly.
+        currentStep.set(step);
+        goto(steps[step - 1].path);
     }
 
     function nextStep() {
         // TODO: Re-implement navigation logic based on validation
-        // if ($currentStep < maxSteps && canProceedToNextStep($wizardState)) {
+        // Use the validation logic available (e.g., from wizardStore)
+        // Example: if ($currentStep < maxSteps && canProceedToNextStep($wizardState)) {
         if ($currentStep < maxSteps) { // Temporary: Allow next without validation
             goToStep($currentStep + 1);
         }
@@ -95,7 +98,7 @@
                 <button
                     class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
                     on:click={nextStep}
-                    disabled={/* TODO: Add back validation check */ $currentStep === maxSteps}
+                    disabled={/* TODO: Add back validation check using wizardStore.canProceedToNextStep($wizardState) or similar */ $currentStep === maxSteps}
                 >
                     Next
                 </button>

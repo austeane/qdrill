@@ -1,14 +1,11 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { slide } from 'svelte/transition';
-  import ExcalidrawWrapper from '$components/ExcalidrawWrapper.svelte';
+  import ExcalidrawWrapper from '../../../components/ExcalidrawWrapper.svelte';
   
   export let item;
-  export let canEdit = false;
   export let isInParallelGroup = false;
-  export let editable = false;
-  export let startTime = null;
-
+  
   const dispatch = createEventDispatcher();
   let isExpanded = false;
 
@@ -27,7 +24,8 @@
     skillsFocusedOn: item?.skills_focused_on || item?.drill?.skills_focused_on || [],
     positionsFocusedOn: item?.positions_focused_on || item?.drill?.positions_focused_on || [],
     complexity: item?.complexity || item?.drill?.complexity || '',
-    suggestedLength: item?.suggested_length || item?.drill?.suggested_length || '',
+    suggestedLengthMin: item?.suggested_length_min ?? item?.drill?.suggested_length_min ?? null,
+    suggestedLengthMax: item?.suggested_length_max ?? item?.drill?.suggested_length_max ?? null,
     numberOfPeopleMin: item?.number_of_people_min || item?.drill?.number_of_people_min,
     numberOfPeopleMax: item?.number_of_people_max || item?.drill?.number_of_people_max,
     drillType: item?.drill_type || item?.drill?.drill_type || [],
@@ -178,10 +176,16 @@
             </div>
           {/if}
 
-          {#if normalizedItem.suggestedLength}
+          {#if normalizedItem.suggestedLengthMin !== null}
             <div class="info-item">
               <span class="info-label">Suggested Length:</span>
-              <span class="info-value">{normalizedItem.suggestedLength} minutes</span>
+              <span class="info-value">
+                {#if normalizedItem.suggestedLengthMax !== null && normalizedItem.suggestedLengthMax > normalizedItem.suggestedLengthMin}
+                  {normalizedItem.suggestedLengthMin} - {normalizedItem.suggestedLengthMax} minutes
+                {:else}
+                  {normalizedItem.suggestedLengthMin} minutes
+                {/if}
+              </span>
             </div>
           {/if}
 
@@ -260,189 +264,3 @@
     </div>
   {/if}
 </div>
-
-<style>
-  .drill-card {
-    background: white;
-    border-radius: 0.5rem;
-    padding: 1rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s ease;
-  }
-
-  .drill-card:hover {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  }
-
-  .drill-card.break {
-    background: theme('colors.gray.50');
-  }
-
-  .drill-card.parallel {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: 0.25rem;
-    transition: all 0.2s ease;
-  }
-
-  .card-header:hover {
-    background: theme('colors.gray.50');
-  }
-
-  .header-content {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex: 1;
-  }
-
-  .drill-title {
-    font-weight: 600;
-    color: theme('colors.gray.900');
-  }
-
-  .indicators {
-    display: flex;
-    gap: 0.25rem;
-  }
-
-  .indicator {
-    font-size: 0.875rem;
-    opacity: 0.7;
-  }
-
-  .duration-control {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .duration-input {
-    width: 4rem;
-    padding: 0.25rem;
-    border: 1px solid theme('colors.gray.300');
-    border-radius: 0.25rem;
-    text-align: center;
-  }
-
-  .duration-display {
-    font-weight: 500;
-    color: theme('colors.gray.700');
-  }
-
-  .duration-label {
-    color: theme('colors.gray.500');
-    font-size: 0.875rem;
-  }
-
-  .card-details {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid theme('colors.gray.200');
-  }
-
-  .brief-description {
-    color: theme('colors.gray.600');
-    font-size: 0.875rem;
-    margin-bottom: 1rem;
-  }
-
-  .key-info {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .info-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .info-label {
-    color: theme('colors.gray.500');
-    font-size: 0.875rem;
-  }
-
-  .info-value {
-    color: theme('colors.gray.700');
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-
-  .skill-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-  }
-
-  .skill-tag {
-    background: theme('colors.blue.100');
-    color: theme('colors.blue.700');
-    padding: 0.125rem 0.375rem;
-    border-radius: 1rem;
-    font-size: 0.75rem;
-  }
-
-  .diagrams-preview {
-    margin: 1rem 0;
-    aspect-ratio: 5/6;
-    width: 100%;
-    max-width: 500px;
-    margin: 0 auto;
-  }
-
-  @media (max-width: 500px) {
-    .diagrams-preview {
-      width: 100%;
-      max-width: none;
-    }
-  }
-
-  .diagram-thumbnail {
-    max-width: 200px;
-    border-radius: 0.25rem;
-    cursor: pointer;
-  }
-
-  .video-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    color: theme('colors.blue.600');
-    font-size: 0.875rem;
-    text-decoration: none;
-  }
-
-  .video-link:hover {
-    text-decoration: underline;
-  }
-
-  .detailed-description {
-    margin: 1rem 0;
-    padding-top: 1rem;
-    border-top: 1px solid theme('colors.gray.200');
-  }
-
-  .info-subtitle {
-    font-weight: 600;
-    color: theme('colors.gray.700');
-    margin-bottom: 0.5rem;
-  }
-
-  .description-text {
-    color: theme('colors.gray.600');
-    font-size: 0.875rem;
-    white-space: pre-wrap;
-  }
-</style> 

@@ -413,6 +413,7 @@
                         on:click={(e) => deleteDrill(drill.id, e)}
                         class="text-gray-500 hover:text-red-500 transition-colors duration-300 flex-shrink-0"
                         title="Delete drill"
+                        aria-label="Delete drill"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -432,12 +433,17 @@
                   <span class="font-medium">Complexity:</span> {drill.complexity}
                 </p>
               {/if}
-              {#if drill.suggested_length}
-                <p class="text-sm text-gray-500 mt-1" data-testid="drill-card-date">
-                  <span class="font-medium">Duration:</span> {drill.suggested_length} mins
+              {#if drill.suggested_length_min !== null && drill.suggested_length_min !== undefined}
+                <p class="text-sm text-gray-500 mt-1" data-testid="drill-card-duration">
+                  <span class="font-medium">Duration:</span> 
+                  {#if drill.suggested_length_max !== null && drill.suggested_length_max !== undefined && drill.suggested_length_max > drill.suggested_length_min}
+                    {drill.suggested_length_min} - {drill.suggested_length_max} mins
+                  {:else}
+                    {drill.suggested_length_min} mins
+                  {/if}
                 </p>
               {/if}
-              {#if drill.number_of_people_min}
+              {#if drill.number_of_people_min !== undefined && drill.number_of_people_min !== null}
                 <p class="text-sm text-gray-500 mt-1">
                   <span class="font-medium">People:</span>
                   {drill.number_of_people_min}

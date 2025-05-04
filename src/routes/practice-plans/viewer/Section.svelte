@@ -72,7 +72,7 @@
       const duration = parseInt(
         item.selected_duration || 
         item.duration || 
-        (item.drill && (item.drill.duration || item.drill.suggested_length)) || 
+        (item.drill && (item.drill.suggested_length_max)) ||
         15
       );
 

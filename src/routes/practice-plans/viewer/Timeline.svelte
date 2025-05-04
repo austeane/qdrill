@@ -80,7 +80,17 @@
   }
 
   function handleTimelineClick(section) {
-    dispatch('sectionSelect', { sectionId: section.id });
+    const element = document.getElementById(`section-${section.id}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function handleTimelineKeyDown(event, section) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault(); // Prevent page scroll on Space
+      handleTimelineClick(section);
+    }
   }
 
   // Add this array at the top with the other variables
@@ -113,13 +123,11 @@
     });
   }
 
-  let tooltipText = '';
   let tooltipVisible = false;
-  let tooltipX = 0;
-  let tooltipY = 0;
+  let tooltipContent = '';
 
   function showTooltip(event, text) {
-    tooltipText = text;
+    tooltipContent = text;
     tooltipVisible = true;
     updateTooltipPosition(event);
   }
@@ -154,7 +162,7 @@
     class="custom-tooltip"
     style="top: {tooltipY}px; left: {tooltipX}px;"
   >
-    {tooltipText}
+    {tooltipContent}
   </div>
 {/if}
 
@@ -162,19 +170,24 @@
   <div 
     class="timeline"
     on:mousemove={handleMouseMove}
+    role="group" 
+    aria-label="Practice Plan Timeline"
   >
     <!-- Progress indicator -->
     <div 
       class="progress-line"
       style="height: {$scrollPosition}%"
-    />
+    ></div>
 
     <!-- Timeline sections -->
     {#each timelineItems as section, index}
       <div 
+        role="button"
+        tabindex="0"
         class="timeline-section"
         class:active={section.id === currentSectionId}
         on:click={() => handleTimelineClick(section)}
+        on:keydown={(e) => handleTimelineKeyDown(e, section)}
         style="height: {(calculateSectionDuration(section.items) / totalDuration) * 100}%"
       >
         <!-- Section label -->
@@ -195,13 +208,14 @@
                 <div class="parallel-split">
                   {#each item.items as parallelItem}
                     <div 
+                      role="tooltip"
                       class="parallel-branch"
                       style="height: {(parallelItem.duration / item.duration) * 100}%"
                       on:mouseenter={(e) => showTooltip(e, `${section.name}: ${parallelItem.drill?.name || parallelItem.name || 'Unnamed Drill'}`)}
                       on:mouseleave={hideTooltip}
                     >
                       <div class="parallel-item">
-                        <div class="parallel-item-inner {getSectionColor(index)}" />
+                        <div class="parallel-item-inner {getSectionColor(index)}"></div>
                       </div>
                     </div>
                   {/each}
@@ -210,6 +224,7 @@
             {:else}
               <!-- Single item -->
               <div 
+                role="tooltip"
                 class="timeline-item"
                 style="height: {(item.duration / calculateSectionDuration(section.items)) * 100}%"
                 on:mouseenter={(e) => showTooltip(e, `${section.name}: ${item.drill?.name || item.name || 'Unnamed Drill'}`)}

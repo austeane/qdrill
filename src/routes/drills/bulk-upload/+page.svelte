@@ -303,10 +303,11 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 
 {#if $uploadedFile}
   <div class="mb-6">
-    <label class="block text-gray-700 font-medium mb-1">Visibility</label>
+    <label for="visibility-select" class="block text-gray-700 font-medium mb-1">Visibility</label>
     <select
+      id="visibility-select"
       bind:value={$visibility}
-      class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring"
+      class="p-2 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
     >
       <option value="public">Public - Visible to everyone</option>
       <option value="unlisted">Unlisted - Only accessible via direct link</option>
@@ -336,8 +337,8 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 
 {#if $parsedDrills.length > 0}
   <div class="mb-6">
-    <label class="mr-2 font-semibold">Filter:</label>
-    <select bind:value={$filterOption} class="border border-gray-300 rounded px-2 py-1">
+    <label for="filter-select" class="mr-2 font-semibold">Filter:</label>
+    <select id="filter-select" bind:value={$filterOption} class="border border-gray-300 rounded px-2 py-1">
       <option value="all">All Drills</option>
       <option value="errors">Drills with Errors</option>
       <option value="valid">Valid Drills</option>
@@ -394,8 +395,8 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
             </div>
 
             <div class="mb-4">
-              <label class="block text-gray-700 font-medium mb-1">Drill Type</label>
-              <div class="flex flex-wrap gap-2">
+              <label id="drill-type-label-{index}" class="block text-gray-700 font-medium mb-1">Drill Type</label>
+              <div role="group" aria-labelledby="drill-type-label-{index}" class="flex flex-wrap gap-2">
                 {#each drillTypeOptions as type}
                   <button
                     type="button"
@@ -511,8 +512,9 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
             </div>
 
             <div class="mb-4">
-              <label class="block text-gray-700 font-medium mb-1">Skills Focused On</label>
+              <label for="skills-{index}" class="block text-gray-700 font-medium mb-1">Skills Focused On</label>
               <input
+                id="skills-{index}"
                 type="text"
                 bind:value={skillsInput}
                 on:change={() => { drill.skills_focused_on = skillsInput.split(',').map(s => s.trim()).filter(s => s); validateDrillLocal(index); }}

@@ -7,15 +7,15 @@ const skillLevelOptions = [
   'Intermediate',
   'Advanced',
   'Expert'
-];
+] as const;
 
 const complexityOptions = [
   'Low',
   'Medium',
   'High'
-];
+] as const;
 
-const positionOptions = ['Chaser', 'Beater', 'Keeper', 'Seeker'];
+const positionOptions = ['Chaser', 'Beater', 'Keeper', 'Seeker'] as const;
 
 const drillTypeOptions = [
   'Competitive', 
@@ -26,9 +26,9 @@ const drillTypeOptions = [
   'Cooldown', 
   'Contact', 
   'Match-like situation'
-];
+] as const;
 
-const visibilityOptions = ['public', 'unlisted', 'private'];
+const visibilityOptions = ['public', 'unlisted', 'private'] as const;
 
 // Base schema for a drill
 export const drillSchema = z.object({

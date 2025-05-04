@@ -131,9 +131,9 @@
         </div>
 
         <!-- Practice Goals -->
-        <div>
+        <div class="mb-6">
             <div class="flex justify-between items-center">
-                <label class="block text-sm font-medium text-gray-700">
+                <label id="practice-goals-label" class="block text-sm font-medium text-gray-700">
                     Practice Goals <span class="text-red-500">*</span>
                 </label>
                 <button
@@ -144,12 +144,9 @@
                     Add Goal
                 </button>
             </div>
-            <div class="mt-2 space-y-3" 
-                 role="group" 
-                 aria-labelledby="practice-goals-label" 
-                 aria-describedby={$validationErrors.practiceGoals ? 'practice-goals-error' : undefined}>
+            <div role="list" aria-labelledby="practice-goals-label" class="mt-2 space-y-2">
                 {#each $basicInfo.practiceGoals as goal, index}
-                    <div class="flex gap-2">
+                    <div class="flex items-center space-x-2">
                         <input
                             type="text"
                             bind:value={$basicInfo.practiceGoals[index]}
@@ -234,11 +231,12 @@
 
         <!-- Visibility settings -->
         <div>
-            <label class="block text-sm font-medium text-gray-700">Visibility</label>
+            <label for="visibility-select" class="block text-sm font-medium text-gray-700">Visibility</label>
             <select
+                id="visibility-select"
                 bind:value={$basicInfo.visibility}
                 on:change={handleChange}
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                 aria-invalid={$validationErrors.visibility ? 'true' : 'false'} 
                 aria-describedby={$validationErrors.visibility ? 'visibility-error' : undefined}
             >

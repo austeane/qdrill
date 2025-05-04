@@ -2,6 +2,7 @@ import { BaseEntityService } from './baseEntityService.js';
 import * as db from '$lib/server/db';
 import { fabricToExcalidraw } from '$lib/utils/diagramMigration'; // Import the utility function
 import { NotFoundError, ForbiddenError, ValidationError, DatabaseError, ConflictError, AppError } from '$lib/server/errors.js'; // Added import
+import { dev } from '$app/environment'; // Import dev environment variable
 
 /**
  * Service for managing drills
@@ -14,11 +15,13 @@ export class DrillService extends BaseEntityService {
   constructor() {
     const allowedColumns = [
       'name', 'brief_description', 'detailed_description', 'skill_level',
-      'complexity', 'suggested_length', 'number_of_people_min', 'number_of_people_max',
+      'complexity', 
+      'number_of_people_min', 'number_of_people_max',
       'skills_focused_on', 'positions_focused_on', 'drill_type', 'created_by',
       'visibility', 'date_created', 'updated_at', 'is_editable_by_others',
       'parent_drill_id', 'video_link', 'diagrams', 'images', 'upload_source',
-      'search_vector' // Add search_vector if using FTS
+      'search_vector',
+      'suggested_length_min', 'suggested_length_max' 
     ];
     
     const columnTypes = {
@@ -155,19 +158,38 @@ export class DrillService extends BaseEntityService {
    */
   async deleteDrill(id, userId, options = { deleteRelated: false }) {
     return this.withTransaction(async (client) => {
-      // Check if user created the drill (or maybe if they can edit? Deletion is stricter)
-      const drill = await this.getById(id, [this.permissionConfig.userIdColumn, 'skills_focused_on'], userId, client);
-      if (!drill) {
-        // getById should throw NotFoundError, but let's be safe
-        throw new NotFoundError('Drill not found to delete');
-      }
-      
-      // Authorization: Only creator can delete
-      if (drill[this.permissionConfig.userIdColumn] !== userId) {
-         throw new ForbiddenError('Unauthorized to delete this drill');
+      let drill;
+      if (options.deleteRelated && dev) { // Check for dev environment as well
+          // In dev mode with deleteRelated, fetch without user ID check
+          console.log(`[DEV MODE - deleteDrill] Bypassing permission checks for drill ${id}`);
+          try {
+              // Directly fetch the needed columns to avoid permission checks in getById
+              const result = await client.query(
+                `SELECT ${this.permissionConfig.userIdColumn} as created_by, skills_focused_on FROM drills WHERE id = $1`,
+                [id]
+              );
+              if (result.rows.length === 0) {
+                throw new NotFoundError(`Drill not found for deletion (dev mode): ${id}`);
+              }
+              drill = result.rows[0];
+          } catch (error) {
+              if (error instanceof NotFoundError) {
+                  throw error; // Re-throw as NotFoundError already handled
+              }
+              throw error; // Re-throw other errors
+          }
+      } else {
+          drill = await this.getById(id, [this.permissionConfig.userIdColumn, 'skills_focused_on'], userId, client);
       }
 
-      // Delete related items first if requested
+      if (!drill) {
+        throw new NotFoundError(`Drill not found to delete: ${id}`);
+      }
+
+      if (!(options.deleteRelated && dev) && drill[this.permissionConfig.userIdColumn] !== userId) {
+         throw new ForbiddenError(`Unauthorized to delete this drill: ${id}. User ${userId} is not owner ${drill[this.permissionConfig.userIdColumn]}.`);
+      }
+
       if (options.deleteRelated) {
           // Delete related votes
           await client.query('DELETE FROM votes WHERE drill_id = $1', [id]);
@@ -312,6 +334,15 @@ export class DrillService extends BaseEntityService {
         WHERE number_of_people_min IS NOT NULL OR number_of_people_max IS NOT NULL;
       `;
       
+      // Query for min/max suggested length
+      const lengthRangeQuery = `
+        SELECT 
+          MIN(suggested_length_min) as min_length,
+          MAX(suggested_length_max) as max_length
+        FROM drills
+        WHERE suggested_length_min IS NOT NULL OR suggested_length_max IS NOT NULL;
+      `;
+      
       // Execute all queries in parallel
       const [ 
         skillLevelsResult, 
@@ -319,14 +350,16 @@ export class DrillService extends BaseEntityService {
         skillsFocusedResult, 
         positionsFocusedResult, 
         drillTypesResult, 
-        peopleRangeResult 
+        peopleRangeResult,
+        lengthRangeResult // Add lengthRangeResult
       ] = await Promise.all([
         db.query(skillLevelsQuery),
         db.query(complexitiesQuery),
         db.query(skillsFocusedQuery),
         db.query(positionsFocusedQuery),
         db.query(drillTypesQuery),
-        db.query(peopleRangeQuery)
+        db.query(peopleRangeQuery),
+        db.query(lengthRangeQuery) // Execute length query
       ]);
       
       return {
@@ -339,10 +372,10 @@ export class DrillService extends BaseEntityService {
           min: peopleRangeResult.rows[0]?.min_people ?? 0, // Use nullish coalescing
           max: peopleRangeResult.rows[0]?.max_people ?? 100 // Use nullish coalescing
         },
-        // These seem like fixed values, could be constants?
+        // Update suggestedLengths based on DB query
         suggestedLengths: {
-          min: 0,
-          max: 120
+          min: lengthRangeResult.rows[0]?.min_length ?? 0, // Default to 0 if null
+          max: lengthRangeResult.rows[0]?.max_length ?? 120 // Default to 120 if null
         }
       };
     } catch (error) {
@@ -431,34 +464,40 @@ export class DrillService extends BaseEntityService {
 
     // Range filters
     if (number_of_people_min !== undefined) {
-      baseFilters['number_of_people_min__lte'] = number_of_people_min;
+      // Ensure correct comparison: min people on drill <= filter's max
+      baseFilters['number_of_people_min__lte'] = number_of_people_max;
     }
     if (number_of_people_max !== undefined) {
-      baseFilters['number_of_people_max__gte'] = number_of_people_max;
+      // Ensure correct comparison: max people on drill >= filter's min
+      baseFilters['number_of_people_max__gte'] = number_of_people_min;
     }
 
-    // Similar logic for suggested length
+    // Update suggested length filters to use the correct columns and logic
     if (suggested_length_min !== undefined) {
-      baseFilters['suggested_length__gte'] = suggested_length_min;
+       // Find drills where *their* max length is >= the filter's min length
+       baseFilters['suggested_length_max__gte'] = suggested_length_min;
     }
     if (suggested_length_max !== undefined) {
-      baseFilters['suggested_length__lte'] = suggested_length_max;
+      // Find drills where *their* min length is <= the filter's max length
+      baseFilters['suggested_length_min__lte'] = suggested_length_max;
     }
 
     // Boolean filters based on index conditions from performance.md
     if (hasVideo === true) {
-      baseFilters['video_link__isnull'] = false; // Assuming empty string means no video
+      // Check for non-null and non-empty string
+      customConditions.push("video_link IS NOT NULL AND video_link != ''");
     } else if (hasVideo === false) {
-      baseFilters['video_link__isnull'] = true;
+      // Check for null or empty string
+      customConditions.push("(video_link IS NULL OR video_link = '')");
     }
 
     // Handle hasDiagrams/hasImages filters separately
     if (hasDiagrams === true) {
-      // Check for non-null, non-empty JSON array using exists operator for the first element
-      customConditions.push("diagrams IS NOT NULL AND array_length(diagrams,1) > 0");
+      // Check for non-null, non-empty JSON array
+      customConditions.push("diagrams IS NOT NULL AND jsonb_array_length(diagrams) > 0");
     } else if (hasDiagrams === false) {
-      // Check for null or does not have a 0th element (meaning empty or not an array)
-      customConditions.push("(diagrams IS NULL OR array_length(diagrams,1) IS NULL)");
+      // Check for null or empty JSON array
+      customConditions.push("(diagrams IS NULL OR jsonb_array_length(diagrams) = 0)");
     }
 
     if (hasImages === true) {
@@ -473,8 +512,8 @@ export class DrillService extends BaseEntityService {
     let resultsPromise;
     const baseOptions = { page, limit, sortBy, sortOrder, columns, userId, filters: baseFilters };
 
-    // If custom conditions exist, we need to bypass the base search/getAll and construct a custom query
-    if (customConditions.length > 0 || searchQuery) {
+    // If custom conditions exist, or searchQuery, or specific boolean filters, use _executeFilteredQuery
+    if (customConditions.length > 0 || searchQuery || hasVideo !== undefined || hasDiagrams !== undefined || hasImages !== undefined) {
         resultsPromise = this._executeFilteredQuery(searchQuery, baseFilters, customConditions, baseOptions);
     } else {
       // Use the enhanced getAll method if no search or custom filters
@@ -927,11 +966,14 @@ export class DrillService extends BaseEntityService {
     // Use base helper to normalize array fields
     normalizedData = this.normalizeArrayFields(normalizedData, this.arrayFields);
     
-    // Convert diagrams to JSON strings
+    // Convert diagrams to JSON strings (only if not already strings)
     if (normalizedData.diagrams && Array.isArray(normalizedData.diagrams)) {
       normalizedData.diagrams = normalizedData.diagrams.map(diagram => 
-        typeof diagram === 'string' ? diagram : JSON.stringify(diagram)
+        typeof diagram === 'object' && diagram !== null ? JSON.stringify(diagram) : diagram
       );
+    } else if (normalizedData.diagrams === null || normalizedData.diagrams === undefined) {
+      // Ensure it's an empty array if null/undefined before DB insert
+      normalizedData.diagrams = [];
     }
     
     // Normalize strings in arrays (except images)
@@ -939,15 +981,57 @@ export class DrillService extends BaseEntityService {
       if (normalizedData[field] && Array.isArray(normalizedData[field])) {
         normalizedData[field] = normalizedData[field].map(item => 
           typeof item === 'string' ? item.toLowerCase().trim() : item
-        );
+        ).filter(Boolean); // Remove empty strings after trimming
+      } else if (normalizedData[field] === null || normalizedData[field] === undefined) {
+        // Ensure these are empty arrays if null/undefined
+        normalizedData[field] = [];
       }
     });
+
+    // Ensure images is an array
+    if (normalizedData.images === null || normalizedData.images === undefined) {
+      normalizedData.images = [];
+    }
     
     // Handle special number fields
-    if (normalizedData.number_of_people_max === '') {
+    if (normalizedData.number_of_people_max === '' || normalizedData.number_of_people_max === undefined) {
       normalizedData.number_of_people_max = null;
-    } else if (normalizedData.number_of_people_max !== undefined) {
-      normalizedData.number_of_people_max = parseInt(normalizedData.number_of_people_max) || null;
+    } else {
+      const parsedMax = parseInt(normalizedData.number_of_people_max);
+      normalizedData.number_of_people_max = !isNaN(parsedMax) ? parsedMax : null;
+    }
+
+    if (normalizedData.number_of_people_min === '' || normalizedData.number_of_people_min === undefined) {
+      normalizedData.number_of_people_min = null;
+    } else {
+       const parsedMin = parseInt(normalizedData.number_of_people_min);
+       normalizedData.number_of_people_min = !isNaN(parsedMin) ? parsedMin : null;
+    }
+
+    // --- Map suggested_length object to min/max columns ---
+    if (normalizedData.suggested_length && typeof normalizedData.suggested_length === 'object') {
+      const { min, max } = normalizedData.suggested_length;
+      
+      const parsedMin = parseInt(min);
+      const parsedMax = parseInt(max);
+
+      normalizedData.suggested_length_min = !isNaN(parsedMin) ? parsedMin : null;
+      normalizedData.suggested_length_max = !isNaN(parsedMax) ? parsedMax : null;
+      
+      // Remove the original object
+      delete normalizedData.suggested_length;
+    } else {
+      // Ensure columns exist even if input object is missing/invalid
+      if (!normalizedData.hasOwnProperty('suggested_length_min')) {
+         normalizedData.suggested_length_min = null;
+      }
+      if (!normalizedData.hasOwnProperty('suggested_length_max')) {
+         normalizedData.suggested_length_max = null;
+      }
+      // Still remove the original field if it existed but wasn't an object
+      if (normalizedData.hasOwnProperty('suggested_length')) {
+         delete normalizedData.suggested_length;
+      }
     }
     
     return normalizedData;
@@ -1068,12 +1152,13 @@ export class DrillService extends BaseEntityService {
 
     return this.withTransaction(async (client) => {
       try {
-        const insertPromises = drillsData.map(drillInput => {
+        const insertPromises = drillsData.map(async (drillInput) => { // Mark inner function as async
           // Destructure and prepare data for insertion
           const { 
             name, brief_description, detailed_description, skill_level, 
-            complexity, suggested_length, number_of_people, skills_focused_on, 
-            positions_focused_on, video_link, images, diagrams 
+            complexity, suggested_length, // Keep the object here initially
+            number_of_people, skills_focused_on, 
+            positions_focused_on, video_link, images, diagrams, drill_type // Add drill_type
           } = drillInput;
 
           // Basic validation for required fields within the service
@@ -1082,59 +1167,42 @@ export class DrillService extends BaseEntityService {
             throw new ValidationError(`Drill missing required field (name or brief_description): ${JSON.stringify(drillInput)}`);
           }
 
-          // Normalize the individual drill data
-          let drillToInsert = this.normalizeDrillData({
+          // Prepare data object for normalization
+          let drillToNormalize = {
             name,
             brief_description,
             detailed_description: detailed_description || null,
             skill_level,
             complexity: complexity || null,
-            // Handle suggested_length - Assuming it's an object {min, max}
-            suggested_length: suggested_length && typeof suggested_length === 'object' 
-              ? `${suggested_length.min}-${suggested_length.max}`
-              : null, 
-            // Handle number_of_people - Assuming it's an object {min, max}
-            number_of_people_min: number_of_people?.min || 0,
-            number_of_people_max: number_of_people?.max || 99,
+            suggested_length: suggested_length, // Pass the object for normalization
+            number_of_people_min: number_of_people?.min, // Extract min/max before normalization handles defaults
+            number_of_people_max: number_of_people?.max, 
             skills_focused_on,
             positions_focused_on,
+            drill_type, // Include drill_type
             video_link: video_link || null,
             images: images || [],
-            diagrams,
+            diagrams: diagrams || [], // Ensure diagrams is an array
             upload_source: uploadSource,
             created_by: userId,
             visibility,
             is_editable_by_others: false, // Default for imported drills
             date_created: new Date() // Add creation timestamp
-          });
+          };
 
-          // Convert diagrams to JSON strings AFTER initial normalization
-          if (drillToInsert.diagrams && Array.isArray(drillToInsert.diagrams)) {
-               drillToInsert.diagrams = drillToInsert.diagrams.map(diagram => 
-                 typeof diagram === 'string' ? diagram : JSON.stringify(diagram)
-               );
-          }
+          // Normalize the individual drill data
+          let drillToInsert = this.normalizeDrillData(drillToNormalize);
 
-          // Use base create method logic for consistency (handles timestamps etc.)
-          // Instead of direct INSERT, we call the internal create method
-          // We need to adapt the base create method or replicate its INSERT logic here
-          // Base `create` should handle this now, let's try using it.
-          /* Replicating INSERT logic here for simplicity in this refactor:
-          const columns = Object.keys(drillToInsert);
-          const values = Object.values(drillToInsert);
-          const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
-          const queryText = `INSERT INTO ${this.tableName} (${columns.map(col => `"${col}"`).join(', ')}) VALUES (${placeholders}) RETURNING *`;
-          
-          return client.query(queryText, values);
-          */
+          // Use base create method logic for consistency
           // Assuming base `create` can work within the transaction using the passed client.
-          // Need to ensure base `create` can accept a client argument.
+          // Ensure base `create` accepts a client argument.
           return this.create(drillToInsert, client);
         });
 
         // Wait for all insertions to complete
         const results = await Promise.all(insertPromises);
-        const insertedDrills = results.map(res => res.rows[0]);
+        // The base `create` method now returns the created object directly (not wrapped in rows)
+        const insertedDrills = results; 
 
         // Optionally, update skill counts for all imported drills
         for (const drill of insertedDrills) {

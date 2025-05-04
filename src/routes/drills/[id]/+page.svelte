@@ -382,10 +382,21 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
           <h2 class="text-lg font-semibold mb-2">Drill Details</h2>
-          <p><strong>Skill Levels:</strong> {$drill.skill_level}</p>
+          <p><strong>Skill Levels:</strong> {$drill.skill_level?.join(', ')}</p>
           <p><strong>Complexity:</strong> {$drill.complexity}</p>
-          <p><strong>Suggested Length:</strong> {$drill.suggested_length} minutes</p>
-          <p><strong>Number of People:</strong> {$drill.number_of_people_min} - {($drill.number_of_people_max && $drill.number_of_people_max !== '0') ? $drill.number_of_people_max : 'Any'}</p>      </div>
+          <p><strong>Suggested Length:</strong> 
+            {#if $drill.suggested_length_min !== null && $drill.suggested_length_min !== undefined}
+              {#if $drill.suggested_length_max !== null && $drill.suggested_length_max !== undefined && $drill.suggested_length_max > $drill.suggested_length_min}
+                {$drill.suggested_length_min} - {$drill.suggested_length_max} minutes
+              {:else}
+                {$drill.suggested_length_min} minutes
+              {/if}
+            {:else}
+              N/A
+            {/if}
+          </p>
+          <p><strong>Number of People:</strong> {$drill.number_of_people_min} - {($drill.number_of_people_max && $drill.number_of_people_max !== 0) ? $drill.number_of_people_max : 'Any'}</p>
+        </div>
         <div>
           <h2 class="text-lg font-semibold mb-2">Focus Areas</h2>
           <p><strong>Skills:</strong> {Array.isArray($drill.skills_focused_on) ? $drill.skills_focused_on.join(', ') : (typeof $drill.skills_focused_on === 'string' ? $drill.skills_focused_on.split(', ').join(', ') : '')}</p>
@@ -425,17 +436,24 @@
       {#if $drill.diagrams && $drill.diagrams.length > 0}
         <div>
           <h2 class="text-lg font-semibold mb-2">Diagrams</h2>
-          {#each $drill.diagrams as diagram, index}
-            <div class="mb-4 diagram-container">
-              <ExcalidrawWrapper 
-                data={diagram} 
-                on:save={(event) => handleDiagramSave(event, index)} 
-                showSaveButton={false} 
-                {index}
-                readonly={true}
-              />
-            </div>
-          {/each}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {#if $drill.diagrams?.length > 0}
+                {#each $drill.diagrams as diagramData, index}
+                    <!-- Removed unused 'key' directive -->
+                    <div class="border rounded-lg p-2">
+                        <h3 class="text-center font-medium mb-2">Diagram {index + 1}</h3>
+                        <ExcalidrawWrapper data={diagramData} id={`diagram-${$drill.id}-${index}`} index={index} viewOnly={true} />
+                    </div>
+                {/each}
+            {/if}
+
+            <!-- Fallback for old images array -->
+            {#if !$drill.diagrams?.length && Array.isArray($drill.images) && $drill.images.length > 0}
+                {#each $drill.images as image}
+                  <img src={image} alt="Drill diagram" class="w-full h-auto object-contain rounded-lg border" />
+                {/each}
+            {/if}
+          </div>
         </div>
       {/if}
 

@@ -243,6 +243,7 @@
                                     type="button"
                                     on:click={() => removeDrill(index)}
                                     class="p-1 text-gray-400 hover:text-red-500"
+                                    aria-label="Remove drill"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                         <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -313,8 +314,14 @@
                             <h4 class="text-sm font-medium text-gray-900">{drill.name}</h4>
                             <p class="mt-1 text-xs text-gray-500">{drill.brief_description}</p>
                             <div class="mt-2 flex items-center text-xs text-gray-500 space-x-2">
-                                {#if drill.suggested_length}
-                                    <span>⏱️ {drill.suggested_length}min</span>
+                                {#if drill.suggested_length_min !== null}
+                                    <span>⏱️ 
+                                        {#if drill.suggested_length_max !== null && drill.suggested_length_max > drill.suggested_length_min}
+                                            {drill.suggested_length_min}-{drill.suggested_length_max}
+                                        {:else}
+                                            {drill.suggested_length_min}
+                                        {/if} min
+                                    </span>
                                 {/if}
                                 {#if drill.number_of_people_min || drill.number_of_people_max}
                                 <span>👥 

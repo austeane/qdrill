@@ -252,7 +252,7 @@
         {#each practicePlan.practice_goals as goal}
           <li class="flex items-start">
             <span class="mr-2">•</span>
-            <span>{goal}</span>
+            <span class="goal-text">{goal}</span>
           </li>
         {/each}
       </ul>
@@ -338,6 +338,14 @@
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .goal-text {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
   }
 </style>

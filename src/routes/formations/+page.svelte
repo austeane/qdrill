@@ -206,12 +206,11 @@
         </div>
         <!-- Sort -->
         <div class="relative">
-           <label class="block text-sm font-medium text-gray-700 mb-1">Sort</label>
+           <label id="sort-label" class="block text-sm font-medium text-gray-700 mb-1">Sort</label>
            <button
-             class="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors duration-300 flex items-center justify-between text-left"
-             on:click={toggleSortOptions}
-             aria-haspopup="true"
-             aria-expanded={showSortOptions}
+              aria-labelledby="sort-label"
+              on:click={() => sortDropdownOpen = !sortDropdownOpen}
+              class="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-blue-500"
            >
              <span class="font-medium">{$selectedSortOption ? sortOptions.find(o=>o.value === $selectedSortOption)?.label : 'Select Sort'} ({$selectedSortOrder === 'asc' ? 'Asc' : 'Desc'})</span>
              <span class="transform transition-transform duration-300" class:rotate-180={showSortOptions}>▼</span>

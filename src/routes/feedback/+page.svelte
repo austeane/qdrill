@@ -148,20 +148,25 @@
 
     <section>
         <h2 class="text-xl font-semibold mb-2">Existing Feedback</h2>
-        <div class="mb-4">
-            <label class="mr-2">Filter by:</label>
-            <select bind:value={filterType} class="border rounded p-1">
-                <option value="all">All</option>
-                <option value="bug">Bug</option>
-                <option value="general">General Comment</option>
-                <option value="feature">Feature Request</option>
-                <option value="other">Other</option>
-            </select>
-            <label class="ml-4 mr-2">Sort by:</label>
-            <select bind:value={sortBy} class="border rounded p-1">
-                <option value="date">Date</option>
-                <option value="upvotes">Upvotes</option>
-            </select>
+        <div class="mb-4 flex items-center space-x-4">
+            <div class="mb-4">
+                <label for="filter-select" class="mr-2">Filter by:</label>
+                <select id="filter-select" bind:value={filterType} class="border rounded p-1">
+                    <option value="all">All</option>
+                    <option value="bug">Bug</option>
+                    <option value="general">General Comment</option>
+                    <option value="feature">Feature Request</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="sort-select" class="ml-4 mr-2">Sort by:</label>
+                <select id="sort-select" bind:value={sortBy} class="border rounded p-1">
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="upvotes">Upvotes</option>
+                </select>
+            </div>
         </div>
         {#if sortedFeedback.length > 0}
             <ul class="space-y-4">

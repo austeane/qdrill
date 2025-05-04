@@ -95,7 +95,6 @@
                 totalTime: currentTimeline.totalTime || $basicInfo.totalTime, // Preserve totalTime if exists
                 sections: reorderedAndUpdated
             });
-            // scheduleAutoSave(); // Removed
         }
     }
 
@@ -124,7 +123,6 @@
             
             return updated;
         });
-       // scheduleAutoSave(); // Removed
     }
 
     // Handle reordering - still modifies the timeline store directly
@@ -158,7 +156,6 @@
             
             return updated;
         });
-       // scheduleAutoSave(); // Removed
     }
 
     // Calculate total time used
@@ -208,63 +205,70 @@
 
     <!-- Timeline -->
     <div class="space-y-4">
-        {#if $timeline.sections.length > 0}
-            {#each $timeline.sections as section, index (section.id)} <!-- Use ID as key -->
-                {@const sectionId = section.id} <!-- Capture ID -->
-                <div
-                    class="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-                    draggable="true"
-                    on:dragstart={(e) => handleDragStart(e, index)}
-                    on:dragover={handleDragOver}
-                    on:drop={(e) => handleDrop(e, index)}
-                >
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <!-- Icon not available from sectionsStore -->
-                            <!-- <span class="text-xl">{section.icon}</span> -->
-                            <div>
-                                <h4 class="text-sm font-medium text-gray-900">{section.name}</h4>
-                                <p class="text-xs text-gray-500">Starts at: {formatTime(section.startTime)}</p>
+        <h3 class="text-lg font-medium text-gray-900 mb-4">Timeline Setup</h3>
+
+        <div class="space-y-4" role="list">
+            {#if $timeline.sections.length > 0}
+                {#each $timeline.sections as section, index (section.id)} <!-- Use section.id as key -->
+                    {@const sectionId = section.id} <!-- Capture ID -->
+                    <div
+                        role="listitem"
+                        class="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
+                        draggable="true"
+                        on:dragstart={(e) => handleDragStart(e, index)}
+                        on:dragover={handleDragOver}
+                        on:drop={(e) => handleDrop(e, index)}
+                    >
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <!-- Icon not available from sectionsStore -->
+                                <!-- <span class="text-xl">{section.icon}</span> -->
+                                <div>
+                                    <h4 class="text-sm font-medium text-gray-900">{section.name}</h4>
+                                    <p class="text-xs text-gray-500">Starts at: {formatTime(section.startTime)}</p>
+                                </div>
                             </div>
-                        </div>
-                        <div class="flex items-center space-x-4">
-                            <label class="flex items-center space-x-2">
-                                <span class="text-sm text-gray-700">Duration:</span>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    value={section.duration}
-                                    on:input={(e) => handleDurationChange(index, e.target.value)}
-                                    class="shadow-sm focus:ring-blue-500 focus:border-blue-500 w-20 sm:text-sm border-gray-300 rounded-md"
-                                />
-                                <span class="text-sm text-gray-500">min</span>
-                            </label>
-                            <div class="flex items-center">
-                                <button
-                                    type="button"
-                                    class="p-1 text-gray-400 hover:text-gray-500"
-                                    on:click={() => handleDurationChange(index, (section.duration || 0) - 5)}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
-                                    </svg>
-                                </button>
-                                <button
-                                    type="button"
-                                    class="p-1 text-gray-400 hover:text-gray-500"
-                                    on:click={() => handleDurationChange(index, (section.duration || 0) + 5)}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                                    </svg>
-                                </button>
+                            <div class="flex items-center space-x-4">
+                                <label class="flex items-center space-x-2">
+                                    <span class="text-sm text-gray-700">Duration:</span>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={section.duration}
+                                        on:input={(e) => handleDurationChange(index, e.target.value)}
+                                        class="shadow-sm focus:ring-blue-500 focus:border-blue-500 w-20 sm:text-sm border-gray-300 rounded-md"
+                                    />
+                                    <span class="text-sm text-gray-500">min</span>
+                                </label>
+                                <div class="flex items-center">
+                                    <button
+                                        type="button"
+                                        class="p-1 text-gray-400 hover:text-gray-500"
+                                        on:click={() => handleDurationChange(index, Math.max(1, (section.duration || 0) - 5))}
+                                        aria-label="Decrease duration by 5 minutes"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="p-1 text-gray-400 hover:text-gray-500"
+                                        on:click={() => handleDurationChange(index, (section.duration || 0) + 5)}
+                                        aria-label="Increase duration by 5 minutes"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            {/each}
-        {:else}
-            <p class="text-sm text-gray-500 italic">Go back to the previous step to add sections first.</p>
-        {/if}
+                {/each}
+            {:else}
+                <p class="text-sm text-gray-500 italic">No sections available to order. Go back to define sections.</p>
+            {/if}
+        </div>
     </div>
 </div> 

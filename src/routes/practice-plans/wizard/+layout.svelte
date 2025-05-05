@@ -20,8 +20,8 @@
         // Since wizardValidation is gone, validation needs to be handled differently,
         // perhaps using the validateBasicInfo from wizardStore or component-level checks.
         // For now, allow navigation directly.
-        currentStep.set(step);
-        goto(steps[step - 1].path);
+            currentStep.set(step);
+            goto(steps[step - 1].path);
     }
 
     function nextStep() {

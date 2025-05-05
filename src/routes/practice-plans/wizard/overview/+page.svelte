@@ -44,33 +44,33 @@
                     const duration = timelineSection?.duration || 0;
 
                     return {
-                        id: section.id,
-                        name: section.name,
-                        order: sectionIndex,
+                    id: section.id,
+                    name: section.name,
+                    order: sectionIndex,
                         duration: duration,
-                        goals: section.goals || [],
-                        notes: section.notes || '',
-                        items: (section.items || []).map((item, itemIndex) => {
-                            const formatted = formatDrillItem(item, section.id);
-                            return {
-                                type: formatted.type,
-                                drill_id: formatted.type === 'drill' ? formatted.id : null,
-                                name: formatted.name,
-                                duration: formatted.selected_duration || formatted.duration || 0,
-                                order_in_plan: itemIndex,
-                                diagram_data: formatted.diagram_data,
-                                parallel_group_id: formatted.parallel_group_id,
-                                parallel_timeline: formatted.parallel_timeline,
-                                group_timelines: formatted.groupTimelines,
-                                timeline_name: formatted.timeline_name,
-                                timeline_color: formatted.timeline_color,
-                                ...(formatted.type === 'one-off' && {
-                                    brief_description: formatted.brief_description,
-                                    skills_focused_on: formatted.skills_focused_on,
-                                    skill_level: formatted.skill_level
-                                })
-                            };
-                        })
+                    goals: section.goals || [],
+                    notes: section.notes || '',
+                    items: (section.items || []).map((item, itemIndex) => {
+                        const formatted = formatDrillItem(item, section.id);
+                        return {
+                            type: formatted.type,
+                            drill_id: formatted.type === 'drill' ? formatted.id : null,
+                            name: formatted.name,
+                            duration: formatted.selected_duration || formatted.duration || 0,
+                            order_in_plan: itemIndex,
+                            diagram_data: formatted.diagram_data,
+                            parallel_group_id: formatted.parallel_group_id,
+                            parallel_timeline: formatted.parallel_timeline,
+                            group_timelines: formatted.groupTimelines,
+                            timeline_name: formatted.timeline_name,
+                            timeline_color: formatted.timeline_color,
+                            ...(formatted.type === 'one-off' && {
+                                brief_description: formatted.brief_description,
+                                skills_focused_on: formatted.skills_focused_on,
+                                skill_level: formatted.skill_level
+                            })
+                        };
+                    })
                     };
                 })
             };

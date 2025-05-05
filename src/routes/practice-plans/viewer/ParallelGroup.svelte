@@ -41,6 +41,38 @@
       groupId: items[0]?.parallel_group_id 
     });
   }
+
+  // Helper function to format time (copied from DrillCard)
+  function formatTime(timeStr) {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  }
+
+  // Helper function to add minutes (copied from +page.svelte)
+  function addMinutes(timeStr, minutes) {
+    if (!timeStr) return null;
+    const [hours, mins] = timeStr.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, mins + minutes);
+    return date.getHours().toString().padStart(2, '0') + ':' + 
+           date.getMinutes().toString().padStart(2, '0');
+  }
+
+  // Calculate start times within each timeline
+  $: timelineGroupsWithStartTimes = Object.entries(timelineGroups).map(([timeline, timelineItems]) => {
+    let currentTimelineTime = startTime; // Start with the group's overall start time
+    const itemsWithStartTimes = timelineItems.map(item => {
+      const itemStartTime = currentTimelineTime;
+      currentTimelineTime = addMinutes(currentTimelineTime, item.selected_duration || item.duration || 0);
+      return { ...item, startTime: itemStartTime };
+    });
+    return [timeline, itemsWithStartTimes];
+  });
+
 </script>
 
 <div class="parallel-group">
@@ -49,7 +81,7 @@
     <div class="group-actions">
       <div class="group-duration">
         {#if startTime}
-          <span class="text-sm text-gray-500 mr-2">{startTime}</span>
+          <span class="text-sm text-gray-500 mr-2">{formatTime(startTime)}</span>
         {/if}
         {groupDuration} min
       </div>
@@ -66,7 +98,7 @@
   </div>
 
   <div class="group-content">
-    {#each Object.entries(timelineGroups) as [timeline, timelineItems]}
+    {#each timelineGroupsWithStartTimes as [timeline, timelineItems]}
       <div class="timeline-column" class:single-timeline={Object.keys(timelineGroups).length === 1}>
         <div class="timeline-header {getTimelineColor(timeline)}">
           {timelineNamesStore ? getTimelineName(timeline) : DEFAULT_TIMELINE_NAMES?.[timeline] || timeline}
@@ -76,7 +108,7 @@
             <DrillCard 
               {item}
               editable={canEdit}
-              {startTime}
+              startTime={item.startTime}
               isInParallelGroup={true}
               on:edit
               on:durationChange

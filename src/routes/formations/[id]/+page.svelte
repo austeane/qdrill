@@ -2,7 +2,9 @@
   // import { onMount } from 'svelte'; // Removed
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import ExcalidrawWrapper from '../../../components/ExcalidrawWrapper.svelte';
+  import { apiFetch } from '$lib/utils/apiFetch';
+  import { toast } from '@zerodevx/svelte-toast';
+  import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
   import { dev } from '$app/environment';
   import { slide } from 'svelte/transition'; // Added for transitions
 

@@ -2,7 +2,7 @@
 
 <script>
 	import { goto } from '$app/navigation';
-	import Spinner from '../components/Spinner.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 	let isNavigating = false;
 
 	async function navigateToWizard() {

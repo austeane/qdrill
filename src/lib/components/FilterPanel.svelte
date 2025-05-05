@@ -18,7 +18,7 @@
     import { createEventDispatcher, onMount } from 'svelte';
     import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
     import { writable } from 'svelte/store';
-    import ThreeStateCheckbox from './ThreeStateCheckbox.svelte';
+    import ThreeStateCheckbox from '$lib/components/ThreeStateCheckbox.svelte';
     import { FILTER_STATES } from '$lib/constants';
     import {
         selectedPhaseOfSeason,
@@ -30,6 +30,8 @@
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
     import { browser } from '$app/environment';
+    import debounce from 'lodash/debounce';
+    import { Plus, Minus, Search } from 'lucide-svelte';
 
     const dispatch = createEventDispatcher();
 
@@ -237,15 +239,6 @@
       } catch (error) {
         console.error(error);
       }
-    }
-
-    // Simple debounce helper (client-side only)
-    function debounce(fn, delay = 300) {
-      let timer;
-      return (...args) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), delay);
-      };
     }
 
     const debouncedFetchDrillSuggestions = debounce(fetchDrillSuggestions, 300);

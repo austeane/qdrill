@@ -703,6 +703,8 @@ export class PracticePlanService extends BaseEntityService {
                 ]
               );
             }
+            // Call resequence after inserting all items for this section
+            await this.#resequenceItems(section.id, client); 
           }
         }
       }
@@ -713,6 +715,57 @@ export class PracticePlanService extends BaseEntityService {
     }); // Transaction handles rollback
   }
   
+  /**
+   * Resequence the order_in_plan for items within a specific section.
+   * Ensures the order is sequential (0, 1, 2...) based on the current order.
+   * @param {string|number} sectionId - The ID of the section to resequence.
+   * @param {object} client - The database transaction client.
+   * @returns {Promise<void>}
+   * @private
+   */
+  async #resequenceItems(sectionId, client) {
+    try {
+      // Get item IDs in their current order within the section
+      const itemsResult = await client.query(
+        `SELECT id 
+         FROM practice_plan_drills 
+         WHERE section_id = $1 
+         ORDER BY order_in_plan ASC`,
+        [sectionId]
+      );
+  
+      const itemIds = itemsResult.rows.map(row => row.id);
+  
+      // If there are items, build and execute an UPDATE query with CASE
+      if (itemIds.length > 0) {
+        let caseStatement = 'CASE id ';
+        const values = [sectionId]; // Start parameters array with sectionId
+        itemIds.forEach((id, index) => {
+          caseStatement += `WHEN $${values.length + 1} THEN $${values.length + 2} `;
+          values.push(id, index); // Add id and new order to parameters
+        });
+        caseStatement += 'END';
+  
+        const updateQuery = `
+          UPDATE practice_plan_drills 
+          SET order_in_plan = ${caseStatement} 
+          WHERE section_id = $1 AND id = ANY($${values.length + 1}::int[])`; 
+          
+        // Add the array of item IDs as the last parameter
+        values.push(itemIds); 
+        
+        await client.query(updateQuery, values);
+      }
+      // No need to do anything if there are no items
+    } catch (error) {
+      // Log the error but don't necessarily halt the entire update if resequencing fails,
+      // though it indicates a potential data integrity issue. Consider how critical this is.
+      console.error(`Error resequencing items for section ${sectionId}:`, error);
+      // Re-throwing might be appropriate depending on desired error handling strategy
+      // throw new DatabaseError('Failed to resequence items', error); 
+    }
+  }
+
   /**
    * Delete a practice plan
    * @param {number} id - Practice plan ID

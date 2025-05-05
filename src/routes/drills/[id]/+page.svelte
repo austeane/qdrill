@@ -3,24 +3,27 @@
   import { writable } from 'svelte/store';
   import { page } from '$app/stores';
   import { cart } from '$lib/stores/cartStore';
-  import Breadcrumb from '../../../components/Breadcrumb.svelte';
+  import Breadcrumb from '$lib/components/Breadcrumb.svelte';
   import { goto } from '$app/navigation';
-  import UpvoteDownvote from '../../../components/UpvoteDownvote.svelte';
-  import Comments from '../../../components/Comments.svelte';
+  import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
+  import Comments from '$lib/components/Comments.svelte';
   import { toast } from '@zerodevx/svelte-toast';
-  import ExcalidrawWrapper from '../../../components/ExcalidrawWrapper.svelte';
+  import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
   import { dev } from '$app/environment';
   import { apiFetch } from '$lib/utils/apiFetch.js';
 
   export let data;
   console.log('[Page Component] Initial data:', data);
   
-  let drill = writable(data.drill);
-  let allVariants = writable({});
+  // Create a local writable store for the current drill data
+  const drill = writable(data.drill || {});
 
-  $: if (data.drill) {
+  // Reactively update the local store if the data prop changes
+  $: if (data.drill && $drill !== data.drill) {
     drill.set(data.drill);
   }
+
+  let allVariants = writable({});
 
   $: if ($drill && $drill.variations) {
     const drillMap = {};

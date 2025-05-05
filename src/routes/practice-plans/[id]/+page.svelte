@@ -2,12 +2,13 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { writable } from 'svelte/store';
-  import Breadcrumb from '$components/Breadcrumb.svelte';
-  import Comments from '$components/Comments.svelte';
-  import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
+  import { get } from 'svelte/store';
+  import Breadcrumb from '$lib/components/Breadcrumb.svelte';
+  import Comments from '$lib/components/Comments.svelte';
+  import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
   import Timeline from '../viewer/Timeline.svelte';
   import Section from '../viewer/Section.svelte';
-  import DeletePracticePlan from '$components/DeletePracticePlan.svelte';
+  import DeletePracticePlan from '$lib/components/DeletePracticePlan.svelte';
   import { goto } from '$app/navigation';
   import { toast } from '@zerodevx/svelte-toast';
   

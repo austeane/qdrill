@@ -1,7 +1,10 @@
 <script>
     import { toast } from '@zerodevx/svelte-toast';
+    import { get } from 'svelte/store';
     import ExcalidrawRenderer from '$lib/components/ExcalidrawRenderer.svelte';
     import { apiFetch } from '$lib/utils/apiFetch.js';
+    import { onMount } from 'svelte';
+    import { Button } from '$lib/components/ui/button';
 
     let isMigrating = false;
     let migrationResult = null;

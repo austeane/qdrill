@@ -3,10 +3,11 @@
   import { writable } from 'svelte/store';
   import { goto } from '$app/navigation';
   import { toast } from '@zerodevx/svelte-toast';
-  import ExcalidrawWrapper from '$components/ExcalidrawWrapper.svelte';
+  import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
   import { apiFetch } from '$lib/utils/apiFetch.js';
   import { z } from 'zod';
   import { bulkUploadDrillInputSchema } from '$lib/validation/drillSchema';
+  import Papa from 'papaparse';
 
   let fileInput;
   let uploadedFile = writable(null);

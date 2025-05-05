@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { slide } from 'svelte/transition';
-  import ExcalidrawWrapper from '../../../components/ExcalidrawWrapper.svelte';
+  import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
   
   export let item;
   export let isInParallelGroup = false;

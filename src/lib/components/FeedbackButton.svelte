@@ -1,5 +1,6 @@
 <script>
-    import FeedbackModal from './FeedbackModal.svelte';
+    import FeedbackModal from '$lib/components/FeedbackModal.svelte';
+    import { writable } from 'svelte/store';
     import { feedbackModalVisible } from '$lib/stores/feedbackStore';
 
     function openFeedbackModal() {

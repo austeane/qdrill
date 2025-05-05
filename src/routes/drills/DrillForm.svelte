@@ -2,7 +2,7 @@
   import { onMount, tick, createEventDispatcher } from 'svelte';
   import { writable, derived } from 'svelte/store';
   import { goto } from '$app/navigation';
-  import ExcalidrawWrapper from '../../components/ExcalidrawWrapper.svelte';
+  import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
   import { dndzone } from 'svelte-dnd-action';
   import { PREDEFINED_SKILLS } from '$lib/constants/skills';
   import { page } from '$app/stores';

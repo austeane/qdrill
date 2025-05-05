@@ -23,7 +23,7 @@
   );
 
   // Check edit permissions
-  $: canEdit = $page.data.session?.user?.id === practicePlan.created_by || 
+  $: userCanEdit = $page.data.session?.user?.id === practicePlan.created_by || 
                practicePlan.is_editable_by_others;
 
   // Add this near the other state variables
@@ -178,7 +178,7 @@
 
       <!-- Action Buttons -->
       <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-4 order-first sm:order-last">
-        {#if canEdit}
+        {#if userCanEdit}
           <a 
             href="/practice-plans/{practicePlan.id}/edit" 
             class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors text-sm sm:text-base whitespace-nowrap"
@@ -279,7 +279,7 @@
           <Section 
             {section}
             isActive={section.id === $currentSectionId}
-            {canEdit}
+            canEdit={false}
             sectionIndex={index}
             startTime={calculateSectionStartTime(practicePlan.sections, index)}
           />

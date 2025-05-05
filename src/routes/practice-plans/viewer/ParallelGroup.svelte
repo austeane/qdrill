@@ -75,7 +75,7 @@
           {#each timelineItems as item (item.drill?.id || item.id || crypto.randomUUID())}
             <DrillCard 
               {item}
-              {canEdit}
+              editable={canEdit}
               {startTime}
               isInParallelGroup={true}
               on:edit

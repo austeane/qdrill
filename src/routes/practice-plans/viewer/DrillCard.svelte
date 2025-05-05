@@ -266,3 +266,71 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .drill-title {
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    color: theme('colors.gray.800');
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+  }
+
+  .header-content {
+    display: flex;
+    flex-grow: 1;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .title-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-grow: 1;
+  }
+
+  .indicators {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .duration-control {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .duration-display {
+    font-weight: 500;
+    margin-right: 0.25rem;
+  }
+
+  .duration-label {
+    font-size: 0.875rem;
+    color: theme('colors.gray.500');
+  }
+  
+  .duration-input {
+    width: 3.5rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid theme('colors.gray.300');
+    border-radius: 0.25rem;
+    text-align: right;
+    margin-right: 0.25rem;
+  }
+
+  .duration-control > .flex.flex-col {
+    display: flex;
+  }
+  .duration-control > .flex.items-center:not(.editable-input-wrapper) {
+    display: flex;
+  }
+</style>

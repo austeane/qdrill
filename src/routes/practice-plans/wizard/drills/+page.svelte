@@ -1,7 +1,5 @@
 <script>
     import { timeline, basicInfo } from '$lib/stores/wizardStore';
-    import { validationErrors } from '$lib/stores/wizardValidation';
-    import { scheduleAutoSave } from '$lib/stores/wizardStore';
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
     import { replaceState } from '$app/navigation';
@@ -94,7 +92,6 @@
             
             return updated;
         });
-        scheduleAutoSave();
     }
 
     // Handle removing a drill from the section
@@ -105,12 +102,10 @@
             section.drills.splice(drillIndex, 1);
             return updated;
         });
-        scheduleAutoSave();
     }
 
     // Handle drill duration change
     function handleDrillDurationChange(drillIndex, newDuration) {
-        touched.drills[`${currentSectionIndex}_${drillIndex}`] = true;
         timeline.update(current => {
             const updated = { ...current };
             const section = updated.sections[currentSectionIndex];
@@ -130,7 +125,6 @@
             
             return updated;
         });
-        scheduleAutoSave();
     }
 
     // Calculate total time used by drills in a section
@@ -157,11 +151,6 @@
             currentSectionIndex--;
         }
     }
-
-    // Add touched state tracking
-    let touched = {
-        drills: {}  // Will store touched state for each section's drills
-    };
 </script>
 
 <div class="space-y-8">
@@ -251,11 +240,6 @@
                                 </button>
                             </div>
                         </div>
-                        {#if getFieldError(`drill_${currentSectionIndex}_${index}`, touched.drills, $validationErrors)}
-                            <p class="mt-1 text-sm text-red-600">
-                                {$validationErrors.drills[`drill_${currentSectionIndex}_${index}`]}
-                            </p>
-                        {/if}
                     {/each}
                 </div>
             {/if}

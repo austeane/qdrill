@@ -5,6 +5,8 @@
   
   export let item;
   export let isInParallelGroup = false;
+  export let editable = false;
+  export let startTime = null;
   
   const dispatch = createEventDispatcher();
   let isExpanded = false;

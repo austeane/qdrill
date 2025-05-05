@@ -243,7 +243,7 @@
           <!-- Render regular drill items -->
           <DrillCard 
             {item}
-            {canEdit}
+            editable={canEdit}
             startTime={item.startTime}
             on:edit={handleEdit}
             on:durationChange={handleDurationChange}

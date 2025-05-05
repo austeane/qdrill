@@ -69,7 +69,7 @@
   }
 
   function calculateSectionDuration(items) {
-    console.log('Calculating duration for items:', items);
+    // console.log('Calculating duration for items:', items);
     return items.reduce((acc, item) => {
       if (item.type === 'parallel') {
         console.log('Parallel group duration:', item.duration);
@@ -108,7 +108,7 @@
     return sectionColors[index % sectionColors.length];
   }
 
-  $: console.log('Timeline Sections:', sections);
+  // $: console.log('Timeline Sections:', sections);
 
   // Add this debug log at the top of the component
   $: {
@@ -125,6 +125,8 @@
 
   let tooltipVisible = false;
   let tooltipContent = '';
+  let tooltipX = 0;
+  let tooltipY = 0;
 
   function showTooltip(event, text) {
     tooltipContent = text;

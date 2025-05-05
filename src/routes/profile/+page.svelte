@@ -1,8 +1,8 @@
 <script>
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
-    import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
-    import Comments from '$components/Comments.svelte';
+    import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
+    import Comments from '$lib/components/Comments.svelte';
 
     export let data;
     const { userData } = data;

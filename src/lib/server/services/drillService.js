@@ -3,6 +3,7 @@ import * as db from '$lib/server/db';
 import { fabricToExcalidraw } from '$lib/utils/diagramMigration'; // Import the utility function
 import { NotFoundError, ForbiddenError, ValidationError, DatabaseError, ConflictError, AppError } from '$lib/server/errors.js'; // Added import
 import { dev } from '$app/environment'; // Import dev environment variable
+import { json } from '@sveltejs/kit';
 
 /**
  * Service for managing drills
@@ -1220,6 +1221,24 @@ export class DrillService extends BaseEntityService {
         }
         console.error('Error during bulk drill import:', error);
         throw new DatabaseError('Failed during bulk drill import.', error);
+      }
+    });
+  }
+
+  /**
+   * Fetches all drill names and their IDs.
+   * Used for mapping generated names to existing drills or providing context.
+   * @param {pg.Client} [tx=db]
+   * @returns {Promise<DrillName[]>}
+   */
+  async getAllDrillNames(tx = db) {
+    return await tx.drill.findMany({
+      select: {
+        id: true,
+        name: true
+      },
+      orderBy: {
+        name: 'asc'
       }
     });
   }

@@ -1,12 +1,12 @@
 <script>
-    import FilterPanel from '$components/FilterPanel.svelte';
+    import FilterPanel from '$lib/components/FilterPanel.svelte';
     import { onDestroy, onMount, afterUpdate } from 'svelte';
     import { tick } from 'svelte';
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
     import debounce from 'lodash/debounce';
     import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
-    import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
+    import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
     import { FILTER_STATES } from '$lib/constants';
     import {
         selectedPhaseOfSeason,
@@ -14,8 +14,8 @@
         selectedEstimatedParticipantsMin,
         selectedEstimatedParticipantsMax
     } from '$lib/stores/practicePlanFilterStore';
-    import DeletePracticePlan from '$components/DeletePracticePlan.svelte';
-    import Pagination from '$components/Pagination.svelte';
+    import DeletePracticePlan from '$lib/components/DeletePracticePlan.svelte';
+    import Pagination from '$lib/components/Pagination.svelte';
     import { cart } from '$lib/stores/cartStore';
 
     export let data;
@@ -207,39 +207,48 @@
 </script>
 
 <div class="max-w-7xl mx-auto p-4">
-    <h1 class="text-3xl font-bold mb-6">Practice Plans</h1>
-
-    <!-- Buttons to create a new practice plan - Conditionally rendered -->
-    <div class="mb-6 flex flex-wrap gap-4">
-        {#if $cart.length > 0}
-            <!-- Cart has items: Offer Create from Cart and Wizard -->
-            <a
-                href="/practice-plans/create"
-                class="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors duration-300"
-            >
-                Create Plan from Cart ({$cart.length} Drill{$cart.length !== 1 ? 's' : ''})
-            </a>
-            <a
-                href="/practice-plans/wizard/basic-info"
-                class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
-            >
-                Create Plan with Wizard
-            </a>
-        {:else}
-            <!-- Cart is empty: Offer Wizard and Browse Drills -->
-            <a
-                href="/practice-plans/wizard/basic-info"
-                class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
-            >
-                Create Plan with Wizard
-            </a>
-            <a
-                href="/drills"
-                class="inline-block px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-colors duration-300"
-            >
-                Browse Drills
-            </a>
-        {/if}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">Practice Plans</h1>
+        <div class="flex gap-2 relative">
+            {#if $page.data.session}
+                {#if $cart.length > 0}
+                    <a
+                        href="/practice-plans/create" 
+                        class="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors duration-300"
+                    >
+                        Create Plan from Cart ({$cart.length} Drill{$cart.length !== 1 ? 's' : ''})
+                    </a>
+                    <a
+                        href="/practice-plans/create" 
+                        class="relative inline-block px-6 py-3 bg-gray-100 text-gray-800 border border-gray-300 rounded-lg font-semibold hover:bg-gray-200 transition-colors duration-300"
+                    >
+                        Create Plan with AI
+                        <span class="absolute -top-2 -right-2 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">Beta</span>
+                    </a>
+                {:else}
+                    <a
+                        href="/practice-plans/create" 
+                        class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
+                    >
+                        Create Plan with Wizard
+                    </a>
+                     <a
+                        href="/practice-plans/create" 
+                        class="relative inline-block px-6 py-3 bg-gray-100 text-gray-800 border border-gray-300 rounded-lg font-semibold hover:bg-gray-200 transition-colors duration-300"
+                    >
+                        Create Plan with AI
+                        <span class="absolute -top-2 -right-2 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">Beta</span>
+                    </a>
+                {/if}
+            {:else}
+                <a
+                    href="/signin"
+                    class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
+                >
+                    Sign in to Create Plans
+                </a>
+            {/if}
+        </div>
     </div>
 
     <!-- Filter Panel -->

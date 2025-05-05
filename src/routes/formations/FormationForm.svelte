@@ -2,7 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { writable } from 'svelte/store';
   import { goto } from '$app/navigation';
-  import ExcalidrawWrapper from '../../components/ExcalidrawWrapper.svelte';
+  import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
   import { page } from '$app/stores';
   import { SvelteToast, toast } from '@zerodevx/svelte-toast';
   import { authClient } from '$lib/auth-client';

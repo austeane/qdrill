@@ -1,8 +1,8 @@
 <script>
   // Thin wrapper to render Excalidraw diagrams in readonly mode for admin/testing pages.
-  import ExcalidrawWrapper from '../../components/ExcalidrawWrapper.svelte';
+  import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
 
-  /** @type {import('../../components/ExcalidrawWrapper.svelte').default} */
+  /** @type {import('$lib/components/ExcalidrawWrapper.svelte').default} */
   export let sceneData;
 </script>
 

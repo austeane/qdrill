@@ -4,7 +4,7 @@
   import Header from './Header.svelte';
   import './styles.css';
   import { SvelteToast, toast } from '@zerodevx/svelte-toast';
-  import FeedbackButton from '../components/FeedbackButton.svelte';
+  import FeedbackButton from '$lib/components/FeedbackButton.svelte';
   import { inject } from '@vercel/analytics';
   import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
   import { dev } from '$app/environment';

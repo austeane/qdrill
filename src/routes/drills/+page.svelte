@@ -1,11 +1,11 @@
 <!-- src/routes/drills/+page.svelte -->
 <script>
-  import FilterPanel from '$components/FilterPanel.svelte';
+  import FilterPanel from '$lib/components/FilterPanel.svelte';
   import { cart } from '$lib/stores/cartStore';
   import { onMount } from 'svelte';
   import { SvelteToast, toast } from '@zerodevx/svelte-toast';
   import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore.js';
-  import UpvoteDownvote from '$components/UpvoteDownvote.svelte';
+  import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
   import { dev } from '$app/environment';
   import { page } from '$app/stores';
   import { goto, invalidate } from '$app/navigation';
@@ -33,7 +33,7 @@
     selectedDrillTypes
   } from '$lib/stores/drillsStore';
 
-  import Pagination from '$components/Pagination.svelte';
+  import Pagination from '$lib/components/Pagination.svelte';
 
   export let data;
 

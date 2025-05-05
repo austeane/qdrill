@@ -7,6 +7,7 @@
   import { cart } from '$lib/stores/cartStore';
   import { undo, redo, canUndo, canRedo, initializeHistory } from '$lib/stores/historyStore';
   import { authClient } from '$lib/auth-client';
+  import { get } from 'svelte/store'; // Import get
   
   // Import NEW stores and utils
   import { 
@@ -46,16 +47,20 @@
   } from '$lib/stores/sectionsStore';
   
   // Import component modules
-  import DrillSearchModal from '../../components/practice-plan/modals/DrillSearchModal.svelte';
-  import TimelineSelectorModal from '../../components/practice-plan/modals/TimelineSelectorModal.svelte';
-  import SectionContainer from '../../components/practice-plan/sections/SectionContainer.svelte';
+  import DrillSearchModal from '$lib/components/practice-plan/modals/DrillSearchModal.svelte';
+  import TimelineSelectorModal from '$lib/components/practice-plan/modals/TimelineSelectorModal.svelte';
+  import SectionContainer from '$lib/components/practice-plan/sections/SectionContainer.svelte';
+  import AiPlanGenerator from '$lib/components/practice-plan/AiPlanGenerator.svelte';
+  import PlanMetadataFields from '$lib/components/practice-plan/PlanMetadataFields.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import Spinner from '$lib/components/Spinner.svelte'; // Assuming Spinner is top-level
   
   // Import TinyMCE editor
   let Editor;
 
   // Add proper prop definitions with defaults
   export let practicePlan = null;
-  export let pendingPlanData = null; // New prop for data loaded server-side
+  export let mode = practicePlan ? 'edit' : 'create';
 
   // UI state
   let showDrillSearch = false;
@@ -91,7 +96,7 @@
   
   // Handle modal controls
   function handleOpenDrillSearch(event) {
-    selectedSectionForDrill = event.detail;
+    selectedSectionForDrill = event.detail.sectionId;
     showDrillSearch = true;
   }
   
@@ -231,6 +236,24 @@
   function onUngroup(groupId) {
     handleUngroup(groupId);
   }
+
+  function handleAiPlanGenerated(event) {
+    const { planDetails, sections } = event.detail;
+    console.log('Handling AI generated plan:', event.detail);
+    // Reset stores before initializing with AI data
+    resetForm();
+    initializeForm(planDetails);
+    initializeSections(sections);
+    toast.success('Plan generated successfully! Review and save.');
+    // Reset history after generation
+    initializeHistory();
+  }
+
+  function handleAiPlanError(event) {
+    const errorMessage = event.detail;
+    console.error('AI Generation Error:', errorMessage);
+    toast.error(`Error: ${errorMessage}`);
+  }
 </script>
 
 <!-- Wrap form in <form> tag and apply enhance -->
@@ -247,180 +270,54 @@
     }
     // Redirect is handled by server action
   };
-}} class="container mx-auto p-4">
+}} class="container mx-auto p-4 space-y-6">
   
-  <!-- Add hidden input to send sections data -->
-  <input type="hidden" name="sections" value={JSON.stringify($sections)} />
+  <!-- Add hidden inputs to send ALL store data -->
+  <input type="hidden" name="planDetails" value={JSON.stringify(get(practicePlanStore))} />
+  <input type="hidden" name="sections" value={JSON.stringify(get(sectionsStore))} />
 
-  <h1 class="text-2xl font-bold mb-4">{practicePlan ? 'Edit Practice Plan' : 'Create Practice Plan'}</h1>
+  <h1 class="text-2xl font-bold">{mode === 'edit' ? 'Edit Practice Plan' : 'Create Practice Plan'}</h1>
 
   <!-- Duration Summary -->
-  <div class="bg-blue-50 p-4 mb-6 rounded-lg shadow-sm">
-          <div class="flex justify-between items-center">
-            <div>
-        <h2 class="font-semibold text-blue-800">Practice Duration</h2>
-        <p class="text-blue-600">
-          Start: {formatTime($startTime)} • Total: {$totalPlanDuration} minutes
-        </p>
-        <p class="text-xs text-blue-500 mt-1">
-          Keyboard shortcuts: Ctrl+Z (Undo), Ctrl+Shift+Z (Redo)
-        </p>
-                  </div>
-      <div class="flex items-center gap-4">
-        <div class="flex items-center space-x-2">
-          <button
-            class="p-2 rounded bg-white text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            on:click={undo}
-            disabled={!$canUndo}
-            title="Undo"
-            aria-label="Undo"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M4 6h16M4 12h16M4 18h16"></path>
-            </svg>
-          </button>
-          <button
-            class="p-2 rounded bg-white text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            on:click={redo}
-            disabled={!$canRedo}
-            title="Redo"
-            aria-label="Redo"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
-            </svg>
-          </button>
-        </div>
-        <div class="text-3xl font-bold text-blue-700">{$totalPlanDuration}m</div>
-      </div>
+  <div class="bg-blue-50 p-4 rounded-lg shadow-sm flex justify-between items-center">
+    <div>
+      <h2 class="font-semibold text-blue-800">Practice Duration</h2>
+      <p class="text-blue-600">
+        Start: {formatTime($startTime)} • Total: {$totalPlanDuration} minutes
+      </p>
+      <p class="text-xs text-blue-500 mt-1">
+        Keyboard shortcuts: Ctrl+Z (Undo), Ctrl+Shift+Z (Redo)
+      </p>
+    </div>
+    <div class="flex items-center gap-4">
+      <Button variant="outline" size="icon" on:click={undo} disabled={!$canUndo} title="Undo">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" /></svg>
+      </Button>
+      <Button variant="outline" size="icon" on:click={redo} disabled={!$canRedo} title="Redo">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3" /></svg>
+      </Button>
+      <div class="text-3xl font-bold text-blue-700">{$totalPlanDuration}m</div>
     </div>
   </div>
 
-  <!-- Basic form fields -->
-  <div class="mb-4">
-    <label for="planName" class="block text-sm font-medium text-gray-700">Plan Name:</label>
-    <input id="planName" name="planName" bind:value={$planName} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
-    <!-- Use $page.form for server-side errors -->
-    {#if $page.form?.errors?.name}
-      <p class="text-red-500 text-sm mt-1">{$page.form.errors.name[0]}</p>
-    {:else if $metadataErrors.name?.[0]} <!-- Fallback to client-side store errors -->
-       <p class="text-red-500 text-sm mt-1">{$metadataErrors.name[0]}</p>
-    {/if}
-  </div>
-
-  <div class="mb-4">
-    <label for="planDescription" class="block text-sm font-medium text-gray-700">Plan Description:</label>
-    {#if Editor}
-      <div class="min-h-[300px]">
-        <svelte:component 
-          this={Editor}
-          name="planDescription" 
-          apiKey={import.meta.env.VITE_TINY_API_KEY}
-          bind:value={$planDescription}
-          init={{
-            height: 300,
-            menubar: false,
-            plugins: [
-              'advlist', 'autolink', 'lists', 'link', 'charmap',
-              'anchor', 'searchreplace', 'visualblocks', 'code',
-              'insertdatetime', 'table', 'code', 'help', 'wordcount'
-            ],
-            toolbar: 'undo redo | blocks | ' +
-                    'bold italic | alignleft aligncenter ' +
-                    'alignright alignjustify | bullist numlist outdent indent | ' +
-                    'removeformat | help',
-            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "San Francisco", Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
-            branding: false
-          }}
-        />
-      </div>
-    {:else}
-      <textarea 
-        id="planDescription" 
-        bind:value={$planDescription} 
-        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" 
-        rows="3"
-      ></textarea>
-    {/if}
-    <!-- Add error display for description if needed by schema -->
-    {#if $page.form?.errors?.description}
-        <p class="text-red-500 text-sm mt-1">{$page.form.errors.description[0]}</p>
-    {:else if $metadataErrors.description?.[0]}
-        <p class="text-red-500 text-sm mt-1">{$metadataErrors.description[0]}</p>
-    {/if}
-  </div>
-
-  <div class="mb-4">
-    <label for="phaseOfSeason" class="block text-sm font-medium text-gray-700">Phase of Season:</label>
-    <select id="phaseOfSeason" name="phaseOfSeason" bind:value={$phaseOfSeason} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-      <option value="">Select Phase</option>
-      {#each phaseOfSeasonOptions as option}
-        <option value={option}>{option}</option>
-      {/each}
-    </select>
-    {#if $page.form?.errors?.phase_of_season}
-      <p class="text-red-500 text-sm mt-1">{$page.form.errors.phase_of_season[0]}</p>
-    {:else if $metadataErrors.phase_of_season?.[0]}
-       <p class="text-red-500 text-sm mt-1">{$metadataErrors.phase_of_season[0]}</p>
-    {/if}
-  </div>
-
-  <div class="mb-4">
-    <label for="estimatedNumberOfParticipants" class="block text-sm font-medium text-gray-700">Estimated Number of Participants:</label>
-    <input id="estimatedNumberOfParticipants" name="estimatedNumberOfParticipants" type="number" min="1" bind:value={$estimatedNumberOfParticipants} class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
-    {#if $page.form?.errors?.estimated_number_of_participants}
-      <p class="text-red-500 text-sm mt-1">{$page.form.errors.estimated_number_of_participants[0]}</p>
-    {:else if $metadataErrors.estimated_number_of_participants?.[0]}
-       <p class="text-red-500 text-sm mt-1">{$metadataErrors.estimated_number_of_participants[0]}</p>
-    {/if}
-  </div>
-
-  <div class="mb-4">
-    <label for="startTime" class="block text-sm font-medium text-gray-700">Practice Start Time:</label>
-    <input 
-      id="startTime" 
-      name="startTime"
-      type="time" 
-      bind:value={$startTime}
-      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" 
+  <!-- AI Plan Generator (only in create mode) -->
+  {#if mode === 'create'}
+    <AiPlanGenerator
+      {skillOptions}
+      {focusAreaOptions}
+      on:generated={handleAiPlanGenerated}
+      on:error={handleAiPlanError}
     />
-     <!-- Add error display for start_time if needed by schema -->
-    {#if $page.form?.errors?.start_time}
-        <p class="text-red-500 text-sm mt-1">{$page.form.errors.start_time[0]}</p>
-    {:else if $metadataErrors.start_time?.[0]}
-        <p class="text-red-500 text-sm mt-1">{$metadataErrors.start_time[0]}</p>
-    {/if}
-  </div>
+    <hr />
+    <h2 class="text-xl font-semibold">Or Create/Edit Manually Below</h2>
+  {/if}
 
-  <div class="mb-4">
-    <label id="practice-goals-label" class="block text-sm font-medium text-gray-700">Practice Goals:</label>
-    <div role="list" aria-labelledby="practice-goals-label">
-      {#each $practiceGoals as goal, index}
-        <div class="flex items-center space-x-2 mt-1">
-          <input
-            type="text"
-            name="practiceGoals[]"
-            bind:value={$practiceGoals[index]}
-            on:input={(e) => updatePracticeGoal(index, e.target.value)}
-            placeholder="Enter practice goal"
-            class="flex-1 mr-2 border-gray-300 rounded-md shadow-sm"
-          />
-          {#if $practiceGoals.length > 1}
-            <button type="button" on:click={() => removePracticeGoal(index)} class="text-red-600 hover:text-red-800 transition-colors">Remove</button>
-          {/if}
-        </div>
-      {/each}
-    </div>
-    <button type="button" on:click={addPracticeGoal} class="mt-2 text-blue-600 hover:text-blue-800 transition-colors">+ Add Practice Goal</button>
-    {#if $page.form?.errors?.practice_goals}
-      <p class="text-red-500 text-sm mt-1">{$page.form.errors.practice_goals[0]}</p>
-    {:else if $metadataErrors.practice_goals?.[0]}
-       <p class="text-red-500 text-sm mt-1">{$metadataErrors.practice_goals[0]}</p>
-    {/if}
-  </div>
+  <!-- Metadata Fields -->
+  <PlanMetadataFields {skillOptions} {focusAreaOptions} />
 
   <!-- Practice Plan Sections -->
-  <div class="practice-plan-sections mb-6">
+  <div class="practice-plan-sections space-y-4">
+    <h2 class="text-xl font-semibold">Plan Sections & Items</h2>
     {#each $sections as section, sectionIndex}
       <SectionContainer 
         {section} 
@@ -436,26 +333,9 @@
       />
     {/each}
 
-    <div class="flex gap-2">
-      <button
-        class="flex-1 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-500 hover:text-blue-500 transition-colors"
-        on:click={addSection}
-      >
-        + Add Section
-      </button>
-      <button
-        class="flex-1 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-500 hover:text-blue-500 transition-colors"
-        on:click={() => {
-          if ($sections.length === 0) {
-            toast.push('Please add a section first');
-            return;
-          }
-          selectedSectionForDrill = $sections[0].id;
-          showDrillSearch = true;
-        }}
-      >
-        + Add Drill
-      </button>
+    <div class="flex gap-2 mt-4">
+      <Button variant="outline" class="flex-1" on:click={() => sections.addSection()}>+ Add Section</Button>
+      <Button variant="outline" class="flex-1" on:click={() => handleOpenDrillSearch({ detail: { sectionId: $sections[0]?.id } })} disabled={$sections.length === 0}>+ Add Drill to First Section</Button>
     </div>
   </div>
 
@@ -498,13 +378,18 @@
   </div>
 
   <!-- Submit button -->
-  <button 
-    type="submit"
-    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-    disabled={submitting}
-  >
-    {submitting ? (practicePlan ? 'Updating Plan...' : 'Creating Plan...') : (practicePlan ? 'Update Plan' : 'Create Plan')}
-  </button>
+  <div class="flex justify-end mt-8">
+    <Button
+      type="submit"
+      class="min-w-[120px]"
+      disabled={submitting}
+    >
+      {#if submitting}
+        <Spinner class="inline-block w-4 h-4 mr-2" />
+      {/if}
+      {submitting ? (mode === 'edit' ? 'Updating...' : 'Creating...') : (mode === 'edit' ? 'Update Plan' : 'Create Plan')}
+    </Button>
+  </div>
 </form>
 
 <!-- Modals -->

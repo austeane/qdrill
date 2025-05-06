@@ -397,8 +397,7 @@ export class PracticePlanService extends BaseEntityService {
                 index,
                 item.duration,
                 // Map 'one-off' type to 'drill' to conform to database constraints
-                item.type === 'one-off' ? 'drill' : item.type,
-                item.diagram_data,
+                (item.type === 'one-off' || item.type === 'activity') ? 'drill' : item.type,                item.diagram_data,
                 item.parallel_group_id,
                 item.parallel_timeline,
                 item.groupTimelines
@@ -687,8 +686,7 @@ export class PracticePlanService extends BaseEntityService {
                   index,
                   item.duration || item.selected_duration,
                   // Map 'one-off' type to 'drill' to conform to database constraints
-                  item.type === 'one-off' ? 'drill' : item.type,
-                  item.parallel_group_id,
+                  (item.type === 'one-off' || item.type === 'activity') ? 'drill' : item.type,                  item.parallel_group_id,
                   item.parallel_timeline || null,
                   item.groupTimelines
                     ? `{${item.groupTimelines.join(',')}}`

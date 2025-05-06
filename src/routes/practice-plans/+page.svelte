@@ -17,6 +17,7 @@
     import DeletePracticePlan from '$lib/components/DeletePracticePlan.svelte';
     import Pagination from '$lib/components/Pagination.svelte';
     import { cart } from '$lib/stores/cartStore';
+    import AiPlanGeneratorModal from '$lib/components/practice-plan/AiPlanGeneratorModal.svelte';
 
     export let data;
 
@@ -32,6 +33,8 @@
     let selectedDrills = initialSelectedDrills; // Initialize from load data
     let currentSortBy = data.currentSortBy || 'created_at';
     let currentSortOrder = data.currentSortOrder || 'desc';
+
+    let showAiModal = false;     // NEW modal state
 
     // --- Initialize filter stores based on URL on mount/update --- 
     function initializeFiltersFromUrl() {
@@ -218,13 +221,14 @@
                     >
                         Create Plan from Cart ({$cart.length} Drill{$cart.length !== 1 ? 's' : ''})
                     </a>
-                    <a
-                        href="/practice-plans/create" 
+                    <button
+                        type="button"
+                        on:click={() => (showAiModal = true)}
                         class="relative inline-block px-6 py-3 bg-gray-100 text-gray-800 border border-gray-300 rounded-lg font-semibold hover:bg-gray-200 transition-colors duration-300"
                     >
                         Create Plan with AI
                         <span class="absolute -top-2 -right-2 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">Beta</span>
-                    </a>
+                    </button>
                 {:else}
                     <a
                         href="/practice-plans/create" 
@@ -232,13 +236,14 @@
                     >
                         Create Plan with Wizard
                     </a>
-                     <a
-                        href="/practice-plans/create" 
+                    <button
+                        type="button"
+                        on:click={() => (showAiModal = true)}
                         class="relative inline-block px-6 py-3 bg-gray-100 text-gray-800 border border-gray-300 rounded-lg font-semibold hover:bg-gray-200 transition-colors duration-300"
                     >
                         Create Plan with AI
                         <span class="absolute -top-2 -right-2 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">Beta</span>
-                    </a>
+                    </button>
                 {/if}
             {:else}
                 <a
@@ -349,4 +354,11 @@
     {:else if !error}
         <p class="text-center text-gray-500 mt-8">No practice plans found matching your criteria.</p>
     {/if}
+
+    <!-- Mount the modal -->
+    <AiPlanGeneratorModal
+        bind:isOpen={showAiModal}
+        skillOptions={data.skillOptions ?? []}
+        focusAreaOptions={data.focusAreaOptions ?? []}
+    />
 </div>

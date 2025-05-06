@@ -50,7 +50,6 @@
   import DrillSearchModal from '$lib/components/practice-plan/modals/DrillSearchModal.svelte';
   import TimelineSelectorModal from '$lib/components/practice-plan/modals/TimelineSelectorModal.svelte';
   import SectionContainer from '$lib/components/practice-plan/sections/SectionContainer.svelte';
-  import AiPlanGenerator from '$lib/components/practice-plan/AiPlanGenerator.svelte';
   import PlanMetadataFields from '$lib/components/practice-plan/PlanMetadataFields.svelte';
   import { Button } from '$lib/components/ui/button';
   import Spinner from '$lib/components/Spinner.svelte'; // Assuming Spinner is top-level
@@ -61,6 +60,8 @@
   // Add proper prop definitions with defaults
   export let practicePlan = null;
   export let mode = practicePlan ? 'edit' : 'create';
+  export let skillOptions = [];
+  export let focusAreaOptions = [];
 
   // UI state
   let showDrillSearch = false;
@@ -236,46 +237,67 @@
   function onUngroup(groupId) {
     handleUngroup(groupId);
   }
-
-  function handleAiPlanGenerated(event) {
-    const { planDetails, sections } = event.detail;
-    console.log('Handling AI generated plan:', event.detail);
-    // Reset stores before initializing with AI data
-    resetForm();
-    initializeForm(planDetails);
-    initializeSections(sections);
-    toast.success('Plan generated successfully! Review and save.');
-    // Reset history after generation
-    initializeHistory();
-  }
-
-  function handleAiPlanError(event) {
-    const errorMessage = event.detail;
-    console.error('AI Generation Error:', errorMessage);
-    toast.error(`Error: ${errorMessage}`);
-  }
 </script>
 
 <!-- Wrap form in <form> tag and apply enhance -->
-<form method="POST" use:enhance={() => {
+<form method="POST" action="?/save" use:enhance={({ form, action, cancel }) => {
   submitting = true;
-  return async ({ update }) => {
-    // Reset submitting state after form submission completes
-    submitting = false;
-    await update();
-    // Optional: Clear cart only on successful *create* action
-    // Check $page.form?.success and if !practicePlan (create mode)
-    if (!practicePlan && $page.form?.success) {
-      cart.clear();
-    }
-    // Redirect is handled by server action
-  };
+  
+  // Prevent default form submission
+  cancel(); 
+  
+  // Construct FormData programmatically
+  const formData = new FormData();
+  
+  // Append plan details (from store)
+  formData.append('planDetails', JSON.stringify({
+    name: $planName,
+    description: $planDescription,
+    phaseOfSeason: $phaseOfSeason,
+    estimatedNumberOfParticipants: $estimatedNumberOfParticipants,
+    goals: $practiceGoals,
+    visibility: $visibility,
+    isEditableByOthers: $isEditableByOthers,
+    startTime: $startTime,
+    // Include ID if editing
+    id: practicePlan?.id 
+  }));
+  
+  // Append sections (from store)
+  formData.append('sections', JSON.stringify($sections));
+
+  // Manually trigger the fetch request
+  fetch(action, {
+    method: 'POST',
+    body: formData
+  }).then(response => response.json()) // Assuming the action returns JSON
+    .then(result => {
+      if (result.type === 'redirect') {
+          goto(result.location);
+      } else if (result.type === 'error') {
+          // Handle server-side validation errors or general errors
+          console.error('Form submission error:', result.error);
+          // TODO: Display error message to user (e.g., using toast or setting an error store)
+          toast.push(`Error: ${result.error?.message || 'Failed to save plan.'}`);
+      } else if (result.type === 'success') {
+          // Handle success (e.g., toast, redirect)
+          toast.push(mode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
+          // Server action should handle redirect on success
+          // Clear cart only on successful create action
+          if (!practicePlan) { // create mode
+            cart.clear();
+          }
+      }
+    }).catch(error => {
+        console.error('Fetch error during form submission:', error);
+        toast.push('An unexpected network error occurred.');
+    }).finally(() => {
+        submitting = false;
+    });
+
+  // Enhance doesn't need to return anything when fetch is handled manually
 }} class="container mx-auto p-4 space-y-6">
   
-  <!-- Add hidden inputs to send ALL store data -->
-  <input type="hidden" name="planDetails" value={JSON.stringify(get(practicePlanStore))} />
-  <input type="hidden" name="sections" value={JSON.stringify(get(sectionsStore))} />
-
   <h1 class="text-2xl font-bold">{mode === 'edit' ? 'Edit Practice Plan' : 'Create Practice Plan'}</h1>
 
   <!-- Duration Summary -->
@@ -299,18 +321,6 @@
       <div class="text-3xl font-bold text-blue-700">{$totalPlanDuration}m</div>
     </div>
   </div>
-
-  <!-- AI Plan Generator (only in create mode) -->
-  {#if mode === 'create'}
-    <AiPlanGenerator
-      {skillOptions}
-      {focusAreaOptions}
-      on:generated={handleAiPlanGenerated}
-      on:error={handleAiPlanError}
-    />
-    <hr />
-    <h2 class="text-xl font-semibold">Or Create/Edit Manually Below</h2>
-  {/if}
 
   <!-- Metadata Fields -->
   <PlanMetadataFields {skillOptions} {focusAreaOptions} />

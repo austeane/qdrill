@@ -4,6 +4,7 @@ import { fabricToExcalidraw } from '$lib/utils/diagramMigration'; // Import the 
 import { NotFoundError, ForbiddenError, ValidationError, DatabaseError, ConflictError, AppError } from '$lib/server/errors.js'; // Added import
 import { dev } from '$app/environment'; // Import dev environment variable
 import { json } from '@sveltejs/kit';
+import { kyselyDb } from '$lib/server/db';
 
 /**
  * Service for managing drills
@@ -680,18 +681,67 @@ export class DrillService extends BaseEntityService {
   }
   
   /**
-   * Get all drill names (for autocomplete, etc.)
-   * @returns {Promise<Array>} - List of drill names with IDs
+   * Fetches all drill names and their IDs.
+   * Used for mapping generated names to existing drills or providing context.
+   * @returns {Promise<Array<{id: number, name: string}>>}
    */
-  async getDrillNames() {
-    const query = `
-      SELECT id, name 
-      FROM drills 
-      ORDER BY name ASC
-    `;
-    
-    const result = await db.query(query);
-    return result.rows;
+  async getAllDrillNames() {
+    try {
+      const drills = await kyselyDb
+        .selectFrom('drills')
+        .select(['id', 'name'])
+        .orderBy('name', 'asc')
+        .execute();
+        
+      return drills;
+    } catch (error) {
+      console.error('Error fetching drill names:', error);
+      // Consider throwing a specific error type
+      throw new DatabaseError('Failed to fetch drill names', error);
+    }
+  }
+  
+  /**
+   * Fetches detailed information for drills, suitable for AI context.
+   * Excludes large fields like diagrams.
+   * @param {number|null} [userId=null] - The ID of the user requesting the drills.
+   * @returns {Promise<Array<Object>>} - Array of drill detail objects.
+   */
+  async getAllDrillDetailsForAI(userId = null) {
+    try {
+      // Define columns to select, excluding diagrams and non-existent ones
+      const columnsToSelect = [
+        'id', 'name', 'brief_description', 'detailed_description', 'skill_level',
+        'complexity', 'suggested_length_min', 'suggested_length_max',
+        'number_of_people_min', 'number_of_people_max', 'skills_focused_on',
+        'positions_focused_on', 'drill_type', 'visibility', 'is_editable_by_others',
+        // Removed created_by, date_created, parent_id, upload_source, search_vector for brevity
+      ];
+      
+      const drills = await kyselyDb
+        .selectFrom('drills')
+        .select(columnsToSelect)
+        .orderBy('name', 'asc') // Keep ordering consistent
+        // Add WHERE clause for visibility/ownership
+        .$if(userId !== null, (qb) => qb
+          // If userId is provided, get public drills OR drills created by this user
+          .where((eb) => eb.or([
+            eb('visibility', '=', 'public'),
+            eb('created_by', '=', userId)
+          ]))
+        )
+        .$if(userId === null, (qb) => qb
+          // If no userId (anonymous), only get public drills
+          .where('visibility', '=', 'public')
+        )
+        .execute();
+        
+        // No need for JS filtering anymore, SQL handles it.
+        return drills;
+    } catch (error) {
+      console.error('Error fetching detailed drill data for AI:', error);
+      throw new DatabaseError('Failed to fetch detailed drill data', error);
+    }
   }
   
   /**
@@ -1221,24 +1271,6 @@ export class DrillService extends BaseEntityService {
         }
         console.error('Error during bulk drill import:', error);
         throw new DatabaseError('Failed during bulk drill import.', error);
-      }
-    });
-  }
-
-  /**
-   * Fetches all drill names and their IDs.
-   * Used for mapping generated names to existing drills or providing context.
-   * @param {pg.Client} [tx=db]
-   * @returns {Promise<DrillName[]>}
-   */
-  async getAllDrillNames(tx = db) {
-    return await tx.drill.findMany({
-      select: {
-        id: true,
-        name: true
-      },
-      orderBy: {
-        name: 'asc'
       }
     });
   }

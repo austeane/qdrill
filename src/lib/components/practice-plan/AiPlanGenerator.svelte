@@ -1,22 +1,8 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '$lib/components/ui/card';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import { Textarea } from '$lib/components/ui/textarea';
-	import {
-		Select,
-		SelectTrigger,
-		SelectValue,
-		SelectContent,
-		SelectItem
-	} from '$lib/components/ui/select';
+	// Removed shadcn component imports - Card, Button, Input, Label, Textarea, Select, Popover, etc.
 	import Spinner from '$lib/components/Spinner.svelte';
-	import { Check, ChevronsUpDown } from 'lucide-svelte';
-	import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from 'cmdk-sv';
-	import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
-	import { cn } from '$lib/utils';
+	// Removed lucide-svelte, cmdk-sv, bits-ui, cn imports
 
 	const dispatch = createEventDispatcher();
 
@@ -33,22 +19,18 @@
 	};
 	let isGenerating = false;
 
-	// Combobox state
-	let openFocusAreas = false;
-
-	// Helper function to update aiParams.focusAreas
-	function handleSelectFocusArea(currentValue) {
-		if (aiParams.focusAreas.includes(currentValue)) {
-			aiParams.focusAreas = aiParams.focusAreas.filter((v) => v !== currentValue);
+	// Helper function to update aiParams.focusAreas for checkboxes
+	function handleFocusAreaChange(event) {
+		const { value, checked } = event.target;
+		if (checked) {
+			aiParams.focusAreas = [...aiParams.focusAreas, value];
 		} else {
-			aiParams.focusAreas = [...aiParams.focusAreas, currentValue];
+			aiParams.focusAreas = aiParams.focusAreas.filter((v) => v !== value);
 		}
+		// Ensure reactivity by reassigning
+		aiParams = aiParams;
 	}
 
-	$: selectedLabels = focusAreaOptions
-		.filter((option) => aiParams.focusAreas.includes(option.value))
-		.map((option) => option.label)
-		.join(', ');
 
 	async function handleGenerateAI() {
 		isGenerating = true;
@@ -90,92 +72,90 @@
 	}
 </script>
 
-<Card>
-	<CardHeader>
-		<CardTitle>Generate Plan with AI</CardTitle>
-		<CardDescription>
+<!-- Replaced Card with styled div -->
+<div class="border bg-card text-card-foreground rounded-lg shadow-sm">
+	<!-- Replaced CardHeader -->
+	<div class="flex flex-col space-y-1.5 p-6">
+		<!-- Replaced CardTitle -->
+		<h3 class="text-lg font-semibold leading-none tracking-tight">Generate Plan with AI</h3>
+		<!-- Replaced CardDescription -->
+		<p class="text-sm text-muted-foreground">
 			Provide some basic parameters and let AI draft a plan for you. You can edit it afterwards.
-		</CardDescription>
-	</CardHeader>
-	<CardContent class="space-y-4">
+		</p>
+	</div>
+	<!-- Replaced CardContent -->
+	<div class="p-6 pt-0 space-y-4">
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 			<div>
-				<Label for="ai-duration">Duration (minutes)</Label>
-				<Input id="ai-duration" type="number" bind:value={aiParams.durationMinutes} placeholder="e.g., 90" min="15" />
+				<!-- Standard label -->
+				<label for="ai-duration" class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+				<!-- Standard input with Tailwind -->
+				<input id="ai-duration" type="number" bind:value={aiParams.durationMinutes} placeholder="e.g., 90" min="15" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 			</div>
 			<div>
-				<Label for="ai-skill-level">Skill Level</Label>
-				<Select bind:value={aiParams.skillLevel}>
-					<SelectTrigger id="ai-skill-level">
-						<SelectValue placeholder="Select skill level..." />
-					</SelectTrigger>
-					<SelectContent>
-						{#each skillOptions as option}
-							<SelectItem value={option.value}>{option.label}</SelectItem>
-						{/each}
-					</SelectContent>
-				</Select>
+				<!-- Standard label -->
+				<label for="ai-skill-level" class="block text-sm font-medium text-gray-700 mb-1">Skill Level</label>
+				<!-- Standard select with Tailwind -->
+				<select id="ai-skill-level" bind:value={aiParams.skillLevel} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm">
+					<option value="" disabled>Select skill level...</option>
+					{#each skillOptions as option}
+						<option value={option.value}>{option.label}</option>
+					{/each}
+				</select>
 			</div>
 			<div>
-				<Label for="ai-participants">Participant Count</Label>
-				<Input id="ai-participants" type="number" bind:value={aiParams.participantCount} placeholder="e.g., 15" min="2"/>
+				<!-- Standard label -->
+				<label for="ai-participants" class="block text-sm font-medium text-gray-700 mb-1">Participant Count</label>
+				<!-- Standard input with Tailwind -->
+				<input id="ai-participants" type="number" bind:value={aiParams.participantCount} placeholder="e.g., 15" min="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
 			</div>
 		</div>
 		<div>
-			<Label for="ai-goals">Goals</Label>
-			<Textarea id="ai-goals" bind:value={aiParams.goals} placeholder="What are the main goals of this practice?" />
+			<!-- Standard label -->
+			<label for="ai-goals" class="block text-sm font-medium text-gray-700 mb-1">Goals</label>
+			<!-- Standard textarea with Tailwind -->
+			<textarea id="ai-goals" bind:value={aiParams.goals} placeholder="What are the main goals of this practice?" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
 		</div>
 		<div>
-			<Label for="ai-focus-areas">Focus Areas</Label>
-			<Popover bind:open={openFocusAreas}>
-				<PopoverTrigger asChild let:builder>
-					<Button
-						builders={[builder]}
-						variant="outline"
-						role="combobox"
-						aria-expanded={openFocusAreas}
-						class="w-full justify-between"
-						id="ai-focus-areas"
-					>
-						<span class="truncate">
-							{selectedLabels || 'Select focus areas...'}
-						</span>
-						<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
-					</Button>
-				</PopoverTrigger>
-				<PopoverContent class="w-[--trigger-width] p-0">
-					<Command>
-						<CommandInput placeholder="Search focus areas..." />
-						<CommandList>
-							<CommandEmpty>No focus area found.</CommandEmpty>
-							<CommandGroup>
-								{#each focusAreaOptions as option}
-									<CommandItem
-										value={option.value}
-										onSelect={() => {
-											handleSelectFocusArea(option.value);
-										}}
-									>
-										<Check class={cn('mr-2 h-4 w-4', aiParams.focusAreas.includes(option.value) ? 'opacity-100' : 'opacity-0')} />
-										{option.label}
-									</CommandItem>
-								{/each}
-							</CommandGroup>
-						</CommandList>
-					</Command>
-				</PopoverContent>
-			</Popover>
+			<!-- Standard label -->
+			<label class="block text-sm font-medium text-gray-700 mb-1">Focus Areas</label>
+			<!-- Replaced Popover/Command with Checkboxes -->
+			<div class="mt-2 space-y-2 border border-gray-200 rounded-md p-3 max-h-48 overflow-y-auto">
+				{#if focusAreaOptions.length === 0}
+					<p class="text-sm text-gray-500">No focus areas available.</p>
+				{:else}
+					{#each focusAreaOptions as option}
+						<label class="flex items-center space-x-2 cursor-pointer">
+							<input
+								type="checkbox"
+								value={option.value}
+								checked={aiParams.focusAreas.includes(option.value)}
+								on:change={handleFocusAreaChange} 
+								class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+							/>
+							<span class="text-sm text-gray-700">{option.label}</span>
+						</label>
+					{/each}
+				{/if}
+			</div>
 			<p class="text-sm text-muted-foreground mt-1">Select one or more areas the AI should focus on.</p>
 		</div>
-	</CardContent>
-	<CardFooter>
-		<Button type="button" on:click={handleGenerateAI} disabled={isGenerating}>
+	</div>
+	<!-- Replaced CardFooter -->
+	<div class="flex items-center p-6 pt-0">
+		<!-- Standard button with Tailwind -->
+		<button
+			type="button"
+			on:click={handleGenerateAI}
+			disabled={isGenerating}
+			class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+		>
 			{#if isGenerating}
 				<Spinner class="mr-2 h-4 w-4 animate-spin" />
 				Generating...
 			{:else}
 				Generate Plan
 			{/if}
-		</Button>
-	</CardFooter>
-</Card> 
+		</button>
+	</div>
+</div> 

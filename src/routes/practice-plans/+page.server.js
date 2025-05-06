@@ -2,6 +2,8 @@ import { json } from '@sveltejs/kit';
 import { practicePlanService } from '$lib/server/services/practicePlanService.js';
 import { drillService } from '$lib/server/services/drillService.js';
 import { redirect } from '@sveltejs/kit';
+// Import predefined skills/focus areas - assuming this is the source
+import { PREDEFINED_SKILLS } from '$lib/constants/skills.js'; 
 
 /**
  * Parses the URL query parameters to extract drill IDs.
@@ -91,6 +93,19 @@ export async function load({ fetch, url, locals }) {
     ]
   };
 
+  // --- Define options for AI Generator ---
+  // Assuming a structure like { value: '...', label: '...' } for UI components
+  const skillOptions = [
+    { value: 'beginner', label: 'Beginner' },
+    { value: 'intermediate', label: 'Intermediate' },
+    { value: 'advanced', label: 'Advanced' },
+    { value: 'expert', label: 'Expert' },
+    // Note: 'New to Sport' from bulk upload might map differently or not be used here
+  ];
+
+  // Use PREDEFINED_SKILLS for focus areas, mapping them to the expected format
+  const focusAreaOptions = PREDEFINED_SKILLS.map(skill => ({ value: skill, label: skill }));
+
   // Extract selectedDrillIds from URL query parameters
   const selectedDrillIds = getSelectedDrillIds(url.searchParams);
   let initialSelectedDrills = [];
@@ -125,6 +140,8 @@ export async function load({ fetch, url, locals }) {
     practicePlans: practicePlansData.items, // Pass items array
     pagination: practicePlansData.pagination, // Pass pagination object
     filterOptions,
+    skillOptions, // Add skill options
+    focusAreaOptions, // Add focus area options
     initialSelectedDrills,
     // Pass current search/sort state for potential UI binding
     currentSearch: search,

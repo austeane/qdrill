@@ -1,86 +1,50 @@
 <script>
 	import { page } from '$app/stores';
-	import { Input } from '$lib/components/ui/input';
-	import { Label } from '$lib/components/ui/label';
-	import { Textarea } from '$lib/components/ui/textarea';
-	import {
-		Select,
-		SelectContent,
-		SelectItem,
-		SelectTrigger,
-		SelectValue,
-	} from '$lib/components/ui/select';
-	import { Button } from '$lib/components/ui/button';
-	import { Check, ChevronsUpDown } from 'lucide-svelte';
-	import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from 'cmdk-sv';
-	import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
-	import { cn } from '$lib/utils';
-	import { writable } from 'svelte/store'; // Import writable for local store
+	import { writable } from 'svelte/store';
 
-	// --- Import stores from the correct metadata store ---
+	// --- Import stores --- 
 	import {
-		// practicePlanStore, // Removed
 		planName,
 		planDescription,
-		// skillLevel, // Does not exist in metadata store
-		estimatedNumberOfParticipants as participantCount, // Alias store variable
-		practiceGoals, // Assuming this is the store for the array
-		// focusAreas, // Does not exist in metadata store
+		estimatedNumberOfParticipants,
+		practiceGoals,
 		visibility,
 		isEditableByOthers,
-		phaseOfSeason, // Store for phaseOfSeason
-		startTime, // Store for startTime
-		// Import the actual store actions
+		phaseOfSeason,
+		startTime,
 		addPracticeGoal, 
 		removePracticeGoal, 
 		updatePracticeGoal 
-	} from '$lib/stores/practicePlanMetadataStore'; // Corrected path
+	} from '$lib/stores/practicePlanMetadataStore'; 
 
-	// TODO: Import metadataErrors store if it exists separately and is needed here
-	let metadataErrors = {}; // Keep local or import if needed
+	// TODO: Import metadataErrors store if needed
+	let metadataErrors = {}; // Local error store placeholder
 
 	export let skillOptions = [];
 	export let focusAreaOptions = [];
 
-	// Define phaseOfSeasonOptions locally as they are just display options
+	// Local state for phaseOfSeason dropdown
 	let phaseOfSeasonOptions = ['Pre-season', 'Regular Season', 'Post-season', 'Tournament Prep'];
 
-	// Local state for focusAreas since it's not in the central store
-	let localFocusAreas = writable([]); // Use a local writable store
+	// Local state for focusAreas checkboxes
+	let localFocusAreas = writable([]); 
 
-	// Local state for skillLevel
-	let localSkillLevel = ''; // Use a simple reactive variable
+	// Local state for skillLevel dropdown
+	let localSkillLevel = '';
 
-	// Combobox state
-	let open = false;
-	let value = ''; // For search input
-
-	// Helper function to update LOCAL focusAreas state
-	function handleSelectFocusArea(currentValue) {
+	// Helper function to update localFocusAreas for checkboxes
+	function handleFocusAreaChange(event) {
+		const { value, checked } = event.target;
 		localFocusAreas.update(currentAreas => {
-			if (currentAreas.includes(currentValue)) {
-				// Remove
-				return currentAreas.filter((v) => v !== currentValue);
+			if (checked) {
+				return [...currentAreas, value];
 			} else {
-				// Add
-				return [...currentAreas, currentValue];
+				return currentAreas.filter((v) => v !== value);
 			}
 		});
 	}
 
-	// Update selectedLabels to use the local store
-	$: selectedLabels = focusAreaOptions
-		.filter((option) => $localFocusAreas.includes(option.value)) // Use $localFocusAreas
-		.map((option) => option.label)
-		.join(', ');
-
-	// Remove conflicting local declarations for store-managed variables/functions:
-	// let phaseOfSeason = ''; 
-	// let practiceGoals = []; 
-	// function addPracticeGoal() { ... } 
-	// function removePracticeGoal(index) { ... } 
-	// function updatePracticeGoal(index, value) { ... } 
-	// let startTime = '09:00'; 
+	// Removed selectedLabels logic for popover
 
 </script>
 
@@ -88,8 +52,17 @@
 	<h2 class="text-xl font-semibold">Plan Details</h2>
 
 	<div>
-		<Label for="planName">Plan Name</Label>
-		<Input id="planName" name="planName" bind:value={$planName} placeholder="e.g., Wednesday Throwing Focus" required />
+		<!-- Standard label -->
+		<label for="planName" class="block text-sm font-medium text-gray-700 mb-1">Plan Name</label>
+		<!-- Standard input -->
+		<input 
+			id="planName" 
+			name="planName" 
+			bind:value={$planName} 
+			placeholder="e.g., Wednesday Throwing Focus" 
+			required 
+			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+		/>
 		{#if $page.form?.errors?.name}
 			<p class="text-red-500 text-sm mt-1">{$page.form.errors.name[0]}</p>
 		{:else if metadataErrors.name?.[0]}
@@ -98,8 +71,17 @@
 	</div>
 
 	<div>
-		<Label for="planDescription">Plan Description</Label>
-		<Textarea id="planDescription" name="planDescription" bind:value={$planDescription} placeholder="Briefly describe the practice plan..." rows="3"></Textarea>
+		<!-- Standard label -->
+		<label for="planDescription" class="block text-sm font-medium text-gray-700 mb-1">Plan Description</label>
+		<!-- Standard textarea -->
+		<textarea 
+			id="planDescription" 
+			name="planDescription" 
+			bind:value={$planDescription} 
+			placeholder="Briefly describe the practice plan..." 
+			rows="3" 
+			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+		</textarea>
 		{#if $page.form?.errors?.description}
 			<p class="text-red-500 text-sm mt-1">{$page.form.errors.description[0]}</p>
 		{:else if metadataErrors.description?.[0]}
@@ -109,153 +91,174 @@
 
 	<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 		<div>
-			<Label for="skillLevel">Skill Level</Label>
-			<Select name="skillLevel" bind:value={localSkillLevel}>
-				<SelectTrigger id="skillLevel">
-					<SelectValue placeholder="Select skill level..." />
-				</SelectTrigger>
-				<SelectContent>
-					{#each skillOptions as option}
-						<SelectItem value={option.value}>{option.label}</SelectItem>
-					{/each}
-				</SelectContent>
-			</Select>
+			<!-- Standard label -->
+			<label for="skillLevel" class="block text-sm font-medium text-gray-700 mb-1">Skill Level</label>
+			<!-- Standard select -->
+			<select 
+				id="skillLevel" 
+				name="skillLevel" 
+				bind:value={localSkillLevel} 
+				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+				<option value="" disabled>Select skill level...</option>
+				{#each skillOptions as option}
+					<option value={option.value}>{option.label}</option>
+				{/each}
+			</select>
 			<!-- Error handling for skillLevel -->
 		</div>
 
 		<div>
-			<Label for="participantCount">Participant Count</Label>
-			<Input id="participantCount" name="participantCount" type="number" min="1" bind:value={$participantCount} placeholder="e.g., 15" />
+			<!-- Standard label -->
+			<label for="participantCount" class="block text-sm font-medium text-gray-700 mb-1">Participant Count</label>
+			<!-- Standard input -->
+			<input 
+				id="participantCount" 
+				name="participantCount" 
+				type="number" 
+				min="1" 
+				bind:value={$estimatedNumberOfParticipants} 
+				placeholder="e.g., 15" 
+				class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+			/>
 			<!-- Error handling for participantCount -->
 		</div>
 
 		<div>
-			<Label for="phaseOfSeason">Phase of Season</Label>
-			<Select name="phaseOfSeason" bind:value={$phaseOfSeason}>
-				<SelectTrigger id="phaseOfSeason">
-					<SelectValue placeholder="Select phase..." />
-				</SelectTrigger>
-				<SelectContent>
-					<SelectItem value="">Select Phase</SelectItem>
-					{#each phaseOfSeasonOptions as option}
-						<SelectItem value={option}>{option}</SelectItem>
-					{/each}
-				</SelectContent>
-			</Select>
+			<!-- Standard label -->
+			<label for="phaseOfSeason" class="block text-sm font-medium text-gray-700 mb-1">Phase of Season</label>
+			<!-- Standard select -->
+			<select 
+				id="phaseOfSeason" 
+				name="phaseOfSeason" 
+				bind:value={$phaseOfSeason} 
+				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+				<option value="">Select Phase</option>
+				{#each phaseOfSeasonOptions as option}
+					<option value={option}>{option}</option>
+				{/each}
+			</select>
 			<!-- Error handling for phaseOfSeason -->
 		</div>
 	</div>
 
 	<div>
-		<Label for="startTime">Practice Start Time</Label>
-		<Input id="startTime" name="startTime" type="time" bind:value={$startTime} /> 		<!-- Error handling for startTime -->
+		<!-- Standard label -->
+		<label for="startTime" class="block text-sm font-medium text-gray-700 mb-1">Practice Start Time</label>
+		<!-- Standard input -->
+		<input 
+			id="startTime" 
+			name="startTime" 
+			type="time" 
+			bind:value={$startTime} 
+			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+		/> 
+		<!-- Error handling for startTime -->
 	</div>
 
 	<div>
-		<Label for="focusAreas">Focus Areas</Label>
-		<Popover bind:open>
-			<PopoverTrigger asChild let:builder>
-				<Button
-					builders={[builder]}
-					variant="outline"
-					role="combobox"
-					aria-expanded={open}
-					class="w-full justify-between"
-					id="focusAreas"
-				>
-					<span class="truncate">
-						{selectedLabels || 'Select focus areas...'}
-					</span>
-					<ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
-				</Button>
-			</PopoverTrigger>
-			<PopoverContent class="w-[--trigger-width] p-0">
-				<Command>
-					<CommandInput placeholder="Search focus areas..." />
-					<CommandList>
-						<CommandEmpty>No focus area found.</CommandEmpty>
-						<CommandGroup>
-							{#each focusAreaOptions as option}
-								<CommandItem
-									value={option.value}
-									onSelect={() => {
-										handleSelectFocusArea(option.value);
-										// Optionally close popover on select: open = false;
-									}}
-								>
-									<Check class={cn('mr-2 h-4 w-4', $localFocusAreas.includes(option.value) ? 'opacity-100' : 'opacity-0')} />
-									{option.label}
-								</CommandItem>
-							{/each}
-						</CommandGroup>
-					</CommandList>
-				</Command>
-			</PopoverContent>
-		</Popover>
+		<!-- Standard label -->
+		<label class="block text-sm font-medium text-gray-700 mb-1">Focus Areas</label>
+		<!-- Replaced Popover/Command with Checkboxes -->
+		<div class="mt-2 space-y-2 border border-gray-200 rounded-md p-3 max-h-48 overflow-y-auto">
+			{#if focusAreaOptions.length === 0}
+				<p class="text-sm text-gray-500">No focus areas available.</p>
+			{:else}
+				{#each focusAreaOptions as option}
+					<label class="flex items-center space-x-2 cursor-pointer">
+						<input 
+							type="checkbox" 
+							value={option.value} 
+							checked={$localFocusAreas.includes(option.value)}
+							on:change={handleFocusAreaChange} 
+							class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+						/>
+						<span class="text-sm text-gray-700">{option.label}</span>
+					</label>
+				{/each}
+			{/if}
+		</div>
 		<!-- Error handling for focusAreas -->
 	</div>
 
 	<div>
-		<Label id="practice-goals-label">Practice Goals</Label>
+		<label id="practice-goals-label" class="block text-sm font-medium text-gray-700 mb-1">Practice Goals</label>
 		<div role="list" aria-labelledby="practice-goals-label" class="space-y-2">
 			{#each $practiceGoals as goal, index}
 				<div class="flex items-center space-x-2">
-					<Input
+					<!-- Standard input -->
+					<input
 						type="text"
 						name="practiceGoals[]"
 						bind:value={goal}
 						on:input={(e) => updatePracticeGoal(index, e.target.value)}
 						placeholder="Enter practice goal"
-						class="flex-1"
+						class="flex-1 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 					/>
 					{#if $practiceGoals.length > 1}
-						<Button type="button" variant="destructive" size="sm" on:click={() => removePracticeGoal(index)}>Remove</Button>
+						<!-- Standard button -->
+						<button 
+							type="button" 
+							on:click={() => removePracticeGoal(index)}
+							class="inline-flex justify-center py-1 px-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+						>
+							Remove
+						</button>
 					{/if}
 				</div>
 			{/each}
 		</div>
-		<Button type="button" variant="outline" size="sm" on:click={addPracticeGoal} class="mt-2">+ Add Goal</Button>
+		<!-- Standard button -->
+		<button 
+			type="button" 
+			on:click={addPracticeGoal} 
+			class="mt-2 inline-flex justify-center py-1 px-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+		>
+			+ Add Goal
+		</button>
 		<!-- Error handling for practiceGoals -->
 	</div>
 
 	<!-- Visibility settings -->
 	<div class="space-y-2">
 		<div>
-			<Label for="visibility-select">Visibility</Label>
-			<Select
+			<!-- Standard label -->
+			<label for="visibility-select" class="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+			<!-- Standard select -->
+			<select
+				id="visibility-select"
 				name="visibility"
 				bind:value={$visibility}
 				disabled={!$page.data.session}
+				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:cursor-not-allowed"
+				title={!$page.data.session ? 'Log in to change visibility' : ''}
 			>
-				<SelectTrigger id="visibility-select" title={!$page.data.session ? 'Log in to change visibility' : ''}>
-					<SelectValue placeholder="Select visibility..." />
-				</SelectTrigger>
-				<SelectContent>
-					<SelectItem value="public">Public</SelectItem>
-					{#if $page.data.session}
-						<SelectItem value="unlisted">Unlisted</SelectItem>
-						<SelectItem value="private">Private</SelectItem>
-					{/if}
-				</SelectContent>
-			</Select>
+				<option value="public">Public</option>
+				{#if $page.data.session}
+					<option value="unlisted">Unlisted</option>
+					<option value="private">Private</option>
+				{/if}
+			</select>
 			{#if !$page.data.session}
 				<p class="text-sm text-muted-foreground mt-1">Anonymous submissions are always public.</p>
 			{/if}
 		</div>
 
 		<div>
-			<Label class="flex items-center space-x-2">
-				<Input
+			<!-- Standard label wrapping checkbox -->
+			<label class="flex items-center space-x-2">
+				<!-- Standard input checkbox -->
+				<input
 					type="checkbox"
 					name="isEditableByOthers"
 					bind:checked={$isEditableByOthers}
 					disabled={!$page.data.session}
+					class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 disabled:cursor-not-allowed"
 				/>
-				<span>Allow others to edit</span>
+				<span class="text-sm text-gray-700">Allow others to edit</span>
 				{#if !$page.data.session}
-					<span class="text-muted-foreground">(required for anonymous)</span>
+					<span class="text-sm text-muted-foreground">(required for anonymous)</span>
 				{/if}
-			</Label>
+			</label>
 		</div>
 	</div>
 

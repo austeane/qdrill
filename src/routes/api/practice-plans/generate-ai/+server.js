@@ -4,6 +4,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { drillService } from '$lib/server/services/drillService';
 import { z } from 'zod';
 import { kyselyDb } from '$lib/server/db'; // Import database client
+import { sql } from 'kysely'; // Import the 'sql' template tag
+import { DatabaseError } from '$lib/server/errors.js'; // Import DatabaseError
 
 // --- Rate Limiting Configuration ---
 const MAX_AI_PLAN_REQUESTS = 100; // Max requests per window
@@ -36,11 +38,12 @@ const GeneratedPlanSchema = z.object({
 		duration_minutes: z.number().int().positive(),
 		description: z.string().optional(),
 		items: z.array(z.object({
-			type: z.enum(['activity', 'drill']),
+			// Allow 'activity' alongside 'drill' and 'break' (if break exists elsewhere)
+			type: z.enum(['activity', 'drill', 'break']), 
 			name: z.string().min(1),
 			duration_minutes: z.number().int().positive(),
-			details: z.string().optional(),
-			// drill_id will be added later if matched
+			details: z.string().optional(), // Ensure details is optional
+			// Now expecting drill_id directly from AI if it finds a match
 			drill_id: z.number().int().positive().nullable().optional()
 		}))
 	}))
@@ -100,7 +103,7 @@ export async function POST({ request, locals }) {
 						ai_plan_window_start: windowStart,
 						// Kysely needs a way to reference existing column value for increment
 						// Using sql template for this specific case
-						cumulative_ai_plan_requests_count: kyselyDb.raw('cumulative_ai_plan_requests_count + 1')
+						cumulative_ai_plan_requests_count: sql`cumulative_ai_plan_requests_count + 1`
 					})
 					.where('id', '=', user.id)
 					.execute(); // Kysely equivalent of none
@@ -148,13 +151,32 @@ export async function POST({ request, locals }) {
 			apiKey: ANTHROPIC_API_KEY
 		});
 
-		// --- Fetch existing drill names for mapping ---
-		const existingDrills = await drillService.getAllDrillNames();
-		const drillNameMap = new Map(existingDrills.map(d => [d.name.toLowerCase(), d.id]));
-		console.log(`Fetched ${existingDrills.length} existing drill names for mapping.`);
+		// --- Fetch existing drill details for mapping --- 
+		// Use the new service method
+		let allDrillDetails = [];
+		try {
+			// Fetch drills accessible to the current user (public + owned)
+			allDrillDetails = await drillService.getAllDrillDetailsForAI(user?.id); // Pass user.id or null
+			console.log(`Fetched details for ${allDrillDetails.length} existing drills for AI context.`);
+		} catch (fetchError) {
+			console.error("Failed to fetch drill details for AI prompt:", fetchError);
+			// Decide if this is fatal. For now, maybe continue without drill context?
+			// Or return an error:
+			return json({ error: 'Failed to load necessary drill data for AI generation.' }, { status: 500 });
+		}
 
-		// --- Construct the prompt for Anthropic ---
-		const systemPrompt = `You are an expert ultimate frisbee coach. Generate a practice plan based on the user's specifications. Output the plan ONLY in JSON format, matching this structure:
+		// Convert drill details to a JSON string for the prompt
+		// Limit size if necessary in the future, but for now include all
+		const drillContextJson = JSON.stringify(allDrillDetails, null, 2);
+		// Check token count roughly (optional, but good practice)
+		const estimatedTokens = Math.ceil(drillContextJson.length / 3.5); // Rough estimate
+		console.log(`Estimated token count for drill context: ${estimatedTokens}`);
+
+		// --- Construct the prompt for Anthropic --- 
+		// Updated System Prompt to include drill details and new instructions
+		const systemPrompt = `You are an expert quadball coach. Generate a practice plan based on the user's specifications and the provided list of available drills. 
+
+Output the plan ONLY in JSON format, matching this structure:
 {
   "planDetails": {
     "name": "Generated Practice Plan",
@@ -173,13 +195,19 @@ export async function POST({ request, locals }) {
       "description": "Dynamic stretching and light throwing.",
       "items": [
         { "type": "activity", "name": "Dynamic Stretching", "duration_minutes": 10, "details": "Jogging, high knees, etc." },
-        { "type": "activity", "name": "Light Throwing", "duration_minutes": 5, "details": "Partner throwing." },
-        { "type": "drill", "name": "Box Drill", "duration_minutes": 20, "details": "Focus on quick cuts and throws." }
+        // For drills, select appropriate ones from the provided list below.
+        // Include the drill's ID from the list in the 'drill_id' field.
+        // If no suitable existing drill is found, you can define a new activity using type: "activity".
+        { "type": "drill", "name": "Box Drill", "duration_minutes": 20, "details": "Focus on quick cuts and throws.", "drill_id": 42 }
       ]
     }
   ]
 }
-Provide ONLY the JSON object. Ensure total section duration is close to plan duration. Prioritize drills for focus_areas.`;
+
+Available Drills:
+${drillContextJson}
+
+Use the details in the 'Available Drills' list (like description, skill_level, skills_focused_on, number_of_people_min/max, suggested_length_min/max) to choose the most relevant drills for the plan's goals, duration, skill level, and participant count. Prioritize drills matching focus_areas. Ensure total section duration is close to the requested plan duration. Provide ONLY the JSON object as output.`;
 
 		const userMessage = `Generate a practice plan with the following parameters:
 Duration: ${parameters.durationMinutes || 'Not specified'} minutes
@@ -190,7 +218,7 @@ Focus Areas: ${parameters.focusAreas?.join(', ') || 'Not specified'}`;
 
 		console.log('Sending request to Anthropic...');
 		const msg = await anthropic.messages.create({
-			model: 'claude-3-haiku-20240307',
+			model: 'claude-3-7-sonnet-20250219',
 			max_tokens: 2500,
 			system: systemPrompt,
 			messages: [{ role: 'user', content: userMessage }]
@@ -213,6 +241,9 @@ Focus Areas: ${parameters.focusAreas?.join(', ') || 'Not specified'}`;
 			return json({ error: 'AI generation failed: Invalid format received.' }, { status: 500 });
 		}
 
+		// Log the raw JSON before validation
+		console.log('Raw AI Response JSON:', JSON.stringify(rawGeneratedJson, null, 2));
+
 		// --- Validate the structure received from AI ---
 		const planValidation = GeneratedPlanSchema.safeParse(rawGeneratedJson);
 		if (!planValidation.success) {
@@ -223,23 +254,29 @@ Focus Areas: ${parameters.focusAreas?.join(', ') || 'Not specified'}`;
 
 		const generatedPlan = planValidation.data;
 
-		// --- Map Drill Names to IDs ---
-		let drillsMapped = 0;
+		// --- Validate returned Drill IDs ---
+		const validDrillIds = new Set(allDrillDetails.map(d => d.id));
+		let invalidDrillIdFound = null;
+
 		generatedPlan.sections.forEach(section => {
 			section.items.forEach(item => {
-				if (item.type === 'drill') {
-					const drillId = drillNameMap.get(item.name.toLowerCase().trim());
-					if (drillId) {
-						item.drill_id = drillId;
-						drillsMapped++;
-					} else {
-						item.drill_id = null;
-						console.log(`AI generated drill "${item.name}" not found in existing drills.`);
+				if (item.type === 'drill' && item.drill_id !== null && item.drill_id !== undefined) {
+					if (!validDrillIds.has(item.drill_id)) {
+						console.warn(`AI returned invalid drill_id ${item.drill_id} for item "${item.name}". This ID was not in the provided context.`);
+						invalidDrillIdFound = item.drill_id; // Store the first invalid ID found
+						// Optionally nullify the invalid ID: item.drill_id = null;
 					}
 				}
 			});
 		});
-		console.log(`Mapped ${drillsMapped} drill names to existing IDs.`);
+
+		// If an invalid ID was found, reject the generation
+		if (invalidDrillIdFound !== null) {
+			return json({ error: `AI generation failed: Model referenced a drill (ID: ${invalidDrillIdFound}) that was not provided in its context.` }, { status: 400 });
+		}
+
+		// --- Map Drill Names to IDs (REMOVED - AI should provide IDs now) ---
+		console.log("Skipping name-to-ID mapping as AI should provide IDs.");
 
 		// TODO: Sanitize free-text fields
 

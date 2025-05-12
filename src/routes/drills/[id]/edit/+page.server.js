@@ -24,7 +24,7 @@ export async function load({ params, fetch, locals }) {
         }
 
         const allSkills = await skillService.getAllSkills();
-        const allDrillNames = await drillService.getDrillNames();
+        const allDrillNames = await drillService.getAllDrillNames();
     
         return {
             drill,

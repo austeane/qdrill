@@ -985,6 +985,7 @@ export class PracticePlanService extends BaseEntityService {
     if (item.type === 'drill') {
       return {
         id: item.id,
+        practice_plan_id: item.practice_plan_id,
         type: isOneOff ? 'one-off' : 'drill',
         duration: item.item_duration,
         order_in_plan: item.order_in_plan,
@@ -993,9 +994,8 @@ export class PracticePlanService extends BaseEntityService {
         parallel_timeline: item.parallel_timeline,
         groupTimelines: item.groupTimelines,
         diagram_data: item.ppd_diagram_data,
-        // Use custom name from ppd.name column if available
-        name: item.name || (isOneOff ? "Quick Activity" : null),
-        // Only include drill object if this is not a one-off drill
+        name: item.name || (isOneOff ? "Quick Activity" : item.drill_name),
+        drill_id: item.drill_id,
         drill: isOneOff ? null : {
           id: item.drill_id,
           name: item.drill_name,
@@ -1015,6 +1015,7 @@ export class PracticePlanService extends BaseEntityService {
     } else {
       return {
         id: item.id,
+        practice_plan_id: item.practice_plan_id,
         type: 'break',
         duration: item.item_duration,
         order_in_plan: item.order_in_plan,

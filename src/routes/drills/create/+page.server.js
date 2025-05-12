@@ -3,10 +3,14 @@ import { drillService } from '$lib/server/services/drillService.js';
 import { skillService } from '$lib/server/services/skillService.js'; // Assuming SkillService exists
 
 /** @type {import('./$types').PageServerLoad} */
-export async function load() {
+export async function load({ url }) {
   try {
+    const prefilledName = url.searchParams.get('name'); // Get 'name' from query params
+    const practicePlanId = url.searchParams.get('practice_plan_id');
+    const practicePlanItemId = url.searchParams.get('practice_plan_item_id');
+
     const skillsResult = await skillService.getAllSkills(); // Fetch all skills
-    const namesResult = await drillService.getDrillNames(); // Fetch all drill names
+    const namesResult = await drillService.getAllDrillNames(); // Fetch all drill names
 
     // Extract items if the service returns the { items: [...] } structure,
     // otherwise, assume it's already the array (or handle other cases if necessary).
@@ -21,10 +25,13 @@ export async function load() {
       console.warn('skillService.getAllSkills() did not return an array or {items: [...]}, defaulting to []. Received:', skillsResult);
     }
     if (!Array.isArray(namesResult?.items) && !Array.isArray(namesResult)) {
-      console.warn('drillService.getDrillNames() did not return an array or {items: [...]}, defaulting to []. Received:', namesResult);
+      console.warn('drillService.getAllDrillNames() did not return an array or {items: [...]}, defaulting to []. Received:', namesResult);
     }
 
     return {
+      prefilledName, // Pass the prefilledName to the page
+      practicePlanId, // Pass practicePlanId
+      practicePlanItemId, // Pass practicePlanItemId
       allSkills,
       allDrillNames,
     };

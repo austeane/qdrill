@@ -254,7 +254,7 @@
         <!-- Video Link -->
         {#if normalizedItem.hasVideo}
           <a 
-            href={normalizedItem.drill.video_link}
+            href={normalizedItem.drill?.video_link || normalizedItem.video_link}
             target="_blank"
             rel="noopener noreferrer"
             class="video-link"
@@ -262,6 +262,29 @@
             Watch Video Demo
           </a>
         {/if}
+
+        <!-- Action Button: Go to Drill / Create as Drill -->
+        <div class="action-buttons-container mt-4">
+          {#if item.drill_id}
+            <a
+              href={`/drills/${item.drill_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="action-button"
+            >
+              Go to Drill
+            </a>
+          {:else if item.type !== 'break'}
+            <a
+              href={`/drills/create?name=${encodeURIComponent(normalizedItem.name)}&practice_plan_id=${item.practice_plan_id}&practice_plan_item_id=${item.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="action-button"
+            >
+              Create as Drill
+            </a>
+          {/if}
+        </div>
       {/if}
     </div>
   {/if}
@@ -332,5 +355,39 @@
   }
   .duration-control > .flex.items-center:not(.editable-input-wrapper) {
     display: flex;
+  }
+
+  .action-buttons-container {
+    display: flex;
+    justify-content: flex-start; /* Or flex-end, center as preferred */
+    gap: 0.5rem; /* Space between buttons if multiple were ever added */
+  }
+
+  .action-button {
+    display: inline-block;
+    padding: 0.5rem 1rem; /* Adjust padding as needed */
+    background-color: theme('colors.blue.500');
+    color: white;
+    border-radius: 0.375rem; /* Equivalent to Tailwind's rounded-md */
+    text-decoration: none;
+    text-align: center;
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 500; /* medium */
+    transition: background-color 0.2s ease-in-out;
+  }
+
+  .action-button:hover {
+    background-color: theme('colors.blue.600');
+  }
+
+  .video-link {
+    display: inline-block;
+    margin-top: 1rem; /* Ensure spacing if video link is present */
+    color: theme('colors.blue.600');
+    text-decoration: underline;
+  }
+
+  .video-link:hover {
+    color: theme('colors.blue.800');
   }
 </style>

@@ -14,6 +14,8 @@ import { drillService } from '$lib/server/services/drillService';
 import { z } from 'zod';
 import { kyselyDb } from '$lib/server/db';
 import { sql } from 'kysely';
+import fs from 'fs';
+import path from 'path';
 // Removed: import Anthropic from '@anthropic-ai/sdk';
 // Removed: import { DatabaseError } from '$lib/server/errors.js'; (assuming not used elsewhere in this snippet after changes)
 
@@ -74,6 +76,36 @@ const MODEL_MAP = {
 	}
 };
 
+// --- BEGIN ADDED CODE FOR GOOGLE AUTH ---
+// Check if the base64 encoded env var exists
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
+	try {
+		// Decode the base64 string
+		const decodedKey = Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64, 'base64').toString('utf-8');
+		
+		// Define the path for the temporary key file in Vercel's writable directory
+		const keyFilePath = path.join('/tmp', 'service-account-key.json');
+		
+		// Write the decoded key to the temporary file
+		fs.writeFileSync(keyFilePath, decodedKey);
+		
+		// Set the GOOGLE_APPLICATION_CREDENTIALS environment variable for the current process
+		// The Google Auth library will pick this up
+		process.env.GOOGLE_APPLICATION_CREDENTIALS = keyFilePath;
+		
+		console.log('[Auth Setup] Successfully set GOOGLE_APPLICATION_CREDENTIALS from base64 env var to:', keyFilePath);
+	} catch (error) {
+		console.error('[Auth Setup] CRITICAL: Failed to decode/write GOOGLE_APPLICATION_CREDENTIALS_BASE64:', error);
+		// Depending on your error handling strategy, you might want to:
+		// - Throw an error to prevent the function from proceeding without auth
+		// - Log and let it fail later (as it currently does)
+		// For now, it will log and the subsequent GoogleAuth call will likely fail as before, but with this log for context.
+	}
+} else {
+	console.warn('[Auth Setup] GOOGLE_APPLICATION_CREDENTIALS_BASE64 environment variable not found.');
+	// The application will attempt to use other ADC methods, which will likely fail in Vercel if this was the intended auth method.
+}
+// --- END ADDED CODE FOR GOOGLE AUTH ---
 
 export async function POST({ request, locals }) {
 	const user = locals.user;

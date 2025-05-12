@@ -17,6 +17,7 @@
       data={null} 
       readonly={false} 
       template="blank" 
+      startFullscreen={true}
     />
   {:else}
     <p>Loading whiteboard...</p> <!-- Placeholder for SSR, Excalidraw only runs in browser -->

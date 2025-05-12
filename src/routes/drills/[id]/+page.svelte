@@ -301,12 +301,14 @@
       <p class="text-xl mb-4">{$drill.brief_description}</p>
       
       <div class="flex justify-center space-x-4 mb-6">
-        <a 
-          href="/drills/{$page.params.id}/edit" 
-          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
-        >
-          Edit Drill
-        </a>
+        {#if $page.data.session?.user?.id === $drill.created_by}
+          <a
+            href="/drills/{$page.params.id}/edit"
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+          >
+            Edit Drill
+          </a>
+        {/if}
         {#if $drill.variations?.length > 0 || $drill.parent_drill_id}
           <button
             on:click={() => {

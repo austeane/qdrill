@@ -137,6 +137,7 @@ export async function load({ fetch, url, locals }) {
 
   // --- Return data to the page ---
   return {
+    session: locals.session, // expose auth session to the client
     practicePlans: practicePlansData.items, // Pass items array
     pagination: practicePlansData.pagination, // Pass pagination object
     filterOptions,

@@ -90,7 +90,7 @@
 		<h3 class="text-lg font-semibold leading-none tracking-tight">Generate Plan with AI</h3>
 		<!-- Replaced CardDescription -->
 		<p class="text-sm text-muted-foreground">
-			Provide some basic parameters and let AI draft a plan for you. You can edit it afterwards.
+			Tell AI what you want out of your practice plan, and it will create a plan for you which you can edit after.
 		</p>
 	</div>
 	<!-- Replaced CardContent -->
@@ -122,7 +122,7 @@
 		</div>
 		<div>
 			<!-- Standard label -->
-			<label for="ai-goals" class="block text-sm font-medium text-gray-700 mb-1">Goals</label>
+			<label for="ai-goals" class="block text-sm font-medium text-gray-700 mb-1">Describe the practice plan you want</label>
 			<!-- Standard textarea with Tailwind -->
 			<textarea id="ai-goals" bind:value={aiParams.goals} placeholder="What are the main goals of this practice?" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
 		</div>

@@ -140,12 +140,6 @@
           >
             <div class="py-1">
               <a href="/practice-plans" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">View Plans</a>
-              <a href="/practice-plans/wizard" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">
-                <div class="flex items-center">
-                  <span>Create with Wizard</span>
-                  <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">New</span>
-                </div>
-              </a>
               <a href="/practice-plans/create" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem">Create from Cart</a>
             </div>
           </div>
@@ -401,12 +395,6 @@
           {#if isPracticePlansMobileDropdownOpen}
             <div class="mt-1 space-y-1 pl-4">
               <a href="/practice-plans" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem">View Plans</a>
-              <a href="/practice-plans/wizard" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem">
-                <div class="flex items-center">
-                  <span>Create with Wizard</span>
-                  <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">New</span>
-                </div>
-              </a>
               <a href="/practice-plans/create" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem">Create from Cart</a>
             </div>
           {/if}

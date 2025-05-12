@@ -231,10 +231,10 @@
                     </button>
                 {:else}
                     <a
-                        href="/practice-plans/create" 
+                        href="/drills" 
                         class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
                     >
-                        Create Plan with Wizard
+                        Go to Drills
                     </a>
                     <button
                         type="button"

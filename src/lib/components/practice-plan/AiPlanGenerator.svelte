@@ -2,6 +2,7 @@
 	import { createEventDispatcher } from 'svelte';
 	// Removed shadcn component imports - Card, Button, Input, Label, Textarea, Select, Popover, etc.
 	import Spinner from '$lib/components/Spinner.svelte';
+	import { Info } from 'lucide-svelte'; // Added Info icon import
 	// Removed lucide-svelte, cmdk-sv, bits-ui, cn imports
 
 	const dispatch = createEventDispatcher();
@@ -28,6 +29,7 @@
 		modelId: 'gemini-2.5-pro' // Hardcoded to Gemini
 	};
 	let isGenerating = false;
+	let showInfoTooltip = false; // Added for tooltip visibility
 
 	// Helper function to update aiParams.focusAreas for checkboxes
 	function handleFocusAreaChange(event) {
@@ -87,7 +89,17 @@
 	<!-- Replaced CardHeader -->
 	<div class="flex flex-col space-y-1.5 p-6">
 		<!-- Replaced CardTitle -->
-		<h3 class="text-lg font-semibold leading-none tracking-tight">Generate Plan with AI</h3>
+		<div class="flex items-center space-x-2">
+			<h3 class="text-lg font-semibold leading-none tracking-tight">Generate Plan with AI</h3>
+			<div class="relative" on:mouseenter={() => showInfoTooltip = true} on:mouseleave={() => showInfoTooltip = false}>
+				<Info class="h-4 w-4 text-gray-500 cursor-pointer" />
+				{#if showInfoTooltip}
+				<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-72 bg-gray-700 text-white text-xs rounded py-1.5 px-3 z-10 shadow-lg text-center">
+					Under the hood, this sends your instructions and the details of every drill to Gemini 2.5 Pro, and uses all of that information to generate your plan.
+				</div>
+				{/if}
+			</div>
+		</div>
 		<!-- Replaced CardDescription -->
 		<p class="text-sm text-muted-foreground">
 			Tell AI what you want out of your practice plan, and it will create a plan for you which you can edit after.
@@ -152,7 +164,10 @@
 		</div>
 	</div>
 	<!-- Replaced CardFooter -->
-	<div class="flex items-center p-6 pt-0">
+	<div class="flex flex-col items-start p-6 pt-0">
+		<p class="text-xs text-muted-foreground italic mb-3">
+			It may take more than 30 seconds to generate your plan.
+		</p>
 		<!-- Standard button with Tailwind -->
 		<button
 			type="button"

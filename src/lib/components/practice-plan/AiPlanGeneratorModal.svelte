@@ -17,19 +17,32 @@
 	}
 
 	/* Handle plan returned by AiPlanGenerator:
-	   – send it to the backend to persist
+	   – send it to the backend to persist (AI output should now match backend schema)
 	   – on success navigate to /practice-plans/{id}/edit
 	*/
 	async function handleGenerated(event) {
-		const generatedPlan = event.detail;
+		const generatedPlanFromAI = event.detail; // This should now be in the correct format
 		try {
+			// No transformation needed if AI prompt and schema are aligned with backend
+			console.log('Sending AI-generated plan (expected to match backend schema):', JSON.stringify(generatedPlanFromAI, null, 2));
+
 			const res = await fetch('/api/practice-plans', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(generatedPlan)
+				body: JSON.stringify(generatedPlanFromAI) // Send the AI-generated plan directly
 			});
 			const body = await res.json();
-			if (!res.ok) throw new Error(body.error || 'Failed to save plan');
+			if (!res.ok) {
+				let errorMessage = 'Failed to save plan.';
+				if (body?.error) {
+					errorMessage = body.error;
+				} else if (body?.errors) { // Handle Zod-like error structures
+					errorMessage = Object.entries(body.errors)
+						.map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+						.join('; ');
+				}
+				throw new Error(errorMessage);
+			}
 
 			// Navigate straight to edit page
 			goto(`/practice-plans/${body.id}/edit`);

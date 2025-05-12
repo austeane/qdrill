@@ -240,62 +240,58 @@
 </script>
 
 <!-- Wrap form in <form> tag and apply enhance -->
-<form method="POST" action="?/save" use:enhance={({ form, action, cancel }) => {
+<form method="POST" action="?" use:enhance={({ formElement, formData, action, cancel, submitter }) => {
   submitting = true;
+  console.log('[PracticePlanForm] Enhance: SvelteKit is submitting the form.');
   
-  // Prevent default form submission
-  cancel(); 
-  
-  // Construct FormData programmatically
-  const formData = new FormData();
-  
-  // Append plan details (from store)
-  formData.append('planDetails', JSON.stringify({
-    name: $planName,
-    description: $planDescription,
-    phaseOfSeason: $phaseOfSeason,
-    estimatedNumberOfParticipants: $estimatedNumberOfParticipants,
-    goals: $practiceGoals,
-    visibility: $visibility,
-    isEditableByOthers: $isEditableByOthers,
-    startTime: $startTime,
-    // Include ID if editing
-    id: practicePlan?.id 
-  }));
-  
-  // Append sections (from store)
-  formData.append('sections', JSON.stringify($sections));
+  // Get the current value of sections store
+  const sectionsValueForSubmission = get(sections);
+  console.log('[PracticePlanForm] Current $sections value (from store):', JSON.stringify(sectionsValueForSubmission));
 
-  // Manually trigger the fetch request
-  fetch(action, {
-    method: 'POST',
-    body: formData
-  }).then(response => response.json()) // Assuming the action returns JSON
-    .then(result => {
-      if (result.type === 'redirect') {
-          goto(result.location);
-      } else if (result.type === 'error') {
-          // Handle server-side validation errors or general errors
-          console.error('Form submission error:', result.error);
-          // TODO: Display error message to user (e.g., using toast or setting an error store)
-          toast.push(`Error: ${result.error?.message || 'Failed to save plan.'}`);
-      } else if (result.type === 'success') {
-          // Handle success (e.g., toast, redirect)
-          toast.push(mode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
-          // Server action should handle redirect on success
-          // Clear cart only on successful create action
-          if (!practicePlan) { // create mode
-            cart.clear();
-          }
+  // Directly set/update the 'sections' field on the FormData object SvelteKit will use
+  formData.set('sections', JSON.stringify(sectionsValueForSubmission));
+  console.log('[PracticePlanForm] FormData for submission (after setting sections):', Object.fromEntries(formData));
+
+  return async ({ result, update }) => {
+    // This callback is executed after SvelteKit has processed the action's response.
+    // `result` is the ActionResult from the server.
+    submitting = false;
+    console.log('[PracticePlanForm] Enhance - afterSubmitCallback, result:', result);
+
+    if (result.type === 'redirect' && result.location) {
+      toast.push(mode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
+      if (!practicePlan) { cart.clear(); }
+      goto(result.location);
+    } else if (result.type === 'failure' && result.data) {
+      const errorData = result.data;
+      // Make sure to access nested errors if your server sends them that way
+      const generalError = errorData.errors?.general || errorData.message || (errorData.errors && Object.values(errorData.errors).flat().join('; ')) || 'Failed to save plan.';
+      toast.push(`Error: ${generalError}`);
+      console.error('Form submission failure (type: failure):', result.data);
+       // Optionally, update $page.form if you want to display errors near fields
+      // $page.form = result.data; // This usually requires page store access
+    } else if (result.type === 'error' && result.error) {
+      const errorMessage = result.error.message || (typeof result.error === 'string' ? result.error : 'Please try again.');
+      toast.push(`An unexpected error occurred: ${errorMessage}`);
+      console.error('Form submission error (type: error):', result.error);
+    } else if (result.type === 'success') { 
+        toast.push(mode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
+        if (!practicePlan) { cart.clear(); }
+        // If it's a success but not a redirect, you might need to inspect result.data
+        // or decide if navigation is still needed to a generic success page or the plan view.
+    } else {
+      console.warn('[PracticePlanForm] Unhandled ActionResult type or unexpected response:', result);
+      if (result.status && result.status >= 200 && result.status < 300 && result.type !== 'redirect') {
+        toast.push(mode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
+         if (!practicePlan) { cart.clear(); }
+      } else if (!result.type && result.status === 200) { // A plain successful action without specific type
+        toast.push('Action completed successfully.');
+      } else {
+        toast.push('An unknown issue occurred after submission.');
       }
-    }).catch(error => {
-        console.error('Fetch error during form submission:', error);
-        toast.push('An unexpected network error occurred.');
-    }).finally(() => {
-        submitting = false;
-    });
-
-  // Enhance doesn't need to return anything when fetch is handled manually
+    }
+    // update(); // Optionally call update() if you need to re-run load functions
+  };
 }} class="container mx-auto p-4 space-y-6">
   
   <h1 class="text-2xl font-bold">{mode === 'edit' ? 'Edit Practice Plan' : 'Create Practice Plan'}</h1>
@@ -349,43 +345,7 @@
     </div>
   </div>
 
-  <!-- Visibility settings -->
-  <div class="mb-6">
-    <label for="visibility-select" class="block text-gray-700 font-medium mb-1">Visibility</label>
-    <select
-      id="visibility-select"
-      bind:value={$visibility}
-      class="p-2 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-      disabled={!$page.data.session}
-      title={!$page.data.session ? 'Log in to create private or unlisted practice plans' : ''}
-    >
-      <option value="public">Public - Visible to everyone</option>
-      {#if $page.data.session}
-        <option value="unlisted">Unlisted - Only accessible via direct link</option>
-        <option value="private">Private - Only visible to you</option>
-      {/if}
-    </select>
-    {#if !$page.data.session}
-      <p class="text-sm text-gray-500 mt-1">Anonymous submissions are always public</p>
-    {/if}
-  </div>
-
-  <div class="mb-6">
-    <label class="flex items-center">
-      <input
-        type="checkbox"
-        bind:checked={$isEditableByOthers}
-        disabled={!$page.data.session}
-        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-      />
-      <span class="ml-2 text-gray-700">
-        Allow others to edit this practice plan
-        {#if !$page.data.session}
-          <span class="text-gray-500">(required for anonymous submissions)</span>
-        {/if}
-      </span>
-    </label>
-  </div>
+  <!-- Visibility controls are handled within PlanMetadataFields -->
 
   <!-- Submit button -->
   <div class="flex justify-end mt-8">

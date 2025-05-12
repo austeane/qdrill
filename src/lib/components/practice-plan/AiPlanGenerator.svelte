@@ -9,13 +9,23 @@
 	export let skillOptions = [];
 	export let focusAreaOptions = [];
 
+	// Model Choices - Removed as we are hardcoding to Gemini
+	/*
+	const modelChoices = [
+		{ value: 'claude-3.7-sonnet', label: 'Anthropic Claude 3.7 Sonnet' },
+		{ value: 'gpt-4.1', label: 'OpenAI GPT-4.1 (Experimental)' },
+		{ value: 'gemini-2.5-pro', label: 'Google Gemini 2.5 Pro (Vertex AI)' }
+	];
+	*/
+
 	// AI Generation State
 	let aiParams = {
 		durationMinutes: 90,
 		skillLevel: 'intermediate',
 		participantCount: 15,
 		goals: 'Improve team offense and cutting timing.',
-		focusAreas: [] // Initialize as empty array
+		focusAreas: [],
+		modelId: 'gemini-2.5-pro' // Hardcoded to Gemini
 	};
 	let isGenerating = false;
 
@@ -57,8 +67,8 @@
 			console.log('Received AI generated plan:', responseBody);
 
 			// Validate the structure roughly before dispatching
-			if (!responseBody.planDetails || !responseBody.sections) {
-				throw new Error('Invalid plan structure received from AI.');
+			if (!responseBody.name || !responseBody.sections || !Array.isArray(responseBody.sections)) {
+				throw new Error('Invalid plan structure received from AI. Expected root-level name and sections array.');
 			}
 
 			dispatch('generated', responseBody); // Dispatch success event with data

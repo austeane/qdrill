@@ -7,6 +7,11 @@ const config = {
 		adapter: adapter(),
 		prerender: {
 			entries: ['/']
+		},
+		// Temporarily disable CSRF origin checking for local development
+		// WARNING: Do NOT do this in production. For dev troubleshooting only.
+		csrf: {
+			checkOrigin: process.env.NODE_ENV === 'production' // true in prod, false in dev
 		}
 	},
 	preprocess: vitePreprocess()

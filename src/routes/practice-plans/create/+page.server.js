@@ -9,13 +9,8 @@ const practicePlanService = new PracticePlanService();
 
 export const actions = {
 	default: async ({ request, locals }) => {
-		console.log('[Create Action] Incoming Request Headers:', Object.fromEntries(request.headers)); // Log headers
 		const session = locals.session;
-		const userId = locals.user?.id || locals.user?.userId || session?.user?.id || session?.user?.userId; // Adapt based on your exact user object structure in locals
-
-		console.log('[Create Action] Retrieved locals.session:', session);
-		console.log('[Create Action] Retrieved locals.user:', locals.user);
-		console.log('[Create Action] Determined userId:', userId);
+		const userId = locals.user?.id || locals.user?.userId || session?.user?.id || session?.user?.userId;
 
 		const formData = await request.formData();
 		const data = Object.fromEntries(formData);
@@ -33,8 +28,6 @@ export const actions = {
 			start_time: data.startTime ? data.startTime + ':00' : null, // Add seconds for DB
 			sections: JSON.parse(data.sections || '[]') // Expect sections as JSON string
 		};
-
-		console.log('[Create Action] Received planData:', planData);
 
 		// --- Validation --- 
 		try {
@@ -81,12 +74,9 @@ export const actions = {
 				sections: normalizedSections
 			};
 
-			console.log('[Create Action] Calling service with data:', finalPlanData);
 			const createdPlan = await practicePlanService.createPracticePlan(finalPlanData, userId);
 			
-			console.log('[Create Action] Service call successful, created plan ID:', createdPlan.id);
-			// Use SvelteKit's redirect utility for idiomatic redirects
-			throw redirect(303, `/practice-plans/${createdPlan.id}`); // This will be caught by SvelteKit
+			throw redirect(303, `/practice-plans/${createdPlan.id}`);
 
 		} catch (error) {
 			// If the error is already a SvelteKit redirect or fail, rethrow it

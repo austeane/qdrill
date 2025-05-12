@@ -69,33 +69,26 @@
   
 	<!-- Features Section -->
 	<div class="mt-16">
-	  <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-		<!-- Wizard Feature -->
+	  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+		<!-- Wizard Feature (now AI Feature) -->
 		<div class="bg-white shadow-lg rounded-lg p-6 text-center flex flex-col h-full border-t-4 border-blue-500">
 		  <div class="flex-grow">
 			<div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
 			  <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+				<!-- Consider a more AI-themed icon later if desired -->
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
 			  </svg>
 			</div>
-			<h3 class="text-xl font-semibold mb-2">Practice Plan Creator</h3>
-			<p class="text-gray-600 mb-4">Create complete practice plans from scratch, guided step by step.</p>
+			<h3 class="text-xl font-semibold mb-2">AI Plan Generator</h3>
+			<p class="text-gray-600 mb-4">Have AI generate you a personalized practice plan.</p>
 		  </div>
 		  <div class="mt-auto">
-			<button 
-			  on:click={navigateToWizard}
-			  disabled={isNavigating}
-			  class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg relative"
+			<a 
+			  href="/practice-plans"
+			  class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg"
 			>
-			  {#if isNavigating}
-				<div class="absolute inset-0 flex items-center justify-center">
-					<Spinner size="sm" color="white" />
-				</div>
-				<span class="opacity-0">Plan a Practice</span>
-			  {:else}
-				Plan a Practice
-			  {/if}
-			</button>
+			  Generate with AI
+			</a>
 		  </div>
 		</div>
 

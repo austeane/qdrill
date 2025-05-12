@@ -239,7 +239,7 @@
                     <button
                         type="button"
                         on:click={() => (showAiModal = true)}
-                        class="relative inline-block px-6 py-3 bg-gray-100 text-gray-800 border border-gray-300 rounded-lg font-semibold hover:bg-gray-200 transition-colors duration-300"
+                        class="relative inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
                     >
                         Create Plan with AI
                         <span class="absolute -top-2 -right-2 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">Beta</span>

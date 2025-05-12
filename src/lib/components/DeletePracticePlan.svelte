@@ -28,11 +28,21 @@
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        let errorMsg = `HTTP error! status: ${response.status}`;
+        try {
+          // Attempt to parse error response, as it might contain useful details
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorData.message || errorMsg;
+        } catch (e) {
+          // If error response is not JSON, use the status text or default message
+          errorMsg = response.statusText || errorMsg;
+        }
+        throw new Error(errorMsg);
       }
 
-      const data = await response.json();
+      // If response.ok is true, and it's a 204 No Content, there's no body to parse.
+      // We can proceed directly.
+      // No need to call: const data = await response.json();
       
       onDelete();
 

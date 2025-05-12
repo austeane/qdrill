@@ -24,8 +24,8 @@
   );
 
   // Check edit permissions
-  $: userCanEdit = $page.data.session?.user?.id === practicePlan.created_by || 
-               practicePlan.is_editable_by_others;
+  $: userCanEdit = ($page.data.session?.user?.id === practicePlan.created_by) || 
+               ($page.data.session?.user?.id && practicePlan.is_editable_by_others);
 
   // Add this near the other state variables
   const isDescriptionExpanded = writable(true);

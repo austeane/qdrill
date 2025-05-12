@@ -40,8 +40,8 @@ export const drillSchema = z.object({
     .min(1, 'At least one skill level is required'),
   complexity: z.enum(complexityOptions).nullable().optional(), // Optional field
   suggested_length: z.object({
-    min: z.number().int().positive('Suggested length min must be a positive integer'),
-    max: z.number().int().positive('Suggested length max must be a positive integer'),
+    min: z.number().int().min(0, 'Suggested length min must be a non-negative integer'),
+    max: z.number().int().min(0, 'Suggested length max must be a non-negative integer'),
   }).refine(data => data.max >= data.min, {
     message: 'Suggested length max must be greater than or equal to min',
     path: ['max'], // Attach error to the 'max' field
@@ -83,7 +83,6 @@ export const drillSchema = z.object({
 export const createDrillSchema = drillSchema.omit({ 
   id: true, 
   created_at: true, 
-  updated_at: true,
   errors: true, // Not relevant for creation payload
   row: true,
   isEditing: true,
@@ -98,7 +97,6 @@ export const updateDrillSchema = drillSchema.extend({
   id: z.number().int().positive('Valid Drill ID is required for update'),
 }).omit({
   created_at: true, 
-  updated_at: true,
   errors: true, // Not relevant for update payload
   row: true,
   isEditing: true,
@@ -115,8 +113,8 @@ export const bulkUploadDrillInputSchema = z.object({
   skill_level: z.array(z.enum(skillLevelOptions)).min(1, 'At least one skill level is required'), // Already mapped in parseDrill
   complexity: z.enum(complexityOptions).nullable().optional(), // Already mapped in parseDrill
   suggested_length: z.object({
-    min: z.number().int().positive('Suggested length min must be a positive integer').nullable(), // Allow null from parseInteger
-    max: z.number().int().positive('Suggested length max must be a positive integer').nullable(), // Allow null from parseInteger
+    min: z.number().int().min(0, 'Suggested length min must be a non-negative integer').nullable(), // Allow null from parseInteger
+    max: z.number().int().min(0, 'Suggested length max must be a non-negative integer').nullable(), // Allow null from parseInteger
   }).refine(data => data.min !== null, { 
       message: 'Suggested length min is required', 
       path: ['min'] 

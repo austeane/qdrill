@@ -422,6 +422,32 @@
         body: JSON.stringify(requestBody)
       });
 
+      // If this drill creation came from a practice plan item, link it
+      if (practicePlanId && practicePlanItemId && result.id) {
+        try {
+          await apiFetch('/api/practice-plans/link-item-to-drill', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              practicePlanId: practicePlanId,
+              practicePlanItemId: practicePlanItemId,
+              newDrillId: result.id
+            })
+          });
+          toast.push('Activity in practice plan updated successfully!');
+          // Navigate back to the practice plan
+          goto(`/practice-plans/${practicePlanId}`);
+          return; // Important to return here to skip default navigation
+        } catch (linkError) {
+          console.error('Error linking drill to practice plan item:', linkError);
+          toast.push(`Drill created, but failed to update practice plan: ${linkError.message}. Please update manually.`, {
+            theme: { '--toastBackground': '#F56565', '--toastColor': 'white' },
+            duration: 5000
+          });
+          // Fall through to navigate to the drill page if linking fails but drill was created
+        }
+      }
+
       if (!$page.data.session) {
         const confirmed = confirm(
           'Would you like to log in so that you can own this drill?\n\n' +

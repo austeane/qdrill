@@ -9,8 +9,13 @@ const practicePlanService = new PracticePlanService();
 
 export const actions = {
 	default: async ({ request, locals }) => {
-		const session = await locals.getSession();
-		const userId = session?.user?.userId; // Get user ID from session
+		console.log('[Create Action] Incoming Request Headers:', Object.fromEntries(request.headers)); // Log headers
+		const session = locals.session;
+		const userId = locals.user?.id || locals.user?.userId || session?.user?.id || session?.user?.userId; // Adapt based on your exact user object structure in locals
+
+		console.log('[Create Action] Retrieved locals.session:', session);
+		console.log('[Create Action] Retrieved locals.user:', locals.user);
+		console.log('[Create Action] Determined userId:', userId);
 
 		const formData = await request.formData();
 		const data = Object.fromEntries(formData);
@@ -80,10 +85,14 @@ export const actions = {
 			const createdPlan = await practicePlanService.createPracticePlan(finalPlanData, userId);
 			
 			console.log('[Create Action] Service call successful, created plan ID:', createdPlan.id);
-			// Redirect on success
-			redirect(303, `/practice-plans/${createdPlan.id}`);
+			// Use SvelteKit's redirect utility for idiomatic redirects
+			throw redirect(303, `/practice-plans/${createdPlan.id}`); // This will be caught by SvelteKit
 
 		} catch (error) {
+			// If the error is already a SvelteKit redirect or fail, rethrow it
+			if (error.status && error.location) { // Heuristic for a redirect object from SvelteKit
+				throw error;
+			}
 			console.error('[Create Action] Error:', error);
 			if (error instanceof ValidationError) {
 				return fail(400, { success: false, errors: error.errors || { general: error.message }, data: planData });

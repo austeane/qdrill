@@ -16,13 +16,14 @@ const practicePlanItemType = z.enum(['drill', 'break', 'one-off']); // Add 'one-
 // Base schema for Practice Plan Item (reused in Create/Update)
 const practicePlanItemSchema = z.object({
 	id: z.number().optional(), // Optional for creation, required for update/association
-	type: z.enum(['drill', 'break']), // Add 'one-off'? DB seems to handle it via null drill_id
+	type: z.enum(['drill', 'break', 'activity']), // Added 'activity'
 	name: z.string().min(1, 'Item name is required'),
 	duration: z.number().int().min(1, 'Duration must be at least 1 minute'),
-	drill_id: z.number().int().nullable().optional(), // Null for breaks or one-offs
+	drill_id: z.number().int().nullable().optional(), // Null for breaks or one-offs/activities
 	diagram_data: z.string().nullable().optional(),
-	parallel_group_id: z.string().nullable().optional(),
-	parallel_timeline: z.string().nullable().optional(),
+	parallel_group_id: z.string().nullable().optional(), // This identifies the item's role/timeline name
+	parallel_timeline: z.string().nullable().optional(), // Will be hydrated to be same as parallel_group_id
+	group_timelines: z.array(z.string()).nullable().optional(), // Will be hydrated with all timeline names in this item's parallel block
 	order: z.number().int().optional() // Handled server-side during creation/update usually
 });
 

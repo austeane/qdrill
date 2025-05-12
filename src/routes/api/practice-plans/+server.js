@@ -122,6 +122,46 @@ export const POST = async ({ request, locals }) => {
     const rawData = await request.json();
     const userId = locals.user?.id;
 
+    // --- Hydrate parallel group timeline data --- 
+    if (rawData.sections && Array.isArray(rawData.sections)) {
+      rawData.sections.forEach(section => {
+        if (section.items && Array.isArray(section.items)) {
+          let currentParallelBlockItems = []; // Stores items of the currently accumulating parallel block
+          let currentBlockTimelineNames = new Set(); // Stores unique timeline names for the current block
+
+          for (let i = 0; i < section.items.length; i++) {
+            const item = section.items[i];
+
+            if (item.parallel_group_id) {
+              // Item is part of a parallel block
+              currentParallelBlockItems.push(item);
+              currentBlockTimelineNames.add(item.parallel_group_id);
+            }
+
+            // Check if the current parallel block ends here
+            // A block ends if: 
+            //   1. The current item is NOT parallel_group_id (and a block was being built)
+            //   2. OR it's the last item in the section (and a block was being built)
+            const blockEnded = !item.parallel_group_id && currentParallelBlockItems.length > 0;
+            const isLastItemAndBlockExists = i === section.items.length - 1 && currentParallelBlockItems.length > 0;
+
+            if (blockEnded || isLastItemAndBlockExists) {
+              const timelinesArray = Array.from(currentBlockTimelineNames);
+              currentParallelBlockItems.forEach(blockItem => {
+                blockItem.parallel_timeline = blockItem.parallel_group_id; // Each item's timeline is its group ID
+                blockItem.groupTimelines = timelinesArray; // All items in this block know about all timelines in this block
+              });
+              
+              // Reset for the next potential block
+              currentParallelBlockItems = [];
+              currentBlockTimelineNames.clear();
+            }
+          }
+        }
+      });
+    }
+    // --- End hydration --- 
+
     // Add userId before validation
     const dataWithUser = { ...rawData, created_by: userId };
 
@@ -136,8 +176,17 @@ export const POST = async ({ request, locals }) => {
     // Use the validated data
     const validatedData = validationResult.data;
 
+    // --- Add order to sections before calling the service --- 
+    if (validatedData.sections && Array.isArray(validatedData.sections)) {
+      validatedData.sections = validatedData.sections.map((section, index) => ({
+        ...section,
+        order: index // Add order based on array index
+      }));
+    }
+    // --- End adding order to sections ---
+
     // Create practice plan using the service
-    // Pass validated data to the service
+    // Pass validated data (now with ordered sections) to the service
     const result = await practicePlanService.createPracticePlan(validatedData, userId);
     
     return json(

@@ -9,12 +9,13 @@
   export let index;
   export let readonly = false;
   export let template = 'blank';
+  export let startFullscreen = false;
 
   const dispatch = createEventDispatcher();
   let excalidrawAPI;
   let fullscreenExcalidrawAPI;
   let ExcalidrawComponent;
-  let isFullscreen = false;
+  let isFullscreen = startFullscreen;
   let initialSceneData = null;
   let excalidrawWrapper;
   let hasInitialized = false;

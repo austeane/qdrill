@@ -159,6 +159,14 @@
           Formations
         </a>
 
+        <!-- Whiteboard Link -->
+        <a
+          href="/whiteboard"
+          class="text-gray-700 hover:text-gray-900 font-semibold flex items-center focus:outline-none"
+        >
+          Whiteboard
+        </a>
+
         <!-- Shopping Cart Icon -->
         <div class="relative cart-dropdown">
           <button
@@ -410,6 +418,14 @@
           class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold flex justify-between items-center focus:outline-none"
         >
           Formations
+        </a>
+
+        <!-- Whiteboard Link for Mobile -->
+        <a
+          href="/whiteboard"
+          class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold flex justify-between items-center focus:outline-none"
+        >
+          Whiteboard
         </a>
 
         {#if user}

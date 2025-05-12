@@ -8,7 +8,7 @@
 	async function navigateToWizard() {
 		isNavigating = true;
 		try {
-			await goto('/practice-plans/wizard');
+			await goto('/practice-plans');
 		} finally {
 			isNavigating = false;
 		}

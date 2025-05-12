@@ -242,21 +242,13 @@
 <!-- Wrap form in <form> tag and apply enhance -->
 <form method="POST" action="?" use:enhance={({ formElement, formData, action, cancel, submitter }) => {
   submitting = true;
-  console.log('[PracticePlanForm] Enhance: SvelteKit is submitting the form.');
   
-  // Get the current value of sections store
   const sectionsValueForSubmission = get(sections);
-  console.log('[PracticePlanForm] Current $sections value (from store):', JSON.stringify(sectionsValueForSubmission));
 
-  // Directly set/update the 'sections' field on the FormData object SvelteKit will use
   formData.set('sections', JSON.stringify(sectionsValueForSubmission));
-  console.log('[PracticePlanForm] FormData for submission (after setting sections):', Object.fromEntries(formData));
 
   return async ({ result, update }) => {
-    // This callback is executed after SvelteKit has processed the action's response.
-    // `result` is the ActionResult from the server.
     submitting = false;
-    console.log('[PracticePlanForm] Enhance - afterSubmitCallback, result:', result);
 
     if (result.type === 'redirect' && result.location) {
       toast.push(mode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
@@ -267,20 +259,13 @@
       // Make sure to access nested errors if your server sends them that way
       const generalError = errorData.errors?.general || errorData.message || (errorData.errors && Object.values(errorData.errors).flat().join('; ')) || 'Failed to save plan.';
       toast.push(`Error: ${generalError}`);
-      console.error('Form submission failure (type: failure):', result.data);
-       // Optionally, update $page.form if you want to display errors near fields
-      // $page.form = result.data; // This usually requires page store access
     } else if (result.type === 'error' && result.error) {
       const errorMessage = result.error.message || (typeof result.error === 'string' ? result.error : 'Please try again.');
       toast.push(`An unexpected error occurred: ${errorMessage}`);
-      console.error('Form submission error (type: error):', result.error);
     } else if (result.type === 'success') { 
         toast.push(mode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
         if (!practicePlan) { cart.clear(); }
-        // If it's a success but not a redirect, you might need to inspect result.data
-        // or decide if navigation is still needed to a generic success page or the plan view.
     } else {
-      console.warn('[PracticePlanForm] Unhandled ActionResult type or unexpected response:', result);
       if (result.status && result.status >= 200 && result.status < 300 && result.type !== 'redirect') {
         toast.push(mode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
          if (!practicePlan) { cart.clear(); }
@@ -290,7 +275,6 @@
         toast.push('An unknown issue occurred after submission.');
       }
     }
-    // update(); // Optionally call update() if you need to re-run load functions
   };
 }} class="container mx-auto p-4 space-y-6">
   

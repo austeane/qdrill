@@ -20,3 +20,6 @@ tests/__pycache__
 tests/_pycache
 cypress/downloads
 cypress/screenshots
+
+# Sentry Config File
+.env.sentry-build-plugin

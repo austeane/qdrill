@@ -16,9 +16,12 @@
   export let drill = {};
   export let allSkills = [];
   export let allDrillNames = [];
+  export let prefilledName = null;
+  export let practicePlanId = null;
+  export let practicePlanItemId = null;
 
   // Initialize stores based on props
-  let name = writable(drill.name ?? '');
+  let name = writable(prefilledName || drill.name || '');
   let brief_description = writable(drill.brief_description ?? '');
   let detailed_description = writable(drill.detailed_description ?? '');
   let skill_level = writable(drill.skill_level ?? []);

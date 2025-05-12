@@ -9,4 +9,9 @@
 </svelte:head>
 
 <!-- Pass the loaded data as props to DrillForm -->
-<DrillForm allSkills={data.allSkills} allDrillNames={data.allDrillNames} />
+<DrillForm 
+    allSkills={data.allSkills} 
+    allDrillNames={data.allDrillNames}
+    prefilledName={data.prefilledName}
+    practicePlanId={data.practicePlanId} 
+    practicePlanItemId={data.practicePlanItemId} />

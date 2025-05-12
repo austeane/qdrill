@@ -106,7 +106,19 @@ export const POST = async (event) => {
   try {
     const rawData = await event.request.json();
     const session = event.locals.session;
-    const userId = session?.user?.id || null;
+    let userId = session?.user?.id || null;
+
+    // Ensure userId is a number if it exists and is a string representation of a number
+    if (userId && typeof userId === 'string') {
+      const parsedUserId = parseInt(userId, 10);
+      if (!isNaN(parsedUserId)) {
+        userId = parsedUserId;
+      } else {
+        // Handle case where userId is a string but not a valid number - perhaps error or set to null
+        console.warn(`Invalid string user ID found: ${userId}. Treating as null.`);
+        userId = null; 
+      }
+    }
     
     // Add userId to the data before validation if not present
     const dataWithUser = { ...rawData, created_by: userId };
@@ -138,12 +150,23 @@ export const PUT = authGuard(async ({ request, locals }) => {
     const rawData = await request.json();
     const session = locals.session;
     const userId = session.user.id;
+
+    console.log('--- RAW DATA for Zod Validation (PUT) ---', JSON.stringify(rawData, null, 2)); // Log rawData
     
     // Validate data using Zod schema
     const validationResult = updateDrillSchema.safeParse(rawData);
 
+    // --- TEMPORARY LOGGING ---
+    console.log('--- Zod Validation Result (PUT) ---', JSON.stringify(validationResult, null, 2));
+    if (validationResult.success) {
+      console.log('--- Zod Validated Data (PUT) ---', JSON.stringify(validationResult.data, null, 2));
+    } else {
+      console.error('--- Zod Validation Errors (PUT) ---', JSON.stringify(validationResult.error.flatten(), null, 2));
+    }
+    // --- END TEMPORARY LOGGING ---
+
     if (!validationResult.success) {
-      // Throw ZodError to be caught by handleApiError
+      console.error('Zod validation failed in PUT /api/drills, throwing error:', validationResult.error.flatten());
       throw validationResult.error;
     }
     

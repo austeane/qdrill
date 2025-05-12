@@ -1094,6 +1094,44 @@ export class PracticePlanService extends BaseEntityService {
       throw new DatabaseError('Failed to associate practice plan', error);
     }
   }
+
+  /**
+   * Links a practice plan item (activity) to a newly created drill.
+   * @param {number} practicePlanItemId - The ID of the item in practice_plan_drills.
+   * @param {number} newDrillId - The ID of the newly created drill to link to.
+   * @param {number} practicePlanId - The ID of the practice plan for permission checking.
+   * @param {number} userId - The ID of the user performing the action.
+   * @returns {Promise<Object>} - The updated practice plan item.
+   * @throws {NotFoundError} If practice plan or item not found.
+   * @throws {ForbiddenError} If user lacks permission to edit the practice plan.
+   * @throws {DatabaseError} On database error.
+   */
+  async linkPracticePlanItemToDrill(practicePlanItemId, newDrillId, practicePlanId, userId) {
+    return this.withTransaction(async (client) => {
+      // 1. Check if user can edit the practice plan
+      await this.canUserEdit(practicePlanId, userId, client); // Throws ForbiddenError if not allowed
+
+      // 2. Update the practice plan item
+      const updateQuery = `
+        UPDATE practice_plan_drills
+        SET drill_id = $1, type = 'drill' 
+        WHERE id = $2 AND practice_plan_id = $3
+        RETURNING *;
+      `;
+      // Ensure practice_plan_id condition is also met for safety, though item ID should be unique.
+      const result = await client.query(updateQuery, [newDrillId, practicePlanItemId, practicePlanId]);
+
+      if (result.rows.length === 0) {
+        throw new NotFoundError(`Practice plan item with ID ${practicePlanItemId} in plan ${practicePlanId} not found or update failed.`);
+      }
+
+      // 3. Format and return the updated item (optional, could also return success status)
+      // The formatDrillItem expects a row that might have joined drill data.
+      // For simplicity here, we return the raw updated row from practice_plan_drills.
+      // If full formatting is needed, a subsequent fetch/join might be required.
+      return result.rows[0];
+    });
+  }
 }
 
 // Create and export an instance of the service

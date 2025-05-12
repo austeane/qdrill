@@ -20,7 +20,7 @@ export class DrillService extends BaseEntityService {
       'complexity', 
       'number_of_people_min', 'number_of_people_max',
       'skills_focused_on', 'positions_focused_on', 'drill_type', 'created_by',
-      'visibility', 'date_created', 'updated_at', 'is_editable_by_others',
+      'visibility', 'date_created', 'is_editable_by_others',
       'parent_drill_id', 'video_link', 'diagrams', 'images', 'upload_source',
       'search_vector',
       'suggested_length_min', 'suggested_length_max' 
@@ -93,39 +93,23 @@ export class DrillService extends BaseEntityService {
    * @throws {ForbiddenError} - If user not authorized
    */
   async updateDrill(id, drillData, userId) {
-    // Use a transaction to update drill and potentially related votes
     return this.withTransaction(async (client) => { 
-      // Check authorization using standard permission model within transaction
-      // canUserEdit now throws ForbiddenError if not authorized
       await this.canUserEdit(id, userId, client);
-
-      // Get existing skills to calculate differences
-      // Pass client to getById to ensure transactional consistency if needed by base class
       const existingDrill = await this.getById(id, ['*'], userId, client); 
-      
-      // Check if drill exists
       if (!existingDrill) {
-        // Throw NotFoundError instead of generic Error
         throw new NotFoundError('Drill not found');
       }
-      
       const existingSkills = existingDrill.skills_focused_on || [];
       
-      // Normalize drill data and add updated timestamp
-      const normalizedData = this.normalizeDrillData({
-        ...drillData,
-        updated_at: new Date()
-      });
+      // Normalize drill data (REMOVED adding updated_at here)
+      const normalizedData = this.normalizeDrillData(drillData);
       
-      // If drill has no creator, assign it to the current user
       if (existingDrill.created_by === null && userId) {
         normalizedData.created_by = userId;
       }
       
-      // Update the drill using the transaction client
       const updatedDrill = await this.update(id, normalizedData, client);
       
-      // Update skills using the transaction client
       const skillsToRemove = existingSkills.filter(
         skill => !normalizedData.skills_focused_on?.includes(skill)
       );
@@ -133,11 +117,8 @@ export class DrillService extends BaseEntityService {
         skill => !existingSkills.includes(skill)
       ) || [];
       
-      // Ensure updateSkillCounts can use the client (needs modification if not already done)
-      // Assuming updateSkillCounts internally uses updateSkills which now accepts a client
       await this.updateSkillCounts(skillsToAdd, skillsToRemove, id, client); 
 
-      // Update the name in votes table if name changed
       if (normalizedData.name && normalizedData.name !== existingDrill.name) {
           await client.query(
               `UPDATE votes SET item_name = $1 WHERE drill_id = $2`,
@@ -1014,7 +995,7 @@ export class DrillService extends BaseEntityService {
       delete normalizedData.id;
     }
     
-    // Use base helper to normalize array fields
+    // Use base helper to normalize array fields to ensure they are arrays
     normalizedData = this.normalizeArrayFields(normalizedData, this.arrayFields);
     
     // Convert diagrams to JSON strings (only if not already strings)
@@ -1027,14 +1008,14 @@ export class DrillService extends BaseEntityService {
       normalizedData.diagrams = [];
     }
     
-    // Normalize strings in arrays (except images)
+    // For enum-like array fields, ensure items are trimmed. Lowercasing is removed.
+    // Zod validation should handle correctness of enum values (including case).
     ['skill_level', 'skills_focused_on', 'positions_focused_on', 'drill_type'].forEach(field => {
       if (normalizedData[field] && Array.isArray(normalizedData[field])) {
         normalizedData[field] = normalizedData[field].map(item => 
-          typeof item === 'string' ? item.toLowerCase().trim() : item
+          typeof item === 'string' ? item.trim() : item // REMOVED .toLowerCase()
         ).filter(Boolean); // Remove empty strings after trimming
       } else if (normalizedData[field] === null || normalizedData[field] === undefined) {
-        // Ensure these are empty arrays if null/undefined
         normalizedData[field] = [];
       }
     });

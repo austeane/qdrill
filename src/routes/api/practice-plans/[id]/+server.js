@@ -47,23 +47,23 @@ const handleDelete = async ({ params, locals }) => {
 };
 
 // Export the DELETE handler
-export const DELETE = async (event) => {
-  try {
-    const { params, locals } = event;
-    const { id } = params;
-    const session = await locals.auth();
-    const userId = session?.user?.id;
+// Wrap DELETE handler with authGuard for consistent authentication
+export const DELETE = authGuard(async ({ params, locals }) => {
+  const { id } = params;
+  // Get session and userId from locals, populated by authGuard
+  const session = locals.session;
+  // Assuming authGuard ensures session and session.user exist, similar to PUT handler
+  const userId = session?.user?.id;
 
+  try {
     // Validate ID
     const planId = parseInt(id);
     if (isNaN(planId)) {
       return json({ error: 'Invalid practice plan ID' }, { status: 400 });
     }
 
-    // Require authentication for deletion
-    if (!userId) {
-      return json({ error: 'Authentication required' }, { status: 401 });
-    }
+    // Authentication check is now handled by authGuard, so the explicit 'if (!userId)' is removed.
+    // authGuard is expected to ensure userId is valid or deny access.
 
     // Perform deletion
     await practicePlanService.deletePracticePlan(planId, userId);
@@ -78,7 +78,7 @@ export const DELETE = async (event) => {
     // Use the centralized error handler for all errors
     return handleApiError(err);
   }
-};
+});
 
 // Dev-only delete handler (remove or secure properly)
 // Note: This was likely for testing and should not exist in production.

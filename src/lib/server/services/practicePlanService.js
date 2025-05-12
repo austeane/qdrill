@@ -6,6 +6,7 @@ import { sql } from 'kysely'; // Import sql tag
 import { NotFoundError, ForbiddenError, ValidationError, DatabaseError, ConflictError } from '$lib/server/errors';
 import { z } from 'zod'; // Import Zod
 import { practicePlanSchema } from '$lib/validation/practicePlanSchema'; // Import the Zod schema
+import { dev } from '$app/environment';
 
 /**
  * Service for managing practice plans
@@ -774,31 +775,48 @@ export class PracticePlanService extends BaseEntityService {
    * @throws {DatabaseError} On database error
    */
   async deletePracticePlan(id, userId) {
-    // Check delete permissions (uses canUserEdit logic, should ideally be canUserDelete if different)
-    // This relies on canUserEdit throwing NotFoundError or ForbiddenError.
-    try {
-      // Check if user can edit first (base method throws if not found or forbidden)
-      await this.canUserEdit(id, userId);
-      
-      // Add specific check: Only the creator can delete (is_editable_by_others doesn't grant delete rights)
-      // Fetch only the creator column using base getById
-      const plan = await this.getById(id, [this.permissionConfig.userIdColumn], userId);
-      if (plan[this.permissionConfig.userIdColumn] !== userId) {
-        throw new ForbiddenError('Only the creator can delete this practice plan');
-      }
-    } catch (error) {
-      // Re-throw known errors from permission check/getById
-      if (error instanceof NotFoundError || error instanceof ForbiddenError) {
-        throw error;
-      }
-      // Wrap other errors as DatabaseError
-      console.error(`Error checking delete permission for plan ${id}:`, error);
-      throw new DatabaseError('Failed to check delete permission', error);
+    // Ensure user is authenticated for deletion, unless in dev mode where we might allow anonymous deletion for testing.
+    if (!userId && !dev) { // Modified to allow no userId in dev
+      throw new ForbiddenError('Authentication required to delete practice plans.');
     }
 
-    // Use transaction helper for the deletion
+    // Use transaction helper for the entire deletion process
     try {
       return await this.withTransaction(async (client) => {
+        // Fetch the plan's creator and visibility directly.
+        // This serves as an existence check and gets necessary data for permission validation.
+        const planDetailsQuery = `
+          SELECT "${this.permissionConfig.userIdColumn}", "${this.permissionConfig.visibilityColumn}"
+          FROM ${this.tableName}
+          WHERE ${this.primaryKey} = $1
+        `;
+        const planDetailsResult = await client.query(planDetailsQuery, [id]);
+
+        if (planDetailsResult.rows.length === 0) {
+          throw new NotFoundError(`${this.tableName.slice(0, -1)} with ID ${id} not found.`);
+        }
+        const plan = planDetailsResult.rows[0];
+
+        // Explicitly check if the current user is the creator.
+        // is_editable_by_others does not grant delete permission.
+        // Bypass this check in development mode.
+        if (!dev) { // Check if NOT in dev mode for the following conditions
+          if (!userId) { // If not in dev, userId is strictly required
+             throw new ForbiddenError('Authentication required to delete this practice plan.');
+          }
+          if (plan[this.permissionConfig.userIdColumn] !== userId) {
+            throw new ForbiddenError('Only the creator can delete this practice plan.');
+          }
+        } else {
+          // In dev mode, log if bypassing creator check (optional)
+          if (userId && plan[this.permissionConfig.userIdColumn] !== userId) {
+            console.log(`[DEV MODE] Bypassing creator check for deleting plan ${id}. User ${userId} is not creator ${plan[this.permissionConfig.userIdColumn]}.`);
+          } else if (!userId && plan[this.permissionConfig.userIdColumn] !== null) {
+            console.log(`[DEV MODE] Bypassing creator check for deleting plan ${id}. No user, plan created by ${plan[this.permissionConfig.userIdColumn]}.`);
+          }
+        }
+
+        // If all checks pass, proceed with deletion
         // Delete related records first (important for foreign key constraints)
         await client.query(
           'DELETE FROM practice_plan_drills WHERE practice_plan_id = $1',
@@ -810,14 +828,14 @@ export class PracticePlanService extends BaseEntityService {
           [id]
         );
 
-        // Finally delete the practice plan using the base method
-        // Pass client to base delete
+        // Finally delete the practice plan using the base method, passing the client
+        // The base delete method will also throw NotFoundError if the plan somehow disappeared.
         await this.delete(id, client);
 
         // No return value needed, implicit resolution indicates success
       });
     } catch (error) {
-      // Re-throw known errors (like NotFoundError from super.delete if plan disappeared mid-transaction)
+      // Re-throw known errors (NotFoundError, ForbiddenError from checks or base delete)
       if (error instanceof NotFoundError || error instanceof ForbiddenError) {
         throw error;
       }

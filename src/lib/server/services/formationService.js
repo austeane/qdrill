@@ -132,11 +132,37 @@ export class FormationService extends BaseEntityService {
 	 * @returns {Object} - Normalized data
 	 */
 	normalizeFormationData(data) {
-		// Base service handles ID, array fields, and timestamps generally.
-		// Keep this method for potential future formation-specific normalization.
-		// For now, just return the data as is, assuming upstream handles basics.
-		// const normalizedData = super.normalizeArrayFields(data, ['tags', 'diagrams']); // Example if we needed explicit normalization
-		return data;
+		if (!data || typeof data !== 'object') {
+			return data;
+		}
+
+		const normalized = { ...data };
+
+		// Remove id if it is null or undefined so that callers don't accidentally overwrite.
+		if (normalized.id === null || normalized.id === undefined) {
+			delete normalized.id;
+		}
+
+		// Ensure diagrams is always an array (of objects or strings)
+		if (normalized.diagrams === null || normalized.diagrams === undefined) {
+			normalized.diagrams = [];
+		} else if (!Array.isArray(normalized.diagrams)) {
+			normalized.diagrams = [normalized.diagrams];
+		}
+
+		// Ensure tags is always an array of strings
+		if (normalized.tags === null || normalized.tags === undefined) {
+			normalized.tags = [];
+		} else if (typeof normalized.tags === 'string') {
+			normalized.tags = [normalized.tags];
+		} else if (!Array.isArray(normalized.tags)) {
+			normalized.tags = [normalized.tags];
+		}
+
+		// Ensure all tags are strings
+		normalized.tags = normalized.tags.map(tag => String(tag));
+
+		return normalized;
 	}
 
 	/**

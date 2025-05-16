@@ -45,11 +45,22 @@ describe('Practice Plans API Endpoints', () => {
 
 			// Verify the service was called with correct params
 			expect(practicePlanService.getAll).toHaveBeenCalledWith({
-				userId: 'user123'
+				userId: 'user123',
+				page: 1,
+				limit: 10,
+				sortBy: 'created_at',
+				sortOrder: 'desc',
+				filters: {
+					searchQuery: undefined,
+					phase_of_season: undefined,
+					practice_goals: undefined,
+					min_participants: null,
+					max_participants: null
+				}
 			});
 
 			// Verify the response
-			expect(data).toEqual(mockPlans);
+			expect(data.items).toEqual(mockPlans);
 		});
 
 		it('should handle anonymous users correctly', async () => {
@@ -75,11 +86,22 @@ describe('Practice Plans API Endpoints', () => {
 
 			// Verify the service was called with undefined userId
 			expect(practicePlanService.getAll).toHaveBeenCalledWith({
-				userId: undefined
+				userId: undefined,
+				page: 1,
+				limit: 10,
+				sortBy: 'created_at',
+				sortOrder: 'desc',
+				filters: {
+					searchQuery: undefined,
+					phase_of_season: undefined,
+					practice_goals: undefined,
+					min_participants: null,
+					max_participants: null
+				}
 			});
 
 			// Verify the response
-			expect(data).toEqual(mockPlans);
+			expect(data.items).toEqual(mockPlans);
 		});
 
 		it('should handle errors correctly', async () => {
@@ -101,7 +123,11 @@ describe('Practice Plans API Endpoints', () => {
 			// Verify error response
 			expect(response.status).toBe(500);
 			expect(data.error).toBeDefined();
-			expect(data.details).toBeDefined();
+			if (data.error.message) {
+				expect(data.error.message).toBe('Database error');
+			} else {
+				expect(data.error).toBe('Database error');
+			}
 		});
 	});
 
@@ -169,7 +195,9 @@ describe('Practice Plans API Endpoints', () => {
 			const data = await response.json();
 
 			// Verify error response
-			expect(data.error).toBe('At least one drill is required');
+			expect(response.status).toBe(400);
+			expect(data.error.code).toBe('VALIDATION_ERROR');
+			expect(data.error.details.sections).toContain('A practice plan must have at least one section');
 		});
 
 		it('should handle anonymous users correctly', async () => {

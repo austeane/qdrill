@@ -534,6 +534,7 @@ export class BaseEntityService {
 					`${this.tableName.slice(0, -1)} with ID ${id} not found for deletion`
 				);
 			}
+			return true; // Explicitly return true on success
 		} catch (error) {
 			// Re-throw known errors
 			if (error instanceof NotFoundError || error instanceof InternalServerError) {

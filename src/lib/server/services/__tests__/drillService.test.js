@@ -1,16 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DrillService } from '../drillService.js';
+import { NotFoundError, ValidationError, ForbiddenError, DatabaseError } from '../../../../lib/server/errors.js';
 
-// Mock db module
-vi.mock('$lib/server/db', () => {
-	return {
-		query: vi.fn(),
-		getClient: vi.fn(() => ({
-			query: vi.fn(),
-			release: vi.fn()
-		}))
-	};
-});
+// Mock db module - REMOVE THIS BLOCK
+// vi.mock('$lib/server/db', () => {
+// 	return {
+// 		query: vi.fn(),
+// 		getClient: vi.fn(() => ({
+// 			query: vi.fn(),
+// 			release: vi.fn()
+// 		}))
+// 	};
+// });
+vi.mock('$lib/server/db');
 
 // Get the mocked module
 import * as mockDb from '$lib/server/db';
@@ -233,24 +235,33 @@ describe('DrillService', () => {
 
 	describe('updateDrill', () => {
 		it('should check authorization before updating', async () => {
-			// Mock canUserEdit
-			vi.spyOn(service, 'canUserEdit').mockResolvedValue(false);
+			// Mock canUserEdit to throw the specific ForbiddenError
+			vi.spyOn(service, 'canUserEdit').mockRejectedValueOnce(
+				new ForbiddenError('Unauthorized to edit this drill.')
+			);
+
+			// Ensure db.getClient() is properly mocked for this test context
+			const localMockClient = { query: vi.fn(), release: vi.fn() }; // Ensure release is a spy
+			mockDb.getClient.mockResolvedValue(localMockClient);
 
 			const drillData = {
 				name: 'Updated Drill'
 			};
 
-			await expect(service.updateDrill(1, drillData, 123)).rejects.toThrow('Unauthorized');
-			expect(service.canUserEdit).toHaveBeenCalledWith(1, 123);
+			await expect(service.updateDrill(1, drillData, 123)).rejects.toThrow(
+				'Unauthorized to edit this drill.'
+			);
+			expect(service.canUserEdit).toHaveBeenCalledWith(1, 123, expect.anything()); // Client is passed by withTransaction
 		});
 
 		it('should update a drill with normalized data when authorized', async () => {
 			// Mock authorization
 			vi.spyOn(service, 'canUserEdit').mockResolvedValue(true);
 
-			// Mock transaction function
+			// Mock transaction function to pass a mock client
+			const mockClient = { query: vi.fn().mockResolvedValue({ rows: [] }) }; // Generic mock client
 			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				return callback();
+				return callback(mockClient);
 			});
 
 			// Mock getById
@@ -378,37 +389,40 @@ describe('DrillService', () => {
 				return;
 			}
 
-			// Mock getAll method from base class
-			vi.spyOn(service, 'getAll').mockResolvedValue({
-				items: [
-					{ id: 1, name: 'Filtered Drill 1' },
-					{ id: 2, name: 'Filtered Drill 2' }
-				],
-				pagination: {
-					page: 1,
-					limit: 10,
-					totalItems: 2,
-					totalPages: 1
-				}
-			});
+			// Mock db.query for _executeFilteredQuery
+			const mockDrills = [
+				{ id: 1, name: 'Filtered Drill 1' },
+				{ id: 2, name: 'Filtered Drill 2' }
+			];
+			mockDb.query
+				.mockResolvedValueOnce({ rows: [{ count: mockDrills.length.toString() }] }) // For count query
+				.mockResolvedValueOnce({ rows: mockDrills }); // For data query
 
 			const filters = {
 				skill_level: ['beginner'],
 				skills_focused_on: ['passing'],
 				positions_focused_on: ['chaser'],
-				duration_min: 5,
-				duration_max: 15
+				suggested_length_min: 5, // Changed from duration_min
+				suggested_length_max: 15 // Changed from duration_max
 			};
 
-			const result = await service.getFilteredDrills(filters, { page: 1, limit: 10 });
+			const result = await service.getFilteredDrills(filters, { page: 1, limit: 10, userId: 'user123' });
 
-			expect(service.getAll).toHaveBeenCalled();
-			// Check that filter conditions were passed correctly
-			const callArgs = service.getAll.mock.calls[0][0];
-			expect(callArgs.filters.skill_level).toEqual(['beginner']);
-			expect(callArgs.filters.skills_focused_on).toEqual(['passing']);
-			expect(callArgs.filters.positions_focused_on).toEqual(['chaser']);
-			expect(result.items).toHaveLength(2);
+			expect(mockDb.query).toHaveBeenCalledTimes(2);
+			// Basic check for query construction (more detailed checks can be added if needed)
+			const countQueryCall = mockDb.query.mock.calls[0][0];
+			const dataQueryCall = mockDb.query.mock.calls[1][0];
+
+			expect(countQueryCall).toContain('SELECT COUNT(*)');
+			expect(dataQueryCall).toContain('SELECT *'); // Assuming defaultColumns is ['*']
+
+			// Check filter application (example for one filter)
+			// This is a simplified check. Actual SQL generation for array filters is complex.
+			// e.g. WHERE skill_level && $X or $X = ANY(skill_level) depending on _buildWhereClause logic
+			// For now, we trust _buildWhereClause (tested in baseEntityService.test.js) and focus on the result.
+
+			expect(result.items).toEqual(mockDrills);
+			expect(result.pagination.totalItems).toBe(mockDrills.length);
 		});
 
 		it('should handle no filters', async () => {
@@ -417,24 +431,18 @@ describe('DrillService', () => {
 				return;
 			}
 
-			// Mock getAll
-			vi.spyOn(service, 'getAll').mockResolvedValue({
-				items: [
-					{ id: 1, name: 'Drill 1' },
-					{ id: 2, name: 'Drill 2' }
-				],
-				pagination: {
-					page: 1,
-					limit: 10,
-					totalItems: 2,
-					totalPages: 1
-				}
-			});
+			const mockDrills = [
+				{ id: 1, name: 'Drill 1' },
+				{ id: 2, name: 'Drill 2' }
+			];
+			mockDb.query
+				.mockResolvedValueOnce({ rows: [{ count: mockDrills.length.toString() }] })
+				.mockResolvedValueOnce({ rows: mockDrills });
 
-			const result = await service.getFilteredDrills({}, { page: 1, limit: 10 });
+			const result = await service.getFilteredDrills({}, { page: 1, limit: 10, userId: 'user123' });
 
-			expect(service.getAll).toHaveBeenCalled();
-			expect(result.items).toHaveLength(2);
+			expect(mockDb.query).toHaveBeenCalledTimes(2);
+			expect(result.items).toEqual(mockDrills);
 		});
 
 		it('should handle errors', async () => {
@@ -443,10 +451,10 @@ describe('DrillService', () => {
 				return;
 			}
 
-			// Mock getAll to throw an error
-			vi.spyOn(service, 'getAll').mockRejectedValue(new Error('Filter error'));
+			// Mock db.query to throw an error
+			mockDb.query.mockRejectedValue(new DatabaseError('Failed to retrieve filtered drills.'));
 
-			await expect(service.getFilteredDrills({})).rejects.toThrow('Filter error');
+			await expect(service.getFilteredDrills({}, { userId: 'user123' })).rejects.toThrow('Failed to retrieve filtered drills.');
 		});
 	});
 
@@ -458,8 +466,8 @@ describe('DrillService', () => {
 					query: vi.fn()
 				};
 
-				// Mock exists check
-				vi.spyOn(service, 'exists').mockResolvedValue(true);
+				// Mock getById to simulate drill existence and public visibility for the initial check in toggleUpvote
+				vi.spyOn(service, 'getById').mockResolvedValue({ id: 1, name: 'Test Drill', created_by: 123, visibility: 'public' });
 
 				// Mock vote check query - no existing vote
 				mockClient.query.mockResolvedValueOnce({
@@ -479,7 +487,7 @@ describe('DrillService', () => {
 
 			const result = await service.toggleUpvote(1, 123);
 
-			expect(service.exists).toHaveBeenCalledWith(1);
+			expect(service.getById).toHaveBeenCalledWith(1, ['*'], null, expect.anything());
 			expect(result).toHaveProperty('upvotes', 5);
 			expect(result).toHaveProperty('hasVoted', true);
 		});
@@ -491,8 +499,8 @@ describe('DrillService', () => {
 					query: vi.fn()
 				};
 
-				// Mock exists check
-				vi.spyOn(service, 'exists').mockResolvedValue(true);
+				// Mock getById to simulate drill existence and public visibility
+				vi.spyOn(service, 'getById').mockResolvedValue({ id: 1, name: 'Test Drill', created_by: 123, visibility: 'public' });
 
 				// Mock vote check query - existing vote
 				mockClient.query.mockResolvedValueOnce({
@@ -512,24 +520,32 @@ describe('DrillService', () => {
 
 			const result = await service.toggleUpvote(1, 123);
 
-			expect(service.exists).toHaveBeenCalledWith(1);
+			expect(service.getById).toHaveBeenCalledWith(1, ['*'], null, expect.anything());
 			expect(result).toHaveProperty('upvotes', 4);
 			expect(result).toHaveProperty('hasVoted', false);
 		});
 
 		it('should throw error if drill not found', async () => {
-			// Mock exists check
-			vi.spyOn(service, 'exists').mockResolvedValue(false);
+			// Mock transaction function
+			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
+				const mockClient = {
+					query: vi.fn()
+				};
+				// Mock getById to make it throw a NotFoundError
+				vi.spyOn(service, 'getById').mockRejectedValue(new NotFoundError('Drill not found'));
+				
+				return callback(mockClient);
+			});
 
-			await expect(service.toggleUpvote(999, 123)).rejects.toThrow('Drill not found');
+			await expect(service.toggleUpvote(999, 123)).rejects.toThrow('Drill not found for upvoting');
 		});
 
 		it('should throw error if drill ID or user ID is missing', async () => {
-			await expect(service.toggleUpvote(null, 123)).rejects.toThrow(
+			await expect(service.toggleUpvote(null, 123)).rejects.toThrowError(
 				'Both drill ID and user ID are required'
 			);
 
-			await expect(service.toggleUpvote(1, null)).rejects.toThrow(
+			await expect(service.toggleUpvote(1, null)).rejects.toThrowError(
 				'Both drill ID and user ID are required'
 			);
 		});

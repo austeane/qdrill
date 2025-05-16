@@ -451,137 +451,72 @@ export class DrillService extends BaseEntityService {
 	 * @returns {Promise<Object>} - Object containing `items` array and `pagination` info
 	 */
 	async getFilteredDrills(filters = {}, options = {}) {
+		// Destructure known filters and searchQuery from the incoming filters object.
+		// The rest of the filters will be treated as baseFilters.
 		const {
-			skill_level,
-			complexity,
-			skills_focused_on,
-			positions_focused_on,
-			drill_type,
+			skill_level, // array
+			complexity, // string
+			skills_focused_on, // array
+			positions_focused_on, // array
+			drill_type, // array
 			number_of_people_min,
 			number_of_people_max,
 			suggested_length_min,
 			suggested_length_max,
-			hasVideo,
-			hasDiagrams,
-			hasImages,
-			searchQuery
+			hasVideo, // boolean
+			hasDiagrams, // boolean
+			hasImages, // boolean
+			searchQuery, // string
+			...baseFilters // Collects any other filters passed
 		} = filters;
-		const {
-			sortBy = 'date_created',
-			sortOrder = 'desc',
-			page = 1,
-			limit = 10,
-			columns = ['*'],
-			userId = null // Extract userId for permission check
-		} = options;
 
-		// --- Map application-level filters to BaseEntityService filter format ---
-		const baseFilters = {};
-		const customConditions = []; // Store custom SQL conditions here
+		const customConditions = [];
 
-		// Array filters -> use __any (array overlap '&&')
-		if (skill_level?.length) baseFilters['skill_level__any'] = skill_level;
-		if (skills_focused_on?.length) baseFilters['skills_focused_on__any'] = skills_focused_on;
-		if (positions_focused_on?.length)
-			baseFilters['positions_focused_on__any'] = positions_focused_on;
-		if (drill_type?.length) baseFilters['drill_type__any'] = drill_type;
-
-		// Simple equality
-		if (complexity) {
-			baseFilters['complexity'] = complexity; // Uses 'exact'/'eq' by default
-		}
-
-		// Range filters
-		if (number_of_people_min !== undefined) {
-			// Ensure correct comparison: min people on drill <= filter's max
-			baseFilters['number_of_people_min__lte'] = number_of_people_max;
-		}
-		if (number_of_people_max !== undefined) {
-			// Ensure correct comparison: max people on drill >= filter's min
-			baseFilters['number_of_people_max__gte'] = number_of_people_min;
-		}
-
-		// Update suggested length filters to use the correct columns and logic
-		if (suggested_length_min !== undefined) {
-			// Find drills where *their* max length is >= the filter's min length
-			baseFilters['suggested_length_max__gte'] = suggested_length_min;
-		}
-		if (suggested_length_max !== undefined) {
-			// Find drills where *their* min length is <= the filter's max length
-			baseFilters['suggested_length_min__lte'] = suggested_length_max;
-		}
-
-		// Boolean filters based on index conditions from performance.md
-		if (hasVideo === true) {
-			// Check for non-null and non-empty string
-			customConditions.push("video_link IS NOT NULL AND video_link != ''");
-		} else if (hasVideo === false) {
-			// Check for null or empty string
-			customConditions.push("(video_link IS NULL OR video_link = '')");
-		}
-
-		// Handle hasDiagrams/hasImages filters separately
-		if (hasDiagrams === true) {
-			// Check for non-null, non-empty JSON array
-			customConditions.push('diagrams IS NOT NULL AND jsonb_array_length(diagrams) > 0');
-		} else if (hasDiagrams === false) {
-			// Check for null or empty JSON array
-			customConditions.push('(diagrams IS NULL OR jsonb_array_length(diagrams) = 0)');
-		}
-
-		if (hasImages === true) {
-			// Check for non-null, non-empty text array
-			customConditions.push('images IS NOT NULL AND array_length(images, 1) > 0');
-		} else if (hasImages === false) {
-			// Check for null or empty array
-			customConditions.push('(images IS NULL OR array_length(images, 1) = 0)');
-		}
-
-		// --- Call BaseEntityService.getAll or BaseEntityService.search ---
-		let resultsPromise;
-		const baseOptions = { page, limit, sortBy, sortOrder, columns, userId, filters: baseFilters };
-
-		// If custom conditions exist, or searchQuery, or specific boolean filters, use _executeFilteredQuery
-		if (
-			customConditions.length > 0 ||
-			searchQuery ||
-			hasVideo !== undefined ||
-			hasDiagrams !== undefined ||
-			hasImages !== undefined
-		) {
-			resultsPromise = this._executeFilteredQuery(
-				searchQuery,
-				baseFilters,
-				customConditions,
-				baseOptions
+		// Build custom SQL conditions for boolean flags like hasVideo, hasDiagrams, hasImages.
+		if (hasVideo !== undefined) {
+			customConditions.push(
+				hasVideo ? "video_link IS NOT NULL AND video_link != ''" : "(video_link IS NULL OR video_link = '')"
 			);
-		} else {
-			// Use the enhanced getAll method if no search or custom filters
-			resultsPromise = this.getAll(baseOptions);
+		}
+		if (hasDiagrams !== undefined) {
+			// Assumes diagrams are stored as a JSONB array.
+			// Checks if the diagrams array is not null and not empty.
+			customConditions.push(
+				hasDiagrams
+					? "diagrams IS NOT NULL AND jsonb_typeof(diagrams) = 'array' AND jsonb_array_length(diagrams) > 0"
+					: "(diagrams IS NULL OR jsonb_typeof(diagrams) != 'array' OR jsonb_array_length(diagrams) = 0)"
+			);
+		}
+		if (hasImages !== undefined) {
+			// Assumes images are stored as a text array.
+			// Checks if the images array is not null and not empty.
+			customConditions.push(
+				hasImages
+					? "images IS NOT NULL AND array_length(images, 1) > 0"
+					: "(images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0)"
+			);
 		}
 
-		try {
-			const results = await resultsPromise;
+		// Populate baseFilters with the specific filters if they are provided.
+		// These will be processed by _buildWhereClause.
+		if (skill_level !== undefined) baseFilters.skill_level = skill_level; // _buildWhereClause handles array with 'any'
+		if (complexity !== undefined) baseFilters.complexity = complexity;
+		if (skills_focused_on !== undefined) baseFilters.skills_focused_on = skills_focused_on; // _buildWhereClause handles array with 'any'
+		if (positions_focused_on !== undefined) baseFilters.positions_focused_on = positions_focused_on; // _buildWhereClause handles array with 'any'
+		if (drill_type !== undefined) baseFilters.drill_type = drill_type; // _buildWhereClause handles array with 'any'
 
-			// Add variation counts (this logic remains drill-specific)
-			if (results && results.items && results.items.length > 0) {
-				await this._addVariationCounts(results.items);
-			}
+		if (number_of_people_min !== undefined)
+			baseFilters.number_of_people_min__gte = number_of_people_min;
+		if (number_of_people_max !== undefined)
+			baseFilters.number_of_people_max__lte = number_of_people_max;
+		if (suggested_length_min !== undefined)
+			baseFilters.suggested_length_min__gte = suggested_length_min;
+		if (suggested_length_max !== undefined)
+			baseFilters.suggested_length_max__lte = suggested_length_max;
 
-			return {
-				items: results.items,
-				pagination: {
-					page: parseInt(page),
-					limit: parseInt(limit),
-					totalItems: results.pagination.totalItems,
-					totalPages: results.pagination.totalPages
-				}
-			};
-		} catch (error) {
-			console.error(`Error in DrillService.getFilteredDrills:`, error);
-			// Consider re-throwing or returning a specific error structure
-			throw new DatabaseError('Failed to retrieve filtered drills.', error);
-		}
+		// Call _executeFilteredQuery with the separated searchQuery, constructed baseFilters,
+		// customConditions, and other options (like pagination, sorting).
+		return await this._executeFilteredQuery(searchQuery || null, baseFilters, customConditions, options);
 	}
 
 	/**
@@ -927,7 +862,8 @@ export class DrillService extends BaseEntityService {
 		return this.withTransaction(async (client) => {
 			// First verify the drill exists using the base method (which might throw NotFoundError itself)
 			try {
-				await this.getById(drillId, client); // Use getById which handles not found
+				// Pass undefined for columns to use default, null for userId, then the client
+				await this.getById(drillId, undefined, null, client);
 			} catch (err) {
 				if (err instanceof NotFoundError) {
 					throw new NotFoundError('Drill not found for upvoting');
@@ -1079,13 +1015,12 @@ export class DrillService extends BaseEntityService {
 			normalizedData.diagrams = [];
 		}
 
-		// For enum-like array fields, ensure items are trimmed. Lowercasing is removed.
-		// Zod validation should handle correctness of enum values (including case).
+		// For enum-like array fields, ensure items are trimmed. Lowercasing is re-added.
 		['skill_level', 'skills_focused_on', 'positions_focused_on', 'drill_type'].forEach((field) => {
 			if (normalizedData[field] && Array.isArray(normalizedData[field])) {
 				normalizedData[field] = normalizedData[field]
 					.map(
-						(item) => (typeof item === 'string' ? item.trim() : item) // REMOVED .toLowerCase()
+						(item) => (typeof item === 'string' ? item.trim().toLowerCase() : item) // RE-ADDED .toLowerCase()
 					)
 					.filter(Boolean); // Remove empty strings after trimming
 			} else if (normalizedData[field] === null || normalizedData[field] === undefined) {

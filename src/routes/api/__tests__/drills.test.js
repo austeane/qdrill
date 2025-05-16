@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GET, POST, PUT, DELETE } from '../drills/+server.js';
+import { NotFoundError, ForbiddenError, ValidationError } from '$lib/server/errors.js';
 
 // Mock the dependencies
 vi.mock('$lib/server/services/drillService', () => {
@@ -43,7 +44,8 @@ describe('Drills API Endpoints', () => {
 
 			// Create mock request event
 			const event = {
-				url: new URL('http://localhost/api/drills?page=1&limit=10')
+				url: new URL('http://localhost/api/drills?page=1&limit=10'),
+				locals: { session: { user: { id: 'user123' } } }
 			};
 
 			// Call the GET endpoint
@@ -73,7 +75,8 @@ describe('Drills API Endpoints', () => {
 
 			// Create mock request event
 			const event = {
-				url: new URL('http://localhost/api/drills')
+				url: new URL('http://localhost/api/drills'),
+				locals: { session: { user: { id: 'user123' } } }
 			};
 
 			// Call the GET endpoint
@@ -83,7 +86,8 @@ describe('Drills API Endpoints', () => {
 			// Verify error response
 			expect(response.status).toBe(500);
 			expect(data.error).toBeDefined();
-			expect(data.details).toBeDefined();
+			expect(data.error.code).toBe('INTERNAL_SERVER_ERROR');
+			expect(data.error.message).toBe('Database error');
 		});
 	});
 
@@ -101,7 +105,7 @@ describe('Drills API Endpoints', () => {
 					json: vi.fn().mockResolvedValue(mockDrillData)
 				},
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -129,7 +133,7 @@ describe('Drills API Endpoints', () => {
 					json: vi.fn().mockResolvedValue(mockDrillData)
 				},
 				locals: {
-					getSession: vi.fn().mockResolvedValue(null)
+					session: null
 				}
 			};
 
@@ -146,7 +150,7 @@ describe('Drills API Endpoints', () => {
 
 		it('should handle errors', async () => {
 			// Mock service to throw error
-			drillService.createDrill.mockRejectedValue(new Error('Validation error'));
+			drillService.createDrill.mockRejectedValue(new ValidationError('Validation error'));
 
 			// Create mock request event
 			const event = {
@@ -154,7 +158,7 @@ describe('Drills API Endpoints', () => {
 					json: vi.fn().mockResolvedValue({ name: 'Invalid Drill' })
 				},
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -163,9 +167,9 @@ describe('Drills API Endpoints', () => {
 			const data = await response.json();
 
 			// Verify error response
-			expect(response.status).toBe(500);
-			expect(data.error).toBeDefined();
-			expect(data.details).toBeDefined();
+			expect(response.status).toBe(400);
+			expect(data.error.code).toBe('VALIDATION_ERROR');
+			expect(data.error.message).toBe('Validation error');
 		});
 	});
 
@@ -183,7 +187,7 @@ describe('Drills API Endpoints', () => {
 					json: vi.fn().mockResolvedValue(mockDrillData)
 				},
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -204,7 +208,7 @@ describe('Drills API Endpoints', () => {
 
 		it('should handle unauthorized errors', async () => {
 			// Mock service to throw unauthorized error
-			drillService.updateDrill.mockRejectedValue(new Error('Unauthorized to edit this drill'));
+			drillService.updateDrill.mockRejectedValue(new ForbiddenError('Unauthorized to edit this drill'));
 
 			// Create mock request event
 			const event = {
@@ -212,7 +216,7 @@ describe('Drills API Endpoints', () => {
 					json: vi.fn().mockResolvedValue({ id: 1, name: 'Updated Drill' })
 				},
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -222,12 +226,13 @@ describe('Drills API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(403);
-			expect(data.error).toBe('Unauthorized');
+			expect(data.error.code).toBe('FORBIDDEN');
+			expect(data.error.message).toBe('Unauthorized to edit this drill');
 		});
 
 		it('should handle not found errors', async () => {
 			// Mock service to throw not found error
-			drillService.updateDrill.mockRejectedValue(new Error('Drill not found'));
+			drillService.updateDrill.mockRejectedValue(new NotFoundError('Drill not found'));
 
 			// Create mock request event
 			const event = {
@@ -235,7 +240,7 @@ describe('Drills API Endpoints', () => {
 					json: vi.fn().mockResolvedValue({ id: 999, name: 'Updated Drill' })
 				},
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -245,7 +250,8 @@ describe('Drills API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(404);
-			expect(data.error).toBe('Drill not found');
+			expect(data.error.code).toBe('NOT_FOUND');
+			expect(data.error.message).toBe('Drill not found');
 		});
 	});
 
@@ -258,30 +264,29 @@ describe('Drills API Endpoints', () => {
 			const event = {
 				params: { id: '1' },
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
 			// Call the DELETE endpoint
 			const response = await DELETE(event);
-			const data = await response.json();
 
 			// Verify the service was called correctly
-			expect(drillService.deleteDrill).toHaveBeenCalledWith('1', 'user123');
+			expect(drillService.deleteDrill).toHaveBeenCalledWith(parseInt('1'), 'user123', { deleteRelated: false });
 
 			// Verify the response
-			expect(data).toEqual({ message: 'Drill deleted successfully' });
+			expect(response.status).toBe(204);
 		});
 
 		it('should handle not found case', async () => {
 			// Mock service response for non-existent drill
-			drillService.deleteDrill.mockResolvedValue(false);
+			drillService.deleteDrill.mockRejectedValue(new NotFoundError('Drill not found'));
 
 			// Create mock request event
 			const event = {
 				params: { id: '999' },
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -291,18 +296,19 @@ describe('Drills API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(404);
-			expect(data.error).toBe('Drill not found');
+			expect(data.error.code).toBe('NOT_FOUND');
+			expect(data.error.message).toBe('Drill not found');
 		});
 
 		it('should handle unauthorized errors', async () => {
 			// Mock service to throw unauthorized error
-			drillService.deleteDrill.mockRejectedValue(new Error('Unauthorized to delete this drill'));
+			drillService.deleteDrill.mockRejectedValue(new ForbiddenError('Unauthorized to delete this drill'));
 
 			// Create mock request event
 			const event = {
 				params: { id: '1' },
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -312,7 +318,8 @@ describe('Drills API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(403);
-			expect(data.error).toBe('Unauthorized');
+			expect(data.error.code).toBe('FORBIDDEN');
+			expect(data.error.message).toBe('Unauthorized to delete this drill');
 		});
 	});
 });

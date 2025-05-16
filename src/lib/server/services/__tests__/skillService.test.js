@@ -1,21 +1,32 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SkillService } from '../skillService';
-import * as db from '$lib/server/db';
+import { SkillService } from '../skillService.js';
+import { NotFoundError, DatabaseError } from '../../../../lib/server/errors.js';
 
-// Mock the db module
-vi.mock('$lib/server/db', () => ({
-	query: vi.fn(),
-	getClient: vi.fn()
-}));
+// Mock db module
+// vi.mock('$lib/server/db', () => ({
+//  query: vi.fn(),
+//  getClient: vi.fn(() => ({
+//   query: vi.fn(),
+//   release: vi.fn()
+//  }))
+// }));
+vi.mock('$lib/server/db');
+
+import * as db from '$lib/server/db'; // Changed to import * as db
 
 describe('SkillService', () => {
 	let skillService;
 
-	// Setup before each test
 	beforeEach(() => {
-		vi.clearAllMocks();
+		vi.resetAllMocks();
 		skillService = new SkillService();
 	});
+
+	// afterEach is not strictly necessary with vi.resetAllMocks() in beforeEach
+	// but can be kept if specific restore logic is needed later.
+	// afterEach(() => {
+	// 	vi.restoreAllMocks();
+	// });
 
 	describe('constructor', () => {
 		it('should initialize with the correct table name and columns', () => {
@@ -138,11 +149,9 @@ describe('SkillService', () => {
 		it('should add new skills and remove old ones', async () => {
 			// Mock client for transaction
 			const mockClient = {
-				query: vi.fn(),
+				query: vi.fn().mockResolvedValue({ rows: [] }), // Give client its own query mock
 				release: vi.fn()
 			};
-
-			// Mock transaction functions
 			db.getClient.mockResolvedValueOnce(mockClient);
 
 			// Mock addSkillsToDatabase
@@ -175,10 +184,9 @@ describe('SkillService', () => {
 
 		it('should handle empty arrays gracefully', async () => {
 			const mockClient = {
-				query: vi.fn(),
+				query: vi.fn().mockResolvedValue({ rows: [] }), // Give client its own query mock
 				release: vi.fn()
 			};
-
 			db.getClient.mockResolvedValueOnce(mockClient);
 
 			await skillService.updateSkillCounts([], [], 1);

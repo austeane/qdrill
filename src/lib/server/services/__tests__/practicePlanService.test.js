@@ -1,19 +1,93 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PracticePlanService } from '../practicePlanService.js';
+import { AppError, NotFoundError, ForbiddenError, ValidationError, DatabaseError } from '../../../../lib/server/errors.js';
 
-// Mock db module
+// Explicitly mock the db module RIGHT AT THE TOP
 vi.mock('$lib/server/db', () => {
+	// Define mockKyselyInterface INSIDE the factory function
+	const mockKyselyInterface = {
+		selectFrom: vi.fn().mockReturnThis(),
+		selectAll: vi.fn().mockReturnThis(),
+		select: vi.fn().mockReturnThis(),
+		distinctOn: vi.fn().mockReturnThis(),
+		leftJoin: vi.fn().mockReturnThis(),
+		innerJoin: vi.fn().mockReturnThis(),
+		rightJoin: vi.fn().mockReturnThis(),
+		fullJoin: vi.fn().mockReturnThis(),
+		where: vi.fn().mockReturnThis(),
+		whereRef: vi.fn().mockReturnThis(),
+		orWhere: vi.fn().mockReturnThis(),
+		andWhere: vi.fn().mockReturnThis(),
+		orderBy: vi.fn().mockReturnThis(),
+		groupBy: vi.fn().mockReturnThis(),
+		limit: vi.fn().mockReturnThis(),
+		offset: vi.fn().mockReturnThis(),
+		insertInto: vi.fn().mockReturnThis(),
+		values: vi.fn().mockReturnThis(),
+		updateTable: vi.fn().mockReturnThis(),
+		set: vi.fn().mockReturnThis(),
+		deleteFrom: vi.fn().mockReturnThis(),
+		returning: vi.fn().mockReturnThis(),
+		execute: vi.fn().mockResolvedValue({ rows: [] }),
+		executeTakeFirst: vi.fn().mockResolvedValue(undefined),
+		stream: vi.fn().mockResolvedValue([]),
+		fn: {
+			count: vi.fn().mockReturnThis(),
+			distinct: vi.fn().mockReturnThis()
+		}
+	};
+
 	return {
-		query: vi.fn(),
+		__esModule: true, // ES Module compliance
+		default: {
+			query: vi.fn().mockResolvedValue({ rows: [] }),
+			getClient: vi.fn(() => ({
+				query: vi.fn().mockResolvedValue({ rows: [] }),
+				release: vi.fn(),
+			})),
+			transaction: vi.fn(async (callback) => {
+				const mockClient = {
+					query: vi.fn().mockResolvedValue({ rows: [] }),
+					release: vi.fn()
+				};
+				await mockClient.query('BEGIN');
+				try {
+					const result = await callback(mockClient);
+					await mockClient.query('COMMIT');
+					return result;
+				} catch (error) {
+					await mockClient.query('ROLLBACK');
+					throw error;
+				}
+			}),
+			kyselyDb: mockKyselyInterface,
+		},
+		query: vi.fn().mockResolvedValue({ rows: [] }),
 		getClient: vi.fn(() => ({
-			query: vi.fn(),
-			release: vi.fn()
-		}))
+			query: vi.fn().mockResolvedValue({ rows: [] }),
+			release: vi.fn(),
+		})),
+		transaction: vi.fn(async (callback) => {
+			const mockClient = {
+				query: vi.fn().mockResolvedValue({ rows: [] }),
+				release: vi.fn()
+			};
+			await mockClient.query('BEGIN');
+			try {
+				const result = await callback(mockClient);
+				await mockClient.query('COMMIT');
+				return result;
+			} catch (error) {
+				await mockClient.query('ROLLBACK');
+				throw error;
+			}
+		}),
+		kyselyDb: mockKyselyInterface,
 	};
 });
 
-// Get the mocked module
-import * as mockDb from '$lib/server/db';
+// Get the mocked db instance AFTER the mock is defined.
+import db, { kyselyDb as namedKyselyDbMock } from '$lib/server/db'; // Import named export for checking
 
 // Create a mock transaction client for testing
 const mockClient = {

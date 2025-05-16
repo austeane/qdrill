@@ -391,7 +391,7 @@
 
 	<!-- Submit button -->
 	<div class="flex justify-end mt-8">
-		<Button type="submit" class="min-w-[120px]" disabled={submitting}>
+		<Button type="submit" variant="default" class="min-w-[120px]" disabled={submitting}>
 			{#if submitting}
 				<Spinner class="inline-block w-4 h-4 mr-2" />
 			{/if}

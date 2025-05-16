@@ -1,6 +1,5 @@
 import { BaseEntityService } from './baseEntityService.js';
-import * as db from '$lib/server/db';
-import { kyselyDb } from '$lib/server/db.js'; // Import Kysely instance
+import { kyselyDb } from '$lib/server/db'; // Import Kysely instance
 import { jsonObjectFrom } from 'kysely/helpers/postgres';
 import { sql } from 'kysely'; // Import sql tag
 import {
@@ -753,7 +752,7 @@ export class PracticePlanService extends BaseEntityService {
 							);
 						}
 						// Call resequence after inserting all items for this section
-						await this.#resequenceItems(section.id, client);
+						await this._resequenceItems(section.id, client);
 					}
 				}
 			}
@@ -766,12 +765,13 @@ export class PracticePlanService extends BaseEntityService {
 	/**
 	 * Resequence the order_in_plan for items within a specific section.
 	 * Ensures the order is sequential (0, 1, 2...) based on the current order.
+	 * This is a protected method, intended for internal use or subclass overrides, and for testing purposes.
 	 * @param {string|number} sectionId - The ID of the section to resequence.
 	 * @param {object} client - The database transaction client.
 	 * @returns {Promise<void>}
-	 * @private
+	 * @private // This @private is now more of a convention, as it's _resequenceItems
 	 */
-	async #resequenceItems(sectionId, client) {
+	async _resequenceItems(sectionId, client) {
 		try {
 			// Get item IDs in their current order within the section
 			const itemsResult = await client.query(

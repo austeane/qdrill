@@ -11,15 +11,14 @@ export class SkillService extends BaseEntityService {
 	 * Creates a new SkillService
 	 */
 	constructor() {
-		// Table name is 'skills', primary key is 'skill' (assuming skill name is unique)
-		// Selectable columns: skill, usage_count, drills_used_in
-		// Writable columns: skill (only on create)
+		// Table name is 'skills', use an 'id' primary key for consistency with other tables.
+		// The unique skill name is stored in the `skill` column.
 		super(
 			'skills',
 			'skill',
 			['skill', 'usage_count', 'drills_used_in'],
 			['skill', 'usage_count', 'drills_used_in']
-		); // Added usage_count and drills_used_in
+		);
 	}
 
 	/**
@@ -28,36 +27,12 @@ export class SkillService extends BaseEntityService {
 	 * @returns {Promise<Object>} - Result object containing skills list and pagination info
 	 */
 	async getAllSkills(options = {}) {
-		// Default sort order specific to this method
 		const defaultOptions = {
-			all: true, // Fetch all skills by default for this method
 			sortBy: 'usage_count',
-			sortOrder: 'desc',
-			columns: ['skill', 'usage_count', 'drills_used_in']
+			sortOrder: 'desc'
 		};
-		// Merge provided options with defaults
 		const effectiveOptions = { ...defaultOptions, ...options };
-
-		// Use the base service's getAll method
-		// Base service automatically adds primary key (skill) ASC as secondary sort if sortBy matches
-		// Note: If sortBy is usage_count, secondary sort will be skill DESC. If primary ASC needed, modify base or keep custom query.
-		// Since the original query used skill ASC, let's check if base service provides this secondary sort.
-		// Base sorts by `primaryKey DESC` or `primaryKey ASC` depending on sortOrder. Here it will be `skill DESC`.
-		// To match the original `skill ASC`, we might need to stick with the custom query or adjust base.
-		// Let's stick with the custom query for now to ensure exact behavior match.
-		try {
-			const query = `
-        SELECT skill, usage_count, drills_used_in 
-        FROM skills 
-        ORDER BY usage_count DESC, skill ASC
-      `;
-			const result = await db.query(query);
-			// Return in a format consistent with base getAll if possible (though options are different)
-			return { items: result.rows, pagination: null }; // Mimic { items: [], pagination: null } for `all: true`
-		} catch (error) {
-			console.error('Error fetching all skills:', error);
-			throw new DatabaseError('Failed to fetch skills', error);
-		}
+		return await this.getAll(effectiveOptions);
 	}
 
 	/**

@@ -2,15 +2,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FormationService } from '../formationService.js';
 
 // Mock db module
-vi.mock('$lib/server/db', () => {
-	return {
-		query: vi.fn(),
-		getClient: vi.fn(() => ({
-			query: vi.fn(),
-			release: vi.fn()
-		}))
-	};
-});
+// vi.mock('$lib/server/db', () => ({
+//  query: vi.fn(),
+//  getClient: vi.fn(() => ({
+//   query: vi.fn(),
+//   release: vi.fn()
+//  }))
+// }));
+vi.mock('$lib/server/db');
+
+// Get the mocked module
+// import * as mockDb from '$lib/server/db'; // Removed unused import
 
 describe('FormationService', () => {
 	let service;

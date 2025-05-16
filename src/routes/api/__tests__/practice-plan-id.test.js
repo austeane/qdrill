@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GET, PUT, DELETE } from '../practice-plans/[id]/+server.js';
+import { NotFoundError, ForbiddenError } from '$lib/server/errors.js';
 
 // Mock the dependencies
 vi.mock('$lib/server/services/practicePlanService.js', () => {
@@ -52,7 +53,7 @@ describe('Practice Plan ID API Endpoints', () => {
 			const event = {
 				params: { id: '1' },
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -70,14 +71,14 @@ describe('Practice Plan ID API Endpoints', () => {
 		it('should handle practice plan not found', async () => {
 			// Mock service to throw not found error
 			practicePlanService.getPracticePlanById.mockRejectedValue(
-				new Error('Practice plan not found')
+				new NotFoundError('Practice plan not found')
 			);
 
 			// Create mock request event
 			const event = {
 				params: { id: '999' },
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -87,18 +88,21 @@ describe('Practice Plan ID API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(404);
-			expect(data.error).toBe('Practice plan not found');
+			expect(data.error.code).toBe('NOT_FOUND');
+			expect(data.error.message).toBe('Practice plan not found');
 		});
 
 		it('should handle unauthorized access', async () => {
 			// Mock service to throw unauthorized error
-			practicePlanService.getPracticePlanById.mockRejectedValue(new Error('Unauthorized'));
+			practicePlanService.getPracticePlanById.mockRejectedValue(
+				new ForbiddenError('Unauthorized')
+			);
 
 			// Create mock request event
 			const event = {
 				params: { id: '1' },
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -108,7 +112,8 @@ describe('Practice Plan ID API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(403);
-			expect(data.error).toBe('Unauthorized');
+			expect(data.error.code).toBe('FORBIDDEN');
+			expect(data.error.message).toBe('Unauthorized');
 		});
 	});
 
@@ -141,7 +146,7 @@ describe('Practice Plan ID API Endpoints', () => {
 					json: vi.fn().mockResolvedValue(mockPlanData)
 				},
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -163,7 +168,7 @@ describe('Practice Plan ID API Endpoints', () => {
 		it('should handle unauthorized edit', async () => {
 			// Mock service to throw unauthorized error
 			practicePlanService.updatePracticePlan.mockRejectedValue(
-				new Error('Unauthorized to edit this practice plan')
+				new ForbiddenError('Unauthorized to edit this practice plan')
 			);
 
 			// Create mock request event
@@ -173,7 +178,7 @@ describe('Practice Plan ID API Endpoints', () => {
 					json: vi.fn().mockResolvedValue({ name: 'Unauthorized Edit' })
 				},
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user456' } })
+					session: { user: { id: 'user456' } }
 				}
 			};
 
@@ -183,13 +188,14 @@ describe('Practice Plan ID API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(403);
-			expect(data.error).toBe('Unauthorized to edit this practice plan');
+			expect(data.error.code).toBe('FORBIDDEN');
+			expect(data.error.message).toBe('Unauthorized to edit this practice plan');
 		});
 
 		it('should handle practice plan not found for update', async () => {
 			// Mock service to throw not found error
 			practicePlanService.updatePracticePlan.mockRejectedValue(
-				new Error('Practice plan not found')
+				new NotFoundError('Practice plan not found')
 			);
 
 			// Create mock request event
@@ -199,7 +205,7 @@ describe('Practice Plan ID API Endpoints', () => {
 					json: vi.fn().mockResolvedValue({ name: 'Not Found Plan' })
 				},
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -209,7 +215,8 @@ describe('Practice Plan ID API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(404);
-			expect(data.error).toBe('Practice plan not found');
+			expect(data.error.code).toBe('NOT_FOUND');
+			expect(data.error.message).toBe('Practice plan not found');
 		});
 	});
 
@@ -222,35 +229,31 @@ describe('Practice Plan ID API Endpoints', () => {
 			const event = {
 				params: { id: '1' },
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
 			// Call the DELETE endpoint
 			const response = await DELETE(event);
-			const data = await response.json();
 
 			// Verify the service was called correctly
-			expect(practicePlanService.deletePracticePlan).toHaveBeenCalledWith('1', 'user123');
+			expect(practicePlanService.deletePracticePlan).toHaveBeenCalledWith(parseInt('1'), 'user123');
 
 			// Verify the response
-			expect(data).toEqual({
-				success: true,
-				message: 'Practice plan deleted successfully'
-			});
+			expect(response.status).toBe(204);
 		});
 
 		it('should handle unauthorized deletion', async () => {
 			// Mock service to throw unauthorized error
 			practicePlanService.deletePracticePlan.mockRejectedValue(
-				new Error('Unauthorized to delete this practice plan')
+				new ForbiddenError('Unauthorized to delete this practice plan')
 			);
 
 			// Create mock request event
 			const event = {
 				params: { id: '1' },
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user456' } })
+					session: { user: { id: 'user456' } }
 				}
 			};
 
@@ -260,20 +263,21 @@ describe('Practice Plan ID API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(403);
-			expect(data.error).toBe('Unauthorized to delete this practice plan');
+			expect(data.error.code).toBe('FORBIDDEN');
+			expect(data.error.message).toBe('Unauthorized to delete this practice plan');
 		});
 
 		it('should handle practice plan not found for deletion', async () => {
 			// Mock service to throw not found error
 			practicePlanService.deletePracticePlan.mockRejectedValue(
-				new Error('Practice plan not found')
+				new NotFoundError('Practice plan not found')
 			);
 
 			// Create mock request event
 			const event = {
 				params: { id: '999' },
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -283,7 +287,8 @@ describe('Practice Plan ID API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(404);
-			expect(data.error).toBe('Practice plan not found');
+			expect(data.error.code).toBe('NOT_FOUND');
+			expect(data.error.message).toBe('Practice plan not found');
 		});
 	});
 });

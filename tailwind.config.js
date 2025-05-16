@@ -6,6 +6,8 @@ export default {
 			colors: {
 				'theme-1': '#ff3e00',
 				'theme-2': '#4075a6',
+				primary: '#4075a6',
+				'primary-foreground': '#ffffff',
 				'bg-0': 'rgb(202, 216, 228)',
 				'bg-1': 'hsl(209, 36%, 86%)',
 				'bg-2': 'hsl(224, 44%, 95%)',

@@ -9,7 +9,7 @@ export async function load({ url }) {
 		const practicePlanId = url.searchParams.get('practice_plan_id');
 		const practicePlanItemId = url.searchParams.get('practice_plan_item_id');
 
-		const skillsResult = await skillService.getAllSkills(); // Fetch all skills
+		const skillsResult = await skillService.getAllSkills({ all: true }); // Fetch all skills
 		const namesResult = await drillService.getAllDrillNames(); // Fetch all drill names
 
 		// Extract items if the service returns the { items: [...] } structure,

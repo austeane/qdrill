@@ -14,14 +14,14 @@
 // ***********************************************************
 
 // Import commands.js using ES2015 syntax:
-import './commands'
+import './commands';
 
 // Import global styles
 // import '../../src/routes/styles.css' // Temporarily commented out for debugging
 
-import { mount } from 'cypress/svelte'
+import { mount } from 'cypress/svelte';
 
-Cypress.Commands.add('mount', mount)
+Cypress.Commands.add('mount', mount);
 
 // Example use:
 // cy.mount(MyComponent)

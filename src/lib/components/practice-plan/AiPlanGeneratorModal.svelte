@@ -24,7 +24,10 @@
 		const generatedPlanFromAI = event.detail; // This should now be in the correct format
 		try {
 			// No transformation needed if AI prompt and schema are aligned with backend
-			console.log('Sending AI-generated plan (expected to match backend schema):', JSON.stringify(generatedPlanFromAI, null, 2));
+			console.log(
+				'Sending AI-generated plan (expected to match backend schema):',
+				JSON.stringify(generatedPlanFromAI, null, 2)
+			);
 
 			const res = await fetch('/api/practice-plans', {
 				method: 'POST',
@@ -36,9 +39,13 @@
 				let errorMessage = 'Failed to save plan.';
 				if (body?.error) {
 					errorMessage = body.error;
-				} else if (body?.errors) { // Handle Zod-like error structures
+				} else if (body?.errors) {
+					// Handle Zod-like error structures
 					errorMessage = Object.entries(body.errors)
-						.map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+						.map(
+							([field, messages]) =>
+								`${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`
+						)
 						.join('; ');
 				}
 				throw new Error(errorMessage);
@@ -60,8 +67,8 @@
 			<button
 				class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl leading-none"
 				on:click={close}
-				aria-label="Close"
-			>&times;</button>
+				aria-label="Close">&times;</button
+			>
 
 			<!-- Re-use existing generator -->
 			<AiPlanGenerator
@@ -72,4 +79,4 @@
 			/>
 		</div>
 	</div>
-{/if} 
+{/if}

@@ -2,7 +2,7 @@
 
 This document tracks a code review focused on identifying areas for improvement in Svelte/SvelteKit practices, component structure, state management, API design, and overall code quality to align with professional development standards. The goal is to pinpoint patterns or practices that might distinguish the codebase from that of a seasoned Svelte developer. Files are marked with ✅ as they are reviewed, with notes summarizing findings and potential issues put into their own notes files, which are created and grouped as needed, and noted at the bottom of this file.
 
-If they have ✅*, they have been marked as not worth reviewing
+If they have ✅\*, they have been marked as not worth reviewing
 
 When reviewing, first create a new notes file, add your reviews there, then update the main doc here to mark what you reviewed.
 
@@ -10,7 +10,7 @@ When reviewing, first create a new notes file, add your reviews there, then upda
 
 ```
 .
-├── README.md 
+├── README.md
 ├── code-review/
 │   ├── code-review.md
 │   ├── config-app-notes.md
@@ -44,15 +44,15 @@ When reviewing, first create a new notes file, add your reviews there, then upda
 │       ├── component.js ✅*
 │       └── e2e.js ✅*
 ├── cypress.config.js ✅*
-├── docs/ 
-│   ├── architecture/ 
-│   │   └── index.md 
-│   ├── implementation/ 
-│   │   ├── drag-and-drop.md 
-│   │   ├── index.md 
-│   │   ├── service-layer.md 
-│   │   └── timeline-management.md 
-│   └── index.md 
+├── docs/
+│   ├── architecture/
+│   │   └── index.md
+│   ├── implementation/
+│   │   ├── drag-and-drop.md
+│   │   ├── index.md
+│   │   ├── service-layer.md
+│   │   └── timeline-management.md
+│   └── index.md
 ├── drill-banks/ ✅*
 │   └── canada3.csv ✅*
 ├── jsconfig.json ✅*
@@ -229,12 +229,12 @@ When reviewing, first create a new notes file, add your reviews there, then upda
 │   │   │   │           └── +server.js ✅
 │   │   │   ├── formations/ ✅
 │   │   │   │   ├── +server.js ✅
-│   │   │   │   ├── [id]/ 
+│   │   │   │   ├── [id]/
 │   │   │   │   │   ├── +server.js ✅
-│   │   │   │   │   └── edit/ 
+│   │   │   │   │   └── edit/
 │   │   │   │   │       ├── +page.server.js ✅
 │   │   │   │   │       └── +page.svelte ✅
-│   │   │   │   └── search/ 
+│   │   │   │   └── search/
 │   │   │   │       └── +server.js ✅
 │   │   │   ├── poll/ ✅
 │   │   │   │   ├── +server.js ✅
@@ -284,12 +284,12 @@ When reviewing, first create a new notes file, add your reviews there, then upda
 │   │   │   ├── +page.server.js ✅
 │   │   │   ├── +page.svelte ✅
 │   │   │   ├── FormationForm.svelte ✅
-│   │   │   ├── [id]/ 
+│   │   │   ├── [id]/
 │   │   │   │   ├── +page.server.js ✅
-│   │   │   │   └── edit/ 
+│   │   │   │   └── edit/
 │   │   │   │       ├── +page.server.js ✅
 │   │   │   │       └── +page.svelte ✅
-│   │   │   └── create/ 
+│   │   │   └── create/
 │   │   │       └── +page.svelte ✅
 │   │   ├── poll/ ✅
 │   │   │   ├── +page.server.js ✅
@@ -454,4 +454,3 @@ The code review process is complete.
 - **Tickets Created:** 33
 
 The findings and recommendations have been documented in individual ticket files located in the `tickets/` directory, summarized in `holistic-summary.md`, and linked from `tickets/index.md`.
-

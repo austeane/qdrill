@@ -15,8 +15,9 @@ This document summarizes key learnings and best practices encountered while writ
 ## 2. Target the Element with the Event Handler
 
 - **Problem:** Sometimes, clicking a parent element or label (e.g., `<label data-testid="my-checkbox">...`) might not reliably trigger an `on:click` handler attached to a nested element (e.g., an inner `<div>`) in the automated Cypress context, even if it works manually.
-- **Solution:** Ensure your `cy.click()` command targets the *specific* element that has the event listener attached. You might need to add a `data-testid` to this inner element.
+- **Solution:** Ensure your `cy.click()` command targets the _specific_ element that has the event listener attached. You might need to add a `data-testid` to this inner element.
 - **Example:**
+
   ```javascript
   // Instead of clicking the label:
   // cy.get('[data-testid="filter-skill-level-beginner"]').click(); // Might fail
@@ -28,7 +29,7 @@ This document summarizes key learnings and best practices encountered while writ
 
 ## 3. Handle Asynchronous Updates and Debouncing
 
-- **Problem:** Actions (like clicks) might trigger state changes that lead to asynchronous operations (e.g., API calls, debounced navigation updates via `goto`). Cypress might try to assert the result (e.g., check `cy.url()`) *before* the asynchronous operation has finished.
+- **Problem:** Actions (like clicks) might trigger state changes that lead to asynchronous operations (e.g., API calls, debounced navigation updates via `goto`). Cypress might try to assert the result (e.g., check `cy.url()`) _before_ the asynchronous operation has finished.
 - **Solution:** Use `cy.wait(duration)` after the action to pause the test and allow time for the asynchronous update to complete. The duration should typically be slightly longer than expected delays (e.g., longer than debounce timers).
 - **Example:**
   ```javascript
@@ -45,8 +46,8 @@ This document summarizes key learnings and best practices encountered while writ
 - **Example:**
   ```javascript
   beforeEach(() => {
-    cy.visit('/drills');
-    cy.wait(300); // Allow page to settle before tests run
+  	cy.visit('/drills');
+  	cy.wait(300); // Allow page to settle before tests run
   });
   ```
 
@@ -55,4 +56,4 @@ This document summarizes key learnings and best practices encountered while writ
 - **Console Logs:** Add `console.log` statements in your Svelte component logic (e.g., event handlers, state update functions) to track execution flow. Use `cy.on('window:console', ...)` in your test to pipe these logs to the Cypress Command Log for visibility.
 - **`.should('exist')` vs `.should('be.visible')`:** If an element isn't found, first check if it `.should('exist')` in the DOM. If it exists but isn't visible, it points to CSS issues (`display: none`, `visibility: hidden`, zero size, opacity) or timing issues with transitions/animations.
 - **`{ force: true }`:** If `.click()` fails despite the element appearing ready, `cy.click({ force: true })` can bypass Cypress's actionability checks. Use this cautiously as it might hide underlying issues, but it can overcome subtle state problems or overlays.
-- **Isolate:** Simplify the test case or temporarily comment out parts of the component/related code (like global style imports) to narrow down the source of an error. 
+- **Isolate:** Simplify the test case or temporarily comment out parts of the component/related code (like global style imports) to narrow down the source of an error.

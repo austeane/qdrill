@@ -11,30 +11,30 @@ export const selectedEditability = writable(false); // Default if applicable
 
 // Helper function to create a handler that updates filter state (required/excluded/neutral)
 export function updateFilterState(store) {
-    return (value, newState) => {
-        store.update(current => {
-            const updated = { ...current };
-            if (newState === FILTER_STATES.NEUTRAL) {
-                delete updated[value];
-            } else {
-                updated[value] = newState;
-            }
-            return updated;
-        });
-        // Optionally dispatch an event if needed globally, though FilterPanel already does locally
-        // dispatch('filterChange'); 
-    };
+	return (value, newState) => {
+		store.update((current) => {
+			const updated = { ...current };
+			if (newState === FILTER_STATES.NEUTRAL) {
+				delete updated[value];
+			} else {
+				updated[value] = newState;
+			}
+			return updated;
+		});
+		// Optionally dispatch an event if needed globally, though FilterPanel already does locally
+		// dispatch('filterChange');
+	};
 }
 
 // Function to reset all practice plan filters
 export function resetPracticePlanFilters() {
-    selectedPhaseOfSeason.set({});
-    selectedPracticeGoals.set({});
-    // Reset range filters - get defaults from where they are defined (e.g., component or constants)
-    // Assuming default range 1-100 for participants for now
-    selectedEstimatedParticipantsMin.set(1);
-    selectedEstimatedParticipantsMax.set(100);
-    // Reset other filters as needed
-    selectedVisibility.set('public');
-    selectedEditability.set(false);
-} 
+	selectedPhaseOfSeason.set({});
+	selectedPracticeGoals.set({});
+	// Reset range filters - get defaults from where they are defined (e.g., component or constants)
+	// Assuming default range 1-100 for participants for now
+	selectedEstimatedParticipantsMin.set(1);
+	selectedEstimatedParticipantsMax.set(100);
+	// Reset other filters as needed
+	selectedVisibility.set('public');
+	selectedEditability.set(false);
+}

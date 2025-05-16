@@ -11,6 +11,7 @@ A comprehensive code review was recently conducted to assess the codebase and id
 ## Documentation Structure
 
 - **[Architecture](./architecture/)**: System design, patterns, and architectural decisions
+
   - Component relationships
   - Data flow
   - State management

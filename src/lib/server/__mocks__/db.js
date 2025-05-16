@@ -1,15 +1,16 @@
+/* global vi */
 // Mock for database operations
 const mockQuery = vi.fn();
 const mockTransaction = vi.fn();
 const mockClient = {
-  query: mockQuery,
-  release: vi.fn()
+	query: mockQuery,
+	release: vi.fn()
 };
 
 const db = {
-  query: mockQuery,
-  getClient: vi.fn().mockResolvedValue(mockClient),
-  transaction: mockTransaction
+	query: mockQuery,
+	getClient: vi.fn().mockResolvedValue(mockClient),
+	transaction: mockTransaction
 };
 
 export default db;

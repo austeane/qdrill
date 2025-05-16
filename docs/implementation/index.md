@@ -19,7 +19,7 @@ This section provides technical details and implementation specifics for the QDr
 - [Drag and Drop System](./drag-and-drop.md)
 - [Timeline Management](./timeline-management.md)
 
-*(Note: A recent [code review](../code-review/holistic-summary.md) assessed the overall implementation. Key findings related to implementation include state management complexity, API scalability/authorization issues, and opportunities for component refactoring. Refer to the code review notes for detailed recommendations.)*
+_(Note: A recent [code review](../code-review/holistic-summary.md) assessed the overall implementation. Key findings related to implementation include state management complexity, API scalability/authorization issues, and opportunities for component refactoring. Refer to the code review notes for detailed recommendations.)_
 
 ## Frontend Implementation
 
@@ -51,12 +51,12 @@ A sophisticated custom implementation providing intuitive reordering for practic
 
 #### Key Features
 
-- **Multi-level Drag Support**: 
+- **Multi-level Drag Support**:
   - Drills within sections
   - Drills between parallel timelines
   - Entire sections within the practice plan
   - Same-timeline reordering with position detection
-- **Visual Feedback**: 
+- **Visual Feedback**:
   - Hover states for drop zones
   - Indicator lines for drop positions (before/after/inside)
   - Disabled states for invalid drop targets
@@ -71,22 +71,22 @@ A sophisticated custom implementation providing intuitive reordering for practic
 ```javascript
 // Example from dragManager.js
 export function startItemDrag(event, sectionIndex, itemIndex, item, itemId) {
-  // Set initial drag state
-  dragState.set({
-    isDragging: true,
-    dragType: "item",
-    sourceSection: sectionIndex,
-    sourceIndex: itemIndex,
-    itemId: itemId,
-    itemName: item.name,
-    sourceGroupId: item.parallel_group_id,
-    sourceTimeline: item.parallel_timeline,
-    draggedElementId: `item-${sectionIndex}-${itemIndex}`
-  });
-  
-  // Configure dataTransfer
-  event.dataTransfer.effectAllowed = 'move';
-  // Additional setup...
+	// Set initial drag state
+	dragState.set({
+		isDragging: true,
+		dragType: 'item',
+		sourceSection: sectionIndex,
+		sourceIndex: itemIndex,
+		itemId: itemId,
+		itemName: item.name,
+		sourceGroupId: item.parallel_group_id,
+		sourceTimeline: item.parallel_timeline,
+		draggedElementId: `item-${sectionIndex}-${itemIndex}`
+	});
+
+	// Configure dataTransfer
+	event.dataTransfer.effectAllowed = 'move';
+	// Additional setup...
 }
 ```
 
@@ -94,7 +94,7 @@ export function startItemDrag(event, sectionIndex, itemIndex, item, itemId) {
 
 The application uses Svelte's store pattern extensively.
 
-*(Note: Refer to the [State Management section in Architecture](./../architecture/index.md#state-management) for discussion on store complexity, coupling, and duplication issues identified during the code review.)*
+_(Note: Refer to the [State Management section in Architecture](./../architecture/index.md#state-management) for discussion on store complexity, coupling, and duplication issues identified during the code review.)_
 
 #### Store Implementation
 
@@ -113,35 +113,32 @@ The application uses Svelte's store pattern extensively.
 
 SvelteKit's endpoint handlers provide RESTful API functionality.
 
-*(Note: Refer to the [API Design section in Architecture](./../architecture/index.md#api-design) for discussion on scalability, error handling, and authorization issues identified during the code review.)*
+_(Note: Refer to the [API Design section in Architecture](./../architecture/index.md#api-design) for discussion on scalability, error handling, and authorization issues identified during the code review.)_
 
 #### Implementation Pattern
 
 ```javascript
 // Example API endpoint pattern
 export async function GET({ url, locals }) {
-  try {
-    // Authentication check
-    if (!locals.user) {
-      return json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    // Request processing
-    const queryParams = url.searchParams;
-    const results = await db.query(
-      'SELECT * FROM items WHERE user_id = $1',
-      [locals.user.id]
-    );
-    
-    // Response formatting
-    return json({ 
-      items: results.rows,
-      total: results.rowCount
-    });
-  } catch (error) {
-    console.error('API error:', error);
-    return json({ error: 'Internal server error' }, { status: 500 });
-  }
+	try {
+		// Authentication check
+		if (!locals.user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
+		// Request processing
+		const queryParams = url.searchParams;
+		const results = await db.query('SELECT * FROM items WHERE user_id = $1', [locals.user.id]);
+
+		// Response formatting
+		return json({
+			items: results.rows,
+			total: results.rowCount
+		});
+	} catch (error) {
+		console.error('API error:', error);
+		return json({ error: 'Internal server error' }, { status: 500 });
+	}
 }
 ```
 
@@ -183,17 +180,17 @@ QDrill implements end-to-end testing with Cypress and Playwright:
 ```javascript
 // Example Cypress test
 describe('Drill Creation', () => {
-  beforeEach(() => {
-    cy.visit('/drills/create');
-  });
-  
-  it('should create a new drill with valid inputs', () => {
-    cy.get('[data-cy=drill-name]').type('Test Drill');
-    cy.get('[data-cy=drill-description]').type('Test Description');
-    // Additional form interactions
-    cy.get('[data-cy=submit-button]').click();
-    cy.url().should('include', '/drills/');
-  });
+	beforeEach(() => {
+		cy.visit('/drills/create');
+	});
+
+	it('should create a new drill with valid inputs', () => {
+		cy.get('[data-cy=drill-name]').type('Test Drill');
+		cy.get('[data-cy=drill-description]').type('Test Description');
+		// Additional form interactions
+		cy.get('[data-cy=submit-button]').click();
+		cy.url().should('include', '/drills/');
+	});
 });
 ```
 
@@ -227,19 +224,19 @@ The application is deployed on Vercel with automatic deployment from GitHub:
 
 ```javascript
 try {
-  // Operation that might fail
-  const result = await riskyOperation();
-  return result;
+	// Operation that might fail
+	const result = await riskyOperation();
+	return result;
 } catch (error) {
-  // Specific error types
-  if (error instanceof ValidationError) {
-    console.error('Validation failed:', error.message);
-    return { error: 'Invalid input data', details: error.details };
-  }
-  
-  // Generic error fallback
-  console.error('Operation failed:', error);
-  return { error: 'An unexpected error occurred' };
+	// Specific error types
+	if (error instanceof ValidationError) {
+		console.error('Validation failed:', error.message);
+		return { error: 'Invalid input data', details: error.details };
+	}
+
+	// Generic error fallback
+	console.error('Operation failed:', error);
+	return { error: 'An unexpected error occurred' };
 }
 ```
 
@@ -254,7 +251,7 @@ export let showDetails = true;
 
 // Validation
 $: if (!item || !item.id) {
-  console.error('DrillItem requires a valid item prop');
+	console.error('DrillItem requires a valid item prop');
 }
 ```
 
@@ -262,14 +259,14 @@ $: if (!item || !item.id) {
 
 ```javascript
 function handleAction(event) {
-  // Prevent default browser behavior
-  event.preventDefault();
-  
-  // Dispatch custom event
-  dispatch('action', {
-    id: item.id,
-    value: event.target.value
-  });
+	// Prevent default browser behavior
+	event.preventDefault();
+
+	// Dispatch custom event
+	dispatch('action', {
+		id: item.id,
+		value: event.target.value
+	});
 }
 ```
 

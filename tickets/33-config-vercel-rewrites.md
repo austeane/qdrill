@@ -6,15 +6,15 @@
 
 **Affected Files:**
 
-*   [`vercel.json`](vercel.json)
+- [`vercel.json`](vercel.json)
 
 **Related Notes:**
 
-*   [`code-review/config-app-notes.md`](code-review/config-app-notes.md)
-*   [`code-review/holistic-summary.md`](code-review/holistic-summary.md)
+- [`code-review/config-app-notes.md`](code-review/config-app-notes.md)
+- [`code-review/holistic-summary.md`](code-review/holistic-summary.md)
 
 **Action Required:**
 
 1.  **Investigate:** Determine if these rewrites serve any current purpose. Test API routes like `/api/drills/some-id` with the rewrites temporarily removed in a development or preview environment.
 2.  **Verify SvelteKit Routing:** Confirm that SvelteKit's filesystem routing (`[id]/+server.js`) correctly handles requests to parameterized API endpoints without the rewrites.
-3.  **Remove if Redundant:** If the rewrites are confirmed to be unnecessary, remove them from [`vercel.json`](vercel.json) to simplify the configuration and rely solely on SvelteKit's routing. 
+3.  **Remove if Redundant:** If the rewrites are confirmed to be unnecessary, remove them from [`vercel.json`](vercel.json) to simplify the configuration and rely solely on SvelteKit's routing.

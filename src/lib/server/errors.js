@@ -118,4 +118,4 @@ export class InternalServerError extends AppError {
 			this.cause = cause;
 		}
 	}
-} 
+}

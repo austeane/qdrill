@@ -12,45 +12,46 @@ import { handleApiError } from '../utils/handleApiError.js';
 // }
 
 export async function GET({ url }) {
-  try {
-    // Check for recommendation request
-    const recommendForParam = url.searchParams.get('recommendFor');
-    const limit = parseInt(url.searchParams.get('limit') || '5');
+	try {
+		// Check for recommendation request
+		const recommendForParam = url.searchParams.get('recommendFor');
+		const limit = parseInt(url.searchParams.get('limit') || '5');
 
-    if (recommendForParam) {
-      // Handle recommendation request
-      const currentSkills = recommendForParam.split(',').map(s => s.trim()).filter(s => s);
-      if (currentSkills.length === 0) {
-        // Return empty array if no skills provided for recommendation
-        return json([]);
-      }
-      const recommendations = await skillService.getSkillRecommendations(currentSkills, limit);
-      return json(recommendations);
-    } else {
-      // Default: Fetch all skills from the database via the service
-      const skills = await skillService.getAllSkills();
-      return json(skills);
-    }
-
-  } catch (err) {
-    // Use the centralized error handler for any errors from the service or parsing
-    return handleApiError(err);
-  }
+		if (recommendForParam) {
+			// Handle recommendation request
+			const currentSkills = recommendForParam
+				.split(',')
+				.map((s) => s.trim())
+				.filter((s) => s);
+			if (currentSkills.length === 0) {
+				// Return empty array if no skills provided for recommendation
+				return json([]);
+			}
+			const recommendations = await skillService.getSkillRecommendations(currentSkills, limit);
+			return json(recommendations);
+		} else {
+			// Default: Fetch all skills from the database via the service
+			const skills = await skillService.getAllSkills();
+			return json(skills);
+		}
+	} catch (err) {
+		// Use the centralized error handler for any errors from the service or parsing
+		return handleApiError(err);
+	}
 }
 
 export async function POST({ request }) {
-  try {
-    const body = await request.json();
-    const skillName = body?.skill; // Safely access skill property
+	try {
+		const body = await request.json();
+		const skillName = body?.skill; // Safely access skill property
 
-    // Service method handles validation (e.g., non-empty string) and DB errors
-    const result = await skillService.addOrIncrementSkill(skillName);
+		// Service method handles validation (e.g., non-empty string) and DB errors
+		const result = await skillService.addOrIncrementSkill(skillName);
 
-    // Return 200 OK with the resulting skill object (created or updated)
-    return json(result, { status: 200 });
-
-  } catch (err) {
-    // Handle known errors (like ValidationError from service) or unexpected errors
-    return handleApiError(err);
-  }
+		// Return 200 OK with the resulting skill object (created or updated)
+		return json(result, { status: 200 });
+	} catch (err) {
+		// Handle known errors (like ValidationError from service) or unexpected errors
+		return handleApiError(err);
+	}
 }

@@ -2,20 +2,20 @@
 
 - **Priority:** Medium
 - **Issue:** The initial review noted potential accessibility concerns in several areas, but a systematic review is needed.
-    - Modals (`DrillSearchModal`, `EmptyCartModal`, `TimelineSelectorModal`, `FeedbackModal`): Focus trapping, keyboard navigation, ARIA attributes (`aria-modal`, `role="dialog"`, labels).
-    - Custom Controls (`ThreeStateCheckbox`): Needs proper ARIA roles/states (`role="checkbox"`, `aria-checked`) and keyboard interaction.
-    - General: Semantic HTML usage, color contrast, keyboard navigation for interactive elements (like drag/drop handles, custom buttons/dropdowns).
+  - Modals (`DrillSearchModal`, `EmptyCartModal`, `TimelineSelectorModal`, `FeedbackModal`): Focus trapping, keyboard navigation, ARIA attributes (`aria-modal`, `role="dialog"`, labels).
+  - Custom Controls (`ThreeStateCheckbox`): Needs proper ARIA roles/states (`role="checkbox"`, `aria-checked`) and keyboard interaction.
+  - General: Semantic HTML usage, color contrast, keyboard navigation for interactive elements (like drag/drop handles, custom buttons/dropdowns).
 - **Affected Files:** Potentially many components, including:
-    - `src/components/practice-plan/modals/*.svelte`
-    - [`src/components/FeedbackModal.svelte`](src/components/FeedbackModal.svelte)
-    - [`src/components/ThreeStateCheckbox.svelte`](src/components/ThreeStateCheckbox.svelte)
-    - [`src/components/FilterPanel.svelte`](src/components/FilterPanel.svelte)
-    - Components involved in drag/drop ([`DrillItem.svelte`](src/components/DrillItem.svelte), etc.)
-    - [`src/components/Cart.svelte`](src/components/Cart.svelte)
+  - `src/components/practice-plan/modals/*.svelte`
+  - [`src/components/FeedbackModal.svelte`](src/components/FeedbackModal.svelte)
+  - [`src/components/ThreeStateCheckbox.svelte`](src/components/ThreeStateCheckbox.svelte)
+  - [`src/components/FilterPanel.svelte`](src/components/FilterPanel.svelte)
+  - Components involved in drag/drop ([`DrillItem.svelte`](src/components/DrillItem.svelte), etc.)
+  - [`src/components/Cart.svelte`](src/components/Cart.svelte)
 - **Recommendations:**
-    - Conduct a thorough accessibility audit using automated tools (e.g., Axe DevTools) and manual testing (keyboard navigation, screen reader checks).
-    - Ensure all interactive elements are keyboard accessible and have clear focus indicators.
-    - Use semantic HTML elements where appropriate.
-    - Add necessary ARIA attributes to custom components/widgets to convey their role, state, and properties to assistive technologies.
-    - Verify sufficient color contrast.
-    - Ensure focus is managed correctly within modals and dynamic UI sections. 
+  - Conduct a thorough accessibility audit using automated tools (e.g., Axe DevTools) and manual testing (keyboard navigation, screen reader checks).
+  - Ensure all interactive elements are keyboard accessible and have clear focus indicators.
+  - Use semantic HTML elements where appropriate.
+  - Add necessary ARIA attributes to custom components/widgets to convey their role, state, and properties to assistive technologies.
+  - Verify sufficient color contrast.
+  - Ensure focus is managed correctly within modals and dynamic UI sections.

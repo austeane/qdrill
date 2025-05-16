@@ -1,78 +1,81 @@
 import { BaseEntityService } from './baseEntityService.js';
 import * as db from '$lib/server/db';
-import { NotFoundError, DatabaseError, ForbiddenError, InternalServerError } from '$lib/server/errors';
+import {
+	NotFoundError,
+	DatabaseError,
+	ForbiddenError,
+	InternalServerError
+} from '$lib/server/errors';
 
 /**
  * Service for managing users
  * Extends the BaseEntityService with user-specific functionality
  */
 export class UserService extends BaseEntityService {
-  /**
-   * Creates a new UserService
-   */
-  constructor() {
-    super('users', 'id', ['*'], [
-      'id', 'name', 'email', 'image', 'email_verified'
-    ]);
-  }
+	/**
+	 * Creates a new UserService
+	 */
+	constructor() {
+		super('users', 'id', ['*'], ['id', 'name', 'email', 'image', 'email_verified']);
+	}
 
-  /**
-   * Get user by email address
-   * @param {string} email - User email
-   * @returns {Promise<Object>} - User object
-   * @throws {NotFoundError} If user not found
-   * @throws {DatabaseError} On database error
-   */
-  async getUserByEmail(email) {
-    try {
-      const query = `
+	/**
+	 * Get user by email address
+	 * @param {string} email - User email
+	 * @returns {Promise<Object>} - User object
+	 * @throws {NotFoundError} If user not found
+	 * @throws {DatabaseError} On database error
+	 */
+	async getUserByEmail(email) {
+		try {
+			const query = `
         SELECT * FROM users
         WHERE email = $1
       `;
-      
-      const result = await db.query(query, [email]);
-      // Throw NotFoundError if no user found
-      if (result.rows.length === 0) {
-        throw new NotFoundError(`User with email ${email} not found`);
-      }
-      return result.rows[0];
-    } catch (error) {
-      // Re-throw NotFoundError
-      if (error instanceof NotFoundError) {
-        throw error;
-      }
-      console.error('Error in getUserByEmail:', error);
-      // Wrap others as DatabaseError
-      throw new DatabaseError('Failed to retrieve user by email', error);
-    }
-  }
 
-  /**
-   * Get user's profile with related content
-   * @param {string} userId - User ID
-   * @returns {Promise<Object>} - User profile with drills, plans, votes, comments
-   * @throws {NotFoundError} If user not found
-   * @throws {DatabaseError} On database error
-   */
-  async getUserProfile(userId) {
-    try {
-      // Get user basic data using base method
-      // getById will throw NotFoundError if user doesn't exist.
-      const user = await this.getById(userId, ['id', 'name', 'email', 'image', 'email_verified']);
-      // Map email_verified to camelCase if needed, though getById might not return it in this format
-      // The direct query previously used aliasing: email_verified AS "emailVerified"
-      // Base getById doesn't handle aliasing, so we adjust the result or modify getById.
-      // Let's adjust here for now:
-      const profileUser = {
-        ...user,
-        emailVerified: user.email_verified // Manually map if necessary
-      };
-      delete profileUser.email_verified; // Remove snake_case version
+			const result = await db.query(query, [email]);
+			// Throw NotFoundError if no user found
+			if (result.rows.length === 0) {
+				throw new NotFoundError(`User with email ${email} not found`);
+			}
+			return result.rows[0];
+		} catch (error) {
+			// Re-throw NotFoundError
+			if (error instanceof NotFoundError) {
+				throw error;
+			}
+			console.error('Error in getUserByEmail:', error);
+			// Wrap others as DatabaseError
+			throw new DatabaseError('Failed to retrieve user by email', error);
+		}
+	}
 
-      // Now start transaction for related data
-      return this.withTransaction(async (client) => {
-        // Get drills created by user
-        const drillsQuery = `
+	/**
+	 * Get user's profile with related content
+	 * @param {string} userId - User ID
+	 * @returns {Promise<Object>} - User profile with drills, plans, votes, comments
+	 * @throws {NotFoundError} If user not found
+	 * @throws {DatabaseError} On database error
+	 */
+	async getUserProfile(userId) {
+		try {
+			// Get user basic data using base method
+			// getById will throw NotFoundError if user doesn't exist.
+			const user = await this.getById(userId, ['id', 'name', 'email', 'image', 'email_verified']);
+			// Map email_verified to camelCase if needed, though getById might not return it in this format
+			// The direct query previously used aliasing: email_verified AS "emailVerified"
+			// Base getById doesn't handle aliasing, so we adjust the result or modify getById.
+			// Let's adjust here for now:
+			const profileUser = {
+				...user,
+				emailVerified: user.email_verified // Manually map if necessary
+			};
+			delete profileUser.email_verified; // Remove snake_case version
+
+			// Now start transaction for related data
+			return this.withTransaction(async (client) => {
+				// Get drills created by user
+				const drillsQuery = `
           SELECT id, name, brief_description, date_created, 
                  visibility, is_editable_by_others,
                  (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
@@ -80,30 +83,30 @@ export class UserService extends BaseEntityService {
           WHERE created_by = $1
           ORDER BY date_created DESC
         `;
-        const drillsResult = await client.query(drillsQuery, [userId]);
-        
-        // Get practice plans created by user
-        const plansQuery = `
+				const drillsResult = await client.query(drillsQuery, [userId]);
+
+				// Get practice plans created by user
+				const plansQuery = `
           SELECT id, name, description, created_at, 
                  visibility, is_editable_by_others
           FROM practice_plans 
           WHERE created_by = $1
           ORDER BY created_at DESC
         `;
-        const plansResult = await client.query(plansQuery, [userId]);
-        
-        // Get formations created by user
-        const formationsQuery = `
+				const plansResult = await client.query(plansQuery, [userId]);
+
+				// Get formations created by user
+				const formationsQuery = `
           SELECT id, name, brief_description, created_at,
                  visibility, is_editable_by_others
           FROM formations
           WHERE created_by = $1
           ORDER BY created_at DESC
         `;
-        const formationsResult = await client.query(formationsQuery, [userId]);
-        
-        // Get votes by user
-        const votesQuery = `
+				const formationsResult = await client.query(formationsQuery, [userId]);
+
+				// Get votes by user
+				const votesQuery = `
           SELECT 
             v.id,
             v.drill_id,
@@ -121,10 +124,10 @@ export class UserService extends BaseEntityService {
           WHERE v.user_id = $1
           ORDER BY v.created_at DESC
         `;
-        const votesResult = await client.query(votesQuery, [userId]);
-        
-        // Get comments by user
-        const commentsQuery = `
+				const votesResult = await client.query(votesQuery, [userId]);
+
+				// Get comments by user
+				const commentsQuery = `
           SELECT c.*, 
             CASE 
               WHEN c.drill_id IS NOT NULL THEN 'drill' 
@@ -138,48 +141,48 @@ export class UserService extends BaseEntityService {
           WHERE c.user_id = $1
           ORDER BY c.created_at DESC
         `;
-        const commentsResult = await client.query(commentsQuery, [userId]);
-        
-        return {
-          user: profileUser, // Use the adjusted user object
-          drills: drillsResult.rows,
-          practicePlans: plansResult.rows,
-          formations: formationsResult.rows,
-          votes: votesResult.rows,
-          comments: commentsResult.rows
-        };
-      });
-    } catch (error) {
-       // Re-throw NotFoundError from getById
-      if (error instanceof NotFoundError) {
-        throw error;
-      }
-      console.error(`Error fetching user profile for ID ${userId}:`, error);
-      // Wrap other errors (DB errors during related data fetch) as DatabaseError
-      throw new DatabaseError('Failed to retrieve user profile', error);
-    }
-  }
+				const commentsResult = await client.query(commentsQuery, [userId]);
 
-  /**
-   * Check if user has admin role
-   * @param {string} userRole - User role from session (Currently NOT populated - see auth.js callbacks)
-   * @returns {Promise<boolean>} - True if user is admin
-   */
-  async isAdmin(userRole) {
-    // TODO: Implement proper Role-Based Access Control (RBAC)
-    // This requires:
-    // 1. Adding a 'role' column to the 'users' table.
-    // 2. Updating the session callback in 'src/lib/auth.js' to fetch and include the user's role.
-    // 3. Updating this function to check session.user.role === 'admin'.
-    // For now, disabling admin functionality by always returning false.
-    return false;
-    /*
+				return {
+					user: profileUser, // Use the adjusted user object
+					drills: drillsResult.rows,
+					practicePlans: plansResult.rows,
+					formations: formationsResult.rows,
+					votes: votesResult.rows,
+					comments: commentsResult.rows
+				};
+			});
+		} catch (error) {
+			// Re-throw NotFoundError from getById
+			if (error instanceof NotFoundError) {
+				throw error;
+			}
+			console.error(`Error fetching user profile for ID ${userId}:`, error);
+			// Wrap other errors (DB errors during related data fetch) as DatabaseError
+			throw new DatabaseError('Failed to retrieve user profile', error);
+		}
+	}
+
+	/**
+	 * Check if user has admin role
+	 * @param {string} userRole - User role from session (Currently NOT populated - see auth.js callbacks)
+	 * @returns {Promise<boolean>} - True if user is admin
+	 */
+	async isAdmin(userRole) {
+		// TODO: Implement proper Role-Based Access Control (RBAC)
+		// This requires:
+		// 1. Adding a 'role' column to the 'users' table.
+		// 2. Updating the session callback in 'src/lib/auth.js' to fetch and include the user's role.
+		// 3. Updating this function to check session.user.role === 'admin'.
+		// For now, disabling admin functionality by always returning false.
+		return false;
+		/*
     // Original implementation kept for reference:
     // Checks if the role provided (presumably from the session) is 'admin'
     // Assumes the role column exists in the users table and is populated in the session
     // return userRole === 'admin';
     */
-    /*
+		/*
     // Older hardcoded implementation:
     // try {
     //   const userExists = await this.exists(userId);
@@ -194,40 +197,46 @@ export class UserService extends BaseEntityService {
     //   return false;
     // }
     */
-  }
+	}
 
-  /**
-   * Ensure a user row exists in the users table. If it doesn't, insert it using data
-   * from Better‑Auth's session.
-   * @param {{id:string,name?:string,email?:string,image?:string,emailVerified?:boolean}} userObj
-   */
-  async ensureUserExists(userObj) {
-    if (!userObj?.id) return;
+	/**
+	 * Ensure a user row exists in the users table. If it doesn't, insert it using data
+	 * from Better‑Auth's session.
+	 * @param {{id:string,name?:string,email?:string,image?:string,emailVerified?:boolean}} userObj
+	 */
+	async ensureUserExists(userObj) {
+		if (!userObj?.id) return;
 
-    const { id, name, email, image, emailVerified } = userObj;
+		const { id, name, email, image, emailVerified } = userObj;
 
-    // Quick existence check
-    const exists = await this.exists(id);
-    if (exists) return;
+		// Quick existence check
+		const exists = await this.exists(id);
+		if (exists) return;
 
-    // Insert minimal row
-    const insertQuery = `
+		// Insert minimal row
+		const insertQuery = `
       INSERT INTO users (id, name, email, image, email_verified)
       VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (id) DO NOTHING
     `;
 
-    try {
-      await db.query(insertQuery, [id, name ?? null, email ?? null, image ?? null, emailVerified ? new Date() : null]);
-      console.info('Inserted new user row for Better‑Auth id', id);
-    } catch (err) {
-      console.error('Failed to insert user row for', id, err);
-      // Should this throw? If called during sign-in, maybe not critical,
-      // but could cause issues later if user data is expected.
-      // Let's wrap and throw DatabaseError for clarity.
-      throw new DatabaseError('Failed to ensure user exists in database', err);
-    }
-  }
+		try {
+			await db.query(insertQuery, [
+				id,
+				name ?? null,
+				email ?? null,
+				image ?? null,
+				emailVerified ? new Date() : null
+			]);
+			console.info('Inserted new user row for Better‑Auth id', id);
+		} catch (err) {
+			console.error('Failed to insert user row for', id, err);
+			// Should this throw? If called during sign-in, maybe not critical,
+			// but could cause issues later if user data is expected.
+			// Let's wrap and throw DatabaseError for clarity.
+			throw new DatabaseError('Failed to ensure user exists in database', err);
+		}
+	}
 }
 
 // Export a singleton instance of the service

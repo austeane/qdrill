@@ -2,7 +2,7 @@
 
 This document describes the service layer architecture implemented for QDrill. The service layer provides a clean separation between API endpoints and database operations, improving code organization, reusability, and maintainability.
 
-*(Note: A [recent code review](../code-review/holistic-summary.md) evaluated the service layer implementation. Key findings include limitations in the `BaseEntityService`'s filtering capabilities and permission model rigidity, leading to inheriting services often bypassing it with direct DB calls or complex overrides. Some services contain highly complex logic (`DrillService`, `PracticePlanService`), potential normalization inconsistencies (e.g., JSON handling), and performance concerns (`UserService.getUserProfile`). The hardcoded admin check in `UserService` and its redundant permission logic were also noted. While the pattern provides benefits, addressing these limitations and ensuring consistent usage across all entities is recommended.)*
+_(Note: A [recent code review](../code-review/holistic-summary.md) evaluated the service layer implementation. Key findings include limitations in the `BaseEntityService`'s filtering capabilities and permission model rigidity, leading to inheriting services often bypassing it with direct DB calls or complex overrides. Some services contain highly complex logic (`DrillService`, `PracticePlanService`), potential normalization inconsistencies (e.g., JSON handling), and performance concerns (`UserService.getUserProfile`). The hardcoded admin check in `UserService` and its redundant permission logic were also noted. While the pattern provides benefits, addressing these limitations and ensuring consistent usage across all entities is recommended.)_
 
 ## Overview
 
@@ -16,20 +16,34 @@ The `BaseEntityService` class provides a foundation for entity-specific services
 
 ```javascript
 export class BaseEntityService {
-  constructor(tableName, primaryKey = 'id', defaultColumns = ['*']) {
-    this.tableName = tableName;
-    this.primaryKey = primaryKey;
-    this.defaultColumns = defaultColumns;
-  }
+	constructor(tableName, primaryKey = 'id', defaultColumns = ['*']) {
+		this.tableName = tableName;
+		this.primaryKey = primaryKey;
+		this.defaultColumns = defaultColumns;
+	}
 
-  // Common operations like getAll, getById, create, update, delete
-  async getAll(options = {}) { /* ... */ }
-  async getById(id, columns = this.defaultColumns) { /* ... */ }
-  async create(data) { /* ... */ }
-  async update(id, data) { /* ... */ }
-  async delete(id) { /* ... */ }
-  async exists(id) { /* ... */ }
-  async search(searchTerm, searchColumns, options = {}) { /* ... */ }
+	// Common operations like getAll, getById, create, update, delete
+	async getAll(options = {}) {
+		/* ... */
+	}
+	async getById(id, columns = this.defaultColumns) {
+		/* ... */
+	}
+	async create(data) {
+		/* ... */
+	}
+	async update(id, data) {
+		/* ... */
+	}
+	async delete(id) {
+		/* ... */
+	}
+	async exists(id) {
+		/* ... */
+	}
+	async search(searchTerm, searchColumns, options = {}) {
+		/* ... */
+	}
 }
 ```
 
@@ -39,17 +53,25 @@ Entity-specific services extend the BaseEntityService and implement domain-speci
 
 ```javascript
 export class FormationService extends BaseEntityService {
-  constructor() {
-    super('formations', 'id', ['*']);
-  }
+	constructor() {
+		super('formations', 'id', ['*']);
+	}
 
-  // Formation-specific methods
-  async createFormation(formationData, userId = null) { /* ... */ }
-  async updateFormation(id, formationData) { /* ... */ }
-  async searchFormations(searchTerm, options = {}) { /* ... */ }
-  
-  // Helper methods
-  normalizeFormationData(data) { /* ... */ }
+	// Formation-specific methods
+	async createFormation(formationData, userId = null) {
+		/* ... */
+	}
+	async updateFormation(id, formationData) {
+		/* ... */
+	}
+	async searchFormations(searchTerm, options = {}) {
+		/* ... */
+	}
+
+	// Helper methods
+	normalizeFormationData(data) {
+		/* ... */
+	}
 }
 ```
 
@@ -71,16 +93,16 @@ All services use a shared database connection layer (`db.js`) for consistent han
 ```javascript
 // Database connection from db.js
 export async function query(text, params) {
-  const client = await getPool().connect();
-  try {
-    const res = await client.query(text, params);
-    return res;
-  } catch (err) {
-    console.error('Database query error:', err);
-    throw err;
-  } finally {
-    client.release();
-  }
+	const client = await getPool().connect();
+	try {
+		const res = await client.query(text, params);
+		return res;
+	} catch (err) {
+		console.error('Database query error:', err);
+		throw err;
+	} finally {
+		client.release();
+	}
 }
 ```
 
@@ -104,23 +126,21 @@ API endpoints use service instances to handle business logic:
 ```javascript
 // Example API endpoint using service layer
 export async function GET({ url }) {
-  const searchTerm = url.searchParams.get('q') || '';
-  const page = parseInt(url.searchParams.get('page')) || 1;
-  const limit = parseInt(url.searchParams.get('limit')) || 10;
-  
-  try {
-    const result = await formationService.searchFormations(searchTerm, {
-      page, limit
-    });
-    
-    return json(result);
-  } catch (error) {
-    console.error('Error searching formations:', error);
-    return json(
-      { error: 'An error occurred', details: error.message },
-      { status: 500 }
-    );
-  }
+	const searchTerm = url.searchParams.get('q') || '';
+	const page = parseInt(url.searchParams.get('page')) || 1;
+	const limit = parseInt(url.searchParams.get('limit')) || 10;
+
+	try {
+		const result = await formationService.searchFormations(searchTerm, {
+			page,
+			limit
+		});
+
+		return json(result);
+	} catch (error) {
+		console.error('Error searching formations:', error);
+		return json({ error: 'An error occurred', details: error.message }, { status: 500 });
+	}
 }
 ```
 
@@ -129,26 +149,31 @@ export async function GET({ url }) {
 ### Priority Ranking (Impact vs. Difficulty)
 
 1. **DrillService** - ⭐⭐⭐⭐⭐
+
    - Impact: High (core functionality, many endpoints, complex logic)
    - Effort: 4-5 days
    - Key benefits: Centralizes complex filtering, standardizes drill operations, addresses most duplicated code
 
 2. **PracticePlanService** - ⭐⭐⭐⭐
+
    - Impact: High (complex entity relationships, timeline management)
    - Effort: 5-6 days
    - Key benefits: Separates timeline logic from API, improves transaction handling
 
 3. **UserService** - ⭐⭐⭐
+
    - Impact: Medium-High (auth integration, permission management)
    - Effort: 2-3 days
    - Key benefits: Consistent permission checks, simplified API endpoints
 
 4. **SkillService** - ⭐⭐
+
    - Impact: Medium (simpler model but frequent usage)
    - Effort: 1-2 days
    - Key benefits: Quick win with low complexity
 
 5. **CommentService** - ⭐⭐
+
    - Impact: Medium (improves consistency in comment handling)
    - Effort: 1-2 days
    - Key benefits: Standardized CRUD operations, better validation
@@ -168,7 +193,7 @@ export async function GET({ url }) {
 2. ✅ Implemented drill-specific methods:
    ```javascript
    async createDrill(drillData, userId)
-   async updateDrill(id, drillData, userId) 
+   async updateDrill(id, drillData, userId)
    async deleteDrill(id, userId)
    async getDrillWithVariations(id)
    async createVariation(parentId, variationData, userId)
@@ -187,6 +212,7 @@ export async function GET({ url }) {
 7. ✅ Added comprehensive unit tests with Vitest
 
 **Next Steps:**
+
 - Refactor remaining API endpoints to use the service:
   - `/api/drills/[id]/upvote/+server.js`
   - `/api/drills/[id]/set-variant/+server.js`
@@ -197,6 +223,7 @@ export async function GET({ url }) {
   - `/api/drills/migrate-diagrams/+server.js`
 
 **Dependencies:**
+
 - BaseEntityService
 - SkillService (for skill updates)
 
@@ -218,8 +245,8 @@ export async function GET({ url }) {
    ```
 4. ✅ Implemented helper methods for data formatting and calculations:
    ```javascript
-   formatDrillItem(item)
-   calculateSectionDuration(items)
+   formatDrillItem(item);
+   calculateSectionDuration(items);
    ```
 5. ✅ Added transaction support for section and drill management
 6. ✅ Added proper permission checks for view/edit/delete operations
@@ -228,9 +255,11 @@ export async function GET({ url }) {
 9. ✅ Added comprehensive unit tests with Vitest
 
 **Next Steps:**
+
 - Further refine timeline management logic
 
 **Dependencies:**
+
 - BaseEntityService
 - DrillService (for drill references)
 
@@ -252,6 +281,7 @@ export async function GET({ url }) {
 6. ✅ Added unit tests for formation operations
 
 **Dependencies:**
+
 - BaseEntityService
 
 #### UserService
@@ -270,12 +300,14 @@ export async function GET({ url }) {
 4. Refactor user-related API endpoints to use service
 
 **Implementation Details:**
+
 - Use Auth.js users table structure
 - Build methods for retrieving user-created content
 - Add admin role checking
 - Create centralized permission management
 
 **Dependencies:**
+
 - BaseEntityService
 - Auth.js integration
 
@@ -294,11 +326,13 @@ export async function GET({ url }) {
 3. Refactor drill-related skill operations to use this service
 
 **Implementation Details:**
+
 - Centralize skill management across drill operations
 - Create methods for tracking usage statistics
 - Add skill filtering and recommendation functionality
 
 **Dependencies:**
+
 - BaseEntityService
 
 ### Testing Benefits
@@ -314,6 +348,7 @@ export async function GET({ url }) {
 Unit tests have been implemented for all service layer classes using Vitest:
 
 1. **BaseEntityService Tests**:
+
    - Constructor and initialization tests
    - Column validation and sort order tests
    - Array field normalization tests
@@ -321,6 +356,7 @@ Unit tests have been implemented for all service layer classes using Vitest:
    - Error handling and transaction management tests
 
 2. **DrillService Tests**:
+
    - Data normalization tests
    - CRUD operations tests
    - Permission checking tests
@@ -330,6 +366,7 @@ Unit tests have been implemented for all service layer classes using Vitest:
    - User authorization tests
 
 3. **PracticePlanService Tests**:
+
    - Duration calculation tests with parallel timelines
    - Data formatting tests
    - Plan validation tests
@@ -345,6 +382,7 @@ Unit tests have been implemented for all service layer classes using Vitest:
 Additionally, API endpoint tests have been implemented to test the integration between API routes and the service layer:
 
 1. **Drill API Tests**:
+
    - GET/POST/PUT/DELETE endpoint tests
    - Search functionality tests
    - Variation management tests
@@ -357,6 +395,7 @@ Additionally, API endpoint tests have been implemented to test the integration b
    - Permission and authorization tests
 
 All tests can be run using:
+
 - `pnpm run test:unit:run` - Run all unit tests
 - `pnpm run test:unit` - Run tests in watch mode
 - `pnpm run test:unit:coverage` - Run tests with coverage reporting
@@ -364,11 +403,13 @@ All tests can be run using:
 ### Implementation Approach
 
 1. **Incremental Migration**:
+
    - Implement one service at a time
    - Keep dual implementation during transition
    - Test thoroughly before removing old code
 
 2. **Common Patterns**:
+
    - Use consistent method naming across services
    - Follow the same error handling pattern
    - Return standardized response objects
@@ -409,7 +450,7 @@ All tests can be run using:
 - Refactor DrillService to use SkillService
 - Implement skill statistics and recommendations
 
-### 4. Enhance BaseEntityService 
+### 4. Enhance BaseEntityService
 
 **Priority: Medium**
 **Effort: 1-2 days**

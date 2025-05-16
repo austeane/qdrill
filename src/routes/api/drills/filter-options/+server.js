@@ -4,12 +4,12 @@ import { drillService } from '$lib/server/services/drillService'; // Import the 
 import { handleApiError } from '../../utils/handleApiError.js'; // Import the helper using relative path
 
 export async function GET() {
-    try {
-        // Service method handles potential database errors
-        const filterOptions = await drillService.getDrillFilterOptions();
-        return json(filterOptions);
-    } catch (err) {
-        // Use the centralized error handler
-        return handleApiError(err);
-    }
-} 
+	try {
+		// Service method handles potential database errors
+		const filterOptions = await drillService.getDrillFilterOptions();
+		return json(filterOptions);
+	} catch (err) {
+		// Use the centralized error handler
+		return handleApiError(err);
+	}
+}

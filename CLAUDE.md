@@ -5,7 +5,8 @@
 QDrill is a web-based application designed as a sports drill bank and practice planning tool for a niche sport. It allows users to create, manage, and share drills, as well as plan practices with timeline-based organization.
 
 ## Technology Stack
-- **Frontend**: SvelteKit 
+
+- **Frontend**: SvelteKit
 - **Backend**: SvelteKit (API routes)
 - **Database**: PostgreSQL (via Vercel Postgres)
 - **Styling**: Tailwind CSS
@@ -17,6 +18,7 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 ## Core Features
 
 ### Drill Management
+
 - Create, edit, view, and search drills
 - Tag drills with skill level, positions, duration
 - Upload diagrams/images for drills
@@ -24,6 +26,7 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 - Create variations of existing drills
 
 ### Practice Plan Creation
+
 - Wizard-based practice plan creation
 - Section organization with parallel timelines
 - Drag-and-drop editing interface
@@ -32,20 +35,24 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 - Share and duplicate practice plans
 
 ### User System
+
 - Google OAuth authentication
 - User profiles
 - Permission-based access control
 - Personal drill/plan management
 
 ## Development Commands
+
 - `vercel dev` - Start development server
 - `pnpm run check` - Check TypeScript + SvelteKit sync
 
 ## Package Management
+
 - `pnpm install` - Install dependencies
 - `pnpm add <package>` - Add a package
 
 ## Testing
+
 - `pnpm run test` - Run Playwright tests
 - `pnpm test -- tests/test.js` - Run a specific test
 - `pnpm run test:unit` - Run Vitest unit tests in watch mode
@@ -54,38 +61,45 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 - `pnpm run test:unit --run <file-path>` - Run specific Vitest tests once (e.g., `pnpm run test:unit --run src/lib/stores/__tests__/dragManager.test.js`)
 
 ## Code Quality
+
 - `pnpm run lint` - Run linting checks
 - `pnpm run format` - Fix formatting issues
 
 ## Deployment
+
 - Automatic deployment from GitHub main branch to Vercel
 
 ## Architecture
 
 ### Frontend Components
+
 - Svelte components organized by feature area
 - Modular design with reusable components
 - Tailwind CSS for styling with custom components
 - Interactive drag-and-drop interface for practice planning
 
 ### State Management
+
 - Extensive use of Svelte stores
 - Separate stores for different domain concerns
 - Custom store implementation with methods
 - History tracking with undo/redo support
 
 ### API Design
+
 - RESTful API endpoints
 - SvelteKit server endpoints (+server.js)
 - Standardized response formats
 - Parameterized database queries
 
 ### Database
+
 - PostgreSQL with connection pooling
 - Transaction support for complex operations
 - Normalized schema design
 
 #### Database Connection
+
 - **Connection String**: Stored in ~/.zshrc as NEON_DB_URL environment variable
 - **Connection Command**: `psql "$NEON_DB_URL"`
 - **Project ID**: morning-mountain-82887088
@@ -96,12 +110,14 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 ## Key Systems
 
 ### Authentication
+
 - Auth.js (formerly NextAuth) integration
 - Google OAuth provider
 - Session-based authentication
 - Authorization middleware
 
 ### Drag and Drop
+
 - Complex drag-and-drop system for practice plan editing
 - State management via Svelte stores
 - Multiple drop targets and interactions
@@ -109,11 +125,13 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 - Visual feedback during drag operations
 
 ### Data Filtering
+
 - Client-side filtering for drills
 - Multi-criteria filtering
 - Performance optimization for large datasets
 
 ## Code Style Guidelines
+
 - **AI-Readability**: Add clear comments to make code easily understood by future AI systems
 - **Comments**: Include purpose explanations, input/output expectations, and logic clarifications
 - **Imports**: Group imports by source (svelte, lib, components)
@@ -127,42 +145,54 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 ## Areas for Improvement
 
 ### 1. Drag and Drop System Consolidation
+
 **Impact: High**
+
 - Currently has two parallel drag-and-drop systems
 - Consolidate into a single system with consistent interface
 - Implement proper state machine for drag operations
 - Reduce code complexity and maintenance burden
 
 ### 2. API Data Fetching Abstraction
+
 **Impact: High**
+
 - Direct fetch calls scattered throughout components
 - Create unified API client with standard methods
 - Implement consistent error handling and retry logic
 - Add caching and performance optimizations
 
 ### 3. Test Coverage Expansion
+
 **Impact: High**
+
 - Minimal testing despite complex UI interactions
 - Add unit tests for store logic (especially drag-and-drop)
 - Implement integration tests for key user flows
 - Set up CI pipeline with automated testing
 
 ### 4. Store Logic Separation
+
 **Impact: Medium**
+
 - Store files mix different concerns (data, filtering, etc.)
 - Separate into dedicated modules with single responsibilities
 - Move complex logic into utility functions
 - Improve maintainability and testability
 
 ### 5. Performance Optimization
+
 **Impact: Medium**
+
 - Filtering/sorting recalculates on every store update
 - Implement memoization for expensive calculations
 - Use web workers for heavy operations
 - Optimize filter chains and add virtualization
 
 ## Documentation Workflow
+
 - After completing any significant task, ALWAYS follow this documentation workflow:
+
 1. First examine `/docs/index.md` to understand the documentation structure
 2. Then navigate to the appropriate subdirectory based on the nature of your changes:
    - `/docs/architecture/` for architectural changes or patterns
@@ -171,6 +201,7 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 4. Update index files to reference any new documentation
 
 ## Documentation Requirements
+
 - Create/update documentation when modifying .js/.svelte files
 - Document component descriptions, usage instructions, and relationships
 - Maintain documentation consistency for directory structure
@@ -180,6 +211,7 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 - **README Updates**: Always update the README.md file after completing substantial code edits to reflect the latest changes, features, and usage instructions
 
 ## Version Control Guidelines
+
 - **Commit Message Standards**: Write clear, descriptive commit messages explaining what changes were made and why
 - **Atomic Commits**: Keep commits focused on a single logical change
 - **Pull Request Format**: Include clear descriptions of changes, impact, and testing performed

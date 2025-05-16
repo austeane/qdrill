@@ -10,21 +10,23 @@ import { ForbiddenError } from '$lib/server/errors.js'; // Import ForbiddenError
 // or providing progress feedback if used interactively.
 // Also, adding protection (e.g., admin only or dev mode only)
 export async function POST() {
-  // Restrict to development mode for safety
-  if (!dev) {
-    return handleApiError(new ForbiddenError('Diagram migration is only allowed in development mode.'));
-  }
-  
-  try {
-    // Service method handles potential database errors
-    const result = await drillService.migrateAllDiagramsToExcalidraw();
-    
-    return json({ 
-      success: true, 
-      message: `Successfully migrated diagrams for ${result.migratedCount} drills.` 
-    });
-  } catch (err) {
-    // Use the centralized error handler
-    return handleApiError(err);
-  }
-} 
+	// Restrict to development mode for safety
+	if (!dev) {
+		return handleApiError(
+			new ForbiddenError('Diagram migration is only allowed in development mode.')
+		);
+	}
+
+	try {
+		// Service method handles potential database errors
+		const result = await drillService.migrateAllDiagramsToExcalidraw();
+
+		return json({
+			success: true,
+			message: `Successfully migrated diagrams for ${result.migratedCount} drills.`
+		});
+	} catch (err) {
+		// Use the centralized error handler
+		return handleApiError(err);
+	}
+}

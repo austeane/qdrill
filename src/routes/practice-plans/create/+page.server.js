@@ -10,38 +10,49 @@ const practicePlanService = new PracticePlanService();
 export const actions = {
 	default: async ({ request, locals }) => {
 		const session = locals.session;
-		const userId = locals.user?.id || locals.user?.userId || session?.user?.id || session?.user?.userId;
+		const userId =
+			locals.user?.id || locals.user?.userId || session?.user?.id || session?.user?.userId;
 
 		const formData = await request.formData();
 		const data = Object.fromEntries(formData);
 
-		// --- Basic Data Parsing --- 
+		// --- Basic Data Parsing ---
 		const planData = {
 			name: data.planName,
 			description: data.planDescription,
 			phase_of_season: data.phaseOfSeason || null,
-			estimated_number_of_participants: data.estimatedNumberOfParticipants ? parseInt(data.estimatedNumberOfParticipants) : null,
+			estimated_number_of_participants: data.estimatedNumberOfParticipants
+				? parseInt(data.estimatedNumberOfParticipants)
+				: null,
 			// Practice goals are sent as multiple entries with the same name
-			practice_goals: formData.getAll('practiceGoals[]').filter(goal => goal.trim() !== ''),
+			practice_goals: formData.getAll('practiceGoals[]').filter((goal) => goal.trim() !== ''),
 			visibility: data.visibility,
 			is_editable_by_others: data.isEditableByOthers === 'on', // Checkbox value is 'on' when checked
 			start_time: data.startTime ? data.startTime + ':00' : null, // Add seconds for DB
 			sections: JSON.parse(data.sections || '[]') // Expect sections as JSON string
 		};
 
-		// --- Validation --- 
+		// --- Validation ---
 		try {
 			// 1. Validate Metadata using a subset of the full schema
 			const metadataSchema = practicePlanSchema.pick({
-				name: true, description: true, phase_of_season: true, 
-				estimated_number_of_participants: true, practice_goals: true,
-				visibility: true, is_editable_by_others: true, start_time: true
+				name: true,
+				description: true,
+				phase_of_season: true,
+				estimated_number_of_participants: true,
+				practice_goals: true,
+				visibility: true,
+				is_editable_by_others: true,
+				start_time: true
 			});
-			
+
 			const metadataResult = metadataSchema.safeParse(planData);
 			if (!metadataResult.success) {
-				console.warn('[Create Action] Metadata validation failed', metadataResult.error.flatten().fieldErrors);
-				return fail(400, { 
+				console.warn(
+					'[Create Action] Metadata validation failed',
+					metadataResult.error.flatten().fieldErrors
+				);
+				return fail(400, {
 					success: false,
 					errors: metadataResult.error.flatten().fieldErrors,
 					data: planData // Return submitted data back to form
@@ -50,48 +61,65 @@ export const actions = {
 
 			// 2. Validate Sections Structure (basic checks)
 			if (!Array.isArray(planData.sections)) {
-				throw new ValidationError('Sections data is missing or invalid.', { sections: 'Invalid format' });
+				throw new ValidationError('Sections data is missing or invalid.', {
+					sections: 'Invalid format'
+				});
 			}
 			// Ensure there's at least one item across all sections
-			const totalItems = planData.sections.reduce((count, section) => count + (section.items?.length || 0), 0);
+			const totalItems = planData.sections.reduce(
+				(count, section) => count + (section.items?.length || 0),
+				0
+			);
 			if (totalItems === 0) {
 				console.warn('[Create Action] Validation failed: No items in plan');
-				return fail(400, { 
+				return fail(400, {
 					success: false,
-					errors: { general: 'A practice plan must contain at least one drill or break.' }, 
-					data: planData 
+					errors: { general: 'A practice plan must contain at least one drill or break.' },
+					data: planData
 				});
 			}
 
-			// --- Normalization --- 
-			const normalizedSections = planData.sections.map(section => ({
+			// --- Normalization ---
+			const normalizedSections = planData.sections.map((section) => ({
 				...section,
 				items: normalizeItems(section.items || [])
 			}));
-			
+
 			const finalPlanData = {
 				...metadataResult.data, // Use validated metadata
 				sections: normalizedSections
 			};
 
 			const createdPlan = await practicePlanService.createPracticePlan(finalPlanData, userId);
-			
-			throw redirect(303, `/practice-plans/${createdPlan.id}`);
 
+			throw redirect(303, `/practice-plans/${createdPlan.id}`);
 		} catch (error) {
 			// If the error is already a SvelteKit redirect or fail, rethrow it
-			if (error.status && error.location) { // Heuristic for a redirect object from SvelteKit
+			if (error.status && error.location) {
+				// Heuristic for a redirect object from SvelteKit
 				throw error;
 			}
 			console.error('[Create Action] Error:', error);
 			if (error instanceof ValidationError) {
-				return fail(400, { success: false, errors: error.errors || { general: error.message }, data: planData });
+				return fail(400, {
+					success: false,
+					errors: error.errors || { general: error.message },
+					data: planData
+				});
 			} else if (error instanceof ForbiddenError) {
 				return fail(403, { success: false, errors: { general: error.message }, data: planData });
 			} else if (error instanceof DatabaseError) {
-				return fail(500, { success: false, errors: { general: 'Database error occurred.' }, data: planData });
+				return fail(500, {
+					success: false,
+					errors: { general: 'Database error occurred.' },
+					data: planData
+				});
 			} else {
-				return fail(500, { success: false, errors: { general: 'An unexpected error occurred.' }, data: planData });
+				return fail(500, {
+					success: false,
+					errors: { general: 'An unexpected error occurred.' },
+					data: planData
+				});
 			}
 		}
 	}

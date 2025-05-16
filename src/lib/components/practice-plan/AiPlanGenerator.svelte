@@ -43,7 +43,6 @@
 		aiParams = aiParams;
 	}
 
-
 	async function handleGenerateAI() {
 		isGenerating = true;
 		try {
@@ -70,11 +69,12 @@
 
 			// Validate the structure roughly before dispatching
 			if (!responseBody.name || !responseBody.sections || !Array.isArray(responseBody.sections)) {
-				throw new Error('Invalid plan structure received from AI. Expected root-level name and sections array.');
+				throw new Error(
+					'Invalid plan structure received from AI. Expected root-level name and sections array.'
+				);
 			}
 
 			dispatch('generated', responseBody); // Dispatch success event with data
-
 		} catch (error) {
 			console.error('Failed to generate plan with AI:', error);
 			dispatch('error', `Generation failed: ${error.message || 'An unknown error occurred.'}`);
@@ -91,18 +91,26 @@
 		<!-- Replaced CardTitle -->
 		<div class="flex items-center space-x-2">
 			<h3 class="text-lg font-semibold leading-none tracking-tight">Generate Plan with AI</h3>
-			<div class="relative" on:mouseenter={() => showInfoTooltip = true} on:mouseleave={() => showInfoTooltip = false}>
+			<div
+				class="relative"
+				on:mouseenter={() => (showInfoTooltip = true)}
+				on:mouseleave={() => (showInfoTooltip = false)}
+			>
 				<Info class="h-4 w-4 text-gray-500 cursor-pointer" />
 				{#if showInfoTooltip}
-				<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-72 bg-gray-700 text-white text-xs rounded py-1.5 px-3 z-10 shadow-lg text-center">
-					Under the hood, this sends your instructions and the details of every drill to Gemini 2.5 Pro, and uses all of that information to generate your plan.
-				</div>
+					<div
+						class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-72 bg-gray-700 text-white text-xs rounded py-1.5 px-3 z-10 shadow-lg text-center"
+					>
+						Under the hood, this sends your instructions and the details of every drill to Gemini
+						2.5 Pro, and uses all of that information to generate your plan.
+					</div>
 				{/if}
 			</div>
 		</div>
 		<!-- Replaced CardDescription -->
 		<p class="text-sm text-muted-foreground">
-			Tell AI what you want out of your practice plan, and it will create a plan for you which you can edit after.
+			Tell AI what you want out of your practice plan, and it will create a plan for you which you
+			can edit after.
 		</p>
 	</div>
 	<!-- Replaced CardContent -->
@@ -110,15 +118,30 @@
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 			<div>
 				<!-- Standard label -->
-				<label for="ai-duration" class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+				<label for="ai-duration" class="block text-sm font-medium text-gray-700 mb-1"
+					>Duration (minutes)</label
+				>
 				<!-- Standard input with Tailwind -->
-				<input id="ai-duration" type="number" bind:value={aiParams.durationMinutes} placeholder="e.g., 90" min="15" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+				<input
+					id="ai-duration"
+					type="number"
+					bind:value={aiParams.durationMinutes}
+					placeholder="e.g., 90"
+					min="15"
+					class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+				/>
 			</div>
 			<div>
 				<!-- Standard label -->
-				<label for="ai-skill-level" class="block text-sm font-medium text-gray-700 mb-1">Skill Level</label>
+				<label for="ai-skill-level" class="block text-sm font-medium text-gray-700 mb-1"
+					>Skill Level</label
+				>
 				<!-- Standard select with Tailwind -->
-				<select id="ai-skill-level" bind:value={aiParams.skillLevel} class="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm">
+				<select
+					id="ai-skill-level"
+					bind:value={aiParams.skillLevel}
+					class="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
+				>
 					<option value="" disabled>Select skill level...</option>
 					{#each skillOptions as option}
 						<option value={option.value}>{option.label}</option>
@@ -127,16 +150,33 @@
 			</div>
 			<div>
 				<!-- Standard label -->
-				<label for="ai-participants" class="block text-sm font-medium text-gray-700 mb-1">Participant Count</label>
+				<label for="ai-participants" class="block text-sm font-medium text-gray-700 mb-1"
+					>Participant Count</label
+				>
 				<!-- Standard input with Tailwind -->
-				<input id="ai-participants" type="number" bind:value={aiParams.participantCount} placeholder="e.g., 15" min="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+				<input
+					id="ai-participants"
+					type="number"
+					bind:value={aiParams.participantCount}
+					placeholder="e.g., 15"
+					min="2"
+					class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+				/>
 			</div>
 		</div>
 		<div>
 			<!-- Standard label -->
-			<label for="ai-goals" class="block text-sm font-medium text-gray-700 mb-1">Describe the practice plan you want</label>
+			<label for="ai-goals" class="block text-sm font-medium text-gray-700 mb-1"
+				>Describe the practice plan you want</label
+			>
 			<!-- Standard textarea with Tailwind -->
-			<textarea id="ai-goals" bind:value={aiParams.goals} placeholder="What are the main goals of this practice?" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+			<textarea
+				id="ai-goals"
+				bind:value={aiParams.goals}
+				placeholder="What are the main goals of this practice?"
+				rows="3"
+				class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+			></textarea>
 		</div>
 		<div>
 			<!-- Standard label -->
@@ -152,7 +192,7 @@
 								type="checkbox"
 								value={option.value}
 								checked={aiParams.focusAreas.includes(option.value)}
-								on:change={handleFocusAreaChange} 
+								on:change={handleFocusAreaChange}
 								class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
 							/>
 							<span class="text-sm text-gray-700">{option.label}</span>
@@ -160,7 +200,9 @@
 					{/each}
 				{/if}
 			</div>
-			<p class="text-sm text-muted-foreground mt-1">Select one or more areas the AI should focus on.</p>
+			<p class="text-sm text-muted-foreground mt-1">
+				Select one or more areas the AI should focus on.
+			</p>
 		</div>
 	</div>
 	<!-- Replaced CardFooter -->
@@ -183,4 +225,4 @@
 			{/if}
 		</button>
 	</div>
-</div> 
+</div>

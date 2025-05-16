@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { writable } from 'svelte/store';
 
-	// --- Import stores --- 
+	// --- Import stores ---
 	import {
 		planName,
 		planDescription,
@@ -12,10 +12,10 @@
 		isEditableByOthers,
 		phaseOfSeason,
 		startTime,
-		addPracticeGoal, 
-		removePracticeGoal, 
-		updatePracticeGoal 
-	} from '$lib/stores/practicePlanMetadataStore'; 
+		addPracticeGoal,
+		removePracticeGoal,
+		updatePracticeGoal
+	} from '$lib/stores/practicePlanMetadataStore';
 
 	// TODO: Import metadataErrors store if needed
 	let metadataErrors = {}; // Local error store placeholder
@@ -27,7 +27,7 @@
 	let phaseOfSeasonOptions = ['Pre-season', 'Regular Season', 'Post-season', 'Tournament Prep'];
 
 	// Local state for focusAreas checkboxes
-	let localFocusAreas = writable([]); 
+	let localFocusAreas = writable([]);
 
 	// Local state for skillLevel dropdown
 	let localSkillLevel = '';
@@ -35,7 +35,7 @@
 	// Helper function to update localFocusAreas for checkboxes
 	function handleFocusAreaChange(event) {
 		const { value, checked } = event.target;
-		localFocusAreas.update(currentAreas => {
+		localFocusAreas.update((currentAreas) => {
 			if (checked) {
 				return [...currentAreas, value];
 			} else {
@@ -45,7 +45,6 @@
 	}
 
 	// Removed selectedLabels logic for popover
-
 </script>
 
 <div class="space-y-4 mb-6">
@@ -55,13 +54,13 @@
 		<!-- Standard label -->
 		<label for="planName" class="block text-sm font-medium text-gray-700 mb-1">Plan Name</label>
 		<!-- Standard input -->
-		<input 
-			id="planName" 
-			name="planName" 
-			bind:value={$planName} 
-			placeholder="e.g., Wednesday Throwing Focus" 
-			required 
-			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+		<input
+			id="planName"
+			name="planName"
+			bind:value={$planName}
+			placeholder="e.g., Wednesday Throwing Focus"
+			required
+			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 		/>
 		{#if $page.form?.errors?.name}
 			<p class="text-red-500 text-sm mt-1">{$page.form.errors.name[0]}</p>
@@ -72,15 +71,18 @@
 
 	<div>
 		<!-- Standard label -->
-		<label for="planDescription" class="block text-sm font-medium text-gray-700 mb-1">Plan Description</label>
+		<label for="planDescription" class="block text-sm font-medium text-gray-700 mb-1"
+			>Plan Description</label
+		>
 		<!-- Standard textarea -->
-		<textarea 
-			id="planDescription" 
-			name="planDescription" 
-			bind:value={$planDescription} 
-			placeholder="Briefly describe the practice plan..." 
-			rows="3" 
-			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+		<textarea
+			id="planDescription"
+			name="planDescription"
+			bind:value={$planDescription}
+			placeholder="Briefly describe the practice plan..."
+			rows="3"
+			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+		>
 		</textarea>
 		{#if $page.form?.errors?.description}
 			<p class="text-red-500 text-sm mt-1">{$page.form.errors.description[0]}</p>
@@ -92,13 +94,16 @@
 	<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 		<div>
 			<!-- Standard label -->
-			<label for="skillLevel" class="block text-sm font-medium text-gray-700 mb-1">Skill Level</label>
+			<label for="skillLevel" class="block text-sm font-medium text-gray-700 mb-1"
+				>Skill Level</label
+			>
 			<!-- Standard select -->
-			<select 
-				id="skillLevel" 
-				name="skillLevel" 
-				bind:value={localSkillLevel} 
-				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+			<select
+				id="skillLevel"
+				name="skillLevel"
+				bind:value={localSkillLevel}
+				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+			>
 				<option value="" disabled>Select skill level...</option>
 				{#each skillOptions as option}
 					<option value={option.value}>{option.label}</option>
@@ -109,29 +114,34 @@
 
 		<div>
 			<!-- Standard label -->
-			<label for="participantCount" class="block text-sm font-medium text-gray-700 mb-1">Participant Count</label>
+			<label for="participantCount" class="block text-sm font-medium text-gray-700 mb-1"
+				>Participant Count</label
+			>
 			<!-- Standard input -->
-			<input 
-				id="participantCount" 
-				name="participantCount" 
-				type="number" 
-				min="1" 
-				bind:value={$estimatedNumberOfParticipants} 
-				placeholder="e.g., 15" 
-				class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+			<input
+				id="participantCount"
+				name="participantCount"
+				type="number"
+				min="1"
+				bind:value={$estimatedNumberOfParticipants}
+				placeholder="e.g., 15"
+				class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 			/>
 			<!-- Error handling for participantCount -->
 		</div>
 
 		<div>
 			<!-- Standard label -->
-			<label for="phaseOfSeason" class="block text-sm font-medium text-gray-700 mb-1">Phase of Season</label>
+			<label for="phaseOfSeason" class="block text-sm font-medium text-gray-700 mb-1"
+				>Phase of Season</label
+			>
 			<!-- Standard select -->
-			<select 
-				id="phaseOfSeason" 
-				name="phaseOfSeason" 
-				bind:value={$phaseOfSeason} 
-				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+			<select
+				id="phaseOfSeason"
+				name="phaseOfSeason"
+				bind:value={$phaseOfSeason}
+				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+			>
 				<option value="">Select Phase</option>
 				{#each phaseOfSeasonOptions as option}
 					<option value={option}>{option}</option>
@@ -143,15 +153,17 @@
 
 	<div>
 		<!-- Standard label -->
-		<label for="startTime" class="block text-sm font-medium text-gray-700 mb-1">Practice Start Time</label>
+		<label for="startTime" class="block text-sm font-medium text-gray-700 mb-1"
+			>Practice Start Time</label
+		>
 		<!-- Standard input -->
-		<input 
-			id="startTime" 
-			name="startTime" 
-			type="time" 
-			bind:value={$startTime} 
-			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
-		/> 
+		<input
+			id="startTime"
+			name="startTime"
+			type="time"
+			bind:value={$startTime}
+			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+		/>
 		<!-- Error handling for startTime -->
 	</div>
 
@@ -165,11 +177,11 @@
 			{:else}
 				{#each focusAreaOptions as option}
 					<label class="flex items-center space-x-2 cursor-pointer">
-						<input 
-							type="checkbox" 
-							value={option.value} 
+						<input
+							type="checkbox"
+							value={option.value}
 							checked={$localFocusAreas.includes(option.value)}
-							on:change={handleFocusAreaChange} 
+							on:change={handleFocusAreaChange}
 							class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
 						/>
 						<span class="text-sm text-gray-700">{option.label}</span>
@@ -181,7 +193,9 @@
 	</div>
 
 	<div>
-		<label id="practice-goals-label" class="block text-sm font-medium text-gray-700 mb-1">Practice Goals</label>
+		<label id="practice-goals-label" class="block text-sm font-medium text-gray-700 mb-1"
+			>Practice Goals</label
+		>
 		<div role="list" aria-labelledby="practice-goals-label" class="space-y-2">
 			{#each $practiceGoals as goal, index}
 				<div class="flex items-center space-x-2">
@@ -196,8 +210,8 @@
 					/>
 					{#if $practiceGoals.length > 1}
 						<!-- Standard button -->
-						<button 
-							type="button" 
+						<button
+							type="button"
 							on:click={() => removePracticeGoal(index)}
 							class="inline-flex justify-center py-1 px-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
 						>
@@ -208,9 +222,9 @@
 			{/each}
 		</div>
 		<!-- Standard button -->
-		<button 
-			type="button" 
-			on:click={addPracticeGoal} 
+		<button
+			type="button"
+			on:click={addPracticeGoal}
 			class="mt-2 inline-flex justify-center py-1 px-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
 		>
 			+ Add Goal
@@ -222,7 +236,9 @@
 	<div class="space-y-2">
 		<div>
 			<!-- Standard label -->
-			<label for="visibility-select" class="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+			<label for="visibility-select" class="block text-sm font-medium text-gray-700 mb-1"
+				>Visibility</label
+			>
 			<!-- Standard select -->
 			<select
 				id="visibility-select"
@@ -261,5 +277,4 @@
 			</label>
 		</div>
 	</div>
-
-</div> 
+</div>

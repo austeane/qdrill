@@ -4,11 +4,11 @@ import { handleApiError } from '../../../utils/handleApiError.js';
 import { NotFoundError } from '$lib/server/errors.js';
 
 export async function POST({ params }) {
-    const { id } = params;
-    try {
-        const updatedFeedback = await upvoteFeedback(id);
-        return json(updatedFeedback);
-    } catch (error) {
-        return handleApiError(error);
-    }
+	const { id } = params;
+	try {
+		const updatedFeedback = await upvoteFeedback(id);
+		return json(updatedFeedback);
+	} catch (error) {
+		return handleApiError(error);
+	}
 }

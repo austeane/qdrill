@@ -45,19 +45,27 @@ const GeneratedPlanSchema = z.object({
 	is_editable_by_others: z.boolean().default(false), // Default for new plans
 	// user_id: z.string(), // user_id will be set by the server/session, not expected from AI directly in this structure.
 
-	sections: z.array(z.object({
-		name: z.string().min(1),
-		// duration_minutes: z.number().int().positive(), // Section duration is calculated or implicit
-		notes: z.string().optional(), // Renamed from description to notes
-		// goals: z.array(z.string()).optional(), // Section goals can be added if AI can provide them
-		items: z.array(z.object({
-			type: z.enum(['activity', 'drill', 'break']), // Keep 'activity' as AI uses it. Map to 'one-off' or 'drill' later if needed.
-			name: z.string().min(1),
-			duration: z.number().int().positive(), // Renamed from duration_minutes
-			drill_id: z.number().int().positive().nullable().optional(),
-			parallel_group_id: z.string().nullable().optional()
-		})).min(1, 'Each section must have at least one item')
-	})).min(1, 'A practice plan must have at least one section')
+	sections: z
+		.array(
+			z.object({
+				name: z.string().min(1),
+				// duration_minutes: z.number().int().positive(), // Section duration is calculated or implicit
+				notes: z.string().optional(), // Renamed from description to notes
+				// goals: z.array(z.string()).optional(), // Section goals can be added if AI can provide them
+				items: z
+					.array(
+						z.object({
+							type: z.enum(['activity', 'drill', 'break']), // Keep 'activity' as AI uses it. Map to 'one-off' or 'drill' later if needed.
+							name: z.string().min(1),
+							duration: z.number().int().positive(), // Renamed from duration_minutes
+							drill_id: z.number().int().positive().nullable().optional(),
+							parallel_group_id: z.string().nullable().optional()
+						})
+					)
+					.min(1, 'Each section must have at least one item')
+			})
+		)
+		.min(1, 'A practice plan must have at least one section')
 });
 
 // --- Model Mapping ---
@@ -81,28 +89,39 @@ const MODEL_MAP = {
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
 	try {
 		// Decode the base64 string
-		const decodedKey = Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64, 'base64').toString('utf-8');
-		
+		const decodedKey = Buffer.from(
+			process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64,
+			'base64'
+		).toString('utf-8');
+
 		// Define the path for the temporary key file in Vercel's writable directory
 		const keyFilePath = path.join('/tmp', 'service-account-key.json');
-		
+
 		// Write the decoded key to the temporary file
 		fs.writeFileSync(keyFilePath, decodedKey);
-		
+
 		// Set the GOOGLE_APPLICATION_CREDENTIALS environment variable for the current process
 		// The Google Auth library will pick this up
 		process.env.GOOGLE_APPLICATION_CREDENTIALS = keyFilePath;
-		
-		console.log('[Auth Setup] Successfully set GOOGLE_APPLICATION_CREDENTIALS from base64 env var to:', keyFilePath);
+
+		console.log(
+			'[Auth Setup] Successfully set GOOGLE_APPLICATION_CREDENTIALS from base64 env var to:',
+			keyFilePath
+		);
 	} catch (error) {
-		console.error('[Auth Setup] CRITICAL: Failed to decode/write GOOGLE_APPLICATION_CREDENTIALS_BASE64:', error);
+		console.error(
+			'[Auth Setup] CRITICAL: Failed to decode/write GOOGLE_APPLICATION_CREDENTIALS_BASE64:',
+			error
+		);
 		// Depending on your error handling strategy, you might want to:
 		// - Throw an error to prevent the function from proceeding without auth
 		// - Log and let it fail later (as it currently does)
 		// For now, it will log and the subsequent GoogleAuth call will likely fail as before, but with this log for context.
 	}
 } else {
-	console.warn('[Auth Setup] GOOGLE_APPLICATION_CREDENTIALS_BASE64 environment variable not found.');
+	console.warn(
+		'[Auth Setup] GOOGLE_APPLICATION_CREDENTIALS_BASE64 environment variable not found.'
+	);
 	// The application will attempt to use other ADC methods, which will likely fail in Vercel if this was the intended auth method.
 }
 // --- END ADDED CODE FOR GOOGLE AUTH ---
@@ -118,7 +137,11 @@ export async function POST({ request, locals }) {
 			const rateLimitCheckResult = await kyselyDb.transaction().execute(async (trx) => {
 				const userResult = await trx
 					.selectFrom('users')
-					.select(['ai_plan_requests_count', 'ai_plan_window_start', 'cumulative_ai_plan_requests_count'])
+					.select([
+						'ai_plan_requests_count',
+						'ai_plan_window_start',
+						'cumulative_ai_plan_requests_count'
+					])
 					.where('id', '=', user.id)
 					.executeTakeFirst();
 
@@ -127,13 +150,17 @@ export async function POST({ request, locals }) {
 					return { allowed: false, status: 500, message: 'Internal server error.' };
 				}
 				let { ai_plan_requests_count: count, ai_plan_window_start: windowStart } = userResult;
-				if (!windowStart || (now.getTime() - new Date(windowStart).getTime()) > windowDurationMs) {
+				if (!windowStart || now.getTime() - new Date(windowStart).getTime() > windowDurationMs) {
 					count = 0;
 					windowStart = now;
 				}
 				if (count >= MAX_AI_PLAN_REQUESTS) {
 					console.warn(`Rate limit exceeded for user ${user.id}`);
-					return { allowed: false, status: 429, message: 'Rate limit exceeded. Please try again later.' };
+					return {
+						allowed: false,
+						status: 429,
+						message: 'Rate limit exceeded. Please try again later.'
+					};
 				}
 				await trx
 					.updateTable('users')
@@ -147,7 +174,10 @@ export async function POST({ request, locals }) {
 				return { allowed: true };
 			});
 			if (!rateLimitCheckResult.allowed) {
-				return json({ error: rateLimitCheckResult.message }, { status: rateLimitCheckResult.status });
+				return json(
+					{ error: rateLimitCheckResult.message },
+					{ status: rateLimitCheckResult.status }
+				);
 			}
 		} catch (dbError) {
 			console.error('Database error during rate limiting check:', dbError);
@@ -166,7 +196,10 @@ export async function POST({ request, locals }) {
 		const validationResult = ParameterSchema.safeParse(requestBody.parameters);
 		if (!validationResult.success) {
 			console.error('Invalid input parameters:', validationResult.error.flatten());
-			return json({ error: 'Invalid input parameters.', issues: validationResult.error.flatten() }, { status: 400 });
+			return json(
+				{ error: 'Invalid input parameters.', issues: validationResult.error.flatten() },
+				{ status: 400 }
+			);
 		}
 		const parameters = validationResult.data;
 		const selectedModelInfo = MODEL_MAP[parameters.modelId];
@@ -178,7 +211,10 @@ export async function POST({ request, locals }) {
 		if (selectedModelInfo.provider === 'anthropic') {
 			if (!ANTHROPIC_API_KEY) {
 				console.error('Anthropic API key is not configured.');
-				return json({ error: 'AI generation service (Anthropic) not configured.' }, { status: 500 });
+				return json(
+					{ error: 'AI generation service (Anthropic) not configured.' },
+					{ status: 500 }
+				);
 			}
 			const anthropic = createAnthropic({ apiKey: ANTHROPIC_API_KEY });
 			llm = anthropic(selectedModelInfo.id);
@@ -199,7 +235,7 @@ export async function POST({ request, locals }) {
 			}
 			const vertex = createVertex({
 				project: GOOGLE_VERTEX_PROJECT,
-				location: GOOGLE_VERTEX_LOCATION,
+				location: GOOGLE_VERTEX_LOCATION
 			});
 			llm = vertex(selectedModelInfo.id);
 		} else {
@@ -207,14 +243,16 @@ export async function POST({ request, locals }) {
 			return json({ error: 'Invalid AI model provider.' }, { status: 500 });
 		}
 
-
 		let allDrillDetails = [];
 		try {
 			allDrillDetails = await drillService.getAllDrillDetailsForAI(user?.id);
 			console.log(`Fetched details for ${allDrillDetails.length} existing drills for AI context.`);
 		} catch (fetchError) {
-			console.error("Failed to fetch drill details for AI prompt:", fetchError);
-			return json({ error: 'Failed to load necessary drill data for AI generation.' }, { status: 500 });
+			console.error('Failed to fetch drill details for AI prompt:', fetchError);
+			return json(
+				{ error: 'Failed to load necessary drill data for AI generation.' },
+				{ status: 500 }
+			);
 		}
 
 		const drillContextJson = JSON.stringify(allDrillDetails, null, 2);
@@ -304,23 +342,29 @@ Participant Count: ${parameters.participantCount || 'Not specified'}
 Goals to interpret: ${parameters.goals || 'Not specified'}
 Focus Areas: ${parameters.focusAreas?.join(', ') || 'Not specified'}`;
 
-		console.log(`Sending request to ${selectedModelInfo.provider} model: ${selectedModelInfo.id}...`);
+		console.log(
+			`Sending request to ${selectedModelInfo.provider} model: ${selectedModelInfo.id}...`
+		);
 
 		// Using generateObject from Vercel AI SDK
-		const { object: rawGeneratedJson, usage, finishReason, warnings } = await generateObject({
+		const {
+			object: rawGeneratedJson,
+			usage,
+			finishReason,
+			warnings
+		} = await generateObject({
 			model: llm,
 			schema: GeneratedPlanSchema, // Your Zod schema for the expected output
 			prompt: userMessageContent, // User message can go here
-			system: systemPrompt,       // System prompt for overall instructions
-			maxTokens: 8000, // Increased from 2500
+			system: systemPrompt, // System prompt for overall instructions
+			maxTokens: 8000 // Increased from 2500
 			// temperature: 0.3, // Example: for more deterministic output
 		});
-		
+
 		console.log('Received response from AI SDK.');
 		console.log('AI Usage:', usage);
 		console.log('Finish Reason:', finishReason);
 		if (warnings) console.warn('AI Warnings:', warnings);
-
 
 		// Log the raw JSON before validation (it's already parsed by generateObject)
 		console.log('Parsed AI Response JSON:', JSON.stringify(rawGeneratedJson, null, 2));
@@ -334,20 +378,24 @@ Focus Areas: ${parameters.focusAreas?.join(', ') || 'Not specified'}`;
 		// the primary validation is handled by `generateObject` and `GeneratedPlanSchema`.
 		// We still need to verify that any `drill_id` provided by the AI is valid.
 
-		const validDrillIds = new Set(allDrillDetails.map(d => d.id));
+		const validDrillIds = new Set(allDrillDetails.map((d) => d.id));
 		let invalidDrillIdFound = null;
 
-		generatedPlan.sections.forEach(section => {
-			section.items.forEach(item => {
+		generatedPlan.sections.forEach((section) => {
+			section.items.forEach((item) => {
 				if (item.type === 'drill' && item.drill_id !== null && item.drill_id !== undefined) {
 					if (!validDrillIds.has(item.drill_id)) {
-						console.warn(`AI returned invalid drill_id ${item.drill_id} for item "${item.name}". This ID was not in the provided context.`);
+						console.warn(
+							`AI returned invalid drill_id ${item.drill_id} for item "${item.name}". This ID was not in the provided context.`
+						);
 						invalidDrillIdFound = item.drill_id;
 					} else {
 						// Verify and correct name if drill_id is valid
-						const expectedDrill = allDrillDetails.find(d => d.id === item.drill_id);
+						const expectedDrill = allDrillDetails.find((d) => d.id === item.drill_id);
 						if (expectedDrill && expectedDrill.name !== item.name) {
-							console.warn(`AI hallucination: Drill ID ${item.drill_id} expected name "${expectedDrill.name}", but AI returned "${item.name}". Correcting name.`);
+							console.warn(
+								`AI hallucination: Drill ID ${item.drill_id} expected name "${expectedDrill.name}", but AI returned "${item.name}". Correcting name.`
+							);
 							item.name = expectedDrill.name;
 						}
 					}
@@ -357,10 +405,17 @@ Focus Areas: ${parameters.focusAreas?.join(', ') || 'Not specified'}`;
 
 		if (invalidDrillIdFound !== null) {
 			// It's better to inform the user that the AI made a mistake with a specific ID from its given context.
-			return json({ error: `AI generation error: The model referenced a drill (ID: ${invalidDrillIdFound}) that was not part of its available drill information. Please try generating again, or adjust parameters.` }, { status: 400 });
+			return json(
+				{
+					error: `AI generation error: The model referenced a drill (ID: ${invalidDrillIdFound}) that was not part of its available drill information. Please try generating again, or adjust parameters.`
+				},
+				{ status: 400 }
+			);
 		}
-		
-		console.log("Skipping name-to-ID mapping as AI should provide IDs and generateObject provides structured output.");
+
+		console.log(
+			'Skipping name-to-ID mapping as AI should provide IDs and generateObject provides structured output.'
+		);
 
 		// user_id is not expected from the AI anymore with the new schema.
 		// It will be handled by the backend API when saving the plan, using the session user.
@@ -372,28 +427,38 @@ Focus Areas: ${parameters.focusAreas?.join(', ') || 'Not specified'}`;
 		*/
 
 		return json(generatedPlan, { status: 200 });
-
 	} catch (error) {
 		// Check for AI SDK specific errors or general errors
 		// The Vercel AI SDK might throw errors with specific structures.
 		// For now, a general catch. You might want to refine this.
 		let statusCode = 500;
 		let message = 'An unexpected error occurred during AI plan generation.';
-		
+
 		// Basic check for common AI related status codes if available in error
-		if (error.status === 401) { statusCode = 401; message = 'AI service authentication failed. Check API Key or credentials.'; }
-		if (error.status === 429) { statusCode = 429; message = 'AI service rate limit exceeded.'; }
-		if (error.status === 503) { statusCode = 503; message = 'AI service unavailable.'; }
-		if (error.status === 400) { // Potentially from API due to bad request (e.g. unsupported model, bad prompt)
+		if (error.status === 401) {
+			statusCode = 401;
+			message = 'AI service authentication failed. Check API Key or credentials.';
+		}
+		if (error.status === 429) {
+			statusCode = 429;
+			message = 'AI service rate limit exceeded.';
+		}
+		if (error.status === 503) {
+			statusCode = 503;
+			message = 'AI service unavailable.';
+		}
+		if (error.status === 400) {
+			// Potentially from API due to bad request (e.g. unsupported model, bad prompt)
 			statusCode = 400;
 			message = `AI service request invalid or content rejected: ${error.message || 'Bad request to AI model.'}`;
 		}
 
-		if (error.name === 'AIError') { // Generic AI SDK error
+		if (error.name === 'AIError') {
+			// Generic AI SDK error
 			console.error('Vercel AI SDK Error:', error);
 			message = error.message || message; // Use SDK message if available
-			if(error.type === 'গুলে_authentication') statusCode = 401;
-			if(error.type === 'model_not_found') statusCode = 400;
+			if (error.type === 'গুলে_authentication') statusCode = 401;
+			if (error.type === 'model_not_found') statusCode = 400;
 		} else if (error instanceof z.ZodError) {
 			console.error('Zod validation error (likely request body):', error.flatten());
 			message = 'Invalid request format.';
@@ -408,7 +473,7 @@ Focus Areas: ${parameters.focusAreas?.join(', ') || 'Not specified'}`;
 		} else {
 			console.error('Unexpected error during AI plan generation:', error);
 		}
-		
+
 		return json({ error: message }, { status: statusCode });
 	}
-} 
+}

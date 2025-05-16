@@ -2,8 +2,8 @@
 
 This index lists the tickets created based on the findings of the code review, re-prioritized based on risk and dependencies.
 
-
 ## P1: High Priority (Foundation & Scalability)
+
 1.  [Ticket 14: Centralize Validation Logic](./14-refactor-validation.md)
 
 ## P2: Architectural Refactors (Maintainability & Coupling)
@@ -15,7 +15,6 @@ This index lists the tickets created based on the findings of the code review, r
 5.  [Ticket 17: Refactor Complex `ExcalidrawWrapper` Component](./17-refactor-excalidrawwrapper.md)
 6.  [Ticket 19: Refactor Complex `FilterPanel` Component](./19-refactor-filterpanel.md)
 7.  [Ticket 21: Review/Refactor `PracticePlanService` Update Strategy](./21-refactor-ppservice-update.md)
-
 
 ## P3: Nice-to-Haves / Clean-up
 
@@ -30,4 +29,4 @@ This index lists the tickets created based on the findings of the code review, r
 30. [Ticket 30: Remove Unused API Routes and Corresponding Pages](./30-cleanup-dead-code-api.md)
 31. [Ticket 31: Improve Adherence to REST Conventions / Remove Redundant Endpoints](./31-api-rest-conventions.md)
 32. [Ticket 32: Consolidate Theme Definitions (Tailwind vs CSS Vars)](./32-config-theme-consistency.md)
-33. [Ticket 33: Investigate/Remove Vercel Rewrites if Unnecessary](./33-config-vercel-rewrites.md) 
+33. [Ticket 33: Investigate/Remove Vercel Rewrites if Unnecessary](./33-config-vercel-rewrites.md)

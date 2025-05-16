@@ -21,30 +21,30 @@ export const selectedSortOrder = writable('desc');
 
 // Function to initialize formations data
 export function initializeFormations(data) {
-  if (!data) {
-    console.warn('initializeFormations called with null or undefined data');
-    formations.set([]);
-    currentPage.set(1);
-    totalPages.set(1);
-    totalItems.set(0);
-    return;
-  }
+	if (!data) {
+		console.warn('initializeFormations called with null or undefined data');
+		formations.set([]);
+		currentPage.set(1);
+		totalPages.set(1);
+		totalItems.set(0);
+		return;
+	}
 
-  formations.set(data.items || []);
-  if (data.pagination) {
-    currentPage.set(data.pagination.page || 1);
-    totalPages.set(data.pagination.totalPages || 1);
-    totalItems.set(data.pagination.totalItems || 0);
-  } else {
-    currentPage.set(1);
-    totalPages.set(1);
-    totalItems.set(0);
-  }
+	formations.set(data.items || []);
+	if (data.pagination) {
+		currentPage.set(data.pagination.page || 1);
+		totalPages.set(data.pagination.totalPages || 1);
+		totalItems.set(data.pagination.totalItems || 0);
+	} else {
+		currentPage.set(1);
+		totalPages.set(1);
+		totalItems.set(0);
+	}
 }
 
 // Optional: Helper function to reset all filter states
 export function resetFormationFilters() {
-  selectedTags.set({});
-  searchQuery.set('');
-  selectedFormationType.set(null);
+	selectedTags.set({});
+	searchQuery.set('');
+	selectedFormationType.set(null);
 }

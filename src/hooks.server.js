@@ -2,7 +2,7 @@ import { sequence } from '@sveltejs/kit/hooks';
 import * as Sentry from '@sentry/sveltekit';
 import { auth } from '$lib/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import { cleanup } from '$lib/server/db';
+// import { cleanup } from '@vercel/postgres'; // Commented out if not used
 import { userService } from '$lib/server/services/userService';
 
 Sentry.init({
@@ -49,3 +49,8 @@ export const handle = sequence(Sentry.sentryHandle(), async function _handle({ e
 
 	return svelteKitHandler({ event, resolve, auth });
 });
+
+// Commented out or removed if cleanup is not actively used
+// export async function onłądīt() {
+//  await cleanup();
+// }

@@ -7,25 +7,25 @@ import { UnauthorizedError, ValidationError } from '$lib/server/errors.js';
 
 // Apply authGuard
 export const POST = authGuard(async ({ params, locals }) => {
-    const session = locals.session;
-    const userId = session?.user?.id; // Guard ensures userId exists
-    
-    try {
-        const drillId = parseInt(params.id);
-        
-        if (!params.id || isNaN(drillId)) {
-            throw new ValidationError('Invalid Drill ID format');
-        }
-        
-        // Service method handles NotFoundError
-        const result = await drillService.toggleUpvote(drillId, userId);
+	const session = locals.session;
+	const userId = session?.user?.id; // Guard ensures userId exists
 
-        return json({ 
-            upvotes: result.upvotes,
-            hasVoted: result.hasVoted
-        });
-    } catch (err) {
-        // Use the centralized error handler
-        return handleApiError(err);
-    }
+	try {
+		const drillId = parseInt(params.id);
+
+		if (!params.id || isNaN(drillId)) {
+			throw new ValidationError('Invalid Drill ID format');
+		}
+
+		// Service method handles NotFoundError
+		const result = await drillService.toggleUpvote(drillId, userId);
+
+		return json({
+			upvotes: result.upvotes,
+			hasVoted: result.hasVoted
+		});
+	} catch (err) {
+		// Use the centralized error handler
+		return handleApiError(err);
+	}
 });

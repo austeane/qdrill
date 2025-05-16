@@ -1,11 +1,37 @@
 <script>
     import { onMount } from 'svelte';
     import { page } from '$app/stores';
-    import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
+    // import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
+    import EntityScore from '$lib/components/EntityScore.svelte';
     import Comments from '$lib/components/Comments.svelte';
 
     export let data;
     const { userData } = data;
+
+    // Pagination settings
+    const itemsPerPage = 5;
+
+    // Drills pagination
+    let currentPageDrills = 1;
+    $: totalPagesDrills = userData?.drills ? Math.ceil(userData.drills.length / itemsPerPage) : 0;
+    $: paginatedDrills = userData?.drills ? userData.drills.slice((currentPageDrills - 1) * itemsPerPage, currentPageDrills * itemsPerPage) : [];
+
+    function changePageDrills(newPage) {
+        if (newPage >= 1 && newPage <= totalPagesDrills) {
+            currentPageDrills = newPage;
+        }
+    }
+
+    // Practice Plans pagination
+    let currentPagePracticePlans = 1;
+    $: totalPagesPracticePlans = userData?.practicePlans ? Math.ceil(userData.practicePlans.length / itemsPerPage) : 0;
+    $: paginatedPracticePlans = userData?.practicePlans ? userData.practicePlans.slice((currentPagePracticePlans - 1) * itemsPerPage, currentPagePracticePlans * itemsPerPage) : [];
+
+    function changePagePracticePlans(newPage) {
+        if (newPage >= 1 && newPage <= totalPagesPracticePlans) {
+            currentPagePracticePlans = newPage;
+        }
+    }
 
     // Utility functions to categorize votes
     function getLikedDrills(votes) {
@@ -60,7 +86,7 @@
                 <h2 class="text-xl font-semibold mb-4">Drills I've Created</h2>
                 {#if userData.drills.length > 0}
                     <ul class="divide-y">
-                        {#each userData.drills as drill}
+                        {#each paginatedDrills as drill}
                             <li class="py-4 first:pt-0 last:pb-0">
                                 <h3 class="text-lg font-bold">
                                     <a href={`/drills/${drill.id}`} 
@@ -68,11 +94,31 @@
                                 </h3>
                                 <p class="text-gray-600 text-sm mt-1">{drill.brief_description}</p>
                                 <div class="mt-2">
-                                    <UpvoteDownvote drillId={drill.id} />
+                                    <!-- <UpvoteDownvote drillId={drill.id} /> -->
+                                    <EntityScore drillId={drill.id} />
                                 </div>
                             </li>
                         {/each}
                     </ul>
+                    {#if totalPagesDrills > 1}
+                        <div class="mt-6 flex justify-between items-center text-sm">
+                            <button
+                                on:click={() => changePageDrills(currentPageDrills - 1)}
+                                disabled={currentPageDrills === 1}
+                                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Previous
+                            </button>
+                            <span>Page {currentPageDrills} of {totalPagesDrills}</span>
+                            <button
+                                on:click={() => changePageDrills(currentPageDrills + 1)}
+                                disabled={currentPageDrills === totalPagesDrills}
+                                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    {/if}
                 {:else}
                     <p class="text-gray-500 italic">You haven't created any drills yet.</p>
                 {/if}
@@ -83,7 +129,7 @@
                 <h2 class="text-xl font-semibold mb-4">Practice Plans I've Created</h2>
                 {#if userData.practicePlans.length > 0}
                     <ul class="divide-y">
-                        {#each userData.practicePlans as plan}
+                        {#each paginatedPracticePlans as plan}
                             <li class="py-4 first:pt-0 last:pb-0">
                                 <h3 class="text-lg font-bold">
                                     <a href={`/practice-plans/${plan.id}`} 
@@ -94,6 +140,25 @@
                             </li>
                         {/each}
                     </ul>
+                    {#if totalPagesPracticePlans > 1}
+                        <div class="mt-6 flex justify-between items-center text-sm">
+                            <button
+                                on:click={() => changePagePracticePlans(currentPagePracticePlans - 1)}
+                                disabled={currentPagePracticePlans === 1}
+                                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Previous
+                            </button>
+                            <span>Page {currentPagePracticePlans} of {totalPagesPracticePlans}</span>
+                            <button
+                                on:click={() => changePagePracticePlans(currentPagePracticePlans + 1)}
+                                disabled={currentPagePracticePlans === totalPagesPracticePlans}
+                                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    {/if}
                 {:else}
                     <p class="text-gray-500 italic">You haven't created any practice plans yet.</p>
                 {/if}
@@ -115,7 +180,8 @@
                                     <li class="py-3 first:pt-0 last:pb-0 flex justify-between items-center">
                                         <a href={`/drills/${vote.drill_id}`} 
                                            class="text-theme-1 hover:underline">{vote.item_name}</a>
-                                        <UpvoteDownvote drillId={vote.drill_id} />
+                                        <!-- <UpvoteDownvote drillId={vote.drill_id} /> -->
+                                        <EntityScore drillId={vote.drill_id} />
                                     </li>
                                 {/each}
                             </ul>

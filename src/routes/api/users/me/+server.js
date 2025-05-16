@@ -6,7 +6,7 @@ import { handleApiError } from '../../utils/handleApiError.js';
 export const GET = authGuard(async ({ locals }) => {
     try {
         // Retrieve the session from event.locals
-        const session = await locals.auth();
+        const session = locals.session;
         const userId = session.user.id;
 
         // Ensure we have a row in users table for this Better‑Auth user
@@ -30,6 +30,26 @@ export const GET = authGuard(async ({ locals }) => {
         });
     } catch (err) {
         // Use the centralized error handler
-        return handleApiError(err);
+        let processedError = err;
+        if (!(err instanceof Error)) {
+            const message = typeof err === 'string' ? err : (err?.message ? String(err.message) : 'Unknown non-Error object thrown');
+            processedError = new Error(message);
+            if (typeof err === 'object' && err !== null) {
+                try {
+                    Object.assign(processedError, err);
+                    processedError.message = message; 
+                } catch (assignError) {
+                }
+            }
+        } else if (err.message && typeof err.message !== 'string') {
+            try {
+                processedError = new Error(JSON.stringify(err.message));
+            } catch (stringifyError) {
+                processedError = new Error('Error with non-string message that could not be stringified.');
+            }
+            processedError.stack = err.stack; 
+            if (err.code) processedError.code = err.code; 
+        }
+        return handleApiError(processedError);
     }
 });

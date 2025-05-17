@@ -94,9 +94,7 @@ describe('Practice Plan ID API Endpoints', () => {
 
 		it('should handle unauthorized access', async () => {
 			// Mock service to throw unauthorized error
-			practicePlanService.getPracticePlanById.mockRejectedValue(
-				new ForbiddenError('Unauthorized')
-			);
+			practicePlanService.getPracticePlanById.mockRejectedValue(new ForbiddenError('Unauthorized'));
 
 			// Create mock request event
 			const event = {

@@ -1,13 +1,10 @@
 <script>
-	import { onMount, createEventDispatcher } from 'svelte';
 	import { tweened } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
 
 	export let sections = [];
 	export let currentSectionId = null;
 	export let totalDuration = 0;
-
-	const dispatch = createEventDispatcher();
 
 	// Process sections to create timeline items with parallel groups
 	$: timelineItems = sections.reduce((acc, section) => {

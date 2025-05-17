@@ -178,7 +178,7 @@ describe('BaseEntityService', () => {
 			const result = await service.getAll();
 
 			expect(service.withTransaction).toHaveBeenCalledTimes(1);
-			expect(mockClientQuery).toHaveBeenCalledTimes(2); 
+			expect(mockClientQuery).toHaveBeenCalledTimes(2);
 			expect(result.items).toHaveLength(2);
 			expect(result.pagination.totalItems).toBe(10);
 			expect(result.pagination.page).toBe(1);
@@ -256,7 +256,8 @@ describe('BaseEntityService', () => {
 			});
 
 			mockClientQuery.mockResolvedValueOnce({ rows: [{ count: '10' }] }); // COUNT
-			mockClientQuery.mockResolvedValueOnce({ // Data
+			mockClientQuery.mockResolvedValueOnce({
+				// Data
 				rows: [
 					{ id: 2, name: 'A Item' },
 					{ id: 1, name: 'B Item' }
@@ -280,7 +281,8 @@ describe('BaseEntityService', () => {
 				return callback({ query: mockClientQuery, release: vi.fn() });
 			});
 
-			mockClientQuery.mockResolvedValueOnce({ // Data query (no count query when all=true)
+			mockClientQuery.mockResolvedValueOnce({
+				// Data query (no count query when all=true)
 				rows: [
 					{ id: 1, name: 'Item 1' },
 					{ id: 2, name: 'Item 2' },
@@ -303,7 +305,7 @@ describe('BaseEntityService', () => {
 					query: vi.fn().mockRejectedValue(new DatabaseError('Failed to retrieve test_table')),
 					release: vi.fn()
 				};
-				// Note: The actual transaction begin/commit won't happen here, 
+				// Note: The actual transaction begin/commit won't happen here,
 				// but the error from client.query inside the callback should propagate.
 				return callback(mockClientThatThrows);
 			});
@@ -399,7 +401,10 @@ describe('BaseEntityService', () => {
 			// Service now throws a DatabaseError wrapping the ValidationError from buildInsertQuery
 			mockDb.query.mockImplementation(() => {
 				// This state happens if buildInsertQuery throws, and create wraps it.
-				throw new DatabaseError('Failed to create test_tabl', new ValidationError('No valid data provided for insertion')); 
+				throw new DatabaseError(
+					'Failed to create test_tabl',
+					new ValidationError('No valid data provided for insertion')
+				);
 			});
 			await expect(
 				service.create({
@@ -531,7 +536,7 @@ describe('BaseEntityService', () => {
 			// Consider if it should propagate DatabaseErrors.
 			// For now, test current behavior:
 			const result = await service.exists(1);
-			expect(result).toBe(false); 
+			expect(result).toBe(false);
 			// await expect(service.exists(1)).rejects.toThrow('Database error'); // Ideal if service propagated
 		});
 	});
@@ -683,9 +688,7 @@ describe('BaseEntityService', () => {
 		it('should return false when entity not found', async () => {
 			mockDb.query.mockResolvedValueOnce({ rows: [] }); // Simulate entity not found
 			// The service now throws NotFoundError in this case
-			await expect(service.canUserEdit('nonexistent', 'user123')).rejects.toThrow(
-				NotFoundError
-			);
+			await expect(service.canUserEdit('nonexistent', 'user123')).rejects.toThrow(NotFoundError);
 			// expect(result).toBe(false); // Old expectation
 		});
 
@@ -697,7 +700,9 @@ describe('BaseEntityService', () => {
 		it('should throw error if entityId is missing', async () => {
 			// TODO: Service should ideally throw a ValidationError before DB call.
 			// For now, test current behavior where it attempts DB call, leading to DatabaseError if not mocked.
-			mockDb.query.mockRejectedValueOnce(new DatabaseError('Simulated DB error for missing entityId')); // Ensure query mock leads to DatabaseError for this path
+			mockDb.query.mockRejectedValueOnce(
+				new DatabaseError('Simulated DB error for missing entityId')
+			); // Ensure query mock leads to DatabaseError for this path
 			await expect(service.canUserEdit(null, 'user123')).rejects.toThrow(DatabaseError);
 			// await expect(service.canUserEdit(null, 'user123')).rejects.toThrow('Entity ID is required'); // Ideal expectation
 		});
@@ -705,7 +710,9 @@ describe('BaseEntityService', () => {
 		it('should throw error if userId is missing', async () => {
 			// TODO: Service should ideally throw a ValidationError before DB call.
 			// For now, test current behavior where it attempts DB call, leading to DatabaseError if not mocked.
-			mockDb.query.mockRejectedValueOnce(new DatabaseError('Simulated DB error for missing userId')); // Ensure query mock leads to DatabaseError for this path
+			mockDb.query.mockRejectedValueOnce(
+				new DatabaseError('Simulated DB error for missing userId')
+			); // Ensure query mock leads to DatabaseError for this path
 			await expect(service.canUserEdit('entity1', null)).rejects.toThrow(DatabaseError);
 			// await expect(service.canUserEdit('entity1', null)).rejects.toThrow('User ID is required'); // Ideal expectation
 		});

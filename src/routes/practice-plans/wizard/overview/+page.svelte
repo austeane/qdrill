@@ -1,5 +1,5 @@
 <script>
-	import { basicInfo, timeline, wizardState, currentStep } from '$lib/stores/wizardStore';
+	import { basicInfo, timeline } from '$lib/stores/wizardStore';
 	import { sections as sectionsStore, formatDrillItem } from '$lib/stores/sectionsStore';
 	import { goto } from '$app/navigation';
 	import { writable } from 'svelte/store';

@@ -1,7 +1,3 @@
-<script>
-	import { page } from '$app/stores';
-</script>
-
 <svelte:head>
 	<title>Privacy Policy - QDrill</title>
 	<meta name="description" content="Privacy Policy for QDrill" />

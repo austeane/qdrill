@@ -1,5 +1,4 @@
 <script>
-	import { writable } from 'svelte/store'; // Import writable if needed for local state
 	import { timeline, basicInfo } from '$lib/stores/wizardStore';
 	import { sections as sectionsStore } from '$lib/stores/sectionsStore'; // Import the main store
 	// Removed import for wizardStore sections
@@ -220,8 +219,6 @@
 			{#if $timeline.sections.length > 0}
 				{#each $timeline.sections as section, index (section.id)}
 					<!-- Use section.id as key -->
-					{@const sectionId = section.id}
-					<!-- Capture ID -->
 					<div
 						role="listitem"
 						class="bg-white p-4 rounded-lg shadow-sm border border-gray-200"

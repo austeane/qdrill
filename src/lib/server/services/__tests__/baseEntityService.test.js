@@ -539,6 +539,7 @@ describe('BaseEntityService', () => {
 			expect(result).toBe(false);
 			// await expect(service.exists(1)).rejects.toThrow('Database error'); // Ideal if service propagated
 		});
+
 	});
 
 	describe('search', () => {

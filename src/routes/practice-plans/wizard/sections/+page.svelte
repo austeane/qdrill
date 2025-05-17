@@ -227,7 +227,8 @@
 							>
 							<div class="mt-1 space-y-2">
 								{#if section.goals && section.goals.length > 0}
-									{#each section.goals as goal, goalIndex (goalIndex)}
+									<!-- eslint-disable-next-line no-unused-vars -->
+									{#each section.goals as _, goalIndex (goalIndex)}
 										<!-- Use index as key for goals -->
 										<div class="flex items-center space-x-2">
 											<input

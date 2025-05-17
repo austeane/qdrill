@@ -1,8 +1,6 @@
 <script>
 	import { timeline, basicInfo } from '$lib/stores/wizardStore';
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { replaceState } from '$app/navigation';
 
 	// Props from server
 	export let data;

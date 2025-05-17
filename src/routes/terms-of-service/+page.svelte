@@ -1,7 +1,3 @@
-<script>
-	import { page } from '$app/stores';
-</script>
-
 <svelte:head>
 	<title>Terms of Service - QDrill</title>
 	<meta name="description" content="Terms of Service for QDrill" />

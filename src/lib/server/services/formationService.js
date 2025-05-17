@@ -160,7 +160,7 @@ export class FormationService extends BaseEntityService {
 		}
 
 		// Ensure all tags are strings
-		normalized.tags = normalized.tags.map(tag => String(tag));
+		normalized.tags = normalized.tags.map((tag) => String(tag));
 
 		return normalized;
 	}

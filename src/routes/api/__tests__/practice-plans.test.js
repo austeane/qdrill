@@ -197,7 +197,9 @@ describe('Practice Plans API Endpoints', () => {
 			// Verify error response
 			expect(response.status).toBe(400);
 			expect(data.error.code).toBe('VALIDATION_ERROR');
-			expect(data.error.details.sections).toContain('A practice plan must have at least one section');
+			expect(data.error.details.sections).toContain(
+				'A practice plan must have at least one section'
+			);
 		});
 
 		it('should handle anonymous users correctly', async () => {

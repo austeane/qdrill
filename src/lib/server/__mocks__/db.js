@@ -41,12 +41,14 @@ const mockKyselyInterface = {
 
 const db = {
 	query: mockQuery, // For direct SQL queries. Used mockQuery here.
-	getClient: vi.fn(() => ({ // For transactions
+	getClient: vi.fn(() => ({
+		// For transactions
 		query: vi.fn(),
 		release: vi.fn()
 	})),
 	kyselyDb: mockKyselyInterface, // For Kysely query builder
-	transaction: vi.fn(async (callback) => { // Mock for db.transaction
+	transaction: vi.fn(async (callback) => {
+		// Mock for db.transaction
 		const mockClient = {
 			query: vi.fn(),
 			release: vi.fn()

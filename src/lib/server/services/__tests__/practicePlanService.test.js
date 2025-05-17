@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PracticePlanService } from '../practicePlanService.js';
-import { AppError, NotFoundError, ForbiddenError, ValidationError, DatabaseError } from '../../../../lib/server/errors.js';
+import {
+	AppError,
+	NotFoundError,
+	ForbiddenError,
+	ValidationError,
+	DatabaseError
+} from '../../../../lib/server/errors.js';
 
 // Explicitly mock the db module RIGHT AT THE TOP
 vi.mock('$lib/server/db', () => {
@@ -43,7 +49,7 @@ vi.mock('$lib/server/db', () => {
 			query: vi.fn().mockResolvedValue({ rows: [] }),
 			getClient: vi.fn(() => ({
 				query: vi.fn().mockResolvedValue({ rows: [] }),
-				release: vi.fn(),
+				release: vi.fn()
 			})),
 			transaction: vi.fn(async (callback) => {
 				const mockClient = {
@@ -60,12 +66,12 @@ vi.mock('$lib/server/db', () => {
 					throw error;
 				}
 			}),
-			kyselyDb: mockKyselyInterface,
+			kyselyDb: mockKyselyInterface
 		},
 		query: vi.fn().mockResolvedValue({ rows: [] }),
 		getClient: vi.fn(() => ({
 			query: vi.fn().mockResolvedValue({ rows: [] }),
-			release: vi.fn(),
+			release: vi.fn()
 		})),
 		transaction: vi.fn(async (callback) => {
 			const mockClient = {
@@ -82,7 +88,7 @@ vi.mock('$lib/server/db', () => {
 				throw error;
 			}
 		}),
-		kyselyDb: mockKyselyInterface,
+		kyselyDb: mockKyselyInterface
 	};
 });
 

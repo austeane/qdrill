@@ -1,9 +1,8 @@
 <script>
-	import { currentStep, maxSteps, wizardState } from '$lib/stores/wizardStore';
+	import { currentStep, maxSteps } from '$lib/stores/wizardStore';
 	// Removed import from the deleted wizardValidation file
 	// import { validationErrors } from '$lib/stores/wizardValidation';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
 
 	// Step definitions
 	const steps = [

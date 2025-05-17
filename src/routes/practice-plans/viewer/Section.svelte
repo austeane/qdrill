@@ -165,27 +165,6 @@
 		dispatch('collapse', { isCollapsed });
 	}
 
-	function handleDrop(event, targetItem) {
-		const draggedItemData = event.dataTransfer.getData('text/plain');
-		try {
-			const draggedItem = JSON.parse(draggedItemData);
-			if (draggedItem && targetItem) {
-				const groupId = `group_${Date.now()}`;
-				dispatch('updateItems', {
-					sourceId: draggedItem.id,
-					targetId: targetItem.id,
-					groupId: groupId
-				});
-			}
-		} catch (e) {
-			console.error('Error handling drop:', e);
-		}
-	}
-
-	function handleDragStart(event, item) {
-		event.dataTransfer.setData('text/plain', JSON.stringify(item));
-	}
-
 	function getSectionColor(index) {
 		return sectionColors[index % sectionColors.length];
 	}

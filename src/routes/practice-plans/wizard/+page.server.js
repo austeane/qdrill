@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import { query } from '$lib/server/db';
 
 /** @type {import('./$types').PageServerLoad} */
-export async function load({ params, locals }) {
+export async function load() {
 	try {
 		// Load all drills for the drill selection step
 		const drills = await query(`

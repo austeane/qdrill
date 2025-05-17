@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DrillService } from '../drillService.js';
-import { NotFoundError, ValidationError, ForbiddenError, DatabaseError } from '../../../../lib/server/errors.js';
+import {
+	NotFoundError,
+	ValidationError,
+	ForbiddenError,
+	DatabaseError
+} from '../../../../lib/server/errors.js';
 
 // Mock db module - REMOVE THIS BLOCK
 // vi.mock('$lib/server/db', () => {
@@ -406,7 +411,11 @@ describe('DrillService', () => {
 				suggested_length_max: 15 // Changed from duration_max
 			};
 
-			const result = await service.getFilteredDrills(filters, { page: 1, limit: 10, userId: 'user123' });
+			const result = await service.getFilteredDrills(filters, {
+				page: 1,
+				limit: 10,
+				userId: 'user123'
+			});
 
 			expect(mockDb.query).toHaveBeenCalledTimes(2);
 			// Basic check for query construction (more detailed checks can be added if needed)
@@ -454,7 +463,9 @@ describe('DrillService', () => {
 			// Mock db.query to throw an error
 			mockDb.query.mockRejectedValue(new DatabaseError('Failed to retrieve filtered drills.'));
 
-			await expect(service.getFilteredDrills({}, { userId: 'user123' })).rejects.toThrow('Failed to retrieve filtered drills.');
+			await expect(service.getFilteredDrills({}, { userId: 'user123' })).rejects.toThrow(
+				'Failed to retrieve filtered drills.'
+			);
 		});
 	});
 
@@ -467,7 +478,12 @@ describe('DrillService', () => {
 				};
 
 				// Mock getById to simulate drill existence and public visibility for the initial check in toggleUpvote
-				vi.spyOn(service, 'getById').mockResolvedValue({ id: 1, name: 'Test Drill', created_by: 123, visibility: 'public' });
+				vi.spyOn(service, 'getById').mockResolvedValue({
+					id: 1,
+					name: 'Test Drill',
+					created_by: 123,
+					visibility: 'public'
+				});
 
 				// Mock vote check query - no existing vote
 				mockClient.query.mockResolvedValueOnce({
@@ -500,7 +516,12 @@ describe('DrillService', () => {
 				};
 
 				// Mock getById to simulate drill existence and public visibility
-				vi.spyOn(service, 'getById').mockResolvedValue({ id: 1, name: 'Test Drill', created_by: 123, visibility: 'public' });
+				vi.spyOn(service, 'getById').mockResolvedValue({
+					id: 1,
+					name: 'Test Drill',
+					created_by: 123,
+					visibility: 'public'
+				});
 
 				// Mock vote check query - existing vote
 				mockClient.query.mockResolvedValueOnce({
@@ -533,7 +554,7 @@ describe('DrillService', () => {
 				};
 				// Mock getById to make it throw a NotFoundError
 				vi.spyOn(service, 'getById').mockRejectedValue(new NotFoundError('Drill not found'));
-				
+
 				return callback(mockClient);
 			});
 

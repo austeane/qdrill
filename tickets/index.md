@@ -12,7 +12,7 @@ This index lists the tickets created based on the findings of the code review, r
 2.  [Ticket 15: Decouple Shared Components from Stores](./15-refactor-component-coupling.md)
 3.  [Ticket 16: Simplify and Decouple `dragManager`](./16-refactor-dragmanager.md)
 4.  [Ticket 18: Refactor Complex `PracticePlanForm` Component](./18-refactor-practiceplanform.md)
-5.  [Ticket 17: Refactor Complex `ExcalidrawWrapper` Component](./17-refactor-excalidrawwrapper.md)
+5.  [Ticket 17: Refactor Complex `ExcalidrawWrapper` Component](./17-refactor-excalidraw-wrapper.md)
 6.  [Ticket 19: Refactor Complex `FilterPanel` Component](./19-refactor-filterpanel.md)
 7.  [Ticket 21: Review/Refactor `PracticePlanService` Update Strategy](./21-refactor-ppservice-update.md)
 

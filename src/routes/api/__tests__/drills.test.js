@@ -208,7 +208,9 @@ describe('Drills API Endpoints', () => {
 
 		it('should handle unauthorized errors', async () => {
 			// Mock service to throw unauthorized error
-			drillService.updateDrill.mockRejectedValue(new ForbiddenError('Unauthorized to edit this drill'));
+			drillService.updateDrill.mockRejectedValue(
+				new ForbiddenError('Unauthorized to edit this drill')
+			);
 
 			// Create mock request event
 			const event = {
@@ -272,7 +274,9 @@ describe('Drills API Endpoints', () => {
 			const response = await DELETE(event);
 
 			// Verify the service was called correctly
-			expect(drillService.deleteDrill).toHaveBeenCalledWith(parseInt('1'), 'user123', { deleteRelated: false });
+			expect(drillService.deleteDrill).toHaveBeenCalledWith(parseInt('1'), 'user123', {
+				deleteRelated: false
+			});
 
 			// Verify the response
 			expect(response.status).toBe(204);
@@ -302,7 +306,9 @@ describe('Drills API Endpoints', () => {
 
 		it('should handle unauthorized errors', async () => {
 			// Mock service to throw unauthorized error
-			drillService.deleteDrill.mockRejectedValue(new ForbiddenError('Unauthorized to delete this drill'));
+			drillService.deleteDrill.mockRejectedValue(
+				new ForbiddenError('Unauthorized to delete this drill')
+			);
 
 			// Create mock request event
 			const event = {

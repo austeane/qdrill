@@ -475,7 +475,9 @@ export class DrillService extends BaseEntityService {
 		// Build custom SQL conditions for boolean flags like hasVideo, hasDiagrams, hasImages.
 		if (hasVideo !== undefined) {
 			customConditions.push(
-				hasVideo ? "video_link IS NOT NULL AND video_link != ''" : "(video_link IS NULL OR video_link = '')"
+				hasVideo
+					? "video_link IS NOT NULL AND video_link != ''"
+					: "(video_link IS NULL OR video_link = '')"
 			);
 		}
 		if (hasDiagrams !== undefined) {
@@ -492,8 +494,8 @@ export class DrillService extends BaseEntityService {
 			// Checks if the images array is not null and not empty.
 			customConditions.push(
 				hasImages
-					? "images IS NOT NULL AND array_length(images, 1) > 0"
-					: "(images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0)"
+					? 'images IS NOT NULL AND array_length(images, 1) > 0'
+					: '(images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0)'
 			);
 		}
 
@@ -516,7 +518,12 @@ export class DrillService extends BaseEntityService {
 
 		// Call _executeFilteredQuery with the separated searchQuery, constructed baseFilters,
 		// customConditions, and other options (like pagination, sorting).
-		return await this._executeFilteredQuery(searchQuery || null, baseFilters, customConditions, options);
+		return await this._executeFilteredQuery(
+			searchQuery || null,
+			baseFilters,
+			customConditions,
+			options
+		);
 	}
 
 	/**

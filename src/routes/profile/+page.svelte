@@ -1,9 +1,7 @@
 <script>
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	// import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
 	import EntityScore from '$lib/components/EntityScore.svelte';
-	import Comments from '$lib/components/Comments.svelte';
 
 	export let data;
 	const { userData } = data;

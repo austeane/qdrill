@@ -50,9 +50,6 @@ export async function load({ fetch, url, locals }) {
 
 		filters.searchQuery = url.searchParams.get('q');
 
-		// Add userId to filters
-		if (userId) filters.userId = userId;
-
 		// Remove undefined filters
 		Object.keys(filters).forEach((key) => filters[key] === undefined && delete filters[key]);
 
@@ -65,7 +62,7 @@ export async function load({ fetch, url, locals }) {
 		});
 
 		// Define options for the service call (pagination + sorting)
-		const serviceOptions = { page, limit, sortBy, sortOrder };
+		const serviceOptions = { page, limit, sortBy, sortOrder, userId };
 
 		// Fetch drills using the parsed filters/options and filter options in parallel
 		const [drillsResult, filterOptionsResponse] = await Promise.all([

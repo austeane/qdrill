@@ -42,12 +42,6 @@
 		$basicInfo.practiceGoals = $basicInfo.practiceGoals.filter((_, i) => i !== index);
 		handleChange();
 	}
-
-	// Handle description change
-	function handleDescriptionChange(e) {
-		$basicInfo.description = e.target.getContent();
-		handleChange();
-	}
 </script>
 
 <div class="space-y-8">
@@ -135,9 +129,9 @@
 		<!-- Practice Goals -->
 		<div class="mb-6">
 			<div class="flex justify-between items-center">
-				<label id="practice-goals-label" class="block text-sm font-medium text-gray-700">
+				<span id="practice-goals-label" class="block text-sm font-medium text-gray-700">
 					Practice Goals <span class="text-red-500">*</span>
-				</label>
+				</span>
 				<button
 					type="button"
 					on:click={addPracticeGoal}
@@ -147,7 +141,7 @@
 				</button>
 			</div>
 			<div role="list" aria-labelledby="practice-goals-label" class="mt-2 space-y-2">
-				{#each $basicInfo.practiceGoals as goal, index}
+				{#each $basicInfo.practiceGoals as _, index}
 					<div class="flex items-center space-x-2">
 						<input
 							type="text"
@@ -227,7 +221,7 @@
 									'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
 								branding: false,
 								setup: (editor) => {
-									editor.on('change keyup', (e) => {
+									editor.on('change keyup', () => {
 										$basicInfo.description = editor.getContent();
 										handleChange();
 									});

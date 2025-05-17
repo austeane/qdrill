@@ -19,11 +19,16 @@ export default defineConfig({
 		include: [
 			'@sveltejs/kit',
 			'@sveltejs/adapter-vercel',
-			'@excalidraw/excalidraw',
 			'react',
-			'react-dom'
+			'react-dom',
+			'@excalidraw/excalidraw'
 		],
-		exclude: ['@mapbox/node-pre-gyp']
+		exclude: [
+			'@mapbox/node-pre-gyp',
+			'svelte-range-slider-pips',
+			'@zerodevx/svelte-toast',
+			'lucide-svelte'
+		]
 	},
 	resolve: {
 		alias: {

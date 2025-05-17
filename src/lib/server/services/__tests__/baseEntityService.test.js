@@ -525,15 +525,19 @@ describe('BaseEntityService', () => {
 			expect(result).toBe(false);
 		});
 
-		it('should handle database errors', async () => {
-			mockDb.query.mockRejectedValueOnce(new Error('Database error'));
-			// TODO: service.exists currently catches errors and returns false.
-			// Consider if it should propagate DatabaseErrors.
-			// For now, test current behavior:
-			const result = await service.exists(1);
-			expect(result).toBe(false); 
-			// await expect(service.exists(1)).rejects.toThrow('Database error'); // Ideal if service propagated
-		});
+                it('should handle database errors', async () => {
+                        mockDb.query.mockRejectedValueOnce(new Error('Database error'));
+
+                        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+                        const result = await service.exists(1);
+
+                        expect(consoleErrorSpy).toHaveBeenCalled();
+                        expect(result).toBe(false);
+
+                        consoleErrorSpy.mockRestore();
+                        // await expect(service.exists(1)).rejects.toThrow('Database error'); // Ideal if service propagated
+                });
 	});
 
 	describe('search', () => {

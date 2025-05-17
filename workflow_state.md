@@ -7,7 +7,7 @@
 **Related Documentation:**
 
 - `docs/guides/llm_creating_drills.md`
-- `docs/guides/llm_creating_practice_plans.md` (To be created)
+- `docs/guides/llm_creating_practice_plans.md`
 - `tickets/llm-practice-plan-tools.md`
 
 **Scripts Involved:**

@@ -11,7 +11,7 @@ export async function load({ fetch, depends }) {
 		// Using fetch here, but a pollOptionService would be cleaner
                let pollData = { options: [] };
                try {
-                       pollData = await apiFetch('/api/poll/options');
+                       pollData = await apiFetch('/api/poll/options', {}, fetch);
                } catch (err) {
                        console.error(`Error fetching poll options:`, err);
                }

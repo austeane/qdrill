@@ -5,7 +5,7 @@ export async function load({ params, fetch }) {
 	const { id } = params;
 
        try {
-               const practicePlan = await apiFetch(`/api/practice-plans/${id}`);
+               const practicePlan = await apiFetch(`/api/practice-plans/${id}`, {}, fetch);
 
                return { practicePlan };
        } catch (err) {

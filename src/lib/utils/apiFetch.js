@@ -6,13 +6,14 @@
  * @template T The expected type of the successful JSON response body.
  * @param {string} url The URL to fetch.
  * @param {RequestInit} [opts={}] Fetch options (method, headers, body, etc.).
+ * @param {typeof fetch} [fetchInstance=fetch] Optional fetch implementation. Defaults to global fetch.
  * @returns {Promise<T>} A promise that resolves with the JSON body on success.
  * @throws {Error} Throws an error with a formatted message on network errors or non-ok responses.
  */
-export async function apiFetch(url, opts = {}) {
+export async function apiFetch(url, opts = {}, fetchInstance = fetch) {
 	let response;
 	try {
-		response = await fetch(url, opts);
+		response = await fetchInstance(url, opts);
 	} catch (networkError) {
 		// Handle network errors (e.g., DNS resolution failure, refused connection)
 		console.error('Network error in apiFetch:', networkError);
@@ -20,56 +21,73 @@ export async function apiFetch(url, opts = {}) {
 	}
 
 	let body = null;
-	let parseError = null;
-	try {
-		// Try cloning the response to read the body without consuming it for the final return
-		const clonedResponse = response.clone();
-		if (response.headers.get('content-type')?.includes('application/json')) {
-			body = await clonedResponse.json();
-		} else {
-			// If not JSON, store text for potential error messages
-			body = await clonedResponse.text();
-		}
-	} catch (e) {
-		// Store the parsing error
-		parseError = e;
-		console.warn('Error parsing response body in apiFetch:', e);
-		// Attempt to get text even if JSON parsing failed
-		try {
-			body = await response.text();
-		} catch (textErr) {
-			console.warn('Error getting text fallback body in apiFetch:', textErr);
-			body = `Response body could not be parsed. Status: ${response.status}`;
-		}
-	}
+	const contentType = response.headers.get('content-type');
+	const isJson = contentType?.includes('application/json');
 
 	if (!response.ok) {
-		// Construct the best possible error message
+		// Try to parse body for error message even if not ok
+		try {
+			if (isJson) {
+				body = await response.json();
+			} else {
+				body = await response.text();
+			}
+		} catch (e) {
+			// Parsing error, try to get text for error message
+			try {
+				body = await response.text(); // Read as text if JSON parsing failed or not JSON
+			} catch (textErr) {
+				body = `Response body could not be parsed. Status: ${response.status}`;
+			}
+		}
+		
 		let message = `HTTP error! Status: ${response.status}`;
 		if (typeof body === 'object' && body !== null && body.error && body.error.message) {
-			message = body.error.message; // Use the message from the standardized error format
+			message = body.error.message;
 		} else if (typeof body === 'string' && body.length > 0 && body.length < 500) {
-			// Use text body if it's reasonable
 			message = body;
 		} else if (response.statusText) {
 			message = `${response.status} ${response.statusText}`;
-		} else if (parseError) {
-			message += ` (Could not parse response: ${parseError.message})`;
 		}
 
 		console.error(`API Fetch Error (${url}): ${message}`, { status: response.status, body });
 		throw new Error(message);
 	}
 
-	// If response is OK, but we had a parsing error earlier, re-throw it
-	// (unless body was successfully read as text)
-	if (parseError && typeof body !== 'string') {
-		throw new Error(
-			`Successfully fetched, but failed to parse response body: ${parseError.message}`
-		);
+	// Response is OK
+	if (isJson) {
+		try {
+			body = await response.json();
+		} catch (parseError) {
+			console.error('Error parsing JSON response body in apiFetch:', parseError, { url });
+			// Attempt to get text for more context in the error, but throw a parsing specific error
+			let responseTextForError = '';
+			try {
+				// Re-fetch or use a cloned response if original body is consumed or unreadable
+				// For simplicity here, assuming response.text() can be called,
+				// but in a real scenario, the response might be consumed.
+				// Cloning upfront as in the original code is safer if we need to retry .json() vs .text()
+				const clonedResponseForError = response.clone(); // Clone before attempting to read body
+				responseTextForError = await clonedResponseForError.text();
+			} catch (textErr) {
+				responseTextForError = '(Could not retrieve text body for error context)';
+			}
+			throw new Error(
+				`Successfully fetched, but failed to parse expected JSON response body. Status: ${response.status}. Error: ${parseError.message}. Response text: ${responseTextForError}`
+			);
+		}
+	} else {
+		// If not JSON, read as text.
+		// This assumes non-JSON responses are expected to be text.
+		try {
+			body = await response.text();
+		} catch (textError) {
+			console.error('Error reading text response body in apiFetch:', textError, { url });
+			throw new Error(
+				`Successfully fetched, but failed to read response body as text. Status: ${response.status}. Error: ${textError.message}`
+			);
+		}
 	}
 
-	// Return the parsed body (which could be JSON object or text)
-	// Note: If the original request expected non-JSON, the caller should handle the type.
 	return body;
 }

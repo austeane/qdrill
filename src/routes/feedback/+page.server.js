@@ -12,7 +12,7 @@ export async function load({ fetch, depends }) {
 
                let feedbackEntries = [];
                try {
-                       feedbackEntries = await apiFetch('/api/feedback');
+                       feedbackEntries = await apiFetch('/api/feedback', {}, fetch);
                } catch (err) {
                        console.error(`Error fetching feedback:`, err);
                }

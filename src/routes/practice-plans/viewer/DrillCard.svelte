@@ -1,4 +1,5 @@
 <script>
+	/* eslint-disable svelte/no-at-html-tags, svelte/valid-compile */
 	import { createEventDispatcher } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
@@ -44,10 +45,6 @@
 	function toggleExpand() {
 		isExpanded = !isExpanded;
 		console.log('[DrillCard] Toggled expansion:', isExpanded);
-	}
-
-	function handleEdit() {
-		dispatch('edit', { item });
 	}
 
 	function handleDurationChange(newDuration) {
@@ -357,6 +354,7 @@
 	.duration-control > .flex.flex-col {
 		display: flex;
 	}
+	/* eslint-disable-next-line svelte/valid-compile */
 	.duration-control > .flex.items-center:not(.editable-input-wrapper) {
 		display: flex;
 	}

@@ -1,10 +1,8 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { practicePlanService } from '$lib/server/services/practicePlanService';
 import { authGuard } from '$lib/server/authGuard'; // Import authGuard
-import { PracticePlanService } from '$lib/server/services/practicePlanService.js';
 import { normalizeItems } from '$lib/utils/practicePlanUtils.js';
 import { practicePlanSchema } from '$lib/validation/practicePlanSchema.ts';
-import { z } from 'zod';
 import { NotFoundError, ForbiddenError, ValidationError, DatabaseError } from '$lib/server/errors';
 
 const COOKIE_NAME = 'pendingPlanToken'; // Add cookie name constant

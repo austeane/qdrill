@@ -141,6 +141,7 @@
 				</button>
 			</div>
 			<div role="list" aria-labelledby="practice-goals-label" class="mt-2 space-y-2">
+				<!-- eslint-disable-next-line no-unused-vars -->
 				{#each $basicInfo.practiceGoals as _, index}
 					<div class="flex items-center space-x-2">
 						<input

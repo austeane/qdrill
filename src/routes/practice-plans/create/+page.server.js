@@ -2,7 +2,6 @@ import { fail, redirect } from '@sveltejs/kit';
 import { PracticePlanService } from '$lib/server/services/practicePlanService.js';
 import { normalizeItems } from '$lib/utils/practicePlanUtils.js';
 import { practicePlanSchema } from '$lib/validation/practicePlanSchema.ts'; // Assuming .ts is correct source
-import { z } from 'zod';
 import { ValidationError, ForbiddenError, DatabaseError } from '$lib/server/errors';
 
 const practicePlanService = new PracticePlanService();

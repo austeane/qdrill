@@ -1,8 +1,9 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
 	// Removed shadcn component imports - Card, Button, Input, Label, Textarea, Select, Popover, etc.
-	import Spinner from '$lib/components/Spinner.svelte';
-	import { Info } from 'lucide-svelte'; // Added Info icon import
+import Spinner from '$lib/components/Spinner.svelte';
+import { Info } from 'lucide-svelte'; // Added Info icon import
+import { apiFetch } from '$lib/utils/apiFetch.js';
 	// Removed lucide-svelte, cmdk-sv, bits-ui, cn imports
 
 	const dispatch = createEventDispatcher();
@@ -48,24 +49,15 @@
 		try {
 			console.log('Sending parameters to AI:', aiParams);
 
-			const response = await fetch('/api/practice-plans/generate-ai', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ parameters: aiParams })
-			});
+                       const responseBody = await apiFetch('/api/practice-plans/generate-ai', {
+                               method: 'POST',
+                               headers: {
+                                       'Content-Type': 'application/json'
+                               },
+                               body: JSON.stringify({ parameters: aiParams })
+                       });
 
-			const responseBody = await response.json();
-
-			if (!response.ok) {
-				console.error('AI Generation Error Response:', responseBody);
-				const errorMessage = responseBody.error || 'AI generation failed. Please try again.';
-				dispatch('error', errorMessage); // Dispatch error event
-				return;
-			}
-
-			console.log('Received AI generated plan:', responseBody);
+                       console.log('Received AI generated plan:', responseBody);
 
 			// Validate the structure roughly before dispatching
 			if (!responseBody.name || !responseBody.sections || !Array.isArray(responseBody.sections)) {

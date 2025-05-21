@@ -1,8 +1,9 @@
 <script>
 	/* NEW component */
 	import { createEventDispatcher } from 'svelte';
-	import { goto } from '$app/navigation';
-	import AiPlanGenerator from './AiPlanGenerator.svelte';
+import { goto } from '$app/navigation';
+import AiPlanGenerator from './AiPlanGenerator.svelte';
+import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	// Props
 	export let isOpen = false;
@@ -29,17 +30,16 @@
 				JSON.stringify(generatedPlanFromAI, null, 2)
 			);
 
-			const res = await fetch('/api/practice-plans', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(generatedPlanFromAI) // Send the AI-generated plan directly
-			});
-			const body = await res.json();
-			if (!res.ok) {
-				let errorMessage = 'Failed to save plan.';
-				if (body?.error) {
-					errorMessage = body.error;
-				} else if (body?.errors) {
+                       const body = await apiFetch('/api/practice-plans', {
+                               method: 'POST',
+                               headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify(generatedPlanFromAI)
+                       });
+                       if (!body.id) {
+                               let errorMessage = 'Failed to save plan.';
+                               if (body?.error) {
+                                       errorMessage = body.error;
+                               } else if (body?.errors) {
 					// Handle Zod-like error structures
 					errorMessage = Object.entries(body.errors)
 						.map(
@@ -47,12 +47,11 @@
 								`${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`
 						)
 						.join('; ');
-				}
-				throw new Error(errorMessage);
-			}
+                               }
+                               throw new Error(errorMessage);
+                       }
 
-			// Navigate straight to edit page
-			goto(`/practice-plans/${body.id}/edit`);
+                       goto(`/practice-plans/${body.id}/edit`);
 		} catch (err) {
 			console.error(err);
 			alert(err.message || 'Could not create plan');

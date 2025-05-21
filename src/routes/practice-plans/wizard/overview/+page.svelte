@@ -1,8 +1,9 @@
 <script>
 	import { basicInfo, timeline } from '$lib/stores/wizardStore';
 	import { sections as sectionsStore, formatDrillItem } from '$lib/stores/sectionsStore';
-	import { goto } from '$app/navigation';
-	import { writable } from 'svelte/store';
+import { goto } from '$app/navigation';
+import { writable } from 'svelte/store';
+import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	let submissionError = writable(null);
 
@@ -77,26 +78,11 @@
 
 			console.log('Submitting Plan Data:', JSON.stringify(planData, null, 2));
 
-			const response = await fetch('/api/practice-plans', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(planData)
-			});
-
-			if (!response.ok) {
-				let errorMsg = 'Failed to create practice plan.';
-				try {
-					const errorData = await response.json();
-					errorMsg = errorData.message || errorData.error || JSON.stringify(errorData);
-				} catch (e) {
-					errorMsg = `HTTP Error ${response.status}: ${response.statusText}`;
-				}
-				console.error('Submission Error:', errorMsg);
-				submissionError.set(errorMsg);
-				throw new Error(errorMsg);
-			}
-
-			const data = await response.json();
+                       const data = await apiFetch('/api/practice-plans', {
+                               method: 'POST',
+                               headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify(planData)
+                       });
 			if (data.id) {
 				goto(`/practice-plans/${data.id}`);
 			} else {

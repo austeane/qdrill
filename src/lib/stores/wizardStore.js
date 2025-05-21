@@ -1,5 +1,6 @@
 import { writable, derived, get } from 'svelte/store';
 import { practicePlanBasicInfoSchema } from '$lib/validation/practicePlanSchema';
+import { apiFetch } from '$lib/utils/apiFetch.js';
 
 // Basic info store
 export const basicInfo = writable({
@@ -105,16 +106,12 @@ export function scheduleAutoSave() {
 			const formData = new FormData();
 			formData.append('data', JSON.stringify(state));
 
-			const response = await fetch('/practice-plans/wizard?/saveDraft', {
-				method: 'POST',
-				body: formData
-			});
-
-			if (response.ok) {
-				const data = await response.json();
-				draftId.set(data.id);
-				lastSaved.set(new Date());
-			}
+                       const data = await apiFetch('/practice-plans/wizard?/saveDraft', {
+                               method: 'POST',
+                               body: formData
+                       });
+                       draftId.set(data.id);
+                       lastSaved.set(new Date());
 		} catch (error) {
 			console.error('Failed to auto-save wizard state:', error);
 		}

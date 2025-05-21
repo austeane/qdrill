@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import { sections, selectedItems } from './sectionsStore';
+import { sections } from './sectionsStore';
 import { addToHistory } from './historyStore';
 
 // ----------------------------------------

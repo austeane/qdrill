@@ -40,11 +40,18 @@
 		removeSection,
 		removeItem,
 		handleDurationChange,
-		handleUngroup,
-		getTimelineName,
-		customTimelineNames
-		// handleDrillMove // Dnd logic likely uses this, ensure it's available if needed
-	} from '$lib/stores/sectionsStore';
+               handleUngroup,
+               getTimelineName,
+               customTimelineNames,
+               selectedTimelines,
+               addBreak,
+               addDrillToPlan,
+               addOneOffDrill,
+               updateTimelineColor,
+               updateTimelineName,
+               handleTimelineSave
+               // handleDrillMove // Dnd logic likely uses this, ensure it's available if needed
+       } from '$lib/stores/sectionsStore';
 
 	// Import component modules
 	import DrillSearchModal from '$lib/components/practice-plan/modals/DrillSearchModal.svelte';
@@ -101,9 +108,40 @@
 		showDrillSearch = true;
 	}
 
-	function handleOpenTimelineSelector() {
-		showTimelineSelector = true;
-	}
+        function handleOpenTimelineSelector() {
+                showTimelineSelector = true;
+        }
+
+        function handleAddDrillEvent(event) {
+                const { drill, sectionId } = event.detail;
+                addDrillToPlan(drill, sectionId);
+        }
+
+        function handleAddBreakEvent(event) {
+                const { sectionId } = event.detail;
+                addBreak(sectionId);
+        }
+
+        function handleAddOneOffEvent(event) {
+                const { sectionId, name } = event.detail;
+                addOneOffDrill(sectionId, name);
+        }
+
+        function handleUpdateTimelineNameEvent(event) {
+                const { timeline, name } = event.detail;
+                updateTimelineName(timeline, name);
+        }
+
+        function handleUpdateTimelineColorEvent(event) {
+                const { timeline, color } = event.detail;
+                updateTimelineColor(timeline, color);
+        }
+
+        function handleSaveTimelinesEvent(event) {
+                // In this implementation we just call the existing store handler
+                // to persist selected timelines
+                handleTimelineSave();
+        }
 
 	// Component initialization
 	onMount(async () => {
@@ -407,8 +445,23 @@
 </form>
 
 <!-- Modals -->
-<DrillSearchModal bind:show={showDrillSearch} bind:selectedSectionId={selectedSectionForDrill} />
-<TimelineSelectorModal bind:show={showTimelineSelector} />
+<DrillSearchModal
+       bind:show={showDrillSearch}
+       bind:selectedSectionId={selectedSectionForDrill}
+       on:addDrill={handleAddDrillEvent}
+       on:addBreak={handleAddBreakEvent}
+       on:addOneOffDrill={handleAddOneOffEvent}
+/>
+<TimelineSelectorModal
+       bind:show={showTimelineSelector}
+       {selectedTimelines}
+       {getTimelineColor}
+       {getTimelineName}
+       {customTimelineNames}
+       on:updateTimelineName={handleUpdateTimelineNameEvent}
+       on:updateTimelineColor={handleUpdateTimelineColorEvent}
+       on:saveTimelines={handleSaveTimelinesEvent}
+/>
 
 <!-- Display general form errors from server action -->
 {#if $page.form?.errors?.general}

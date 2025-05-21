@@ -1,20 +1,15 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
-	import {
-		PARALLEL_TIMELINES,
-		TIMELINE_COLORS,
-		DEFAULT_TIMELINE_NAMES,
-		selectedTimelines,
-		handleTimelineSave,
-		getTimelineColor,
-		getTimelineName,
-		updateTimelineColor,
-		updateTimelineName,
-		customTimelineNames,
-		debugTimelineNames
-	} from '$lib/stores/sectionsStore';
+       import {
+               PARALLEL_TIMELINES,
+               TIMELINE_COLORS
+       } from '$lib/stores/sectionsStore';
 
-	export let show = false;
+       export let show = false;
+       export let selectedTimelines;
+       export let getTimelineColor = (timeline) => 'bg-gray-500';
+       export let getTimelineName = (timeline) => timeline;
+       export let customTimelineNames;
 
 	const dispatch = createEventDispatcher();
 
@@ -23,11 +18,13 @@
 		dispatch('close');
 	}
 
-	function save() {
-		if (handleTimelineSave()) {
-			close();
-		}
-	}
+       function save() {
+               dispatch('saveTimelines', {
+                       selected: Array.from($selectedTimelines || []),
+                       customNames: $customTimelineNames || {}
+               });
+               close();
+       }
 
 	// Track locally which timeline is being configured
 	let activeTimeline = null;
@@ -80,51 +77,38 @@
 		showColorPicker = false;
 	}
 
-	function saveTimelineName() {
-		if (activeTimeline && editingName) {
-			console.log('[DEBUG] TimelineSelectorModal - saving timeline name:', {
-				timeline: activeTimeline,
-				name: editingName
-			});
-			updateTimelineName(activeTimeline, editingName);
-			showNameEditor = false;
+       function saveTimelineName() {
+               if (activeTimeline && editingName) {
+                       dispatch('updateTimelineName', {
+                               timeline: activeTimeline,
+                               name: editingName
+                       });
+                       showNameEditor = false;
 
-			// Debug the current state of timeline names
-			debugTimelineNames();
+                       // Update the cached name locally for display
+                       timelineNamesCache[activeTimeline] = editingName;
 
-			// Update the cached timeline name
-			timelineNamesCache[activeTimeline] = editingName;
+                       // Force local refresh
+                       setTimeout(() => {
+                               timelineNamesStore = { ...timelineNamesStore };
+                               activeTimeline = null;
+                       }, 50);
+               }
+       }
 
-			// Force update of the PARALLEL_TIMELINES object for this component
-			PARALLEL_TIMELINES[activeTimeline] = {
-				...PARALLEL_TIMELINES[activeTimeline],
-				name: editingName
-			};
-
-			// Force component to update by creating a minimal delay
-			setTimeout(() => {
-				console.log('[DEBUG] Forcing component update after name change');
-				// Create a temporary copy to trigger reactivity
-				timelineNamesStore = { ...timelineNamesStore };
-				activeTimeline = null;
-			}, 50);
-		}
-	}
-
-	function selectColor(color) {
-		if (activeTimeline) {
-			// Validate that color is in TIMELINE_COLORS before updating
-			if (Object.keys(TIMELINE_COLORS).includes(color)) {
-				updateTimelineColor(activeTimeline, color);
-			} else {
-				console.warn(
-					`Invalid color class "${color}" selected in TimelineSelectorModal. Must be one of: ${Object.keys(TIMELINE_COLORS).join(', ')}`
-				);
-			}
-			showColorPicker = false;
-			activeTimeline = null;
-		}
-	}
+       function selectColor(color) {
+               if (activeTimeline) {
+                       if (Object.keys(TIMELINE_COLORS).includes(color)) {
+                               dispatch('updateTimelineColor', { timeline: activeTimeline, color });
+                       } else {
+                               console.warn(
+                                       `Invalid color class "${color}" selected in TimelineSelectorModal. Must be one of: ${Object.keys(TIMELINE_COLORS).join(', ')}`
+                               );
+                       }
+                       showColorPicker = false;
+                       activeTimeline = null;
+               }
+       }
 </script>
 
 {#if show}

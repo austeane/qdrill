@@ -30,9 +30,8 @@
 	import { formatTime } from '$lib/utils/timeUtils';
 
 	import {
-		sections,
-		selectedItems,
-		selectedSectionId,
+               sections,
+               selectedSectionId,
 		addSection,
 		initializeSections,
 		totalPlanDuration, // Moved here
@@ -209,7 +208,6 @@
 					});
 				}
 
-				selectedItems.set(cartItems);
 			}
 		} else if (practicePlan) {
 			// If editing an existing plan (and not restoring pending), initialize timelines

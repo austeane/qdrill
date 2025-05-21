@@ -24,7 +24,8 @@
 		resetForm, // Add resetForm if needed (e.g., on successful create)
 		addPracticeGoal,
 		removePracticeGoal,
-		updatePracticeGoal
+		updatePracticeGoal,
+		validateMetadataForm
 	} from '$lib/stores/practicePlanMetadataStore';
 	import { formatTime } from '$lib/utils/timeUtils';
 
@@ -253,6 +254,15 @@
 	action="?"
 	use:enhance={({ formElement, formData, action, cancel, submitter }) => {
 		submitting = true;
+
+		// Validate metadata fields before submitting
+		const validation = validateMetadataForm();
+		if (!validation.success) {
+			submitting = false;
+			toast.push('Please correct the highlighted errors.');
+			cancel();
+			return;
+		}
 
 		const sectionsValueForSubmission = get(sections);
 

@@ -14,11 +14,9 @@
 		startTime,
 		addPracticeGoal,
 		removePracticeGoal,
-		updatePracticeGoal
+		updatePracticeGoal,
+		errors as metadataErrors
 	} from '$lib/stores/practicePlanMetadataStore';
-
-	// TODO: Import metadataErrors store if needed
-	let metadataErrors = {}; // Local error store placeholder
 
 	export let skillOptions = [];
 	export let focusAreaOptions = [];
@@ -64,8 +62,8 @@
 		/>
 		{#if $page.form?.errors?.name}
 			<p class="text-red-500 text-sm mt-1">{$page.form.errors.name[0]}</p>
-		{:else if metadataErrors.name?.[0]}
-			<p class="text-red-500 text-sm mt-1">{metadataErrors.name[0]}</p>
+		{:else if $metadataErrors.name?.[0]}
+			<p class="text-red-500 text-sm mt-1">{$metadataErrors.name[0]}</p>
 		{/if}
 	</div>
 
@@ -86,8 +84,8 @@
 		</textarea>
 		{#if $page.form?.errors?.description}
 			<p class="text-red-500 text-sm mt-1">{$page.form.errors.description[0]}</p>
-		{:else if metadataErrors.description?.[0]}
-			<p class="text-red-500 text-sm mt-1">{metadataErrors.description[0]}</p>
+		{:else if $metadataErrors.description?.[0]}
+			<p class="text-red-500 text-sm mt-1">{$metadataErrors.description[0]}</p>
 		{/if}
 	</div>
 

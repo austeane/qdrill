@@ -60,7 +60,8 @@
 	import TimelineSelectorModal from '$lib/components/practice-plan/modals/TimelineSelectorModal.svelte';
 	import SectionContainer from '$lib/components/practice-plan/sections/SectionContainer.svelte';
 	import PlanMetadataFields from '$lib/components/practice-plan/PlanMetadataFields.svelte';
-	import { Button } from '$lib/components/ui/button';
+	import { Button } from '$lib/components/ui/button'; // Restore the original button import
+	import SimpleButton from './components/SimpleButton.svelte'; // Import the new simple button
 	import Spinner from '$lib/components/Spinner.svelte'; // Assuming Spinner is top-level
 
 	// Import TinyMCE editor
@@ -430,19 +431,20 @@
 
 		<div class="flex gap-2 mt-4">
 			{#if true}
-				<Button variant="outline" class="flex-1" on:click={addSectionAction}
-					>+ Add Section</Button
-				>
-			{/if}
-			{#if false} // Keep native button commented out for now
-			/* <button type="button" class="flex-1 p-2 border rounded" on:click={() => console.log('[PracticePlanForm.svelte] Native Add Section button clicked!')}>
-				+ Add Section (Native HTML Test)
-			</button> */
+				{#if false} // Keep native button commented out for now
+				/* <button type="button" class="flex-1 p-2 border rounded" on:click={() => console.log('[PracticePlanForm.svelte] Native Add Section button clicked!')}>
+					+ Add Section (Native HTML Test)
+				</button> */
+				{/if}
 			{/if}
 		</div>
 	</div>
 
 	<!-- Visibility controls are handled within PlanMetadataFields -->
+
+	<div class="my-4"> <!-- Wrapper for the moved button -->
+	  <SimpleButton on:click={addSectionAction} class="flex-1">+ Add Section</SimpleButton> 
+	</div>
 
 	<!-- Submit button -->
 	<div class="flex justify-end mt-8">

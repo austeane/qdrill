@@ -26,9 +26,6 @@ vi.mock('../sectionsStore', () => {
 				mockSections = newVal;
 			})
 		},
-		selectedItems: {
-			set: vi.fn()
-		}
 	};
 });
 

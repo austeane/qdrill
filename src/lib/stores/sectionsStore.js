@@ -80,7 +80,6 @@ export const TIMELINE_COLORS = {
 
 // Create the sections store
 export const sections = writable(DEFAULT_SECTIONS);
-export const selectedItems = writable([]);
 export const selectedTimelines = writable(new Set(['BEATERS', 'CHASERS']));
 export const selectedSectionId = writable(null);
 export const customTimelineColors = writable({});
@@ -353,10 +352,8 @@ export function initializeSections(practicePlan) {
 			})
 		}))
 	);
-	selectedItems.set(allItems);
-
-	// Initialize timelines
-	initializeTimelinesFromPlan(practicePlan);
+       // Initialize timelines
+       initializeTimelinesFromPlan(practicePlan);
 }
 
 // Initialize timelines from practice plan

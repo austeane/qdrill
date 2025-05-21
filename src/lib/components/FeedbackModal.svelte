@@ -1,5 +1,5 @@
 <script>
-	import { feedbackModalVisible, feedbackList } from '$lib/stores/feedbackStore';
+       import { feedbackModalVisible } from '$lib/stores/feedbackStore';
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -33,9 +33,7 @@
 			feedbackType = 'general';
 			name = '';
 			email = '';
-			feedbackModalVisible.set(false);
-			// Optionally, refresh feedback list
-			loadFeedback();
+                       feedbackModalVisible.set(false);
 		} catch (error) {
 			// Error handling already done by apiFetch
 			alert('Failed to submit feedback: ' + error.message);
@@ -51,18 +49,9 @@
 		goto('/feedback');
 	}
 
-	async function loadFeedback() {
-		try {
-			const data = await apiFetch('/api/feedback');
-			feedbackList.set(data);
-		} catch (error) {
-			console.error('Failed to load feedback:', error);
-		}
-	}
-
-	onMount(() => {
-		loadFeedback();
-	});
+       onMount(() => {
+               // No-op for now
+       });
 </script>
 
 {#if $feedbackModalVisible}

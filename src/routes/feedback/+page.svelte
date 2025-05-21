@@ -1,6 +1,5 @@
 <script>
-	// import { feedbackList } from '$lib/stores/feedbackStore'; // Store not used directly for list
-	import { onMount } from 'svelte';
+       import { onMount } from 'svelte';
 	import { invalidate } from '$app/navigation'; // Import invalidate
 
 	export let data; // Accept data from load function

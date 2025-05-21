@@ -41,9 +41,18 @@ export class FormationService extends BaseEntityService {
 
 		// Explicitly define default columns for FormationService
 		const defaultFormationColumns = [
-			'id', 'name', 'brief_description', 'detailed_description', 'diagrams', 'tags',
-			'is_editable_by_others', 'visibility', 'formation_type', 'created_by',
-			'created_at', 'updated_at'
+			'id',
+			'name',
+			'brief_description',
+			'detailed_description',
+			'diagrams',
+			'tags',
+			'is_editable_by_others',
+			'visibility',
+			'formation_type',
+			'created_by',
+			'created_at',
+			'updated_at'
 		];
 
 		super(
@@ -79,14 +88,17 @@ export class FormationService extends BaseEntityService {
 			let qb = kyselyDb.selectFrom('formations').selectAll(); // Select all initially
 
 			if (this.useStandardPermissions && this.permissionConfig) {
-				const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } = this.permissionConfig;
+				const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
+					this.permissionConfig;
 				qb = qb.where((eb) => {
 					const conditions = [
 						eb(visibilityColumn, '=', publicValue),
 						eb(visibilityColumn, '=', unlistedValue)
 					];
 					if (userId) {
-						conditions.push(eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)]));
+						conditions.push(
+							eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)])
+						);
 					}
 					return eb.or(conditions);
 				});
@@ -115,14 +127,20 @@ export class FormationService extends BaseEntityService {
 		);
 
 		let finalQuery = ftsQueryBuilder;
-		if (!ftsQueryBuilder._ftsAppliedInfo || (options.sortBy && options.sortBy !== 'similarity_score')) {
+		if (
+			!ftsQueryBuilder._ftsAppliedInfo ||
+			(options.sortBy && options.sortBy !== 'similarity_score')
+		) {
 			const validSortColumns = ['name', 'created_at', 'formation_type'];
 			const sortCol = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
 			const direction = sortOrder === 'asc' ? 'asc' : 'desc';
 			finalQuery = finalQuery.orderBy(sortCol, direction).orderBy('id', direction);
 		}
 
-		const { items, usedFallback } = await this._executeSearch(finalQuery, baseQueryForFallback, { limit, offset });
+		const { items, usedFallback } = await this._executeSearch(finalQuery, baseQueryForFallback, {
+			limit,
+			offset
+		});
 
 		// Count logic
 		let countQueryBase = buildFormationBaseQuery();
@@ -130,23 +148,33 @@ export class FormationService extends BaseEntityService {
 			const cleanedSearchTerm = filters.searchQuery.trim();
 			if (cleanedSearchTerm) {
 				if (usedFallback) {
-					countQueryBase = countQueryBase.where((eb) => eb.or([
-						eb(sql`similarity(name, ${cleanedSearchTerm})`, '>', 0.3),
-						eb(sql`similarity(brief_description, ${cleanedSearchTerm})`, '>', 0.3),
-						eb(sql`similarity(detailed_description, ${cleanedSearchTerm})`, '>', 0.3),
-						// For tags, similarity might not be ideal as it's an array. 
-						// Consider converting tags to a single string for similarity or use array operators.
-						// For simplicity, we can check array overlap with a fuzzy term for tags if desired, or stick to name/desc for similarity.
-					]));
+					countQueryBase = countQueryBase.where((eb) =>
+						eb.or([
+							eb(sql`similarity(name, ${cleanedSearchTerm})`, '>', 0.3),
+							eb(sql`similarity(brief_description, ${cleanedSearchTerm})`, '>', 0.3),
+							eb(sql`similarity(detailed_description, ${cleanedSearchTerm})`, '>', 0.3)
+							// For tags, similarity might not be ideal as it's an array.
+							// Consider converting tags to a single string for similarity or use array operators.
+							// For simplicity, we can check array overlap with a fuzzy term for tags if desired, or stick to name/desc for similarity.
+						])
+					);
 				} else {
-					const tsQuerySearchTerm = cleanedSearchTerm.split(/\s+/).filter(Boolean).map(term => term + ':*').join(' & ');
+					const tsQuerySearchTerm = cleanedSearchTerm
+						.split(/\s+/)
+						.filter(Boolean)
+						.map((term) => term + ':*')
+						.join(' & ');
 					if (tsQuerySearchTerm) {
-						countQueryBase = countQueryBase.where(sql`search_vector @@ to_tsquery('english', ${tsQuerySearchTerm})`);
+						countQueryBase = countQueryBase.where(
+							sql`search_vector @@ to_tsquery('english', ${tsQuerySearchTerm})`
+						);
 					}
 				}
 			}
 		}
-		const countResult = await countQueryBase.select(kyselyDb.fn.count('id').as('total')).executeTakeFirst();
+		const countResult = await countQueryBase
+			.select(kyselyDb.fn.count('id').as('total'))
+			.executeTakeFirst();
 		const totalItems = parseInt(countResult?.total ?? '0', 10);
 
 		return {
@@ -162,7 +190,7 @@ export class FormationService extends BaseEntityService {
 
 	/**
 	 * getAll method now forwards to getAllFormations with all options.
-	 * This keeps compatibility if something was calling `super.getAll()` before, 
+	 * This keeps compatibility if something was calling `super.getAll()` before,
 	 * but new calls should prefer `getAllFormations` for clarity.
 	 */
 	async getAll(options = {}) {

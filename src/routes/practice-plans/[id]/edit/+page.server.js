@@ -198,7 +198,13 @@ export const actions = {
 			redirect(303, `/practice-plans/${planId}`);
 		} catch (err) {
 			// If SvelteKit is throwing a redirect, rethrow it to let SvelteKit handle it
-			if (err && typeof err.status === 'number' && err.status >= 300 && err.status < 400 && err.location) {
+			if (
+				err &&
+				typeof err.status === 'number' &&
+				err.status >= 300 &&
+				err.status < 400 &&
+				err.location
+			) {
 				throw err; // Rethrow the redirect
 			}
 

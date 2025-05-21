@@ -1,6 +1,6 @@
 <script>
-       import { createEventDispatcher } from 'svelte';
-       // Actions are now handled by the parent component via events
+	import { createEventDispatcher } from 'svelte';
+	// Actions are now handled by the parent component via events
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
@@ -36,54 +36,56 @@
 		}
 	}
 
-       function handleAddDrill(drill) {
-               if (!selectedSectionId) {
-                       toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
-                       return;
-               }
+	function handleAddDrill(drill) {
+		if (!selectedSectionId) {
+			toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
+			return;
+		}
 
-               dispatch('addDrill', { drill, sectionId: selectedSectionId });
-               close();
-       }
+		dispatch('addDrill', { drill, sectionId: selectedSectionId });
+		close();
+	}
 
-       function handleAddBreak() {
-               if (!selectedSectionId) {
-                       toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
-                       return;
-               }
+	function handleAddBreak() {
+		if (!selectedSectionId) {
+			toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
+			return;
+		}
 
-               dispatch('addBreak', { sectionId: selectedSectionId });
-               close();
-       }
+		dispatch('addBreak', { sectionId: selectedSectionId });
+		close();
+	}
 
-       function handleAddOneOffDrill() {
-               if (!selectedSectionId) {
-                       toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
-                       return;
-               }
+	function handleAddOneOffDrill() {
+		if (!selectedSectionId) {
+			toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
+			return;
+		}
 
-               if (!oneOffName.trim()) {
-                       toast.push('Activity name cannot be empty', { theme: { '--toastBackground': 'red' } });
-                       return;
-               }
+		if (!oneOffName.trim()) {
+			toast.push('Activity name cannot be empty', { theme: { '--toastBackground': 'red' } });
+			return;
+		}
 
-               dispatch('addOneOffDrill', { sectionId: selectedSectionId, name: oneOffName });
-               close();
-       }
+		dispatch('addOneOffDrill', { sectionId: selectedSectionId, name: oneOffName });
+		close();
+	}
 </script>
 
 {#if show}
-        <div
-                class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="drill-search-title"
-                tabindex="-1"
-                on:keydown={(e) => e.key === 'Escape' && close()}
-        >
-                <div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
-                        <div class="mt-3">
-                                <h3 id="drill-search-title" class="text-lg font-medium text-gray-900 mb-4">Add to Practice Plan</h3>
+	<div
+		class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="drill-search-title"
+		tabindex="-1"
+		on:keydown={(e) => e.key === 'Escape' && close()}
+	>
+		<div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
+			<div class="mt-3">
+				<h3 id="drill-search-title" class="text-lg font-medium text-gray-900 mb-4">
+					Add to Practice Plan
+				</h3>
 
 				<!-- Add Break option at the top -->
 				<div
@@ -127,15 +129,15 @@
 
 				<!-- Search input -->
 				<div class="mb-4">
-                                        <input
-                                                type="text"
-                                                bind:value={searchQuery}
-                                                on:input={() => searchDrills(searchQuery)}
-                                                placeholder="Search drills..."
-                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                                autofocus
-                                        />
-                                </div>
+					<input
+						type="text"
+						bind:value={searchQuery}
+						on:input={() => searchDrills(searchQuery)}
+						placeholder="Search drills..."
+						class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+						autofocus
+					/>
+				</div>
 
 				<!-- Search results -->
 				<div class="max-h-[400px] overflow-y-auto">
@@ -161,15 +163,15 @@
 				</div>
 
 				<!-- Close button -->
-                                <div class="mt-4 flex justify-end">
-                                        <button
-                                                class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
-                                                on:click={close}
-                                                aria-label="Close"
-                                        >
-                                                Close
-                                        </button>
-                                </div>
+				<div class="mt-4 flex justify-end">
+					<button
+						class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
+						on:click={close}
+						aria-label="Close"
+					>
+						Close
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>

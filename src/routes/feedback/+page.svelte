@@ -1,8 +1,8 @@
 <script>
 	// import { feedbackList } from '$lib/stores/feedbackStore'; // Store not used directly for list
-import { onMount } from 'svelte';
-import { invalidate } from '$app/navigation'; // Import invalidate
-import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { onMount } from 'svelte';
+	import { invalidate } from '$app/navigation'; // Import invalidate
+	import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let data; // Accept data from load function
 
@@ -31,25 +31,25 @@ import { apiFetch } from '$lib/utils/apiFetch.js';
 		}
 	});
 
-       async function upvoteFeedback(id) {
-               try {
-                       await apiFetch(`/api/feedback/${id}/upvote`, { method: 'POST' });
-                       invalidateFeedbackData();
-               } catch (error) {
-                       alert('Failed to upvote feedback.');
-               }
-       }
+	async function upvoteFeedback(id) {
+		try {
+			await apiFetch(`/api/feedback/${id}/upvote`, { method: 'POST' });
+			invalidateFeedbackData();
+		} catch (error) {
+			alert('Failed to upvote feedback.');
+		}
+	}
 
 	async function deleteFeedback(id) {
 		if (!confirm('Are you sure you want to delete this feedback?')) return;
 
-               try {
-                       await apiFetch(`/api/feedback/${id}/delete`, { method: 'DELETE' });
-                       invalidateFeedbackData();
-               } catch (error) {
-                       alert('Failed to delete feedback.');
-               }
-       }
+		try {
+			await apiFetch(`/api/feedback/${id}/delete`, { method: 'DELETE' });
+			invalidateFeedbackData();
+		} catch (error) {
+			alert('Failed to delete feedback.');
+		}
+	}
 
 	// Re-initialize feedbackEntries when data prop changes (after invalidation)
 	$: if (data.feedbackEntries) {
@@ -72,22 +72,22 @@ import { apiFetch } from '$lib/utils/apiFetch.js';
 			email: email
 		};
 
-               try {
-                       await apiFetch('/api/feedback', {
-                               method: 'POST',
-                               headers: { 'Content-Type': 'application/json' },
-                               body: JSON.stringify(payload)
-                       });
-                       newFeedback = '';
-                       newFeedbackType = 'general';
-                       name = '';
-                       email = '';
-                       invalidateFeedbackData();
-                       alert('Feedback submitted successfully.');
-               } catch (error) {
-                       alert('Failed to submit feedback.');
-               }
-       }
+		try {
+			await apiFetch('/api/feedback', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			newFeedback = '';
+			newFeedbackType = 'general';
+			name = '';
+			email = '';
+			invalidateFeedbackData();
+			alert('Feedback submitted successfully.');
+		} catch (error) {
+			alert('Failed to submit feedback.');
+		}
+	}
 </script>
 
 <svelte:head>

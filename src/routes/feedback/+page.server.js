@@ -10,12 +10,12 @@ export async function load({ fetch, depends }) {
 		// Depend on a custom identifier for invalidation
 		depends('app:feedback');
 
-               let feedbackEntries = [];
-               try {
-                       feedbackEntries = await apiFetch('/api/feedback', {}, fetch);
-               } catch (err) {
-                       console.error(`Error fetching feedback:`, err);
-               }
+		let feedbackEntries = [];
+		try {
+			feedbackEntries = await apiFetch('/api/feedback', {}, fetch);
+		} catch (err) {
+			console.error(`Error fetching feedback:`, err);
+		}
 
 		return {
 			feedbackEntries,

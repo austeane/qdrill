@@ -166,7 +166,7 @@ export class PracticePlanService extends BaseEntityService {
 		// --- Main Query Execution ---
 		const baseQuery = buildBaseQueryWithFilters();
 		// Clone baseQuery for fallback, as _buildSearchQuery modifies its input and _executeSearch might clear its where clause
-		const baseQueryForFallback = buildBaseQueryWithFilters(); 
+		const baseQueryForFallback = buildBaseQueryWithFilters();
 
 		const ftsQuery = this._buildSearchQuery(
 			baseQuery, // Pass the original baseQuery here
@@ -180,14 +180,26 @@ export class PracticePlanService extends BaseEntityService {
 		// Apply sorting - if fallback is used, _executeSearch will sort by similarity_score
 		// If FTS is used, or no search, apply standard sorting.
 		let finalQuery = ftsQuery;
-		if (!ftsQuery._ftsAppliedInfo || (ftsQuery._ftsAppliedInfo && items.length > 0 && !usedFallback) ) { // only apply if FTS was not used or if FTS found items and fallback wasn't used
-			const validSortColumns = ['name', 'created_at', 'estimated_number_of_participants', 'updated_at'];
+		if (
+			!ftsQuery._ftsAppliedInfo ||
+			(ftsQuery._ftsAppliedInfo && items.length > 0 && !usedFallback)
+		) {
+			// only apply if FTS was not used or if FTS found items and fallback wasn't used
+			const validSortColumns = [
+				'name',
+				'created_at',
+				'estimated_number_of_participants',
+				'updated_at'
+			];
 			const sortCol = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
 			const direction = sortOrder === 'asc' ? 'asc' : 'desc';
 			finalQuery = finalQuery.orderBy(`pp.${sortCol}`, direction);
 		}
 
-		const { items, usedFallback } = await this._executeSearch(finalQuery, baseQueryForFallback, { limit, offset });
+		const { items, usedFallback } = await this._executeSearch(finalQuery, baseQueryForFallback, {
+			limit,
+			offset
+		});
 
 		// --- Count Query Execution ---
 		let countQuery = kyselyDb
@@ -216,7 +228,11 @@ export class PracticePlanService extends BaseEntityService {
 			countQuery = countQuery.where('pp.phase_of_season', 'in', filters.phase_of_season.required);
 		}
 		if (filters.phase_of_season?.excluded?.length) {
-			countQuery = countQuery.where('pp.phase_of_season', 'not in', filters.phase_of_season.excluded);
+			countQuery = countQuery.where(
+				'pp.phase_of_season',
+				'not in',
+				filters.phase_of_season.excluded
+			);
 		}
 		if (filters.practice_goals?.required?.length) {
 			filters.practice_goals.required.forEach((goal) => {
@@ -229,10 +245,18 @@ export class PracticePlanService extends BaseEntityService {
 			);
 		}
 		if (filters.min_participants != null) {
-			countQuery = countQuery.where('pp.estimated_number_of_participants', '>=', filters.min_participants);
+			countQuery = countQuery.where(
+				'pp.estimated_number_of_participants',
+				'>=',
+				filters.min_participants
+			);
 		}
 		if (filters.max_participants != null) {
-			countQuery = countQuery.where('pp.estimated_number_of_participants', '<=', filters.max_participants);
+			countQuery = countQuery.where(
+				'pp.estimated_number_of_participants',
+				'<=',
+				filters.max_participants
+			);
 		}
 		if (filters.drill_ids?.length) {
 			countQuery = countQuery.where((eb) =>
@@ -266,7 +290,9 @@ export class PracticePlanService extends BaseEntityService {
 						.map((term) => term + ':*')
 						.join(' & ');
 					if (tsQuerySearchTerm) {
-						countQuery = countQuery.where(sql`pp.search_vector @@ to_tsquery('english', ${tsQuerySearchTerm})`);
+						countQuery = countQuery.where(
+							sql`pp.search_vector @@ to_tsquery('english', ${tsQuerySearchTerm})`
+						);
 					}
 				}
 			}

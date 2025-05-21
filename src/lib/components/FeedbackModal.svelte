@@ -1,5 +1,5 @@
 <script>
-       import { feedbackModalVisible } from '$lib/stores/feedbackStore';
+	import { feedbackModalVisible } from '$lib/stores/feedbackStore';
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -33,8 +33,8 @@
 			feedbackType = 'general';
 			name = '';
 			email = '';
-                       feedbackModalVisible.set(false);
-               } catch (error) {
+			feedbackModalVisible.set(false);
+		} catch (error) {
 			// Error handling already done by apiFetch
 			alert('Failed to submit feedback: ' + error.message);
 		}
@@ -49,22 +49,22 @@
 		goto('/feedback');
 	}
 
-       onMount(() => {
-               // No-op for now
-       });
+	onMount(() => {
+		// No-op for now
+	});
 </script>
 
 {#if $feedbackModalVisible}
-        <div
-                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="feedback-title"
-                tabindex="-1"
-                on:keydown={(e) => e.key === 'Escape' && closeModal()}
-        >
-                <div class="bg-white p-6 rounded shadow-lg max-w-md w-full">
-                        <h2 id="feedback-title" class="text-xl font-semibold mb-4">Quick Feedback</h2>
+	<div
+		class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="feedback-title"
+		tabindex="-1"
+		on:keydown={(e) => e.key === 'Escape' && closeModal()}
+	>
+		<div class="bg-white p-6 rounded shadow-lg max-w-md w-full">
+			<h2 id="feedback-title" class="text-xl font-semibold mb-4">Quick Feedback</h2>
 			<select bind:value={feedbackType} class="w-full border rounded p-2 mb-2">
 				<option value="bug">Bug</option>
 				<option value="general">General Comment</option>
@@ -78,7 +78,12 @@
 				placeholder="Your feedback..."
 			></textarea>
 			<div class="mt-4 flex justify-end">
-				<button type="button" on:click={closeModal} class="px-4 py-2 bg-gray-300 rounded" aria-label="Cancel">
+				<button
+					type="button"
+					on:click={closeModal}
+					class="px-4 py-2 bg-gray-300 rounded"
+					aria-label="Cancel"
+				>
 					Cancel
 				</button>
 				<button

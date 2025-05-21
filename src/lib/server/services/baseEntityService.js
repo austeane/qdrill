@@ -895,7 +895,7 @@ export class BaseEntityService {
 	 * @param {string} [vectorColumn='search_vector'] - The tsvector column in the table.
 	 * @param {string} [textSearchConfig='english'] - The PostgreSQL text search configuration.
 	 * @param {string[]} [columnsToRankForFallback=['name', 'description']] - Columns for pg_trgm fallback.
-   * @param {number} [trigramThresholdForFallback=0.3] - Similarity threshold for pg_trgm.
+	 * @param {number} [trigramThresholdForFallback=0.3] - Similarity threshold for pg_trgm.
 	 * @returns {import('kysely').SelectQueryBuilder<any, any, any>} - The modified query builder.
 	 */
 	_buildSearchQuery(
@@ -954,23 +954,25 @@ export class BaseEntityService {
 		let usedFallback = false;
 
 		if (items.length === 0 && ftsAppliedInfo) {
-			console.log(`[BaseEntityService] FTS on ${this.tableName} returned 0 results for '${ftsAppliedInfo.originalSearchTerm}', trying pg_trgm fallback...`);
+			console.log(
+				`[BaseEntityService] FTS on ${this.tableName} returned 0 results for '${ftsAppliedInfo.originalSearchTerm}', trying pg_trgm fallback...`
+			);
 			usedFallback = true;
 
-			const {
-				originalSearchTerm,
-				columnsToRankForFallback,
-				trigramThresholdForFallback
-			} = ftsAppliedInfo;
-			
+			const { originalSearchTerm, columnsToRankForFallback, trigramThresholdForFallback } =
+				ftsAppliedInfo;
+
 			// Ensure columnsToRankForFallback are valid columns of the current table.
 			// This is a basic check; more robust validation might involve checking schema.
-			const validFallbackColumns = columnsToRankForFallback.filter(col => this.isColumnAllowed(col));
-			if(validFallbackColumns.length === 0) {
-				console.warn(`[BaseEntityService] pg_trgm fallback for ${this.tableName} skipped: no valid columns to rank were provided or allowed.`);
+			const validFallbackColumns = columnsToRankForFallback.filter((col) =>
+				this.isColumnAllowed(col)
+			);
+			if (validFallbackColumns.length === 0) {
+				console.warn(
+					`[BaseEntityService] pg_trgm fallback for ${this.tableName} skipped: no valid columns to rank were provided or allowed.`
+				);
 				return { items, usedFallback: false }; // Return original (empty) items
 			}
-
 
 			let fallbackQuery = baseQueryBuilderForFallback // Start from the base query, *without* FTS conditions
 				.where((eb) =>
@@ -984,15 +986,20 @@ export class BaseEntityService {
 						)
 					)
 				)
-				.select((eb) => [ // Kysely's dynamic way to add selections
-					...(this.defaultColumns.includes('*') ? [] : this.defaultColumns.map(col => sql.ref(col))), // Select default columns
+				.select((eb) => [
+					// Kysely's dynamic way to add selections
+					...(this.defaultColumns.includes('*')
+						? []
+						: this.defaultColumns.map((col) => sql.ref(col))), // Select default columns
 					eb.fn
 						.greatest(
-							...validFallbackColumns.map((col) => sql`similarity(${sql.ref(col)}, ${originalSearchTerm})`)
+							...validFallbackColumns.map(
+								(col) => sql`similarity(${sql.ref(col)}, ${originalSearchTerm})`
+							)
 						)
 						.as('similarity_score')
 				]);
-			
+
 			// If defaultColumns was ['*'], we need to ensure all table columns are selected
 			// Kysely doesn't have a simple way to re-add `select *` after specific selections,
 			// so services using this should define their default columns explicitly if not already.
@@ -1002,7 +1009,7 @@ export class BaseEntityService {
 			fallbackQuery = fallbackQuery.orderBy('similarity_score', 'desc');
 			items = await fallbackQuery.limit(limit).offset(offset).execute();
 		}
-		
+
 		// Clean up the temporary property from the FTS query builder if it exists
 		if (ftsQueryBuilder && '_ftsAppliedInfo' in ftsQueryBuilder) {
 			delete ftsQueryBuilder._ftsAppliedInfo;

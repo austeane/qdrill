@@ -40,7 +40,7 @@ export async function apiFetch(url, opts = {}, fetchInstance = fetch) {
 				body = `Response body could not be parsed. Status: ${response.status}`;
 			}
 		}
-		
+
 		let message = `HTTP error! Status: ${response.status}`;
 		if (typeof body === 'object' && body !== null && body.error && body.error.message) {
 			message = body.error.message;

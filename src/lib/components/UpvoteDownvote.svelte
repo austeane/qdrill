@@ -1,16 +1,21 @@
 <script>
-import { onMount } from 'svelte';
-import { writable } from 'svelte/store';
-import { page } from '$app/stores';
-import { authClient } from '$lib/auth-client';
-import { ThumbsUpIcon, ThumbsDownIcon } from 'svelte-feather-icons';
-import { toast } from '@zerodevx/svelte-toast';
-import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { onMount } from 'svelte';
+	import { writable } from 'svelte/store';
+	import { page } from '$app/stores';
+	import { authClient } from '$lib/auth-client';
+	import { ThumbsUpIcon, ThumbsDownIcon } from 'svelte-feather-icons';
+	import { toast } from '@zerodevx/svelte-toast';
+	import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let drillId = null;
 	export let practicePlanId = null;
 
-console.log('[UpvoteDownvote] Script executed. Initial props - drillId:', drillId, 'practicePlanId:', practicePlanId);
+	console.log(
+		'[UpvoteDownvote] Script executed. Initial props - drillId:',
+		drillId,
+		'practicePlanId:',
+		practicePlanId
+	);
 
 	let upvotes = writable(0);
 	let downvotes = writable(0);
@@ -20,7 +25,12 @@ console.log('[UpvoteDownvote] Script executed. Initial props - drillId:', drillI
 	const user = $session.data?.user;
 
 	onMount(async () => {
-		console.log('[UpvoteDownvote] onMount called. Current drillId:', drillId, 'Current practicePlanId:', practicePlanId);
+		console.log(
+			'[UpvoteDownvote] onMount called. Current drillId:',
+			drillId,
+			'Current practicePlanId:',
+			practicePlanId
+		);
 		await loadVotes();
 	});
 
@@ -29,31 +39,46 @@ console.log('[UpvoteDownvote] Script executed. Initial props - drillId:', drillI
 	}
 
 	async function loadVotes() {
-		console.log('[UpvoteDownvote] loadVotes called. drillId:', drillId, 'practicePlanId:', practicePlanId);
+		console.log(
+			'[UpvoteDownvote] loadVotes called. drillId:',
+			drillId,
+			'practicePlanId:',
+			practicePlanId
+		);
 		if (!drillId && !practicePlanId) {
 			console.log('[UpvoteDownvote] No ID provided, returning.');
 			return;
 		}
 
-               try {
-                       const endpoint = `/api/votes?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`;
-                       console.log('[UpvoteDownvote] Fetching counts from:', endpoint);
-                       const counts = await apiFetch(endpoint);
-                       console.log('[UpvoteDownvote] Received counts:', counts, 'for ID:', drillId || practicePlanId);
-                       upvotes.set(counts.upvotes || 0);
-                       downvotes.set(counts.downvotes || 0);
+		try {
+			const endpoint = `/api/votes?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`;
+			console.log('[UpvoteDownvote] Fetching counts from:', endpoint);
+			const counts = await apiFetch(endpoint);
+			console.log(
+				'[UpvoteDownvote] Received counts:',
+				counts,
+				'for ID:',
+				drillId || practicePlanId
+			);
+			upvotes.set(counts.upvotes || 0);
+			downvotes.set(counts.downvotes || 0);
 
-                       if (user) {
-                               const userVoteEndpoint = `/api/votes/user?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`;
-                               console.log('[UpvoteDownvote] Fetching user vote from:', userVoteEndpoint);
-                               const vote = await apiFetch(userVoteEndpoint);
-                               console.log('[UpvoteDownvote] Received user vote:', vote, 'for ID:', drillId || practicePlanId);
-                               userVote.set(vote?.vote || 0);
-                       }
-               } catch (error) {
-                       console.error('Error loading votes:', error);
-                       toast.push('Failed to load votes', { theme: { '--toastBackground': '#F56565' } });
-               }
+			if (user) {
+				const userVoteEndpoint = `/api/votes/user?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`;
+				console.log('[UpvoteDownvote] Fetching user vote from:', userVoteEndpoint);
+				const vote = await apiFetch(userVoteEndpoint);
+				console.log(
+					'[UpvoteDownvote] Received user vote:',
+					vote,
+					'for ID:',
+					drillId || practicePlanId
+				);
+				userVote.set(vote?.vote || 0);
+			}
+		} catch (error) {
+			console.error('Error loading votes:', error);
+			toast.push('Failed to load votes', { theme: { '--toastBackground': '#F56565' } });
+		}
 	}
 
 	async function handleVote(voteType) {
@@ -79,60 +104,60 @@ console.log('[UpvoteDownvote] Script executed. Initial props - drillId:', drillI
 			return;
 		}
 
-               try {
-                       if (currentVote === newVote) {
-                               const queryParam = drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`;
-                               await apiFetch(`/api/votes?${queryParam}`, {
-                                       method: 'DELETE'
-                               });
+		try {
+			if (currentVote === newVote) {
+				const queryParam = drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`;
+				await apiFetch(`/api/votes?${queryParam}`, {
+					method: 'DELETE'
+				});
 
-                               userVote.set(0);
-                               if (newVote === 1) {
-                                       upvotes.update((n) => n - 1);
-                               } else {
-                                       downvotes.update((n) => n - 1);
-                               }
-                               toast.push('Vote removed');
-                       } else {
-                               const requestBody = { vote: newVote };
+				userVote.set(0);
+				if (newVote === 1) {
+					upvotes.update((n) => n - 1);
+				} else {
+					downvotes.update((n) => n - 1);
+				}
+				toast.push('Vote removed');
+			} else {
+				const requestBody = { vote: newVote };
 
-                               if (drillId) {
-                                       requestBody.drillId = parseInt(drillId, 10);
-                                       if (isNaN(requestBody.drillId)) {
-                                               throw new Error('Invalid drill ID');
-                                       }
-                               } else if (practicePlanId) {
-                                       requestBody.practicePlanId = parseInt(practicePlanId, 10);
-                                       if (isNaN(requestBody.practicePlanId)) {
-                                               throw new Error('Invalid practice plan ID');
-                                       }
-                               }
+				if (drillId) {
+					requestBody.drillId = parseInt(drillId, 10);
+					if (isNaN(requestBody.drillId)) {
+						throw new Error('Invalid drill ID');
+					}
+				} else if (practicePlanId) {
+					requestBody.practicePlanId = parseInt(practicePlanId, 10);
+					if (isNaN(requestBody.practicePlanId)) {
+						throw new Error('Invalid practice plan ID');
+					}
+				}
 
-                               await apiFetch('/api/votes', {
-                                       method: 'POST',
-                                       headers: { 'Content-Type': 'application/json' },
-                                       body: JSON.stringify(requestBody)
-                               });
+				await apiFetch('/api/votes', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(requestBody)
+				});
 
-                               if (currentVote === 1) upvotes.update((n) => n - 1);
-                               if (currentVote === -1) downvotes.update((n) => n - 1);
+				if (currentVote === 1) upvotes.update((n) => n - 1);
+				if (currentVote === -1) downvotes.update((n) => n - 1);
 
-                               if (newVote === 1) {
-                                       upvotes.update((n) => n + 1);
-                                       toast.push('Upvoted!');
-                               } else {
-                                       downvotes.update((n) => n + 1);
-                                       toast.push('Downvoted!');
-                               }
+				if (newVote === 1) {
+					upvotes.update((n) => n + 1);
+					toast.push('Upvoted!');
+				} else {
+					downvotes.update((n) => n + 1);
+					toast.push('Downvoted!');
+				}
 
-                               userVote.set(newVote);
-                       }
-               } catch (error) {
-                       console.error('Error casting vote:', error);
-                       toast.push('Failed to cast vote: ' + error.message, {
-                               theme: { '--toastBackground': '#F56565' }
-                       });
-               }
+				userVote.set(newVote);
+			}
+		} catch (error) {
+			console.error('Error casting vote:', error);
+			toast.push('Failed to cast vote: ' + error.message, {
+				theme: { '--toastBackground': '#F56565' }
+			});
+		}
 	}
 </script>
 

@@ -1,6 +1,5 @@
 import { BaseEntityService } from './baseEntityService.js';
 import * as db from '$lib/server/db';
-import { fabricToExcalidraw } from '$lib/utils/diagramMigration'; // Import the utility function
 import {
 	NotFoundError,
 	ForbiddenError,
@@ -1090,80 +1089,6 @@ export class DrillService extends BaseEntityService {
 		return await this.update(id, { created_by: userId });
 	}
 
-	/**
-	 * Migrate all Fabric.js diagrams in the drills table to Excalidraw format.
-	 * @returns {Promise<Object>} - Object containing the count of migrated drills.
-	 */
-	async migrateAllDiagramsToExcalidraw() {
-		try {
-			// Get all drills that have diagrams which might need migration
-			// Check if diagrams is not null and not an empty JSON array/object string
-			const drillsResult = await db.query(`
-        SELECT id, diagrams 
-        FROM drills 
-        WHERE diagrams IS NOT NULL AND diagrams::text != '[]' AND diagrams::text != '{}'
-      `);
-
-			const updates = [];
-
-			for (const drill of drillsResult.rows) {
-				let needsUpdate = false;
-				let migratedDiagrams = [];
-
-				if (drill.diagrams && Array.isArray(drill.diagrams)) {
-					migratedDiagrams = drill.diagrams
-						.map((diagram) => {
-							if (!diagram) return null;
-
-							// If it's already Excalidraw or lacks a 'type' field, skip it
-							if (diagram.type === 'excalidraw' || !diagram.type) return diagram;
-
-							// Assuming diagrams without type 'excalidraw' are Fabric
-							const converted = fabricToExcalidraw(diagram);
-							if (converted) {
-								needsUpdate = true; // Mark that a conversion happened
-								return converted;
-							} else {
-								// If conversion fails, keep the original diagram
-								console.warn(
-									`Failed to convert diagram for drill ID ${drill.id}. Keeping original.`
-								);
-								return diagram;
-							}
-						})
-						.filter(Boolean);
-				} else {
-					// Handle cases where diagrams might not be an array (shouldn't happen with normalization)
-					console.warn(
-						`Drill ID ${drill.id} has non-array diagrams field: ${typeof drill.diagrams}`
-					);
-					continue; // Skip this drill
-				}
-
-				// Only update if a conversion actually happened
-				if (needsUpdate) {
-					updates.push(
-						db.query(
-							'UPDATE drills SET diagrams = $1 WHERE id = $2',
-							// Use JSON.stringify only if the base service doesn't handle it
-							// Assuming base service expects JS objects for JSON fields
-							[migratedDiagrams, drill.id]
-						)
-					);
-				}
-			}
-
-			if (updates.length > 0) {
-				await Promise.all(updates);
-			}
-
-			return { migratedCount: updates.length };
-		} catch (error) {
-			console.error('Error in drillService.migrateAllDiagramsToExcalidraw:', error);
-			// Wrap original error in DatabaseError
-			throw new DatabaseError('Failed to migrate diagrams in database.', error);
-		}
-	}
 
 	/**
 	 * Import multiple drills from an array.

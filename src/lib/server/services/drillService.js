@@ -11,7 +11,7 @@ import {
 } from '$lib/server/errors.js'; // Added import
 import { dev } from '$app/environment'; // Import dev environment variable
 import { json } from '@sveltejs/kit';
-import { kyselyDb } from '$lib/server/db';
+import { kyselyDb, sql } from '$lib/server/db';
 
 /**
  * Service for managing drills
@@ -66,7 +66,19 @@ export class DrillService extends BaseEntityService {
 			// editableByOthersColumn: 'is_editable_by_others' // default
 		};
 
-		super('drills', 'id', ['*'], allowedColumns, columnTypes, permissionConfig);
+		// Explicitly define default columns for DrillService
+		// to ensure _executeSearch fallback selects them correctly with similarity_score
+		const defaultDrillColumns = [
+			'id', 'name', 'brief_description', 'detailed_description',
+			'skill_level', 'complexity', 'number_of_people_min', 'number_of_people_max',
+			'skills_focused_on', 'positions_focused_on', 'drill_type', 'created_by',
+			'visibility', 'date_created', 'is_editable_by_others', 'parent_drill_id',
+			'video_link', 'diagrams', 'images', 'upload_source',
+			'suggested_length_min', 'suggested_length_max'
+			// 'search_vector' is usually not needed in direct output
+		];
+
+		super('drills', 'id', defaultDrillColumns, allowedColumns, columnTypes, permissionConfig);
 
 		// Define array fields for normalization
 		this.arrayFields = [
@@ -86,27 +98,17 @@ export class DrillService extends BaseEntityService {
 	 * @returns {Promise<Object>} - The created drill
 	 */
 	async createDrill(drillData, userId = null) {
-		// Add timestamps and creator ID
 		const dataWithMeta = {
 			...drillData,
 			created_by: userId,
 			date_created: new Date()
 		};
-
-		// Normalize drill data
 		const normalizedData = this.normalizeDrillData(dataWithMeta);
 
 		return this.withTransaction(async (client) => {
-			// Create the drill
-			const drill = await this.create(normalizedData);
-
-			// Update skills used in this drill - always call updateSkills even with empty array
-			// This ensures consistent behavior and skill tracking
+			const drill = await this.create(normalizedData, client); // Pass client
 			const skills = normalizedData.skills_focused_on || [];
-
-			// Only pass two parameters when called from createDrill to match test expectations
-			await this.updateSkills(skills, drill.id);
-
+			await this.updateSkills(skills, drill.id, client); // Pass client
 			return drill;
 		});
 	}
@@ -123,20 +125,18 @@ export class DrillService extends BaseEntityService {
 	async updateDrill(id, drillData, userId) {
 		return this.withTransaction(async (client) => {
 			await this.canUserEdit(id, userId, client);
-			const existingDrill = await this.getById(id, ['*'], userId, client);
+			const existingDrill = await this.getById(id, this.defaultColumns, userId, client); // Use defaultColumns, pass client
 			if (!existingDrill) {
 				throw new NotFoundError('Drill not found');
 			}
 			const existingSkills = existingDrill.skills_focused_on || [];
-
-			// Normalize drill data (REMOVED adding updated_at here)
 			const normalizedData = this.normalizeDrillData(drillData);
 
 			if (existingDrill.created_by === null && userId) {
 				normalizedData.created_by = userId;
 			}
 
-			const updatedDrill = await this.update(id, normalizedData, client);
+			const updatedDrill = await this.update(id, normalizedData, client); // Pass client
 
 			const skillsToRemove = existingSkills.filter(
 				(skill) => !normalizedData.skills_focused_on?.includes(skill)
@@ -144,7 +144,7 @@ export class DrillService extends BaseEntityService {
 			const skillsToAdd =
 				normalizedData.skills_focused_on?.filter((skill) => !existingSkills.includes(skill)) || [];
 
-			await this.updateSkillCounts(skillsToAdd, skillsToRemove, id, client);
+			await this.updateSkillCounts(skillsToAdd, skillsToRemove, id, client); // Pass client
 
 			if (normalizedData.name && normalizedData.name !== existingDrill.name) {
 				await client.query(`UPDATE votes SET item_name = $1 WHERE drill_id = $2`, [
@@ -152,7 +152,6 @@ export class DrillService extends BaseEntityService {
 					id
 				]);
 			}
-
 			return updatedDrill;
 		});
 	}
@@ -190,6 +189,7 @@ export class DrillService extends BaseEntityService {
 					throw error; // Re-throw other errors
 				}
 			} else {
+				// Ensure client is passed to getById for permission check within transaction
 				drill = await this.getById(
 					id,
 					[this.permissionConfig.userIdColumn, 'skills_focused_on'],
@@ -411,17 +411,14 @@ export class DrillService extends BaseEntityService {
 	 * @returns {Promise<Object>} - Search results with pagination
 	 */
 	async searchDrills(searchTerm, options = {}) {
-		const searchColumns = ['name', 'brief_description', 'detailed_description'];
-
-		// Add variation count to results
-		const results = await this.search(searchTerm, null, options);
-
-		// Add variation counts if there are results
-		if (results && results.items && results.items.length > 0) {
-			await this._addVariationCounts(results.items);
-		}
-
-		return results;
+		// Consolidate search logic into getFilteredDrills
+		const filters = {
+			...(options.filters || {}), // Preserve any existing filters from options
+			searchQuery: searchTerm
+		};
+		// Remove options.filters if it exists, as it's merged into the main filters object
+		const { filters: _, ...remainingOptions } = options;
+		return this.getFilteredDrills(filters, remainingOptions);
 	}
 
 	/**
@@ -451,86 +448,6 @@ export class DrillService extends BaseEntityService {
 	 * @returns {Promise<Object>} - Object containing `items` array and `pagination` info
 	 */
 	async getFilteredDrills(filters = {}, options = {}) {
-		// Destructure known filters and searchQuery from the incoming filters object.
-		// The rest of the filters will be treated as baseFilters.
-		const {
-			skill_level, // array
-			complexity, // string
-			skills_focused_on, // array
-			positions_focused_on, // array
-			drill_type, // array
-			number_of_people_min,
-			number_of_people_max,
-			suggested_length_min,
-			suggested_length_max,
-			hasVideo, // boolean
-			hasDiagrams, // boolean
-			hasImages, // boolean
-			searchQuery, // string
-			...baseFilters // Collects any other filters passed
-		} = filters;
-
-		const customConditions = [];
-
-		// Build custom SQL conditions for boolean flags like hasVideo, hasDiagrams, hasImages.
-		if (hasVideo !== undefined) {
-			customConditions.push(
-				hasVideo
-					? "video_link IS NOT NULL AND video_link != ''"
-					: "(video_link IS NULL OR video_link = '')"
-			);
-		}
-		if (hasDiagrams !== undefined) {
-			// Assumes diagrams are stored as a JSONB array.
-			// Checks if the diagrams array is not null and not empty.
-			customConditions.push(
-				hasDiagrams
-					? "diagrams IS NOT NULL AND jsonb_typeof(diagrams) = 'array' AND jsonb_array_length(diagrams) > 0"
-					: "(diagrams IS NULL OR jsonb_typeof(diagrams) != 'array' OR jsonb_array_length(diagrams) = 0)"
-			);
-		}
-		if (hasImages !== undefined) {
-			// Assumes images are stored as a text array.
-			// Checks if the images array is not null and not empty.
-			customConditions.push(
-				hasImages
-					? 'images IS NOT NULL AND array_length(images, 1) > 0'
-					: '(images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0)'
-			);
-		}
-
-		// Populate baseFilters with the specific filters if they are provided.
-		// These will be processed by _buildWhereClause.
-		if (skill_level !== undefined) baseFilters.skill_level = skill_level; // _buildWhereClause handles array with 'any'
-		if (complexity !== undefined) baseFilters.complexity = complexity;
-		if (skills_focused_on !== undefined) baseFilters.skills_focused_on = skills_focused_on; // _buildWhereClause handles array with 'any'
-		if (positions_focused_on !== undefined) baseFilters.positions_focused_on = positions_focused_on; // _buildWhereClause handles array with 'any'
-		if (drill_type !== undefined) baseFilters.drill_type = drill_type; // _buildWhereClause handles array with 'any'
-
-		if (number_of_people_min !== undefined)
-			baseFilters.number_of_people_min__gte = number_of_people_min;
-		if (number_of_people_max !== undefined)
-			baseFilters.number_of_people_max__lte = number_of_people_max;
-		if (suggested_length_min !== undefined)
-			baseFilters.suggested_length_min__gte = suggested_length_min;
-		if (suggested_length_max !== undefined)
-			baseFilters.suggested_length_max__lte = suggested_length_max;
-
-		// Call _executeFilteredQuery with the separated searchQuery, constructed baseFilters,
-		// customConditions, and other options (like pagination, sorting).
-		return await this._executeFilteredQuery(
-			searchQuery || null,
-			baseFilters,
-			customConditions,
-			options
-		);
-	}
-
-	/**
-	 * Executes the filtered query, combining base filters, custom conditions, and FTS.
-	 * @private
-	 */
-	async _executeFilteredQuery(searchQuery, baseFilters, customConditions, options) {
 		const {
 			page = 1,
 			limit = 10,
@@ -539,80 +456,138 @@ export class DrillService extends BaseEntityService {
 			columns = ['*'],
 			userId = null
 		} = options;
+
 		const offset = (page - 1) * limit;
 
-		// Build WHERE clause from base filters and permissions
-		const {
-			whereClause: baseWhereClause,
-			queryParams: baseQueryParams,
-			paramCount: baseParamCount
-		} = this._buildWhereClause(baseFilters, userId, 0);
+		// Helper to build the Kysely base query with specific drill table and common filters.
+		const buildDrillBaseQuery = () => {
+			let qb = kyselyDb.selectFrom('drills').selectAll(); // Start with selectAll, specific columns handled by _executeSearch or defaultColumns
 
-		let finalConditions = [];
-		let queryParams = [...baseQueryParams];
-		let currentParamCount = baseParamCount;
+			// Apply standard visibility/ownership filters from BaseEntityService
+			// This part needs to be aligned with how _buildWhereClause works or be replicated if _buildWhereClause is not Kysely-native.
+			// For now, assuming _buildWhereClause is not Kysely native and permissions are applied here directly for Kysely.
+			if (this.useStandardPermissions && this.permissionConfig) {
+				const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } = this.permissionConfig;
+				qb = qb.where((eb) => {
+					const conditions = [
+						eb(visibilityColumn, '=', publicValue),
+						eb(visibilityColumn, '=', unlistedValue)
+					];
+					if (userId) {
+						conditions.push(eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)]));
+					}
+					return eb.or(conditions);
+				});
+			}
+			
+			// Apply specific drill filters using Kysely
+			if (filters.skill_level?.length) qb = qb.where(sql`skill_level && $1`, [filters.skill_level]); // Array overlap
+			if (filters.complexity) qb = qb.where('complexity', '=', filters.complexity);
+			if (filters.skills_focused_on?.length) qb = qb.where(sql`skills_focused_on && $1`, [filters.skills_focused_on]);
+			if (filters.positions_focused_on?.length) qb = qb.where(sql`positions_focused_on && $1`, [filters.positions_focused_on]);
+			if (filters.drill_type?.length) qb = qb.where(sql`drill_type && $1`, [filters.drill_type]);
+			if (filters.number_of_people_min != null) qb = qb.where('number_of_people_min', '>=', filters.number_of_people_min);
+			if (filters.number_of_people_max != null) qb = qb.where('number_of_people_max', '<=', filters.number_of_people_max);
+			if (filters.suggested_length_min != null) qb = qb.where('suggested_length_min', '>=', filters.suggested_length_min);
+			if (filters.suggested_length_max != null) qb = qb.where('suggested_length_max', '<=', filters.suggested_length_max);
+			if (filters.hasVideo === true) qb = qb.where('video_link', 'is not', null).where('video_link', '!=', '');
+			if (filters.hasVideo === false) qb = qb.where((eb) => eb.or([eb('video_link', 'is', null), eb('video_link', '=', '')]));
+			if (filters.hasDiagrams === true) qb = qb.where(sql`jsonb_typeof(diagrams) = 'array' AND jsonb_array_length(diagrams) > 0`);
+			if (filters.hasDiagrams === false) qb = qb.where(sql`jsonb_typeof(diagrams) != 'array' OR jsonb_array_length(diagrams) = 0`);
+			if (filters.hasImages === true) qb = qb.where(sql`array_length(images, 1) > 0`);
+			if (filters.hasImages === false) qb = qb.where((eb) => eb.or([eb('images', 'is', null), eb(sql`array_length(images, 1) IS NULL`), eb(sql`array_length(images, 1) = 0`)]));
+			
+			return qb;
+		};
 
-		// Add base conditions (remove initial 'WHERE ' if present)
-		if (baseWhereClause.trim()) {
-			finalConditions.push(baseWhereClause.trim().substring(6)); // Remove 'WHERE '
+		const baseQuery = buildDrillBaseQuery();
+		const baseQueryForFallback = buildDrillBaseQuery(); // Separate instance for fallback path
+
+		const ftsQueryBuilder = this._buildSearchQuery(
+			baseQuery, 
+			filters.searchQuery,
+			'search_vector',
+			'english',
+			['name', 'brief_description', 'detailed_description'] // Columns for pg_trgm fallback
+		);
+
+		// Apply sorting - _executeSearch handles similarity sort for fallback
+		let finalQuery = ftsQueryBuilder;
+		if (!ftsQueryBuilder._ftsAppliedInfo || (options.sortBy && options.sortBy !== 'similarity_score')) {
+			const validSortColumns = ['name', 'date_created', 'complexity', /* other allowed columns */];
+			const sortCol = validSortColumns.includes(sortBy) ? sortBy : 'date_created';
+			const direction = sortOrder === 'asc' ? 'asc' : 'desc';
+			finalQuery = finalQuery.orderBy(sortCol, direction).orderBy('id', direction); // Add secondary sort by ID
 		}
 
-		// Add Full-Text Search condition if applicable
-		let ftsCondition = '';
-		// Track parameter indexes for searchConfig/searchQuery so we can reuse in ORDER BY
-		let searchConfigParamIndex = null;
-		let searchQueryParamIndex = null;
-		if (searchQuery) {
-			const searchConfig = 'english'; // Or make configurable
-			// Calculate indexes *before* pushing params
-			searchConfigParamIndex = currentParamCount + 1;
-			searchQueryParamIndex = currentParamCount + 2;
-			ftsCondition = `search_vector @@ plainto_tsquery($${searchConfigParamIndex}, $${searchQueryParamIndex})`;
-			queryParams.push(searchConfig, searchQuery);
-			currentParamCount += 2;
-			finalConditions.push(ftsCondition);
+		const { items, usedFallback } = await this._executeSearch(finalQuery, baseQueryForFallback, { limit, offset });
+
+		await this._addVariationCounts(items); // Add variation counts to results
+
+		// Count total items matching the successful search strategy
+		let countQueryBaseForFiltersOnly = buildDrillBaseQuery(); // Rebuild for count to ensure filters are clean
+		// We need a new Kysely instance for count that doesn't have prior .selectAll()
+		let countQuery = kyselyDb.selectFrom('drills')
+							 .select(kyselyDb.fn.count('drills.id').as('total'));
+
+		// Apply WHERE clauses from countQueryBaseForFiltersOnly to the new countQuery
+		// This is a bit manual; Kysely doesn't have a direct way to copy just WHERE clauses.
+		// We re-apply filters based on the logic in buildDrillBaseQuery and search conditions.
+
+		// Re-apply visibility/ownership from buildDrillBaseQuery structure
+		if (this.useStandardPermissions && this.permissionConfig) {
+			const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } = this.permissionConfig;
+			countQuery = countQuery.where((eb) => {
+				const conditions = [
+					eb(visibilityColumn, '=', publicValue),
+					eb(visibilityColumn, '=', unlistedValue)
+				];
+				if (userId) {
+					conditions.push(eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)]));
+				}
+				return eb.or(conditions);
+			});
+		}
+		// Re-apply specific drill filters
+		if (filters.skill_level?.length) countQuery = countQuery.where(sql`skill_level && $1`, [filters.skill_level]);
+		if (filters.complexity) countQuery = countQuery.where('complexity', '=', filters.complexity);
+		if (filters.skills_focused_on?.length) countQuery = countQuery.where(sql`skills_focused_on && $1`, [filters.skills_focused_on]);
+		if (filters.positions_focused_on?.length) countQuery = countQuery.where(sql`positions_focused_on && $1`, [filters.positions_focused_on]);
+		if (filters.drill_type?.length) countQuery = countQuery.where(sql`drill_type && $1`, [filters.drill_type]);
+		if (filters.number_of_people_min != null) countQuery = countQuery.where('number_of_people_min', '>=', filters.number_of_people_min);
+		if (filters.number_of_people_max != null) countQuery = countQuery.where('number_of_people_max', '<=', filters.number_of_people_max);
+		if (filters.suggested_length_min != null) countQuery = countQuery.where('suggested_length_min', '>=', filters.suggested_length_min);
+		if (filters.suggested_length_max != null) countQuery = countQuery.where('suggested_length_max', '<=', filters.suggested_length_max);
+		if (filters.hasVideo === true) countQuery = countQuery.where('video_link', 'is not', null).where('video_link', '!=', '');
+		if (filters.hasVideo === false) countQuery = countQuery.where((eb) => eb.or([eb('video_link', 'is', null), eb('video_link', '=', '')]));
+		if (filters.hasDiagrams === true) countQuery = countQuery.where(sql`jsonb_typeof(diagrams) = 'array' AND jsonb_array_length(diagrams) > 0`);
+		if (filters.hasDiagrams === false) countQuery = countQuery.where(sql`jsonb_typeof(diagrams) != 'array' OR jsonb_array_length(diagrams) = 0`);
+		if (filters.hasImages === true) countQuery = countQuery.where(sql`array_length(images, 1) > 0`);
+		if (filters.hasImages === false) countQuery = countQuery.where((eb) => eb.or([eb('images', 'is', null), eb(sql`array_length(images, 1) IS NULL`), eb(sql`array_length(images, 1) = 0`)]));
+
+		if (filters.searchQuery) {
+			const cleanedSearchTerm = filters.searchQuery.trim();
+			if (cleanedSearchTerm) {
+				if (usedFallback) {
+					countQuery = countQuery.where((eb) => eb.or([
+						eb(sql`similarity(name, ${cleanedSearchTerm})`, '>', 0.3),
+						eb(sql`similarity(brief_description, ${cleanedSearchTerm})`, '>', 0.3),
+						eb(sql`similarity(detailed_description, ${cleanedSearchTerm})`, '>', 0.3)
+					]));
+				} else {
+					const tsQuerySearchTerm = cleanedSearchTerm.split(/\s+/).filter(Boolean).map(term => term + ':*').join(' & ');
+					if (tsQuerySearchTerm) {
+						countQuery = countQuery.where(sql`search_vector @@ to_tsquery('english', ${tsQuerySearchTerm})`);
+					}
+				}
+			}
 		}
 
-		// Add custom conditions
-		finalConditions.push(...customConditions);
-
-		const finalWhereClause =
-			finalConditions.length > 0 ? `WHERE ${finalConditions.join(' AND ')}` : '';
-
-		// Build ORDER BY clause
-		let orderBy;
-		if (searchQuery && (!sortBy || sortBy === 'relevance')) {
-			// Default sort by relevance when searching
-			orderBy = `ORDER BY ts_rank_cd(search_vector, plainto_tsquery($${searchConfigParamIndex}, $${searchQueryParamIndex})) DESC, ${this.primaryKey} DESC`;
-		} else if (sortBy && this.isColumnAllowed(sortBy)) {
-			const sanitizedSortOrder = this.validateSortOrder(sortOrder);
-			orderBy = `ORDER BY ${sortBy} ${sanitizedSortOrder}, ${this.primaryKey} ${sanitizedSortOrder}`;
-		} else {
-			orderBy = `ORDER BY ${this.primaryKey} DESC`; // Default sort
-		}
-
-		// Validate columns
-		const validColumns = columns.filter((col) => col === '*' || this.isColumnAllowed(col));
-		if (validColumns.length === 0) validColumns.push(this.primaryKey);
-
-		// Count total items
-		const countQuery = `SELECT COUNT(*) FROM ${this.tableName} ${finalWhereClause}`;
-		const countResult = await db.query(countQuery, queryParams);
-		const totalItems = parseInt(countResult.rows[0].count);
-
-		// Fetch items with pagination
-		const selectQuery = `
-        SELECT ${validColumns.join(', ')}
-        FROM ${this.tableName}
-        ${finalWhereClause}
-        ${orderBy}
-        LIMIT $${currentParamCount + 1} OFFSET $${currentParamCount + 2}
-    `;
-		queryParams.push(limit, offset);
-		const itemsResult = await db.query(selectQuery, queryParams);
+		const countResult = await countQuery.executeTakeFirst();
+		const totalItems = parseInt(countResult?.total ?? '0', 10);
 
 		return {
-			items: itemsResult.rows,
+			items: items,
 			pagination: {
 				page: parseInt(page),
 				limit: parseInt(limit),

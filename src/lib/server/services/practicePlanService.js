@@ -83,137 +83,120 @@ export class PracticePlanService extends BaseEntityService {
 
 		const offset = (page - 1) * limit;
 
-		// Use transaction helper is generally good, but for read-only with Kysely it might be simpler without
-		// return this.withTransaction(async (client) => { // Using Kysely directly now
+		// Helper to build the base query (before search and pagination)
+		const buildBaseQueryWithFilters = () => {
+			let q = kyselyDb
+				.selectFrom('practice_plans as pp')
+				.leftJoin('practice_plan_drills as ppd', 'pp.id', 'ppd.practice_plan_id')
+				.select([
+					'pp.id',
+					'pp.name',
+					'pp.description',
+					'pp.practice_goals',
+					'pp.phase_of_season',
+					'pp.estimated_number_of_participants',
+					'pp.created_by',
+					'pp.visibility',
+					'pp.is_editable_by_others',
+					'pp.start_time',
+					'pp.created_at',
+					'pp.updated_at'
+				])
+				.select(sql`array_agg(DISTINCT ppd.drill_id)`.as('drills'))
+				.groupBy('pp.id');
 
-		let query = kyselyDb
-			.selectFrom('practice_plans as pp')
-			.leftJoin('practice_plan_drills as ppd', 'pp.id', 'ppd.practice_plan_id')
-			// Select necessary fields from practice_plans
-			.select([
-				'pp.id',
-				'pp.name',
-				'pp.description',
-				'pp.practice_goals',
-				'pp.phase_of_season',
-				'pp.estimated_number_of_participants',
-				'pp.created_by',
-				'pp.visibility',
-				'pp.is_editable_by_others',
-				'pp.start_time',
-				'pp.created_at',
-				'pp.updated_at'
-			])
-			// Aggregate drill IDs and durations - NOTE: This simple aggregation might be less useful
-			// if we need detailed drill info, consider a subquery or separate fetch if needed later.
-			// For now, just getting IDs for the "contains drill" filter.
-			.select(sql`array_agg(DISTINCT ppd.drill_id)`.as('drills'))
-			.groupBy('pp.id') // Group by practice plan ID
-			.limit(limit)
-			.offset(offset);
+			// Apply visibility filters from permissionConfig
+			const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
+				this.permissionConfig;
+			q = q.where((eb) => {
+				const conditions = [
+					eb(`pp.${visibilityColumn}`, '=', publicValue),
+					eb(`pp.${visibilityColumn}`, '=', unlistedValue)
+				];
+				if (userId) {
+					conditions.push(
+						eb.and([
+							eb(`pp.${visibilityColumn}`, '=', privateValue),
+							eb(`pp.${userIdColumn}`, '=', userId)
+						])
+					);
+				}
+				return eb.or(conditions);
+			});
 
-		// Apply visibility filters
-		// Use configured column names/values from permissionConfig
-		const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
-			this.permissionConfig;
-		query = query.where((eb) => {
-			const conditions = [
-				eb(`pp.${visibilityColumn}`, '=', publicValue),
-				eb(`pp.${visibilityColumn}`, '=', unlistedValue)
-			];
-			if (userId) {
-				conditions.push(
-					eb.and([
-						eb(`pp.${visibilityColumn}`, '=', privateValue),
-						eb(`pp.${userIdColumn}`, '=', userId)
-					])
+			// Apply specific filters (excluding search, which is handled by _buildSearchQuery)
+			if (filters.phase_of_season?.required?.length) {
+				q = q.where('pp.phase_of_season', 'in', filters.phase_of_season.required);
+			}
+			if (filters.phase_of_season?.excluded?.length) {
+				q = q.where('pp.phase_of_season', 'not in', filters.phase_of_season.excluded);
+			}
+			if (filters.practice_goals?.required?.length) {
+				filters.practice_goals.required.forEach((goal) => {
+					q = q.where(sql`pp.practice_goals @> ARRAY[${goal}]::text[]`);
+				});
+			}
+			if (filters.practice_goals?.excluded?.length) {
+				q = q.where(
+					sql`NOT (pp.practice_goals && ARRAY[${filters.practice_goals.excluded.join(',')}]::text[])`
 				);
 			}
-			return eb.or(conditions);
-		});
+			if (filters.min_participants != null) {
+				q = q.where('pp.estimated_number_of_participants', '>=', filters.min_participants);
+			}
+			if (filters.max_participants != null) {
+				q = q.where('pp.estimated_number_of_participants', '<=', filters.max_participants);
+			}
+			if (filters.drill_ids?.length) {
+				q = q.where((eb) =>
+					eb.exists(
+						eb
+							.selectFrom('practice_plan_drills as sub_ppd')
+							.select(sql`1`.as('one'))
+							.whereRef('sub_ppd.practice_plan_id', '=', 'pp.id')
+							.where('sub_ppd.drill_id', 'in', filters.drill_ids)
+							.groupBy('sub_ppd.practice_plan_id')
+							.having(sql`count(DISTINCT sub_ppd.drill_id)`, '=', filters.drill_ids.length)
+					)
+				);
+			}
+			return q;
+		};
 
-		// Apply specific filters
-		if (filters.phase_of_season?.required?.length) {
-			query = query.where('pp.phase_of_season', 'in', filters.phase_of_season.required);
-		}
-		if (filters.phase_of_season?.excluded?.length) {
-			query = query.where('pp.phase_of_season', 'not in', filters.phase_of_season.excluded);
-		}
+		// --- Main Query Execution ---
+		const baseQuery = buildBaseQueryWithFilters();
+		// Clone baseQuery for fallback, as _buildSearchQuery modifies its input and _executeSearch might clear its where clause
+		const baseQueryForFallback = buildBaseQueryWithFilters(); 
 
-		// Practice Goals (assuming stored as text array) - Check if ALL required goals are present
-		if (filters.practice_goals?.required?.length) {
-			// Check if the practice_goals array contains all required goals
-			filters.practice_goals.required.forEach((goal) => {
-				query = query.where(sql`pp.practice_goals @> ARRAY[${goal}]::text[]`);
-			});
-		}
-		if (filters.practice_goals?.excluded?.length) {
-			// Check if the practice_goals array does not contain any excluded goals
-			query = query.where(
-				sql`NOT (pp.practice_goals && ARRAY[${filters.practice_goals.excluded.join(',')}]::text[])`
-			);
-		}
+		const ftsQuery = this._buildSearchQuery(
+			baseQuery, // Pass the original baseQuery here
+			filters.searchQuery,
+			'search_vector',
+			'english',
+			['name', 'description'], // Columns for pg_trgm fallback
+			0.3 // Trigram threshold
+		);
 
-		if (filters.min_participants != null) {
-			query = query.where('pp.estimated_number_of_participants', '>=', filters.min_participants);
-		}
-		if (filters.max_participants != null) {
-			query = query.where('pp.estimated_number_of_participants', '<=', filters.max_participants);
-		}
-
-		// Contains Drills - Ensure the plan contains ALL specified drill IDs
-		if (filters.drill_ids?.length) {
-			// We need to ensure *all* specified drill IDs are present.
-			// This requires checking the aggregated `drills` array or a subquery.
-			// Using a subquery for clarity and correctness with GROUP BY
-			query = query.where((eb) =>
-				eb.exists(
-					eb
-						.selectFrom('practice_plan_drills as sub_ppd')
-						.select(sql`1`.as('one'))
-						.whereRef('sub_ppd.practice_plan_id', '=', 'pp.id')
-						.where('sub_ppd.drill_id', 'in', filters.drill_ids)
-						.groupBy('sub_ppd.practice_plan_id')
-						// Ensure the count of distinct matching drills equals the number of filter IDs
-						.having(sql`count(DISTINCT sub_ppd.drill_id)`, '=', filters.drill_ids.length)
-				)
-			);
+		// Apply sorting - if fallback is used, _executeSearch will sort by similarity_score
+		// If FTS is used, or no search, apply standard sorting.
+		let finalQuery = ftsQuery;
+		if (!ftsQuery._ftsAppliedInfo || (ftsQuery._ftsAppliedInfo && items.length > 0 && !usedFallback) ) { // only apply if FTS was not used or if FTS found items and fallback wasn't used
+			const validSortColumns = ['name', 'created_at', 'estimated_number_of_participants', 'updated_at'];
+			const sortCol = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
+			const direction = sortOrder === 'asc' ? 'asc' : 'desc';
+			finalQuery = finalQuery.orderBy(`pp.${sortCol}`, direction);
 		}
 
-		// Search Query
-		if (filters.searchQuery) {
-			// Use Full-Text Search assuming 'search_vector' column
-			const searchTerm = filters.searchQuery;
-			const searchConfig = 'english'; // Or make configurable
-			query = query.where(sql`pp.search_vector @@ plainto_tsquery(${searchConfig}, ${searchTerm})`);
-		}
+		const { items, usedFallback } = await this._executeSearch(finalQuery, baseQueryForFallback, { limit, offset });
 
-		// Apply sorting
-		const validSortColumns = [
-			'name',
-			'created_at',
-			'estimated_number_of_participants',
-			'updated_at'
-			// Add other valid columns as needed
-		];
-		const sortCol = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
-		const direction = sortOrder === 'asc' ? 'asc' : 'desc';
-		// Need to ensure the column exists on pp table
-		query = query.orderBy(`pp.${sortCol}`, direction);
-
-		// Execute the query to get items for the current page
-		const items = await query.execute();
-
-		// Count total items matching filters (without pagination)
-		// Need to build a separate count query with the same filters
+		// --- Count Query Execution ---
 		let countQuery = kyselyDb
-			.selectFrom('practice_plans as pp')
-			// Need to join only if filtering by drills requires it, otherwise it multiplies rows
-			// Conditional join or different approach needed if drill filter is active.
-			// Simplest for now: Assume drill filter check doesn't need join for count if using subquery in main query
+			.selectFrom('practice_plans as pp') // Must match the alias used in buildBaseQueryWithFilters if reusing parts of it
 			.select(kyselyDb.fn.count('pp.id').distinct().as('total'));
 
-		// Apply the same visibility and filters as the main query
+		// Apply the same non-search filters to countQuery as were applied to baseQuery
+		const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
+			this.permissionConfig;
 		countQuery = countQuery.where((eb) => {
 			const conditions = [
 				eb(`pp.${visibilityColumn}`, '=', publicValue),
@@ -229,16 +212,11 @@ export class PracticePlanService extends BaseEntityService {
 			}
 			return eb.or(conditions);
 		});
-
 		if (filters.phase_of_season?.required?.length) {
 			countQuery = countQuery.where('pp.phase_of_season', 'in', filters.phase_of_season.required);
 		}
 		if (filters.phase_of_season?.excluded?.length) {
-			countQuery = countQuery.where(
-				'pp.phase_of_season',
-				'not in',
-				filters.phase_of_season.excluded
-			);
+			countQuery = countQuery.where('pp.phase_of_season', 'not in', filters.phase_of_season.excluded);
 		}
 		if (filters.practice_goals?.required?.length) {
 			filters.practice_goals.required.forEach((goal) => {
@@ -251,21 +229,12 @@ export class PracticePlanService extends BaseEntityService {
 			);
 		}
 		if (filters.min_participants != null) {
-			countQuery = countQuery.where(
-				'pp.estimated_number_of_participants',
-				'>=',
-				filters.min_participants
-			);
+			countQuery = countQuery.where('pp.estimated_number_of_participants', '>=', filters.min_participants);
 		}
 		if (filters.max_participants != null) {
-			countQuery = countQuery.where(
-				'pp.estimated_number_of_participants',
-				'<=',
-				filters.max_participants
-			);
+			countQuery = countQuery.where('pp.estimated_number_of_participants', '<=', filters.max_participants);
 		}
 		if (filters.drill_ids?.length) {
-			// Re-apply the subquery logic for the count
 			countQuery = countQuery.where((eb) =>
 				eb.exists(
 					eb
@@ -278,13 +247,29 @@ export class PracticePlanService extends BaseEntityService {
 				)
 			);
 		}
+
+		// Apply the correct search condition to the count query based on what was used for items
 		if (filters.searchQuery) {
-			// Apply FTS condition to count query too
-			const searchTerm = filters.searchQuery;
-			const searchConfig = 'english'; // Or make configurable
-			countQuery = countQuery.where(
-				sql`pp.search_vector @@ plainto_tsquery(${searchConfig}, ${searchTerm})`
-			);
+			const cleanedSearchTerm = filters.searchQuery.trim();
+			if (cleanedSearchTerm) {
+				if (usedFallback) {
+					countQuery = countQuery.where((eb) =>
+						eb.or([
+							eb(sql`similarity(pp.name, ${cleanedSearchTerm})`, '>', 0.3),
+							eb(sql`similarity(pp.description, ${cleanedSearchTerm})`, '>', 0.3)
+						])
+					);
+				} else {
+					const tsQuerySearchTerm = cleanedSearchTerm
+						.split(/\s+/)
+						.filter(Boolean)
+						.map((term) => term + ':*')
+						.join(' & ');
+					if (tsQuerySearchTerm) {
+						countQuery = countQuery.where(sql`pp.search_vector @@ to_tsquery('english', ${tsQuerySearchTerm})`);
+					}
+				}
+			}
 		}
 
 		const countResult = await countQuery.executeTakeFirst();
@@ -300,7 +285,6 @@ export class PracticePlanService extends BaseEntityService {
 				totalPages: totalPages
 			}
 		};
-		// }); // End Kysely/transaction block
 	}
 
 	/**

@@ -42,6 +42,7 @@
 		handleDurationChange,
                handleUngroup,
                getTimelineName,
+               getTimelineColor,
                customTimelineNames,
                selectedTimelines,
                addBreak,

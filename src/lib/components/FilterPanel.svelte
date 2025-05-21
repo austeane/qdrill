@@ -1,11 +1,11 @@
 <script>
 	import RangeSlider from 'svelte-range-slider-pips';
-	import {
-		selectedSkillLevels,
-		selectedComplexities,
-		selectedSkillsFocusedOn,
-		selectedPositionsFocusedOn,
-		selectedNumberOfPeopleMin,
+import {
+                selectedSkillLevels,
+                selectedComplexities,
+                selectedSkillsFocusedOn,
+                selectedPositionsFocusedOn,
+                selectedNumberOfPeopleMin,
 		selectedNumberOfPeopleMax,
 		selectedSuggestedLengthsMin,
 		selectedSuggestedLengthsMax,
@@ -14,10 +14,11 @@
 		selectedHasImages,
 		searchQuery,
 		selectedDrillTypes
-	} from '$lib/stores/drillsStore';
-	import { createEventDispatcher, onMount } from 'svelte';
-	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
-	import { writable } from 'svelte/store';
+        } from '$lib/stores/drillsStore';
+import { createEventDispatcher, onMount } from 'svelte';
+import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
+import { writable } from 'svelte/store';
+import { apiFetch } from '$lib/utils/apiFetch.js';
 	import ThreeStateCheckbox from '$lib/components/ThreeStateCheckbox.svelte';
 	import { FILTER_STATES } from '$lib/constants';
 	import {
@@ -287,12 +288,8 @@
 		try {
 			const queryParam =
 				drillSearchTerm.trim() === '' ? '' : `?query=${encodeURIComponent(drillSearchTerm)}`;
-			const res = await fetch(`/api/drills/search${queryParam}`);
-			if (!res.ok) {
-				throw new Error('Failed to fetch drill suggestions');
-			}
-			const drills = await res.json();
-			drillSuggestions = drills.filter((drill) => !selectedDrills.some((d) => d.id === drill.id));
+               const drills = await apiFetch(`/api/drills/search${queryParam}`);
+               drillSuggestions = drills.filter((drill) => !selectedDrills.some((d) => d.id === drill.id));
 		} catch (error) {
 			console.error(error);
 		}

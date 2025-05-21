@@ -1,7 +1,8 @@
 <script>
 	// import { feedbackList } from '$lib/stores/feedbackStore'; // Store not used directly for list
-	import { onMount } from 'svelte';
-	import { invalidate } from '$app/navigation'; // Import invalidate
+import { onMount } from 'svelte';
+import { invalidate } from '$app/navigation'; // Import invalidate
+import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let data; // Accept data from load function
 
@@ -30,32 +31,25 @@
 		}
 	});
 
-	async function upvoteFeedback(id) {
-		const response = await fetch(`/api/feedback/${id}/upvote`, { method: 'POST' });
-		if (response.ok) {
-			// Invalidate data instead of manual update
-			invalidateFeedbackData();
-			// const updatedFeedback = await response.json();
-			// feedbackEntries = feedbackEntries.map(entry =>
-			//     entry.id === updatedFeedback.id ? { ...entry, upvotes: updatedFeedback.upvotes } : entry
-			// );
-		} else {
-			alert('Failed to upvote feedback.');
-		}
-	}
+       async function upvoteFeedback(id) {
+               try {
+                       await apiFetch(`/api/feedback/${id}/upvote`, { method: 'POST' });
+                       invalidateFeedbackData();
+               } catch (error) {
+                       alert('Failed to upvote feedback.');
+               }
+       }
 
 	async function deleteFeedback(id) {
 		if (!confirm('Are you sure you want to delete this feedback?')) return;
 
-		const response = await fetch(`/api/feedback/${id}/delete`, { method: 'DELETE' });
-		if (response.ok) {
-			// Invalidate data
-			invalidateFeedbackData();
-			// feedbackEntries = feedbackEntries.filter(entry => entry.id !== id);
-		} else {
-			alert('Failed to delete feedback.');
-		}
-	}
+               try {
+                       await apiFetch(`/api/feedback/${id}/delete`, { method: 'DELETE' });
+                       invalidateFeedbackData();
+               } catch (error) {
+                       alert('Failed to delete feedback.');
+               }
+       }
 
 	// Re-initialize feedbackEntries when data prop changes (after invalidation)
 	$: if (data.feedbackEntries) {
@@ -78,23 +72,22 @@
 			email: email
 		};
 
-		const response = await fetch('/api/feedback', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload)
-		});
-
-		if (response.ok) {
-			newFeedback = '';
-			newFeedbackType = 'general';
-			name = '';
-			email = '';
-			invalidateFeedbackData(); // Invalidate data to refresh list
-			alert('Feedback submitted successfully.');
-		} else {
-			alert('Failed to submit feedback.');
-		}
-	}
+               try {
+                       await apiFetch('/api/feedback', {
+                               method: 'POST',
+                               headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify(payload)
+                       });
+                       newFeedback = '';
+                       newFeedbackType = 'general';
+                       name = '';
+                       email = '';
+                       invalidateFeedbackData();
+                       alert('Feedback submitted successfully.');
+               } catch (error) {
+                       alert('Failed to submit feedback.');
+               }
+       }
 </script>
 
 <svelte:head>

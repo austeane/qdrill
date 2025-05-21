@@ -9,8 +9,9 @@
 	import Timeline from '../viewer/Timeline.svelte';
 	import Section from '../viewer/Section.svelte';
 	import DeletePracticePlan from '$lib/components/DeletePracticePlan.svelte';
-	import { goto } from '$app/navigation';
-	import { toast } from '@zerodevx/svelte-toast';
+import { goto } from '$app/navigation';
+import { toast } from '@zerodevx/svelte-toast';
+import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let data;
 	const { practicePlan } = data;
@@ -101,29 +102,23 @@
 
 	// Function to handle plan duplication
 	async function handleDuplicate() {
-		try {
-			const response = await fetch(`/api/practice-plans/${practicePlan.id}/duplicate`, {
-				method: 'POST'
-			});
+               try {
+                       const result = await apiFetch(`/api/practice-plans/${practicePlan.id}/duplicate`, {
+                               method: 'POST'
+                       });
 
-			const result = await response.json();
-
-			if (response.ok) {
-				toast.push('Practice plan duplicated successfully', {
-					theme: {
-						'--toastBackground': '#48BB78',
-						'--toastBarBackground': '#2F855A'
-					}
-				});
-				goto(`/practice-plans/${result.id}/edit`);
-			} else {
-				throw new Error(result.error || 'Failed to duplicate practice plan');
-			}
-		} catch (error) {
-			console.error('Error duplicating practice plan:', error);
-			toast.push(error.message, {
-				theme: {
-					'--toastBackground': '#F56565',
+                       toast.push('Practice plan duplicated successfully', {
+                               theme: {
+                                       '--toastBackground': '#48BB78',
+                                       '--toastBarBackground': '#2F855A'
+                               }
+                       });
+                       goto(`/practice-plans/${result.id}/edit`);
+               } catch (error) {
+                       console.error('Error duplicating practice plan:', error);
+                       toast.push(error.message, {
+                               theme: {
+                                       '--toastBackground': '#F56565',
 					'--toastBarBackground': '#C53030'
 				}
 			});

@@ -1,7 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
-	import { toast } from '@zerodevx/svelte-toast';
+import { toast } from '@zerodevx/svelte-toast';
+import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let drillId = null;
 	export let practicePlanId = null;
@@ -15,20 +16,14 @@
 			return;
 		}
 
-		try {
-			const endpoint = `/api/votes?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`;
-			const countsRes = await fetch(endpoint);
-			if (countsRes.ok) {
-				const counts = await countsRes.json();
-				score.set((counts.upvotes || 0) - (counts.downvotes || 0));
-			} else {
-				console.error('Failed to fetch vote counts:', await countsRes.text());
-				toast.push('Failed to load score', { theme: { '--toastBackground': '#F56565' } });
-			}
-		} catch (error) {
-			console.error('Error loading score:', error);
-			toast.push('Error loading score', { theme: { '--toastBackground': '#F56565' } });
-		} finally {
+               try {
+                       const endpoint = `/api/votes?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`;
+                       const counts = await apiFetch(endpoint);
+                       score.set((counts.upvotes || 0) - (counts.downvotes || 0));
+               } catch (error) {
+                       console.error('Error loading score:', error);
+                       toast.push('Error loading score', { theme: { '--toastBackground': '#F56565' } });
+               } finally {
 			isLoading.set(false);
 		}
 	});

@@ -1,5 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService.js';
+import { apiFetch } from '$lib/utils/apiFetch.js';
 // Assuming a service exists for poll options or direct DB access is needed
 // For now, we'll use fetch within the load function, but ideally, a service would be better.
 
@@ -8,13 +9,12 @@ export async function load({ fetch, depends }) {
 	try {
 		// Fetch poll options server-side
 		// Using fetch here, but a pollOptionService would be cleaner
-		const pollOptionsRes = await fetch('/api/poll/options');
-		if (!pollOptionsRes.ok) {
-			console.error(`Error fetching poll options: ${pollOptionsRes.status}`);
-			// Don't throw fatal error, page can maybe function without options initially
-			// throw error(pollOptionsRes.status, 'Failed to load poll options');
-		}
-		const pollData = pollOptionsRes.ok ? await pollOptionsRes.json() : { options: [] }; // Provide default
+               let pollData = { options: [] };
+               try {
+                       pollData = await apiFetch('/api/poll/options');
+               } catch (err) {
+                       console.error(`Error fetching poll options:`, err);
+               }
 
 		// Fetch all drill names server-side
 		// Note: This still fetches *all* names. A future optimization could be

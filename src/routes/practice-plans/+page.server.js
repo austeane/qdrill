@@ -54,7 +54,7 @@ export async function load({ fetch, url, locals }) {
 	// --- Fetch data from the API endpoint ---
        let practicePlansData = { items: [], pagination: null };
        try {
-               practicePlansData = await apiFetch(apiUrl.toString());
+               practicePlansData = await apiFetch(apiUrl.toString(), {}, fetch);
        } catch (error) {
                console.error('Fetch Error loading practice plans:', error);
                practicePlansData = { items: [], pagination: null, error: error.message };

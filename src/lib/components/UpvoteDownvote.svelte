@@ -10,6 +10,8 @@ import { apiFetch } from '$lib/utils/apiFetch.js';
 	export let drillId = null;
 	export let practicePlanId = null;
 
+console.log('[UpvoteDownvote] Script executed. Initial props - drillId:', drillId, 'practicePlanId:', practicePlanId);
+
 	let upvotes = writable(0);
 	let downvotes = writable(0);
 	let userVote = writable(0); // 1 for upvote, -1 for downvote, 0 for no vote
@@ -18,6 +20,7 @@ import { apiFetch } from '$lib/utils/apiFetch.js';
 	const user = $session.data?.user;
 
 	onMount(async () => {
+		console.log('[UpvoteDownvote] onMount called. Current drillId:', drillId, 'Current practicePlanId:', practicePlanId);
 		await loadVotes();
 	});
 
@@ -26,19 +29,25 @@ import { apiFetch } from '$lib/utils/apiFetch.js';
 	}
 
 	async function loadVotes() {
-		if (!drillId && !practicePlanId) return;
+		console.log('[UpvoteDownvote] loadVotes called. drillId:', drillId, 'practicePlanId:', practicePlanId);
+		if (!drillId && !practicePlanId) {
+			console.log('[UpvoteDownvote] No ID provided, returning.');
+			return;
+		}
 
                try {
-                       const counts = await apiFetch(
-                               `/api/votes?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`
-                       );
+                       const endpoint = `/api/votes?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`;
+                       console.log('[UpvoteDownvote] Fetching counts from:', endpoint);
+                       const counts = await apiFetch(endpoint);
+                       console.log('[UpvoteDownvote] Received counts:', counts, 'for ID:', drillId || practicePlanId);
                        upvotes.set(counts.upvotes || 0);
                        downvotes.set(counts.downvotes || 0);
 
                        if (user) {
-                               const vote = await apiFetch(
-                                       `/api/votes/user?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`
-                               );
+                               const userVoteEndpoint = `/api/votes/user?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`;
+                               console.log('[UpvoteDownvote] Fetching user vote from:', userVoteEndpoint);
+                               const vote = await apiFetch(userVoteEndpoint);
+                               console.log('[UpvoteDownvote] Received user vote:', vote, 'for ID:', drillId || practicePlanId);
                                userVote.set(vote?.vote || 0);
                        }
                } catch (error) {
@@ -74,14 +83,7 @@ import { apiFetch } from '$lib/utils/apiFetch.js';
                        if (currentVote === newVote) {
                                const queryParam = drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`;
                                await apiFetch(`/api/votes?${queryParam}`, {
-                                       method: 'DELETE',
-                                       headers: {
-                                               'Content-Type': 'application/json'
-                                       },
-                                       body: JSON.stringify({
-                                               drillId: drillId ? parseInt(drillId, 10) : undefined,
-                                               practicePlanId: practicePlanId ? parseInt(practicePlanId, 10) : undefined
-                                       })
+                                       method: 'DELETE'
                                });
 
                                userVote.set(0);

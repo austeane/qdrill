@@ -404,15 +404,46 @@
 					data-testid="drill-card"
 				>
 					<div class="p-6 flex flex-col h-full relative">
-						<!-- Variation badges -->
+						<!-- Top-right actions: Vote and Delete -->
+						<div class="absolute top-2 right-2 flex items-start space-x-2">
+							<!-- Vote component -->
+							<UpvoteDownvote drillId={drill.id} />
+
+							<!-- Conditional Delete Button -->
+							{#if dev || drill.created_by === $page.data.session?.user?.id}
+								<button
+									on:click={(e) => deleteDrill(drill.id, e)}
+									class="text-gray-500 hover:text-red-500 transition-colors duration-300 p-1 rounded-full hover:bg-gray-100"
+									title="Delete drill"
+									aria-label="Delete drill"
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-5 w-5"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+										/>
+									</svg>
+								</button>
+							{/if}
+						</div>
+
+						<!-- Variation badges (moved slightly to avoid overlap if actions are wide) -->
 						{#if drill.variation_count > 0}
-							<div class="absolute top-2 right-2">
+							<div class="absolute top-2 left-2">
 								<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
 									{drill.variation_count} variation{drill.variation_count !== 1 ? 's' : ''}
 								</span>
 							</div>
 						{:else if drill.parent_drill_id}
-							<div class="absolute top-2 right-2">
+							<div class="absolute top-2 left-2">
 								<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
 									Variant
 								</span>
@@ -423,7 +454,7 @@
 						<div class="flex-grow mb-4">
 							<!-- Title and description -->
 							<div class="flex justify-between items-start mb-4">
-								<div class="flex-grow mr-2">
+								<div class="flex-grow mr-16"> <!-- Added mr-16 to give space for top-right actions -->
 									<h2
 										class="text-xl font-bold text-gray-800 break-words"
 										data-testid="drill-card-name"
@@ -436,29 +467,6 @@
 										{@html drill.brief_description}
 									</div>
 								</div>
-								{#if dev || drill.created_by === $page.data.session?.user?.id}
-									<button
-										on:click={(e) => deleteDrill(drill.id, e)}
-										class="text-gray-500 hover:text-red-500 transition-colors duration-300 flex-shrink-0"
-										title="Delete drill"
-										aria-label="Delete drill"
-									>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											class="h-5 w-5"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-											/>
-										</svg>
-									</button>
-								{/if}
 							</div>
 
 							<!-- Drill details -->

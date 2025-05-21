@@ -1,8 +1,9 @@
 <script>
 	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import { toast } from '@zerodevx/svelte-toast';
-	import { dev } from '$app/environment';
+import { goto } from '$app/navigation';
+import { toast } from '@zerodevx/svelte-toast';
+import { dev } from '$app/environment';
+import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let planId;
 	export let createdBy = null;
@@ -22,25 +23,12 @@
 				throw new Error('No plan ID provided');
 			}
 
-			const response = await fetch(`/api/practice-plans/${planId}`, {
-				method: 'DELETE',
-				headers: {
-					'Content-Type': 'application/json'
-				}
-			});
-
-			if (!response.ok) {
-				let errorMsg = `HTTP error! status: ${response.status}`;
-				try {
-					// Attempt to parse error response, as it might contain useful details
-					const errorData = await response.json();
-					errorMsg = errorData.error || errorData.message || errorMsg;
-				} catch (e) {
-					// If error response is not JSON, use the status text or default message
-					errorMsg = response.statusText || errorMsg;
-				}
-				throw new Error(errorMsg);
-			}
+                       await apiFetch(`/api/practice-plans/${planId}`, {
+                               method: 'DELETE',
+                               headers: {
+                                       'Content-Type': 'application/json'
+                               }
+                       });
 
 			// If response.ok is true, and it's a 204 No Content, there's no body to parse.
 			// We can proceed directly.

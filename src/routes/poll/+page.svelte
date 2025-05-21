@@ -1,8 +1,9 @@
 <script>
-	import { onMount } from 'svelte';
-	import { toast } from '@zerodevx/svelte-toast';
-	import { dev } from '$app/environment';
-	import { invalidate } from '$app/navigation';
+import { onMount } from 'svelte';
+import { toast } from '@zerodevx/svelte-toast';
+import { dev } from '$app/environment';
+import { invalidate } from '$app/navigation';
+import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let data;
 
@@ -55,25 +56,20 @@
 		event.preventDefault();
 		if (isSubmitting) return;
 
-		try {
-			isSubmitting = true;
-			const response = await fetch('/api/poll/options', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ description: newDescription })
-			});
+               try {
+                       isSubmitting = true;
+                       await apiFetch('/api/poll/options', {
+                               method: 'POST',
+                               headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify({ description: newDescription })
+                       });
 
-			if (!response.ok) {
-				const data = await response.json();
-				throw new Error(data.error || 'Failed to add option');
-			}
-
-			invalidatePollData();
-			newDescription = '';
-			toast.push('Successfully added suggestion!', { theme: { '--toastBackground': '#48BB78' } });
-		} catch (error) {
-			console.error('Error:', error);
-			toast.push(error.message, { theme: { '--toastBackground': '#F56565' } });
+                       invalidatePollData();
+                       newDescription = '';
+                       toast.push('Successfully added suggestion!', { theme: { '--toastBackground': '#48BB78' } });
+               } catch (error) {
+                       console.error('Error:', error);
+                       toast.push(error.message, { theme: { '--toastBackground': '#F56565' } });
 		} finally {
 			isSubmitting = false;
 		}
@@ -82,22 +78,20 @@
 	async function deleteOption(id) {
 		if (!confirm('Are you sure you want to delete this suggestion?')) return;
 
-		try {
-			const response = await fetch('/api/poll/options', {
-				method: 'DELETE',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ id })
-			});
+               try {
+                       await apiFetch('/api/poll/options', {
+                               method: 'DELETE',
+                               headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify({ id })
+                       });
 
-			if (!response.ok) throw new Error('Failed to delete suggestion');
-
-			invalidatePollData();
-			toast.push('Suggestion deleted!', { theme: { '--toastBackground': '#48BB78' } });
-		} catch (error) {
-			console.error('Error:', error);
-			toast.push('Failed to delete suggestion', { theme: { '--toastBackground': '#F56565' } });
-		}
-	}
+                       invalidatePollData();
+                       toast.push('Suggestion deleted!', { theme: { '--toastBackground': '#48BB78' } });
+               } catch (error) {
+                       console.error('Error:', error);
+                       toast.push('Failed to delete suggestion', { theme: { '--toastBackground': '#F56565' } });
+               }
+       }
 
 	async function saveDrillLink(id) {
 		if (!selectedDrill) {
@@ -105,15 +99,13 @@
 			return;
 		}
 
-		try {
-			const drillLink = `/drills/${selectedDrill.id}`;
-			const response = await fetch('/api/poll/options', {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ id, drill_link: drillLink })
-			});
-
-			if (!response.ok) throw new Error('Failed to update drill link');
+               try {
+                       const drillLink = `/drills/${selectedDrill.id}`;
+                       await apiFetch('/api/poll/options', {
+                               method: 'PUT',
+                               headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify({ id, drill_link: drillLink })
+                       });
 
 			invalidatePollData();
 			editingId = null;
@@ -139,23 +131,21 @@
 			}
 		}
 
-		try {
-			const response = await fetch('/api/poll', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ optionId })
-			});
+               try {
+                       await apiFetch('/api/poll', {
+                               method: 'POST',
+                               headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify({ optionId })
+                       });
 
-			if (!response.ok) throw new Error('Failed to vote');
-
-			invalidatePollData();
-			voteDebounce.set(optionId, Date.now());
-			toast.push('Vote recorded!', { theme: { '--toastBackground': '#48BB78' } });
-		} catch (error) {
-			console.error('Error:', error);
-			toast.push('Failed to vote', { theme: { '--toastBackground': '#F56565' } });
-		}
-	}
+                       invalidatePollData();
+                       voteDebounce.set(optionId, Date.now());
+                       toast.push('Vote recorded!', { theme: { '--toastBackground': '#48BB78' } });
+               } catch (error) {
+                       console.error('Error:', error);
+                       toast.push('Failed to vote', { theme: { '--toastBackground': '#F56565' } });
+               }
+       }
 
 	$: if (searchTerm) {
 		searchDrills();

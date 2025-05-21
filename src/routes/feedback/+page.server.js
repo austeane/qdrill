@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 // Assuming a FeedbackService exists or direct DB access / fetch is needed.
 // Using fetch for now.
 import { dev } from '$app/environment'; // To check if running locally for delete button
+import { apiFetch } from '$lib/utils/apiFetch.js';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ fetch, depends }) {
@@ -9,14 +10,12 @@ export async function load({ fetch, depends }) {
 		// Depend on a custom identifier for invalidation
 		depends('app:feedback');
 
-		const response = await fetch('/api/feedback'); // Fetch feedback list
-		if (!response.ok) {
-			console.error(`Error fetching feedback: ${response.status}`);
-			// Don't throw fatal error, return empty list
-			// throw error(response.status, 'Failed to load feedback');
-		}
-
-		const feedbackEntries = response.ok ? await response.json() : [];
+               let feedbackEntries = [];
+               try {
+                       feedbackEntries = await apiFetch('/api/feedback', {}, fetch);
+               } catch (err) {
+                       console.error(`Error fetching feedback:`, err);
+               }
 
 		return {
 			feedbackEntries,

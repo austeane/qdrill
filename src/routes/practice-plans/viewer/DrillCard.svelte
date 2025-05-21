@@ -18,7 +18,7 @@
 
 	$: normalizedItem = {
 		...item,
-		name: item?.type === 'break' ? 'Break' : item?.name || item?.drill?.name || 'Unnamed Item',
+		name: item?.name || (item?.type === 'break' ? 'Break' : item?.drill?.name || 'Unnamed Item'),
 		duration: item?.selected_duration || item?.duration || item?.drill?.duration || 15,
 		description: item?.brief_description || item?.drill?.brief_description || '',
 		detailedDescription: item?.detailed_description || item?.drill?.detailed_description || '',

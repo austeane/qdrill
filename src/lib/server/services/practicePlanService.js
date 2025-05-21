@@ -796,7 +796,7 @@ export class PracticePlanService extends BaseEntityService {
 
 				const updateQuery = `
           UPDATE practice_plan_drills 
-          SET order_in_plan = ${caseStatement} 
+          SET order_in_plan = (${caseStatement})::integer
           WHERE section_id = $1 AND id = ANY($${values.length + 1}::int[])`;
 
 				// Add the array of item IDs as the last parameter

@@ -2,6 +2,7 @@
 	import { Button as ButtonPrimitive } from 'bits-ui';
 	import { type Events, type Props, buttonVariants } from './index.js';
 	import { cn } from '$lib/utils.js';
+	import { createEventDispatcher } from 'svelte';
 
 	type $$Props = Props;
 	type $$Events = Events;
@@ -11,6 +12,12 @@
 	export let size: $$Props['size'] = 'default';
 	export let builders: $$Props['builders'] = [];
 	export { className as class };
+
+	const dispatch = createEventDispatcher();
+	function handleClick(event) {
+		console.log('[Button.svelte] click');
+		dispatch('click', event);
+	}
 </script>
 
 <ButtonPrimitive.Root
@@ -18,7 +25,7 @@
 	class={cn(buttonVariants({ variant, size, className }))}
 	type="button"
 	{...$$restProps}
-	on:click
+	on:click={handleClick}
 	on:keydown
 >
 	<slot />

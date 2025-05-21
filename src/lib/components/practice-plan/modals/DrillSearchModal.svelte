@@ -73,10 +73,17 @@
 </script>
 
 {#if show}
-	<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-		<div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
-			<div class="mt-3">
-				<h3 class="text-lg font-medium text-gray-900 mb-4">Add to Practice Plan</h3>
+        <div
+                class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="drill-search-title"
+                tabindex="-1"
+                on:keydown={(e) => e.key === 'Escape' && close()}
+        >
+                <div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
+                        <div class="mt-3">
+                                <h3 id="drill-search-title" class="text-lg font-medium text-gray-900 mb-4">Add to Practice Plan</h3>
 
 				<!-- Add Break option at the top -->
 				<div
@@ -120,14 +127,15 @@
 
 				<!-- Search input -->
 				<div class="mb-4">
-					<input
-						type="text"
-						bind:value={searchQuery}
-						on:input={() => searchDrills(searchQuery)}
-						placeholder="Search drills..."
-						class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-					/>
-				</div>
+                                        <input
+                                                type="text"
+                                                bind:value={searchQuery}
+                                                on:input={() => searchDrills(searchQuery)}
+                                                placeholder="Search drills..."
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                                autofocus
+                                        />
+                                </div>
 
 				<!-- Search results -->
 				<div class="max-h-[400px] overflow-y-auto">
@@ -153,14 +161,15 @@
 				</div>
 
 				<!-- Close button -->
-				<div class="mt-4 flex justify-end">
-					<button
-						class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
-						on:click={close}
-					>
-						Close
-					</button>
-				</div>
+                                <div class="mt-4 flex justify-end">
+                                        <button
+                                                class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
+                                                on:click={close}
+                                                aria-label="Close"
+                                        >
+                                                Close
+                                        </button>
+                                </div>
 			</div>
 		</div>
 	</div>

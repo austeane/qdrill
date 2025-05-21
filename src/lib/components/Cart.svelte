@@ -36,16 +36,27 @@
 </script>
 
 <div class="fixed bottom-4 right-4 z-50 cart-container">
-	<button
-		on:click={toggleCart}
-		class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full"
-	>
-		🛒 ({$cart.length})
-	</button>
+        <button
+                on:click={toggleCart}
+                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full"
+                aria-haspopup="dialog"
+                aria-expanded={isOpen}
+                aria-controls="cart-menu"
+                aria-label="Toggle cart"
+        >
+                🛒 ({$cart.length})
+        </button>
 
-	{#if isOpen}
-		<div class="absolute bottom-full right-0 mb-2 w-64 bg-white rounded-lg shadow-xl p-4">
-			<h3 class="text-lg font-semibold mb-2">Selected Drills</h3>
+        {#if isOpen}
+                <div
+                        id="cart-menu"
+                        class="absolute bottom-full right-0 mb-2 w-64 bg-white rounded-lg shadow-xl p-4"
+                        role="dialog"
+                        aria-modal="true"
+                        tabindex="-1"
+                        on:keydown={(e) => e.key === 'Escape' && (isOpen = false)}
+                >
+                        <h3 class="text-lg font-semibold mb-2">Selected Drills</h3>
 			{#if $cart.length === 0}
 				<p>No drills selected</p>
 			{:else}

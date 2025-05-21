@@ -1,7 +1,7 @@
 // import pkg from 'pg';
 // const { Pool } = pkg;
 import { createPool } from '@vercel/postgres'; // Import Vercel's createPool
-import { Kysely, PostgresDialect } from 'kysely'; // Import Kysely and PostgresDialect
+import { Kysely, PostgresDialect, sql } from 'kysely'; // Import Kysely, PostgresDialect, and sql
 
 // Create a Vercel-managed pool instance
 let pool;
@@ -41,6 +41,9 @@ export const kyselyDb = new Kysely({
 		pool: vercelPool
 	})
 });
+
+// Re-export sql from Kysely so other modules can import it from here
+export { sql };
 
 export async function query(text, params) {
 	// Use the Vercel pool directly

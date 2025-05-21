@@ -1,6 +1,6 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-	import { addBreak, addDrillToPlan, addOneOffDrill } from '$lib/stores/sectionsStore';
+       import { createEventDispatcher } from 'svelte';
+       // Actions are now handled by the parent component via events
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
@@ -36,40 +36,40 @@
 		}
 	}
 
-	function handleAddDrill(drill) {
-		if (!selectedSectionId) {
-			toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
-			return;
-		}
+       function handleAddDrill(drill) {
+               if (!selectedSectionId) {
+                       toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
+                       return;
+               }
 
-		addDrillToPlan(drill, selectedSectionId);
-		close();
-	}
+               dispatch('addDrill', { drill, sectionId: selectedSectionId });
+               close();
+       }
 
-	function handleAddBreak() {
-		if (!selectedSectionId) {
-			toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
-			return;
-		}
+       function handleAddBreak() {
+               if (!selectedSectionId) {
+                       toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
+                       return;
+               }
 
-		addBreak(selectedSectionId);
-		close();
-	}
+               dispatch('addBreak', { sectionId: selectedSectionId });
+               close();
+       }
 
-	function handleAddOneOffDrill() {
-		if (!selectedSectionId) {
-			toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
-			return;
-		}
+       function handleAddOneOffDrill() {
+               if (!selectedSectionId) {
+                       toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
+                       return;
+               }
 
-		if (!oneOffName.trim()) {
-			toast.push('Activity name cannot be empty', { theme: { '--toastBackground': 'red' } });
-			return;
-		}
+               if (!oneOffName.trim()) {
+                       toast.push('Activity name cannot be empty', { theme: { '--toastBackground': 'red' } });
+                       return;
+               }
 
-		addOneOffDrill(selectedSectionId, oneOffName);
-		close();
-	}
+               dispatch('addOneOffDrill', { sectionId: selectedSectionId, name: oneOffName });
+               close();
+       }
 </script>
 
 {#if show}

@@ -1,5 +1,6 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
+        import { createEventDispatcher } from 'svelte';
+        import { onMount } from 'svelte';
 	import { addBreak, addDrillToPlan, addOneOffDrill } from '$lib/stores/sectionsStore';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
@@ -9,17 +10,28 @@
 
 	const dispatch = createEventDispatcher();
 
-	let searchQuery = '';
-	let searchResults = [];
-	let oneOffName = 'Quick Activity';
+        let searchQuery = '';
+        let searchResults = [];
+        let oneOffName = 'Quick Activity';
+        let modalEl;
 
-	function close() {
-		show = false;
-		searchQuery = '';
-		searchResults = [];
-		oneOffName = 'Quick Activity';
-		dispatch('close');
-	}
+        function close() {
+                show = false;
+                searchQuery = '';
+                searchResults = [];
+                oneOffName = 'Quick Activity';
+                dispatch('close');
+        }
+
+        function handleKeydown(event) {
+                if (event.key === 'Escape') {
+                        close();
+                }
+        }
+
+        $: if (show && modalEl) {
+                modalEl.focus();
+        }
 
 	async function searchDrills(query) {
 		if (!query || query.trim() === '') {
@@ -73,8 +85,19 @@
 </script>
 
 {#if show}
-	<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-		<div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
+        <div
+                class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+                on:keydown={handleKeydown}
+        >
+                <div
+                        class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="drill-search-title"
+                        tabindex="-1"
+                        bind:this={modalEl}
+                >
+                        <h2 id="drill-search-title" class="sr-only">Add to Practice Plan</h2>
 			<div class="mt-3">
 				<h3 class="text-lg font-medium text-gray-900 mb-4">Add to Practice Plan</h3>
 

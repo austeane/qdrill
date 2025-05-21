@@ -1,5 +1,5 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
+        import { createEventDispatcher, onMount } from 'svelte';
 	import {
 		PARALLEL_TIMELINES,
 		TIMELINE_COLORS,
@@ -18,10 +18,20 @@
 
 	const dispatch = createEventDispatcher();
 
-	function close() {
-		show = false;
-		dispatch('close');
-	}
+function close() {
+        show = false;
+        dispatch('close');
+}
+
+function handleKeydown(event) {
+        if (event.key === 'Escape') {
+                close();
+        }
+}
+
+$: if (show && modalEl) {
+        modalEl.focus();
+}
 
 	function save() {
 		if (handleTimelineSave()) {
@@ -30,10 +40,11 @@
 	}
 
 	// Track locally which timeline is being configured
-	let activeTimeline = null;
-	let showColorPicker = false;
-	let showNameEditor = false;
-	let editingName = '';
+let activeTimeline = null;
+let showColorPicker = false;
+let showNameEditor = false;
+let editingName = '';
+let modalEl;
 
 	// Subscribe to customTimelineNames to make the component reactive to changes
 	// Use a local variable for the custom timeline names store
@@ -128,8 +139,19 @@
 </script>
 
 {#if show}
-	<div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-		<div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
+        <div
+                class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+                on:keydown={handleKeydown}
+        >
+                <div
+                        class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="timeline-selector-title"
+                        tabindex="-1"
+                        bind:this={modalEl}
+                >
+                        <h2 id="timeline-selector-title" class="sr-only">Configure Timelines</h2>
 			<div class="mt-3">
 				<h3 class="text-lg font-medium text-gray-900 mb-4">Configure Timelines</h3>
 

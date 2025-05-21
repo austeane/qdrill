@@ -66,8 +66,19 @@
 </script>
 
 {#if $feedbackModalVisible}
-	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-		<div class="bg-white p-6 rounded shadow-lg max-w-md w-full">
+        <div
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+                on:keydown={(e) => e.key === 'Escape' && closeModal()}
+        >
+                <div
+                        class="bg-white p-6 rounded shadow-lg max-w-md w-full"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="feedback-modal-title"
+                        tabindex="-1"
+                        autofocus
+                >
+                        <h2 id="feedback-modal-title" class="sr-only">Quick Feedback</h2>
 			<h2 class="text-xl font-semibold mb-4">Quick Feedback</h2>
 			<select bind:value={feedbackType} class="w-full border rounded p-2 mb-2">
 				<option value="bug">Bug</option>

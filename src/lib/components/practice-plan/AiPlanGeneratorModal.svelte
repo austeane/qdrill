@@ -1,20 +1,32 @@
 <script>
 	/* NEW component */
-	import { createEventDispatcher } from 'svelte';
-	import { goto } from '$app/navigation';
-	import AiPlanGenerator from './AiPlanGenerator.svelte';
+        import { createEventDispatcher, onMount } from 'svelte';
+        import { goto } from '$app/navigation';
+        import AiPlanGenerator from './AiPlanGenerator.svelte';
 
 	// Props
 	export let isOpen = false;
 	export let skillOptions = [];
 	export let focusAreaOptions = [];
 
-	const dispatch = createEventDispatcher();
+        const dispatch = createEventDispatcher();
+        let modalEl;
 
-	function close() {
-		isOpen = false;
-		dispatch('close');
-	}
+        function close() {
+                isOpen = false;
+                dispatch('close');
+        }
+
+        function handleKeydown(event) {
+                if (event.key === 'Escape') {
+                        close();
+                }
+        }
+
+        $: if (isOpen && modalEl) {
+                // focus the modal container when opened
+                modalEl.focus();
+        }
 
 	/* Handle plan returned by AiPlanGenerator:
 	   – send it to the backend to persist (AI output should now match backend schema)
@@ -61,8 +73,19 @@
 </script>
 
 {#if isOpen}
-	<div class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-		<div class="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 relative">
+        <div
+                class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
+                on:keydown={handleKeydown}
+        >
+                <div
+                        class="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 relative"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="ai-generator-title"
+                        tabindex="-1"
+                        bind:this={modalEl}
+                >
+                        <h2 id="ai-generator-title" class="sr-only">AI Plan Generator</h2>
 			<!-- Close button -->
 			<button
 				class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl leading-none"

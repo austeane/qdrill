@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { practicePlanService } from '$lib/server/services/practicePlanService.js';
 import { drillService } from '$lib/server/services/drillService.js';
 import { redirect } from '@sveltejs/kit';
+import { apiFetch } from '$lib/utils/apiFetch.js';
 // Import predefined skills/focus areas - assuming this is the source
 import { PREDEFINED_SKILLS } from '$lib/constants/skills.js';
 
@@ -51,30 +52,13 @@ export async function load({ fetch, url, locals }) {
 	drillIds.forEach((id) => apiUrl.searchParams.append('drillId', id));
 
 	// --- Fetch data from the API endpoint ---
-	let practicePlansData = { items: [], pagination: null };
-	try {
-		const response = await fetch(apiUrl.toString(), {
-			headers: {
-				// Pass cookies if necessary for auth, careful with server-side fetch
-				// 'cookie': event.request.headers.get('cookie') || ''
-			}
-		});
-		if (!response.ok) {
-			console.error(`API Error: ${response.status} ${response.statusText}`);
-			// Optionally handle specific errors, e.g., redirect on 401
-			// Or return an error state to the page
-			practicePlansData = {
-				items: [],
-				pagination: null,
-				error: `Failed to load plans: ${response.statusText}`
-			};
-		} else {
-			practicePlansData = await response.json();
-		}
-	} catch (error) {
-		console.error('Fetch Error loading practice plans:', error);
-		practicePlansData = { items: [], pagination: null, error: 'Could not connect to API' };
-	}
+       let practicePlansData = { items: [], pagination: null };
+       try {
+               practicePlansData = await apiFetch(apiUrl.toString(), {}, fetch);
+       } catch (error) {
+               console.error('Fetch Error loading practice plans:', error);
+               practicePlansData = { items: [], pagination: null, error: error.message };
+       }
 
 	// Define filter options directly in the server-side code
 	const filterOptions = {

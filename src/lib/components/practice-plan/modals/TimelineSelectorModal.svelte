@@ -168,6 +168,7 @@
 									<div class={`w-6 h-6 rounded ${getTimelineColor(key)}`}></div>
 									<div class="flex space-x-2">
 										<button
+											type="button"
 											on:click={() => openNameEditor(key)}
 											class="text-sm text-blue-600 hover:text-blue-800"
 											title={`Rename from '${timelineNamesStore ? getTimelineName(key) : PARALLEL_TIMELINES[key].name}'`}
@@ -175,6 +176,7 @@
 											Rename
 										</button>
 										<button
+											type="button"
 											on:click={() => openColorPicker(key)}
 											class="text-sm text-blue-600 hover:text-blue-800"
 											title="Change Color"
@@ -206,6 +208,7 @@
 								class="flex-grow p-2 border border-gray-300 rounded mr-2"
 							/>
 							<button
+								type="button"
 								on:click={saveTimelineName}
 								class="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
 							>
@@ -228,6 +231,7 @@
 						<div class="grid grid-cols-5 gap-2">
 							{#each Object.entries(TIMELINE_COLORS) as [colorClass, colorName]}
 								<button
+									type="button"
 									class={`w-8 h-8 rounded cursor-pointer hover:opacity-80 ${colorClass}`}
 									title={colorName}
 									on:click={() => selectColor(colorClass)}
@@ -240,12 +244,14 @@
 
 				<div class="mt-6 flex justify-end space-x-3">
 					<button
+						type="button"
 						class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
 						on:click={close}
 					>
 						Cancel
 					</button>
 					<button
+						type="button"
 						class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
 						on:click={save}
 					>

@@ -423,20 +423,24 @@ export function initializeTimelinesFromPlan(plan) {
 
 // Section management functions
 export function addSection() {
+	console.log('[sectionsStore.js] addSection called');
 	// Create snapshot for history before changing state
 	addToHistory('ADD_SECTION', null, 'Added section');
 
-	sections.update((currentSections) => [
-		...currentSections,
-		{
+	sections.update((currentSections) => {
+		console.log('[sectionsStore.js] sections.update started. Current sections count:', currentSections.length);
+		const newSectionData = {
 			id: `section-${++sectionCounter}`,
 			name: 'New Section',
 			order: currentSections.length,
 			goals: [],
 			notes: '',
 			items: []
-		}
-	]);
+		};
+		const newSectionsArray = [...currentSections, newSectionData];
+		console.log('[sectionsStore.js] sections.update finished. New sections count:', newSectionsArray.length);
+		return newSectionsArray;
+	});
 }
 
 export function removeSection(sectionId) {

@@ -105,7 +105,7 @@ export const load = authGuard(async ({ params, locals, cookies, fetch }) => {
 /** @type {import('./$types').Actions} */
 export const actions = {
 	default: async ({ request, locals, params }) => {
-		const session = await locals.getSession();
+		const session = locals.session;
 		const userId = session?.user?.userId;
 		const planId = parseInt(params.id);
 
@@ -196,24 +196,29 @@ export const actions = {
 			console.log(`[Edit Action - Plan ${planId}] Service call successful.`);
 			// Redirect on success
 			redirect(303, `/practice-plans/${planId}`);
-		} catch (error) {
-			console.error(`[Edit Action - Plan ${planId}] Error:`, error);
-			if (error instanceof ValidationError) {
+		} catch (err) {
+			// If SvelteKit is throwing a redirect, rethrow it to let SvelteKit handle it
+			if (err && typeof err.status === 'number' && err.status >= 300 && err.status < 400 && err.location) {
+				throw err; // Rethrow the redirect
+			}
+
+			console.error(`[Edit Action - Plan ${planId}] Error:`, err); // Log actual errors
+			if (err instanceof ValidationError) {
 				return fail(400, {
 					success: false,
-					errors: error.errors || { general: error.message },
+					errors: err.errors || { general: err.message },
 					data: planData
 				});
-			} else if (error instanceof ForbiddenError) {
-				return fail(403, { success: false, errors: { general: error.message }, data: planData });
-			} else if (error instanceof NotFoundError) {
+			} else if (err instanceof ForbiddenError) {
+				return fail(403, { success: false, errors: { general: err.message }, data: planData });
+			} else if (err instanceof NotFoundError) {
 				// This could happen if the plan is deleted between load and submit
 				return fail(404, {
 					success: false,
 					errors: { general: 'Practice plan not found.' },
 					data: planData
 				});
-			} else if (error instanceof DatabaseError) {
+			} else if (err instanceof DatabaseError) {
 				return fail(500, {
 					success: false,
 					errors: { general: 'Database error occurred.' },

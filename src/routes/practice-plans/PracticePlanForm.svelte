@@ -225,6 +225,11 @@
 		};
 	});
 
+	function addSectionAction() {
+		console.log('[PracticePlanForm.svelte] Add Section button clicked');
+		addSection(); // Call the imported addSection function from the store
+	}
+
 	function onRemoveSection(sectionId) {
 		removeSection(sectionId);
 	}
@@ -375,15 +380,16 @@
 		{/each}
 
 		<div class="flex gap-2 mt-4">
-			<Button variant="outline" class="flex-1" on:click={() => sections.addSection()}
-				>+ Add Section</Button
-			>
-			<Button
-				variant="outline"
-				class="flex-1"
-				on:click={() => handleOpenDrillSearch({ detail: { sectionId: $sections[0]?.id } })}
-				disabled={$sections.length === 0}>+ Add Drill to First Section</Button
-			>
+			{#if true}
+				<Button variant="outline" class="flex-1" on:click={addSectionAction}
+					>+ Add Section</Button
+				>
+			{/if}
+			{#if false} // Keep native button commented out for now
+			/* <button type="button" class="flex-1 p-2 border rounded" on:click={() => console.log('[PracticePlanForm.svelte] Native Add Section button clicked!')}>
+				+ Add Section (Native HTML Test)
+			</button> */
+			{/if}
 		</div>
 	</div>
 

@@ -52,9 +52,11 @@
 				<ul>
 					{#each $cart as drill}
 						<li class="flex justify-between items-center mb-2">
-							<span>{drill.name}</span>
-							<button on:click={() => removeDrill(drill)} class="text-red-500 hover:text-red-700">
-								✕
+							<div class="flex-grow">
+								<a href={`/drills/${drill.id}`} class="font-semibold hover:underline">{drill.name}</a>
+							</div>
+							<button type="button" on:click={() => removeDrill(drill)} class="text-red-500 hover:text-red-700">
+								Remove
 							</button>
 						</li>
 					{/each}

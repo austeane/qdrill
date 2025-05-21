@@ -81,8 +81,8 @@
 				class="w-full border rounded p-2"
 				placeholder="Your feedback..."
 			></textarea>
-			<div class="mt-4 flex space-x-2">
-				<button on:click={closeModal} class="px-4 py-2 bg-gray-300 rounded" aria-label="Cancel">
+			<div class="mt-4 flex justify-end">
+				<button type="button" on:click={closeModal} class="px-4 py-2 bg-gray-300 rounded" aria-label="Cancel">
 					Cancel
 				</button>
 				<button

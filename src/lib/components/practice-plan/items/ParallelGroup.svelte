@@ -103,7 +103,7 @@
 			<div class="group-drag-handle">Drag Entire Block</div>
 			<h3 class="text-md font-medium">{groupName}</h3>
 		</div>
-		<button on:click={() => onUngroup(groupId)}>Ungroup</button>
+		<button type="button" on:click={() => onUngroup(groupId)}>Ungroup</button>
 	</div>
 
 	{#if groupTimelines?.length > 0}

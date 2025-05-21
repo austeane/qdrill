@@ -106,7 +106,7 @@
 					/>
 					<span class="text-sm text-gray-600">min</span>
 				</div>
-				<button class="text-red-500 hover:text-red-700 text-sm" on:click={onRemove}>
+				<button type="button" class="text-red-500 hover:text-red-700 text-sm" on:click={onRemove}>
 					Remove
 				</button>
 			</div>

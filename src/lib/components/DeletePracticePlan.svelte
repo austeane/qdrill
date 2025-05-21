@@ -1,9 +1,9 @@
 <script>
 	import { page } from '$app/stores';
-import { goto } from '$app/navigation';
-import { toast } from '@zerodevx/svelte-toast';
-import { dev } from '$app/environment';
-import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { goto } from '$app/navigation';
+	import { toast } from '@zerodevx/svelte-toast';
+	import { dev } from '$app/environment';
+	import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let planId;
 	export let createdBy = null;
@@ -23,12 +23,12 @@ import { apiFetch } from '$lib/utils/apiFetch.js';
 				throw new Error('No plan ID provided');
 			}
 
-                       await apiFetch(`/api/practice-plans/${planId}`, {
-                               method: 'DELETE',
-                               headers: {
-                                       'Content-Type': 'application/json'
-                               }
-                       });
+			await apiFetch(`/api/practice-plans/${planId}`, {
+				method: 'DELETE',
+				headers: {
+					'Content-Type': 'application/json'
+				}
+			});
 
 			// If response.ok is true, and it's a 204 No Content, there's no body to parse.
 			// We can proceed directly.

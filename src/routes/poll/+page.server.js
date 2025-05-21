@@ -9,12 +9,12 @@ export async function load({ fetch, depends }) {
 	try {
 		// Fetch poll options server-side
 		// Using fetch here, but a pollOptionService would be cleaner
-               let pollData = { options: [] };
-               try {
-                       pollData = await apiFetch('/api/poll/options', {}, fetch);
-               } catch (err) {
-                       console.error(`Error fetching poll options:`, err);
-               }
+		let pollData = { options: [] };
+		try {
+			pollData = await apiFetch('/api/poll/options', {}, fetch);
+		} catch (err) {
+			console.error(`Error fetching poll options:`, err);
+		}
 
 		// Fetch all drill names server-side
 		// Note: This still fetches *all* names. A future optimization could be

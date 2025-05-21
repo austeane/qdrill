@@ -10,39 +10,39 @@ const dataUrlCache = new Map();
  * @returns {Promise<string|null>} Base64 data URL or null on failure.
  */
 export async function fetchImageAsDataURL(url) {
-    if (dataUrlCache.has(url)) {
-        return dataUrlCache.get(url);
-    }
-    try {
-        const headResponse = await fetch(url, { method: 'HEAD' });
-        if (!headResponse.ok) {
-            console.error(`HEAD request failed with status ${headResponse.status} for URL: ${url}`);
-            return null;
-        }
+	if (dataUrlCache.has(url)) {
+		return dataUrlCache.get(url);
+	}
+	try {
+		const headResponse = await fetch(url, { method: 'HEAD' });
+		if (!headResponse.ok) {
+			console.error(`HEAD request failed with status ${headResponse.status} for URL: ${url}`);
+			return null;
+		}
 
-        const getResponse = await fetch(url);
-        if (!getResponse.ok) {
-            console.error(`GET request failed with status ${getResponse.status} for URL: ${url}`);
-            return null;
-        }
+		const getResponse = await fetch(url);
+		if (!getResponse.ok) {
+			console.error(`GET request failed with status ${getResponse.status} for URL: ${url}`);
+			return null;
+		}
 
-        const blob = await getResponse.blob();
-        const dataURL = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = (error) => {
-                console.error(`Error converting ${url} to base64:`, error);
-                resolve(null);
-            };
-            reader.readAsDataURL(blob);
-        });
+		const blob = await getResponse.blob();
+		const dataURL = await new Promise((resolve) => {
+			const reader = new FileReader();
+			reader.onloadend = () => resolve(reader.result);
+			reader.onerror = (error) => {
+				console.error(`Error converting ${url} to base64:`, error);
+				resolve(null);
+			};
+			reader.readAsDataURL(blob);
+		});
 
-        if (dataURL) {
-            dataUrlCache.set(url, dataURL);
-        }
-        return dataURL;
-    } catch (error) {
-        console.error(`Network error loading image from ${url}:`, error);
-        return null;
-    }
+		if (dataURL) {
+			dataUrlCache.set(url, dataURL);
+		}
+		return dataURL;
+	} catch (error) {
+		console.error(`Network error loading image from ${url}:`, error);
+		return null;
+	}
 }

@@ -1,7 +1,11 @@
 <script>
 	import { onMount, createEventDispatcher, tick } from 'svelte';
-import { browser } from "$app/environment";
-import { createInitialImageElements, CANVAS_WIDTH, CANVAS_HEIGHT } from "$lib/utils/excalidrawTemplates.js";
+	import { browser } from '$app/environment';
+	import {
+		createInitialImageElements,
+		CANVAS_WIDTH,
+		CANVAS_HEIGHT
+	} from '$lib/utils/excalidrawTemplates.js';
 
 	export let data = null;
 	export let id = '';
@@ -38,7 +42,6 @@ import { createInitialImageElements, CANVAS_WIDTH, CANVAS_HEIGHT } from "$lib/ut
 			}
 		};
 	}
-
 
 	function zoomToIncludeAllElements(api) {
 		if (!api) return;

@@ -106,12 +106,12 @@ export function scheduleAutoSave() {
 			const formData = new FormData();
 			formData.append('data', JSON.stringify(state));
 
-                       const data = await apiFetch('/practice-plans/wizard?/saveDraft', {
-                               method: 'POST',
-                               body: formData
-                       });
-                       draftId.set(data.id);
-                       lastSaved.set(new Date());
+			const data = await apiFetch('/practice-plans/wizard?/saveDraft', {
+				method: 'POST',
+				body: formData
+			});
+			draftId.set(data.id);
+			lastSaved.set(new Date());
 		} catch (error) {
 			console.error('Failed to auto-save wizard state:', error);
 		}

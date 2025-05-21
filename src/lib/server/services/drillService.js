@@ -68,12 +68,28 @@ export class DrillService extends BaseEntityService {
 		// Explicitly define default columns for DrillService
 		// to ensure _executeSearch fallback selects them correctly with similarity_score
 		const defaultDrillColumns = [
-			'id', 'name', 'brief_description', 'detailed_description',
-			'skill_level', 'complexity', 'number_of_people_min', 'number_of_people_max',
-			'skills_focused_on', 'positions_focused_on', 'drill_type', 'created_by',
-			'visibility', 'date_created', 'is_editable_by_others', 'parent_drill_id',
-			'video_link', 'diagrams', 'images', 'upload_source',
-			'suggested_length_min', 'suggested_length_max'
+			'id',
+			'name',
+			'brief_description',
+			'detailed_description',
+			'skill_level',
+			'complexity',
+			'number_of_people_min',
+			'number_of_people_max',
+			'skills_focused_on',
+			'positions_focused_on',
+			'drill_type',
+			'created_by',
+			'visibility',
+			'date_created',
+			'is_editable_by_others',
+			'parent_drill_id',
+			'video_link',
+			'diagrams',
+			'images',
+			'upload_source',
+			'suggested_length_min',
+			'suggested_length_max'
 			// 'search_vector' is usually not needed in direct output
 		];
 
@@ -466,36 +482,56 @@ export class DrillService extends BaseEntityService {
 			// This part needs to be aligned with how _buildWhereClause works or be replicated if _buildWhereClause is not Kysely-native.
 			// For now, assuming _buildWhereClause is not Kysely native and permissions are applied here directly for Kysely.
 			if (this.useStandardPermissions && this.permissionConfig) {
-				const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } = this.permissionConfig;
+				const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
+					this.permissionConfig;
 				qb = qb.where((eb) => {
 					const conditions = [
 						eb(visibilityColumn, '=', publicValue),
 						eb(visibilityColumn, '=', unlistedValue)
 					];
 					if (userId) {
-						conditions.push(eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)]));
+						conditions.push(
+							eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)])
+						);
 					}
 					return eb.or(conditions);
 				});
 			}
-			
+
 			// Apply specific drill filters using Kysely
 			if (filters.skill_level?.length) qb = qb.where(sql`skill_level && $1`, [filters.skill_level]); // Array overlap
 			if (filters.complexity) qb = qb.where('complexity', '=', filters.complexity);
-			if (filters.skills_focused_on?.length) qb = qb.where(sql`skills_focused_on && $1`, [filters.skills_focused_on]);
-			if (filters.positions_focused_on?.length) qb = qb.where(sql`positions_focused_on && $1`, [filters.positions_focused_on]);
+			if (filters.skills_focused_on?.length)
+				qb = qb.where(sql`skills_focused_on && $1`, [filters.skills_focused_on]);
+			if (filters.positions_focused_on?.length)
+				qb = qb.where(sql`positions_focused_on && $1`, [filters.positions_focused_on]);
 			if (filters.drill_type?.length) qb = qb.where(sql`drill_type && $1`, [filters.drill_type]);
-			if (filters.number_of_people_min != null) qb = qb.where('number_of_people_min', '>=', filters.number_of_people_min);
-			if (filters.number_of_people_max != null) qb = qb.where('number_of_people_max', '<=', filters.number_of_people_max);
-			if (filters.suggested_length_min != null) qb = qb.where('suggested_length_min', '>=', filters.suggested_length_min);
-			if (filters.suggested_length_max != null) qb = qb.where('suggested_length_max', '<=', filters.suggested_length_max);
-			if (filters.hasVideo === true) qb = qb.where('video_link', 'is not', null).where('video_link', '!=', '');
-			if (filters.hasVideo === false) qb = qb.where((eb) => eb.or([eb('video_link', 'is', null), eb('video_link', '=', '')]));
-			if (filters.hasDiagrams === true) qb = qb.where(sql`jsonb_typeof(diagrams) = 'array' AND jsonb_array_length(diagrams) > 0`);
-			if (filters.hasDiagrams === false) qb = qb.where(sql`jsonb_typeof(diagrams) != 'array' OR jsonb_array_length(diagrams) = 0`);
+			if (filters.number_of_people_min != null)
+				qb = qb.where('number_of_people_min', '>=', filters.number_of_people_min);
+			if (filters.number_of_people_max != null)
+				qb = qb.where('number_of_people_max', '<=', filters.number_of_people_max);
+			if (filters.suggested_length_min != null)
+				qb = qb.where('suggested_length_min', '>=', filters.suggested_length_min);
+			if (filters.suggested_length_max != null)
+				qb = qb.where('suggested_length_max', '<=', filters.suggested_length_max);
+			if (filters.hasVideo === true)
+				qb = qb.where('video_link', 'is not', null).where('video_link', '!=', '');
+			if (filters.hasVideo === false)
+				qb = qb.where((eb) => eb.or([eb('video_link', 'is', null), eb('video_link', '=', '')]));
+			if (filters.hasDiagrams === true)
+				qb = qb.where(sql`jsonb_typeof(diagrams) = 'array' AND jsonb_array_length(diagrams) > 0`);
+			if (filters.hasDiagrams === false)
+				qb = qb.where(sql`jsonb_typeof(diagrams) != 'array' OR jsonb_array_length(diagrams) = 0`);
 			if (filters.hasImages === true) qb = qb.where(sql`array_length(images, 1) > 0`);
-			if (filters.hasImages === false) qb = qb.where((eb) => eb.or([eb('images', 'is', null), eb(sql`array_length(images, 1) IS NULL`), eb(sql`array_length(images, 1) = 0`)]));
-			
+			if (filters.hasImages === false)
+				qb = qb.where((eb) =>
+					eb.or([
+						eb('images', 'is', null),
+						eb(sql`array_length(images, 1) IS NULL`),
+						eb(sql`array_length(images, 1) = 0`)
+					])
+				);
+
 			return qb;
 		};
 
@@ -503,7 +539,7 @@ export class DrillService extends BaseEntityService {
 		const baseQueryForFallback = buildDrillBaseQuery(); // Separate instance for fallback path
 
 		const ftsQueryBuilder = this._buildSearchQuery(
-			baseQuery, 
+			baseQuery,
 			filters.searchQuery,
 			'search_vector',
 			'english',
@@ -512,22 +548,29 @@ export class DrillService extends BaseEntityService {
 
 		// Apply sorting - _executeSearch handles similarity sort for fallback
 		let finalQuery = ftsQueryBuilder;
-		if (!ftsQueryBuilder._ftsAppliedInfo || (options.sortBy && options.sortBy !== 'similarity_score')) {
-			const validSortColumns = ['name', 'date_created', 'complexity', /* other allowed columns */];
+		if (
+			!ftsQueryBuilder._ftsAppliedInfo ||
+			(options.sortBy && options.sortBy !== 'similarity_score')
+		) {
+			const validSortColumns = ['name', 'date_created', 'complexity' /* other allowed columns */];
 			const sortCol = validSortColumns.includes(sortBy) ? sortBy : 'date_created';
 			const direction = sortOrder === 'asc' ? 'asc' : 'desc';
 			finalQuery = finalQuery.orderBy(sortCol, direction).orderBy('id', direction); // Add secondary sort by ID
 		}
 
-		const { items, usedFallback } = await this._executeSearch(finalQuery, baseQueryForFallback, { limit, offset });
+		const { items, usedFallback } = await this._executeSearch(finalQuery, baseQueryForFallback, {
+			limit,
+			offset
+		});
 
 		await this._addVariationCounts(items); // Add variation counts to results
 
 		// Count total items matching the successful search strategy
 		let countQueryBaseForFiltersOnly = buildDrillBaseQuery(); // Rebuild for count to ensure filters are clean
 		// We need a new Kysely instance for count that doesn't have prior .selectAll()
-		let countQuery = kyselyDb.selectFrom('drills')
-							 .select(kyselyDb.fn.count('drills.id').as('total'));
+		let countQuery = kyselyDb
+			.selectFrom('drills')
+			.select(kyselyDb.fn.count('drills.id').as('total'));
 
 		// Apply WHERE clauses from countQueryBaseForFiltersOnly to the new countQuery
 		// This is a bit manual; Kysely doesn't have a direct way to copy just WHERE clauses.
@@ -535,48 +578,86 @@ export class DrillService extends BaseEntityService {
 
 		// Re-apply visibility/ownership from buildDrillBaseQuery structure
 		if (this.useStandardPermissions && this.permissionConfig) {
-			const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } = this.permissionConfig;
+			const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
+				this.permissionConfig;
 			countQuery = countQuery.where((eb) => {
 				const conditions = [
 					eb(visibilityColumn, '=', publicValue),
 					eb(visibilityColumn, '=', unlistedValue)
 				];
 				if (userId) {
-					conditions.push(eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)]));
+					conditions.push(
+						eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)])
+					);
 				}
 				return eb.or(conditions);
 			});
 		}
 		// Re-apply specific drill filters
-		if (filters.skill_level?.length) countQuery = countQuery.where(sql`skill_level && $1`, [filters.skill_level]);
+		if (filters.skill_level?.length)
+			countQuery = countQuery.where(sql`skill_level && $1`, [filters.skill_level]);
 		if (filters.complexity) countQuery = countQuery.where('complexity', '=', filters.complexity);
-		if (filters.skills_focused_on?.length) countQuery = countQuery.where(sql`skills_focused_on && $1`, [filters.skills_focused_on]);
-		if (filters.positions_focused_on?.length) countQuery = countQuery.where(sql`positions_focused_on && $1`, [filters.positions_focused_on]);
-		if (filters.drill_type?.length) countQuery = countQuery.where(sql`drill_type && $1`, [filters.drill_type]);
-		if (filters.number_of_people_min != null) countQuery = countQuery.where('number_of_people_min', '>=', filters.number_of_people_min);
-		if (filters.number_of_people_max != null) countQuery = countQuery.where('number_of_people_max', '<=', filters.number_of_people_max);
-		if (filters.suggested_length_min != null) countQuery = countQuery.where('suggested_length_min', '>=', filters.suggested_length_min);
-		if (filters.suggested_length_max != null) countQuery = countQuery.where('suggested_length_max', '<=', filters.suggested_length_max);
-		if (filters.hasVideo === true) countQuery = countQuery.where('video_link', 'is not', null).where('video_link', '!=', '');
-		if (filters.hasVideo === false) countQuery = countQuery.where((eb) => eb.or([eb('video_link', 'is', null), eb('video_link', '=', '')]));
-		if (filters.hasDiagrams === true) countQuery = countQuery.where(sql`jsonb_typeof(diagrams) = 'array' AND jsonb_array_length(diagrams) > 0`);
-		if (filters.hasDiagrams === false) countQuery = countQuery.where(sql`jsonb_typeof(diagrams) != 'array' OR jsonb_array_length(diagrams) = 0`);
+		if (filters.skills_focused_on?.length)
+			countQuery = countQuery.where(sql`skills_focused_on && $1`, [filters.skills_focused_on]);
+		if (filters.positions_focused_on?.length)
+			countQuery = countQuery.where(sql`positions_focused_on && $1`, [
+				filters.positions_focused_on
+			]);
+		if (filters.drill_type?.length)
+			countQuery = countQuery.where(sql`drill_type && $1`, [filters.drill_type]);
+		if (filters.number_of_people_min != null)
+			countQuery = countQuery.where('number_of_people_min', '>=', filters.number_of_people_min);
+		if (filters.number_of_people_max != null)
+			countQuery = countQuery.where('number_of_people_max', '<=', filters.number_of_people_max);
+		if (filters.suggested_length_min != null)
+			countQuery = countQuery.where('suggested_length_min', '>=', filters.suggested_length_min);
+		if (filters.suggested_length_max != null)
+			countQuery = countQuery.where('suggested_length_max', '<=', filters.suggested_length_max);
+		if (filters.hasVideo === true)
+			countQuery = countQuery.where('video_link', 'is not', null).where('video_link', '!=', '');
+		if (filters.hasVideo === false)
+			countQuery = countQuery.where((eb) =>
+				eb.or([eb('video_link', 'is', null), eb('video_link', '=', '')])
+			);
+		if (filters.hasDiagrams === true)
+			countQuery = countQuery.where(
+				sql`jsonb_typeof(diagrams) = 'array' AND jsonb_array_length(diagrams) > 0`
+			);
+		if (filters.hasDiagrams === false)
+			countQuery = countQuery.where(
+				sql`jsonb_typeof(diagrams) != 'array' OR jsonb_array_length(diagrams) = 0`
+			);
 		if (filters.hasImages === true) countQuery = countQuery.where(sql`array_length(images, 1) > 0`);
-		if (filters.hasImages === false) countQuery = countQuery.where((eb) => eb.or([eb('images', 'is', null), eb(sql`array_length(images, 1) IS NULL`), eb(sql`array_length(images, 1) = 0`)]));
+		if (filters.hasImages === false)
+			countQuery = countQuery.where((eb) =>
+				eb.or([
+					eb('images', 'is', null),
+					eb(sql`array_length(images, 1) IS NULL`),
+					eb(sql`array_length(images, 1) = 0`)
+				])
+			);
 
 		if (filters.searchQuery) {
 			const cleanedSearchTerm = filters.searchQuery.trim();
 			if (cleanedSearchTerm) {
 				if (usedFallback) {
-					countQuery = countQuery.where((eb) => eb.or([
-						eb(sql`similarity(name, ${cleanedSearchTerm})`, '>', 0.3),
-						eb(sql`similarity(brief_description, ${cleanedSearchTerm})`, '>', 0.3),
-						eb(sql`similarity(detailed_description, ${cleanedSearchTerm})`, '>', 0.3)
-					]));
+					countQuery = countQuery.where((eb) =>
+						eb.or([
+							eb(sql`similarity(name, ${cleanedSearchTerm})`, '>', 0.3),
+							eb(sql`similarity(brief_description, ${cleanedSearchTerm})`, '>', 0.3),
+							eb(sql`similarity(detailed_description, ${cleanedSearchTerm})`, '>', 0.3)
+						])
+					);
 				} else {
-					const tsQuerySearchTerm = cleanedSearchTerm.split(/\s+/).filter(Boolean).map(term => term + ':*').join(' & ');
+					const tsQuerySearchTerm = cleanedSearchTerm
+						.split(/\s+/)
+						.filter(Boolean)
+						.map((term) => term + ':*')
+						.join(' & ');
 					if (tsQuerySearchTerm) {
-						countQuery = countQuery.where(sql`search_vector @@ to_tsquery('english', ${tsQuerySearchTerm})`);
+						countQuery = countQuery.where(
+							sql`search_vector @@ to_tsquery('english', ${tsQuerySearchTerm})`
+						);
 					}
 				}
 			}
@@ -1088,7 +1169,6 @@ export class DrillService extends BaseEntityService {
 		// Update the created_by field
 		return await this.update(id, { created_by: userId });
 	}
-
 
 	/**
 	 * Import multiple drills from an array.

@@ -30,8 +30,8 @@
 	import { formatTime } from '$lib/utils/timeUtils';
 
 	import {
-               sections,
-               selectedSectionId,
+		sections,
+		selectedSectionId,
 		addSection,
 		initializeSections,
 		totalPlanDuration, // Moved here
@@ -40,19 +40,19 @@
 		removeSection,
 		removeItem,
 		handleDurationChange,
-               handleUngroup,
-               getTimelineName,
-               getTimelineColor,
-               customTimelineNames,
-               selectedTimelines,
-               addBreak,
-               addDrillToPlan,
-               addOneOffDrill,
-               updateTimelineColor,
-               updateTimelineName,
-               handleTimelineSave
-               // handleDrillMove // Dnd logic likely uses this, ensure it's available if needed
-       } from '$lib/stores/sectionsStore';
+		handleUngroup,
+		getTimelineName,
+		getTimelineColor,
+		customTimelineNames,
+		selectedTimelines,
+		addBreak,
+		addDrillToPlan,
+		addOneOffDrill,
+		updateTimelineColor,
+		updateTimelineName,
+		handleTimelineSave
+		// handleDrillMove // Dnd logic likely uses this, ensure it's available if needed
+	} from '$lib/stores/sectionsStore';
 
 	// Import component modules
 	import DrillSearchModal from '$lib/components/practice-plan/modals/DrillSearchModal.svelte';
@@ -110,40 +110,40 @@
 		showDrillSearch = true;
 	}
 
-        function handleOpenTimelineSelector() {
-                showTimelineSelector = true;
-        }
+	function handleOpenTimelineSelector() {
+		showTimelineSelector = true;
+	}
 
-        function handleAddDrillEvent(event) {
-                const { drill, sectionId } = event.detail;
-                addDrillToPlan(drill, sectionId);
-        }
+	function handleAddDrillEvent(event) {
+		const { drill, sectionId } = event.detail;
+		addDrillToPlan(drill, sectionId);
+	}
 
-        function handleAddBreakEvent(event) {
-                const { sectionId } = event.detail;
-                addBreak(sectionId);
-        }
+	function handleAddBreakEvent(event) {
+		const { sectionId } = event.detail;
+		addBreak(sectionId);
+	}
 
-        function handleAddOneOffEvent(event) {
-                const { sectionId, name } = event.detail;
-                addOneOffDrill(sectionId, name);
-        }
+	function handleAddOneOffEvent(event) {
+		const { sectionId, name } = event.detail;
+		addOneOffDrill(sectionId, name);
+	}
 
-        function handleUpdateTimelineNameEvent(event) {
-                const { timeline, name } = event.detail;
-                updateTimelineName(timeline, name);
-        }
+	function handleUpdateTimelineNameEvent(event) {
+		const { timeline, name } = event.detail;
+		updateTimelineName(timeline, name);
+	}
 
-        function handleUpdateTimelineColorEvent(event) {
-                const { timeline, color } = event.detail;
-                updateTimelineColor(timeline, color);
-        }
+	function handleUpdateTimelineColorEvent(event) {
+		const { timeline, color } = event.detail;
+		updateTimelineColor(timeline, color);
+	}
 
-        function handleSaveTimelinesEvent(event) {
-                // In this implementation we just call the existing store handler
-                // to persist selected timelines
-                handleTimelineSave();
-        }
+	function handleSaveTimelinesEvent(event) {
+		// In this implementation we just call the existing store handler
+		// to persist selected timelines
+		handleTimelineSave();
+	}
 
 	// Component initialization
 	onMount(async () => {
@@ -207,7 +207,6 @@
 						return newSections;
 					});
 				}
-
 			}
 		} else if (practicePlan) {
 			// If editing an existing plan (and not restoring pending), initialize timelines
@@ -429,10 +428,15 @@
 
 		<div class="flex gap-2 mt-4">
 			{#if true}
-				{#if false} // Keep native button commented out for now
-				/* <button type="button" class="flex-1 p-2 border rounded" on:click={() => console.log('[PracticePlanForm.svelte] Native Add Section button clicked!')}>
-					+ Add Section (Native HTML Test)
-				</button> */
+				{#if false}
+					// Keep native button commented out for now /* <button
+						type="button"
+						class="flex-1 p-2 border rounded"
+						on:click={() =>
+							console.log('[PracticePlanForm.svelte] Native Add Section button clicked!')}
+					>
+						+ Add Section (Native HTML Test)
+					</button> */
 				{/if}
 			{/if}
 		</div>
@@ -440,8 +444,9 @@
 
 	<!-- Visibility controls are handled within PlanMetadataFields -->
 
-	<div class="my-4"> <!-- Wrapper for the moved button -->
-	  <SimpleButton on:click={addSectionAction} class="flex-1">+ Add Section</SimpleButton> 
+	<div class="my-4">
+		<!-- Wrapper for the moved button -->
+		<SimpleButton on:click={addSectionAction} class="flex-1">+ Add Section</SimpleButton>
 	</div>
 
 	<!-- Submit button -->
@@ -463,21 +468,21 @@
 
 <!-- Modals -->
 <DrillSearchModal
-       bind:show={showDrillSearch}
-       bind:selectedSectionId={selectedSectionForDrill}
-       on:addDrill={handleAddDrillEvent}
-       on:addBreak={handleAddBreakEvent}
-       on:addOneOffDrill={handleAddOneOffEvent}
+	bind:show={showDrillSearch}
+	bind:selectedSectionId={selectedSectionForDrill}
+	on:addDrill={handleAddDrillEvent}
+	on:addBreak={handleAddBreakEvent}
+	on:addOneOffDrill={handleAddOneOffEvent}
 />
 <TimelineSelectorModal
-       bind:show={showTimelineSelector}
-       {selectedTimelines}
-       {getTimelineColor}
-       {getTimelineName}
-       {customTimelineNames}
-       on:updateTimelineName={handleUpdateTimelineNameEvent}
-       on:updateTimelineColor={handleUpdateTimelineColorEvent}
-       on:saveTimelines={handleSaveTimelinesEvent}
+	bind:show={showTimelineSelector}
+	{selectedTimelines}
+	{getTimelineColor}
+	{getTimelineName}
+	{customTimelineNames}
+	on:updateTimelineName={handleUpdateTimelineNameEvent}
+	on:updateTimelineColor={handleUpdateTimelineColorEvent}
+	on:saveTimelines={handleSaveTimelinesEvent}
 />
 
 <!-- Display general form errors from server action -->

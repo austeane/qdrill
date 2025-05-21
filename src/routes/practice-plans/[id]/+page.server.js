@@ -4,12 +4,12 @@ import { apiFetch } from '$lib/utils/apiFetch.js';
 export async function load({ params, fetch }) {
 	const { id } = params;
 
-       try {
-               const practicePlan = await apiFetch(`/api/practice-plans/${id}`, {}, fetch);
+	try {
+		const practicePlan = await apiFetch(`/api/practice-plans/${id}`, {}, fetch);
 
-               return { practicePlan };
-       } catch (err) {
-               console.error(err);
-               throw error(500, 'Internal Server Error');
+		return { practicePlan };
+	} catch (err) {
+		console.error(err);
+		throw error(500, 'Internal Server Error');
 	}
 }

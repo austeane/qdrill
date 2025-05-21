@@ -1,9 +1,9 @@
 <script>
 	import { basicInfo, timeline } from '$lib/stores/wizardStore';
 	import { sections as sectionsStore, formatDrillItem } from '$lib/stores/sectionsStore';
-import { goto } from '$app/navigation';
-import { writable } from 'svelte/store';
-import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { goto } from '$app/navigation';
+	import { writable } from 'svelte/store';
+	import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	let submissionError = writable(null);
 
@@ -78,11 +78,11 @@ import { apiFetch } from '$lib/utils/apiFetch.js';
 
 			console.log('Submitting Plan Data:', JSON.stringify(planData, null, 2));
 
-                       const data = await apiFetch('/api/practice-plans', {
-                               method: 'POST',
-                               headers: { 'Content-Type': 'application/json' },
-                               body: JSON.stringify(planData)
-                       });
+			const data = await apiFetch('/api/practice-plans', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(planData)
+			});
 			if (data.id) {
 				goto(`/practice-plans/${data.id}`);
 			} else {

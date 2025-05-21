@@ -454,7 +454,8 @@
 						<div class="flex-grow mb-4">
 							<!-- Title and description -->
 							<div class="flex justify-between items-start mb-4">
-								<div class="flex-grow mr-16"> <!-- Added mr-16 to give space for top-right actions -->
+								<div class="flex-grow mr-16">
+									<!-- Added mr-16 to give space for top-right actions -->
 									<h2
 										class="text-xl font-bold text-gray-800 break-words"
 										data-testid="drill-card-name"

@@ -88,10 +88,10 @@
 	}
 
 	// Function to create a new variation
-       async function createVariation() {
-               // Use the current drill ID from the store
-               await goto(`/drills/create?parentId=${$drill.id}`);
-       }
+	async function createVariation() {
+		// Use the current drill ID from the store
+		await goto(`/drills/create?parentId=${$drill.id}`);
+	}
 
 	async function loadPotentialParents() {
 		isLoadingParents = true;

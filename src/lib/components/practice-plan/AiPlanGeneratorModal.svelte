@@ -1,9 +1,9 @@
 <script>
 	/* NEW component */
 	import { createEventDispatcher } from 'svelte';
-import { goto } from '$app/navigation';
-import AiPlanGenerator from './AiPlanGenerator.svelte';
-import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { goto } from '$app/navigation';
+	import AiPlanGenerator from './AiPlanGenerator.svelte';
+	import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	// Props
 	export let isOpen = false;
@@ -30,16 +30,16 @@ import { apiFetch } from '$lib/utils/apiFetch.js';
 				JSON.stringify(generatedPlanFromAI, null, 2)
 			);
 
-                       const body = await apiFetch('/api/practice-plans', {
-                               method: 'POST',
-                               headers: { 'Content-Type': 'application/json' },
-                               body: JSON.stringify(generatedPlanFromAI)
-                       });
-                       if (!body.id) {
-                               let errorMessage = 'Failed to save plan.';
-                               if (body?.error) {
-                                       errorMessage = body.error;
-                               } else if (body?.errors) {
+			const body = await apiFetch('/api/practice-plans', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(generatedPlanFromAI)
+			});
+			if (!body.id) {
+				let errorMessage = 'Failed to save plan.';
+				if (body?.error) {
+					errorMessage = body.error;
+				} else if (body?.errors) {
 					// Handle Zod-like error structures
 					errorMessage = Object.entries(body.errors)
 						.map(
@@ -47,11 +47,11 @@ import { apiFetch } from '$lib/utils/apiFetch.js';
 								`${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`
 						)
 						.join('; ');
-                               }
-                               throw new Error(errorMessage);
-                       }
+				}
+				throw new Error(errorMessage);
+			}
 
-                       goto(`/practice-plans/${body.id}/edit`);
+			goto(`/practice-plans/${body.id}/edit`);
 		} catch (err) {
 			console.error(err);
 			alert(err.message || 'Could not create plan');

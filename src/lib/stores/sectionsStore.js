@@ -343,8 +343,8 @@ export function initializeSections(practicePlan) {
 		}))
 	);
 
-       // Initialize timelines
-       initializeTimelinesFromPlan(practicePlan);
+	// Initialize timelines
+	initializeTimelinesFromPlan(practicePlan);
 }
 
 // Initialize timelines from practice plan
@@ -416,7 +416,10 @@ export function addSection() {
 	addToHistory('ADD_SECTION', null, 'Added section');
 
 	sections.update((currentSections) => {
-		console.log('[sectionsStore.js] sections.update started. Current sections count:', currentSections.length);
+		console.log(
+			'[sectionsStore.js] sections.update started. Current sections count:',
+			currentSections.length
+		);
 		const newSectionData = {
 			id: `section-${++sectionCounter}`,
 			name: 'New Section',
@@ -426,7 +429,10 @@ export function addSection() {
 			items: []
 		};
 		const newSectionsArray = [...currentSections, newSectionData];
-		console.log('[sectionsStore.js] sections.update finished. New sections count:', newSectionsArray.length);
+		console.log(
+			'[sectionsStore.js] sections.update finished. New sections count:',
+			newSectionsArray.length
+		);
 		return newSectionsArray;
 	});
 }

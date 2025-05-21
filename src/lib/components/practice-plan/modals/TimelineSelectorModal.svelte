@@ -1,15 +1,12 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
-       import {
-               PARALLEL_TIMELINES,
-               TIMELINE_COLORS
-       } from '$lib/stores/sectionsStore';
+	import { PARALLEL_TIMELINES, TIMELINE_COLORS } from '$lib/stores/sectionsStore';
 
-       export let show = false;
-       export let selectedTimelines;
-       export let getTimelineColor = (timeline) => 'bg-gray-500';
-       export let getTimelineName = (timeline) => timeline;
-       export let customTimelineNames;
+	export let show = false;
+	export let selectedTimelines;
+	export let getTimelineColor = (timeline) => 'bg-gray-500';
+	export let getTimelineName = (timeline) => timeline;
+	export let customTimelineNames;
 
 	const dispatch = createEventDispatcher();
 
@@ -18,13 +15,13 @@
 		dispatch('close');
 	}
 
-       function save() {
-               dispatch('saveTimelines', {
-                       selected: Array.from($selectedTimelines || []),
-                       customNames: $customTimelineNames || {}
-               });
-               close();
-       }
+	function save() {
+		dispatch('saveTimelines', {
+			selected: Array.from($selectedTimelines || []),
+			customNames: $customTimelineNames || {}
+		});
+		close();
+	}
 
 	// Track locally which timeline is being configured
 	let activeTimeline = null;
@@ -77,52 +74,54 @@
 		showColorPicker = false;
 	}
 
-       function saveTimelineName() {
-               if (activeTimeline && editingName) {
-                       dispatch('updateTimelineName', {
-                               timeline: activeTimeline,
-                               name: editingName
-                       });
-                       showNameEditor = false;
+	function saveTimelineName() {
+		if (activeTimeline && editingName) {
+			dispatch('updateTimelineName', {
+				timeline: activeTimeline,
+				name: editingName
+			});
+			showNameEditor = false;
 
-                       // Update the cached name locally for display
-                       timelineNamesCache[activeTimeline] = editingName;
+			// Update the cached name locally for display
+			timelineNamesCache[activeTimeline] = editingName;
 
-                       // Force local refresh
-                       setTimeout(() => {
-                               timelineNamesStore = { ...timelineNamesStore };
-                               activeTimeline = null;
-                       }, 50);
-               }
-       }
+			// Force local refresh
+			setTimeout(() => {
+				timelineNamesStore = { ...timelineNamesStore };
+				activeTimeline = null;
+			}, 50);
+		}
+	}
 
-       function selectColor(color) {
-               if (activeTimeline) {
-                       if (Object.keys(TIMELINE_COLORS).includes(color)) {
-                               dispatch('updateTimelineColor', { timeline: activeTimeline, color });
-                       } else {
-                               console.warn(
-                                       `Invalid color class "${color}" selected in TimelineSelectorModal. Must be one of: ${Object.keys(TIMELINE_COLORS).join(', ')}`
-                               );
-                       }
-                       showColorPicker = false;
-                       activeTimeline = null;
-               }
-       }
+	function selectColor(color) {
+		if (activeTimeline) {
+			if (Object.keys(TIMELINE_COLORS).includes(color)) {
+				dispatch('updateTimelineColor', { timeline: activeTimeline, color });
+			} else {
+				console.warn(
+					`Invalid color class "${color}" selected in TimelineSelectorModal. Must be one of: ${Object.keys(TIMELINE_COLORS).join(', ')}`
+				);
+			}
+			showColorPicker = false;
+			activeTimeline = null;
+		}
+	}
 </script>
 
 {#if show}
-        <div
-                class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="timeline-selector-title"
-                tabindex="-1"
-                on:keydown={(e) => e.key === 'Escape' && close()}
-        >
-                <div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
-                        <div class="mt-3">
-                                <h3 id="timeline-selector-title" class="text-lg font-medium text-gray-900 mb-4">Configure Timelines</h3>
+	<div
+		class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="timeline-selector-title"
+		tabindex="-1"
+		on:keydown={(e) => e.key === 'Escape' && close()}
+	>
+		<div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
+			<div class="mt-3">
+				<h3 id="timeline-selector-title" class="text-lg font-medium text-gray-900 mb-4">
+					Configure Timelines
+				</h3>
 
 				<!-- Timeline Selection -->
 				<h4 class="text-md font-medium text-gray-800 mb-2">Select Timelines</h4>
@@ -233,24 +232,24 @@
 					</div>
 				{/if}
 
-                                <div class="mt-6 flex justify-end space-x-3">
-                                        <button
-                                                type="button"
-                                                class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
-                                                on:click={close}
-                                                aria-label="Cancel"
-                                        >
-                                                Cancel
-                                        </button>
-                                        <button
-                                                type="button"
-                                                class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                                                on:click={save}
-                                                aria-label="Save"
-                                        >
-                                                Save
-                                        </button>
-                                </div>
+				<div class="mt-6 flex justify-end space-x-3">
+					<button
+						type="button"
+						class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
+						on:click={close}
+						aria-label="Cancel"
+					>
+						Cancel
+					</button>
+					<button
+						type="button"
+						class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+						on:click={save}
+						aria-label="Save"
+					>
+						Save
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>

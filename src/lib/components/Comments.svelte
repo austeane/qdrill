@@ -1,9 +1,9 @@
 <script>
-import { onMount } from 'svelte';
-import { writable } from 'svelte/store';
-import { page } from '$app/stores';
-import { get } from 'svelte/store';
-import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { onMount } from 'svelte';
+	import { writable } from 'svelte/store';
+	import { page } from '$app/stores';
+	import { get } from 'svelte/store';
+	import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let drillId = null;
 	export let practicePlanId = null;
@@ -22,38 +22,38 @@ import { apiFetch } from '$lib/utils/apiFetch.js';
 			url += `practicePlanId=${practicePlanId}`;
 		}
 
-               try {
-                       const result = await apiFetch(url);
-                       comments.set(result);
-               } catch (error) {
-                       console.error('Failed to load comments:', error);
-               }
+		try {
+			const result = await apiFetch(url);
+			comments.set(result);
+		} catch (error) {
+			console.error('Failed to load comments:', error);
+		}
 	});
 
 	async function addComment() {
 		const content = get(newComment).trim();
 		if (!content) return;
 
-               try {
-                       const comment = await apiFetch('/api/comments', {
-                               method: 'POST',
-                               headers: { 'Content-Type': 'application/json' },
-                               body: JSON.stringify({ drillId, practicePlanId, content })
-                       });
-                       comments.update((curr) => [...curr, comment]);
-                       newComment.set('');
-               } catch (error) {
-                       console.error('Failed to add comment:', error);
-               }
+		try {
+			const comment = await apiFetch('/api/comments', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ drillId, practicePlanId, content })
+			});
+			comments.update((curr) => [...curr, comment]);
+			newComment.set('');
+		} catch (error) {
+			console.error('Failed to add comment:', error);
+		}
 	}
 
 	async function deleteComment(id) {
-               try {
-                       await apiFetch(`/api/comments?id=${id}`, { method: 'DELETE' });
-                       comments.update((curr) => curr.filter((comment) => comment.id !== id));
-               } catch (error) {
-                       console.error('Failed to delete comment:', error);
-               }
+		try {
+			await apiFetch(`/api/comments?id=${id}`, { method: 'DELETE' });
+			comments.update((curr) => curr.filter((comment) => comment.id !== id));
+		} catch (error) {
+			console.error('Failed to delete comment:', error);
+		}
 	}
 </script>
 

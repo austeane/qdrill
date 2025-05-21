@@ -12,24 +12,21 @@ import * as historyStore from '../historyStore';
 vi.mock('../sectionsStore', () => {
 	let mockStoreValue = [];
 	return {
-		sections: {
-			subscribe: (run) => {
-				run(mockSections);
-				return () => {};
-			},
+               sections: {
+                        subscribe: (run) => {
+                                run(mockSections);
+                                return () => {};
+                        },
 			update: vi.fn((cb) => {
 				const result = cb(mockSections);
 				mockSections = result;
 				return result;
 			}),
-			set: vi.fn((newVal) => {
-				mockSections = newVal;
-			})
-		},
-		selectedItems: {
-			set: vi.fn()
-		}
-	};
+                       set: vi.fn((newVal) => {
+                               mockSections = newVal;
+                       })
+               }
+       };
 });
 
 vi.mock('../historyStore', () => {

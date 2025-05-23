@@ -41,27 +41,15 @@ export async function load({ url }) {
 			filters
 		});
 
-		// Define options for the service call
-		const sortOptions = { sortBy, sortOrder };
-		const paginationOptions = {
+		// Fetch formations using the service
+		// Call getAll (which forwards to getAllFormations) with the correct parameter structure
+		const formationsResult = await formationService.getAll({
 			page,
 			limit,
-			columns: ['id', 'name', 'brief_description', 'tags', 'formation_type', 'created_at']
-		};
-		// Pass userId to filters (assuming null if not logged in, handled by service)
-		// const session = await locals.getSession(); // Need locals if getting session
-		// filters.userId = session?.user?.id;
-		// NOTE: Getting session in load requires passing `locals` to the function
-		// Since this is a public list page, we might skip userId filtering here
-		// unless we specifically want to show private formations owned by the user on this page.
-		// For now, we'll assume the default public/unlisted filtering in the service is sufficient.
-
-		// Fetch formations using the service
-		// Pass combined options to the base getAll method
-		const formationsResult = await formationService.getAll({
-			filters,
-			sort: sortOptions,
-			pagination: paginationOptions
+			sortBy,
+			sortOrder,
+			userId: null, // Public page - no user filtering
+			filters
 		});
 
 		// TODO: Fetch filter options if needed (e.g., list of all tags, all formation types)

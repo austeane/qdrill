@@ -142,20 +142,45 @@ export class FormationService extends BaseEntityService {
 			offset
 		});
 
-		// Count logic
-		let countQueryBase = buildFormationBaseQuery();
+		// Count logic - Create a fresh count query instead of reusing the base query
+		let countQuery = kyselyDb
+			.selectFrom('formations')
+			.select(kyselyDb.fn.count('formations.id').as('total'));
+
+		// Apply the same non-search filters as the base query
+		if (this.useStandardPermissions && this.permissionConfig) {
+			const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
+				this.permissionConfig;
+			countQuery = countQuery.where((eb) => {
+				const conditions = [
+					eb(visibilityColumn, '=', publicValue),
+					eb(visibilityColumn, '=', unlistedValue)
+				];
+				if (userId) {
+					conditions.push(
+						eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)])
+					);
+				}
+				return eb.or(conditions);
+			});
+		}
+		if (filters.formation_type) {
+			countQuery = countQuery.where('formation_type', '=', filters.formation_type);
+		}
+		if (filters.tags && filters.tags.length > 0) {
+			countQuery = countQuery.where(sql`tags && $1`, [filters.tags]);
+		}
+
+		// Apply search conditions based on what was used for the main query
 		if (filters.searchQuery) {
 			const cleanedSearchTerm = filters.searchQuery.trim();
 			if (cleanedSearchTerm) {
 				if (usedFallback) {
-					countQueryBase = countQueryBase.where((eb) =>
+					countQuery = countQuery.where((eb) =>
 						eb.or([
 							eb(sql`similarity(name, ${cleanedSearchTerm})`, '>', 0.3),
 							eb(sql`similarity(brief_description, ${cleanedSearchTerm})`, '>', 0.3),
 							eb(sql`similarity(detailed_description, ${cleanedSearchTerm})`, '>', 0.3)
-							// For tags, similarity might not be ideal as it's an array.
-							// Consider converting tags to a single string for similarity or use array operators.
-							// For simplicity, we can check array overlap with a fuzzy term for tags if desired, or stick to name/desc for similarity.
 						])
 					);
 				} else {
@@ -165,16 +190,15 @@ export class FormationService extends BaseEntityService {
 						.map((term) => term + ':*')
 						.join(' & ');
 					if (tsQuerySearchTerm) {
-						countQueryBase = countQueryBase.where(
+						countQuery = countQuery.where(
 							sql`search_vector @@ to_tsquery('english', ${tsQuerySearchTerm})`
 						);
 					}
 				}
 			}
 		}
-		const countResult = await countQueryBase
-			.select(kyselyDb.fn.count('id').as('total'))
-			.executeTakeFirst();
+
+		const countResult = await countQuery.executeTakeFirst();
 		const totalItems = parseInt(countResult?.total ?? '0', 10);
 
 		return {

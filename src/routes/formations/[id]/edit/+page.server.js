@@ -9,7 +9,7 @@ export async function load({ params, locals }) {
 	const id = params.id;
 
 	try {
-		const formation = await formationService.getById(params.id);
+		const formation = await formationService.getById(params.id, ['*'], userId);
 
 		if (!formation) {
 			throw error(404, 'Formation not found');

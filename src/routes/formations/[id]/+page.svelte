@@ -13,6 +13,17 @@
 	// Use formation data directly from the load function
 	$: formation = data.formation;
 
+	// Debug session and permission data
+	$: {
+		console.log('Debug - Formation:', formation?.id, formation?.name);
+		console.log('Debug - Session:', $page.data.session);
+		console.log('Debug - Session user ID:', $page.data.session?.user?.id);
+		console.log('Debug - Formation created_by:', formation?.created_by);
+		console.log('Debug - Is editable by others:', formation?.is_editable_by_others);
+		console.log('Debug - Dev mode:', dev);
+		console.log('Debug - User IDs match:', $page.data.session?.user?.id === formation?.created_by);
+	}
+
 	// REMOVED: State for associated drills (isLoadingDrills, loadDrillsError)
 	// REMOVED: isLoading state
 	// REMOVED: error state

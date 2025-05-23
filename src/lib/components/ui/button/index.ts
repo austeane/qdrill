@@ -1,6 +1,7 @@
 import { type VariantProps, tv } from 'tailwind-variants';
 import type { Button as ButtonPrimitive } from 'bits-ui';
 import Root from './button.svelte';
+import LoadingButton from './LoadingButton.svelte';
 
 const buttonVariants = tv({
 	base: 'ring-offset-background focus-visible:ring-ring inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
@@ -38,6 +39,7 @@ type Events = ButtonPrimitive.Events;
 
 export {
 	Root,
+	LoadingButton,
 	type Props,
 	type Events,
 	//

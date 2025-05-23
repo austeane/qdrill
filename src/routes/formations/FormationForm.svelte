@@ -274,9 +274,9 @@
 			if (!validateForm()) return;
 
 			// Check login status using reactive variable from Better Auth
-			if (!isLoggedIn && values.visibility !== 'public') {
+			if (!isLoggedIn && $visibility !== 'public') {
 				const confirmed = confirm(
-					`Log in to create a ${values.visibility} formation.\n\n` +
+					`Log in to create a ${$visibility} formation.\n\n` +
 						'Click OK to log in with Google\n' +
 						'Click Cancel to create as public instead'
 				);
@@ -284,14 +284,14 @@
 				if (confirmed) {
 					// Store form data in sessionStorage
 					const formData = {
-						name: values.name,
-						brief_description: values.brief_description,
-						detailed_description: values.detailed_description,
-						diagrams: values.diagrams,
-						tags: values.tags,
-						visibility: values.visibility,
-						is_editable_by_others: values.is_editable_by_others,
-						formation_type: values.formation_type
+						name: $name,
+						brief_description: $brief_description,
+						detailed_description: $detailed_description,
+						diagrams: $diagrams,
+						tags: $tags,
+						visibility: $visibility,
+						is_editable_by_others: $is_editable_by_others,
+						formation_type: $formation_type
 					};
 					sessionStorage.setItem('pendingFormationData', JSON.stringify(formData));
 					try {
@@ -308,14 +308,14 @@
 					return; // Stop submission if redirecting to login
 				} else {
 					updateField('visibility', 'public');
-					values.visibility = 'public'; // Update local values for this submission
+					visibility.set('public'); // Update local values for this submission
 				}
 			}
 
 			// If not logged in (after the check), force public/editable
 			if (!isLoggedIn) {
 				updateField('is_editable_by_others', true);
-				values.is_editable_by_others = true;
+				is_editable_by_others.set(true);
 			}
 
 			try {
@@ -325,14 +325,14 @@
 
 				const requestBody = {
 					id: formation.id, // The ID is included in the body for PUT requests
-					name: values.name,
-					brief_description: values.brief_description,
-					detailed_description: values.detailed_description,
-					diagrams: values.diagrams,
-					tags: values.tags,
-					is_editable_by_others: values.is_editable_by_others,
-					visibility: values.visibility,
-					formation_type: values.formation_type
+					name: $name,
+					brief_description: $brief_description,
+					detailed_description: $detailed_description,
+					diagrams: $diagrams,
+					tags: $tags,
+					is_editable_by_others: $is_editable_by_others,
+					visibility: $visibility,
+					formation_type: $formation_type
 				};
 
 				// Log the data being sent, excluding the potentially large diagrams array

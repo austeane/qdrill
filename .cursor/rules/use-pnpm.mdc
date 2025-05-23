@@ -1,0 +1,18 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Use pnpm Instead of npm
+
+This project uses pnpm as the package manager. Always use `pnpm` commands instead of `npm`:
+
+- Use `pnpm install` instead of `npm install`
+- Use `pnpm run build` instead of `npm run build`
+- Use `pnpm add <package>` instead of `npm install <package>`
+
+For actually running though do 
+vercel dev
+
+
+Check the project root for `pnpm-lock.yaml` which confirms this is a pnpm project.

@@ -369,6 +369,64 @@ export class FormationService extends BaseEntityService {
 			throw new DatabaseError('Failed to associate formation', error);
 		}
 	}
+
+	/**
+	 * Duplicate a formation
+	 * @param {number} id - Formation ID to duplicate
+	 * @param {number|null} userId - User ID creating the duplicate
+	 * @returns {Promise<Object>} - New formation with ID
+	 * @throws {NotFoundError} If original formation not found
+	 * @throws {ForbiddenError} If user cannot view original formation
+	 * @throws {DatabaseError} On database error
+	 */
+	async duplicateFormation(id, userId = null) {
+		// First fetch the original formation, including checking view permissions
+		// getById handles NotFoundError and ForbiddenError through canUserView
+		let originalFormation;
+		try {
+			originalFormation = await this.getById(id, ['*'], userId);
+		} catch (error) {
+			// Re-throw known errors
+			if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+				throw error;
+			}
+			console.error(`Error fetching original formation ${id} for duplication:`, error);
+			throw new DatabaseError('Failed to fetch original formation for duplication', error);
+		}
+
+		// If formation doesn't exist or user can't view it, getById would have thrown an error
+		if (!originalFormation) {
+			throw new NotFoundError('Formation not found');
+		}
+
+		try {
+			// Create data for new formation
+			const newFormationData = this.normalizeFormationData({
+				name: `${originalFormation.name} (Copy)`,
+				brief_description: originalFormation.brief_description,
+				detailed_description: originalFormation.detailed_description,
+				diagrams: originalFormation.diagrams ? JSON.parse(JSON.stringify(originalFormation.diagrams)) : [],
+				tags: [...(originalFormation.tags || [])],
+				formation_type: originalFormation.formation_type,
+				created_by: userId,
+				// New formation visibility/editability depends on user creating it
+				// Default to private for logged-in users, public for anonymous
+				visibility: userId ? 'private' : 'public',
+				is_editable_by_others: !userId, // Editable if anonymous, not otherwise by default
+				created_at: new Date(),
+				updated_at: new Date()
+			});
+
+			// Create new formation using the base create method
+			const newFormation = await this.create(newFormationData);
+
+			return { id: newFormation.id };
+		} catch (error) {
+			console.error(`Error duplicating formation ${id}:`, error);
+			// Wrap errors during the duplication process
+			throw new DatabaseError('Failed to duplicate formation', error);
+		}
+	}
 }
 
 // Export a singleton instance of the service

@@ -43,6 +43,31 @@
 			alert(`Failed to delete formation: ${err.message}`); // Simple alert for now
 		}
 	}
+
+	// Function to handle formation duplication
+	async function handleDuplicate() {
+		try {
+			const result = await apiFetch(`/api/formations/${formation.id}/duplicate`, {
+				method: 'POST'
+			});
+
+			toast.push('Formation duplicated successfully', {
+				theme: {
+					'--toastBackground': '#48BB78',
+					'--toastBarBackground': '#2F855A'
+				}
+			});
+			goto(`/formations/${result.id}/edit`);
+		} catch (error) {
+			console.error('Error duplicating formation:', error);
+			toast.push(error.message, {
+				theme: {
+					'--toastBackground': '#F56565',
+					'--toastBarBackground': '#C53030'
+				}
+			});
+		}
+	}
 </script>
 
 <svelte:head>
@@ -80,6 +105,12 @@
 				>
 					Edit
 				</button>
+				<button
+					class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+					on:click={handleDuplicate}
+				>
+					Duplicate
+				</button>
 				{#if dev || ($page.data.session && $page.data.session.user.id === formation.created_by)}
 					<button
 						class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
@@ -88,6 +119,16 @@
 						Delete
 					</button>
 				{/if}
+			</div>
+		{:else if formation}
+			<!-- Show Duplicate button for users who can't edit -->
+			<div class="flex space-x-4">
+				<button
+					class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+					on:click={handleDuplicate}
+				>
+					Duplicate
+				</button>
 			</div>
 		{/if}
 	</div>

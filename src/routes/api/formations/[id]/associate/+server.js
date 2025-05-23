@@ -8,7 +8,7 @@ import { handleApiError } from '../../../utils/handleApiError.js';
 export async function POST({ params, locals }) {
 	try {
 		const { id } = params;
-		const session = await locals.auth();
+		const session = locals.session;
 
 		// Validate ID
 		const formationId = parseInt(id);

@@ -10,7 +10,7 @@ import { handleApiError } from '../utils/handleApiError.js';
  */
 export async function GET({ url, locals }) {
 	try {
-		const session = await locals.auth();
+		const session = locals.session;
 		const userId = session?.user?.id ?? null;
 
 		// Pagination
@@ -34,30 +34,21 @@ export async function GET({ url, locals }) {
 					.filter((t) => t)
 			: undefined;
 
-		// Build options objects for the service
+		// Build options object for the service
 		const filters = {};
 		if (tags) filters.tags = tags;
 		if (formation_type) filters.formation_type = formation_type;
 		if (searchQuery) filters.searchQuery = searchQuery;
 
-		const sortOptions = {};
-		if (sortBy) sortOptions.sortBy = sortBy;
-		if (sortOrder) sortOptions.sortOrder = sortOrder;
-
-		const paginationOptions = {
+		// Call getAllFormations with the correct parameter structure
+		const result = await formationService.getAllFormations({
 			page,
 			limit,
-			columns: ['id', 'name', 'brief_description', 'tags', 'formation_type', 'created_at']
-		};
-
-		// Add userId to filters for visibility checks
-		filters.userId = userId;
-
-		const result = await formationService.getFilteredFormations(
-			filters,
-			sortOptions,
-			paginationOptions
-		);
+			sortBy,
+			sortOrder,
+			userId,
+			filters
+		});
 
 		return json(result);
 	} catch (err) {
@@ -72,7 +63,7 @@ export async function GET({ url, locals }) {
 export async function POST({ request, locals }) {
 	try {
 		const formationData = await request.json();
-		const session = await locals.auth();
+		const session = locals.session;
 		const userId = session?.user?.id || null;
 
 		console.log('Creating formation with data:', JSON.stringify(formationData, null, 2));

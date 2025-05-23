@@ -11,7 +11,7 @@ import { NotFoundError, ForbiddenError } from '$lib/server/errors';
 export async function GET({ params, locals }) {
 	try {
 		const { id } = params;
-		const session = await locals.auth();
+		const session = locals.session;
 		const userId = session?.user?.id;
 
 		const formationId = parseInt(id);
@@ -38,7 +38,7 @@ export const PUT = authGuard(async ({ params, request, locals }) => {
 	try {
 		const { id } = params;
 		const formationData = await request.json();
-		const session = await locals.auth();
+		const session = locals.session;
 		const userId = session?.user?.id;
 
 		const formationId = parseInt(id);
@@ -63,7 +63,7 @@ export const PUT = authGuard(async ({ params, request, locals }) => {
 export const DELETE = authGuard(async ({ params, locals }) => {
 	try {
 		const { id } = params;
-		const session = await locals.auth();
+		const session = locals.session;
 		const userId = session?.user?.id;
 
 		const formationId = parseInt(id);

@@ -6,6 +6,8 @@
 	import { ThumbsUpIcon, ThumbsDownIcon } from 'svelte-feather-icons';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import Spinner from '$lib/components/Spinner.svelte';
+	import { createLoadingState } from '$lib/utils/loadingStates.js';
 
 	export let drillId = null;
 	export let practicePlanId = null;
@@ -20,6 +22,10 @@
 	let upvotes = writable(0);
 	let downvotes = writable(0);
 	let userVote = writable(0); // 1 for upvote, -1 for downvote, 0 for no vote
+
+	// Loading states
+	const loadingVotes = createLoadingState();
+	const votingInProgress = createLoadingState();
 
 	const session = authClient.useSession();
 	const user = $session.data?.user;
@@ -38,7 +44,7 @@
 		loadVotes();
 	}
 
-	async function loadVotes() {
+	const loadVotes = loadingVotes.wrap(async () => {
 		console.log(
 			'[UpvoteDownvote] loadVotes called. drillId:',
 			drillId,
@@ -79,9 +85,9 @@
 			console.error('Error loading votes:', error);
 			toast.push('Failed to load votes', { theme: { '--toastBackground': '#F56565' } });
 		}
-	}
+	});
 
-	async function handleVote(voteType) {
+	const handleVote = votingInProgress.wrap(async (voteType) => {
 		if (!user) {
 			const confirmed = confirm('Please sign in to vote. Click OK to sign in with Google.');
 			if (confirmed) {
@@ -158,41 +164,58 @@
 				theme: { '--toastBackground': '#F56565' }
 			});
 		}
-	}
+	});
 </script>
 
-<div class="flex flex-col items-center space-y-1 text-sm">
-	<button
-		on:click={() => handleVote(1)}
-		class="p-1 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-		class:text-blue-600={$userVote === 1}
-		class:bg-blue-100={$userVote === 1}
-		class:text-gray-400={$userVote !== 1}
-		class:hover:bg-blue-50={$userVote !== 1}
-		aria-label="Upvote"
-	>
-		<ThumbsUpIcon size="20" />
-		<span class="sr-only">Upvote</span>
-	</button>
+{#if $loadingVotes}
+	<div class="flex flex-col items-center space-y-1 text-sm">
+		<Spinner size="sm" color="gray" />
+		<span class="text-xs text-gray-500">Loading...</span>
+	</div>
+{:else}
+	<div class="flex flex-col items-center space-y-1 text-sm">
+		<button
+			on:click={() => handleVote(1)}
+			disabled={$votingInProgress}
+			class="p-1 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+			class:text-blue-600={$userVote === 1}
+			class:bg-blue-100={$userVote === 1}
+			class:text-gray-400={$userVote !== 1}
+			class:hover:bg-blue-50={$userVote !== 1 && !$votingInProgress}
+			aria-label="Upvote"
+		>
+			{#if $votingInProgress}
+				<Spinner size="sm" color="blue" />
+			{:else}
+				<ThumbsUpIcon size="20" />
+			{/if}
+			<span class="sr-only">Upvote</span>
+		</button>
 
-	<span
-		class="font-medium"
-		class:text-blue-600={$userVote === 1}
-		class:text-red-600={$userVote === -1}
-	>
-		{$upvotes - $downvotes}
-	</span>
+		<span
+			class="font-medium"
+			class:text-blue-600={$userVote === 1}
+			class:text-red-600={$userVote === -1}
+		>
+			{$upvotes - $downvotes}
+		</span>
 
-	<button
-		on:click={() => handleVote(-1)}
-		class="p-1 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-		class:text-red-600={$userVote === -1}
-		class:bg-red-100={$userVote === -1}
-		class:text-gray-400={$userVote !== -1}
-		class:hover:bg-red-50={$userVote !== -1}
-		aria-label="Downvote"
-	>
-		<ThumbsDownIcon size="20" />
-		<span class="sr-only">Downvote</span>
-	</button>
-</div>
+		<button
+			on:click={() => handleVote(-1)}
+			disabled={$votingInProgress}
+			class="p-1 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+			class:text-red-600={$userVote === -1}
+			class:bg-red-100={$userVote === -1}
+			class:text-gray-400={$userVote !== -1}
+			class:hover:bg-red-50={$userVote !== -1 && !$votingInProgress}
+			aria-label="Downvote"
+		>
+			{#if $votingInProgress}
+				<Spinner size="sm" color="red" />
+			{:else}
+				<ThumbsDownIcon size="20" />
+			{/if}
+			<span class="sr-only">Downvote</span>
+		</button>
+	</div>
+{/if}

@@ -88,8 +88,8 @@ export const PUT = authGuard(async ({ request, locals }) => {
 	const { id } = formationData;
 
 	try {
-		// Check if the formation exists
-		const formation = await formationService.getById(id);
+		// Check if the formation exists - pass userId to handle private formations
+		const formation = await formationService.getById(id, ['*'], userId);
 
 		if (!formation) {
 			return json({ error: 'Formation not found' }, { status: 404 });
@@ -112,7 +112,7 @@ export const PUT = authGuard(async ({ request, locals }) => {
 			formationData.created_by = userId;
 		}
 
-		const updatedFormation = await formationService.updateFormation(id, formationData);
+		const updatedFormation = await formationService.updateFormation(id, formationData, userId);
 		return json(updatedFormation);
 	} catch (error) {
 		console.error('Error updating formation:', error);

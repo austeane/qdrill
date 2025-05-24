@@ -4,7 +4,7 @@ import { formationService } from '$lib/server/services/formationService.js';
  * Load function for the formations list page.
  * Fetches filtered, sorted, and paginated formations based on URL query parameters.
  */
-export async function load({ url }) {
+export async function load({ url, locals }) {
 	try {
 		// Pagination
 		const page = parseInt(url.searchParams.get('page') || '1');
@@ -33,22 +33,27 @@ export async function load({ url }) {
 				delete filters[key]
 		);
 
+		// Get the current user's ID from the session
+		const session = locals.session;
+		const userId = session?.user?.id || null;
+
 		console.log('Loading formations page with:', {
 			page,
 			limit,
 			sortBy,
 			sortOrder,
-			filters
+			filters,
+			userId
 		});
 
 		// Fetch formations using the service
-		// Call getAll (which forwards to getAllFormations) with the correct parameter structure
+		// Pass userId to see both public formations and user's private formations
 		const formationsResult = await formationService.getAll({
 			page,
 			limit,
 			sortBy,
 			sortOrder,
-			userId: null, // Public page - no user filtering
+			userId, // Pass user ID to see their private formations too
 			filters
 		});
 

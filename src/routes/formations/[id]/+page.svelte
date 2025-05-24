@@ -2,7 +2,6 @@
 	// import { onMount } from 'svelte'; // Removed
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { apiFetch } from '$lib/utils/apiFetch';
 	import { toast } from '@zerodevx/svelte-toast';
 	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
 	import { dev } from '$app/environment';
@@ -12,17 +11,6 @@
 
 	// Use formation data directly from the load function
 	$: formation = data.formation;
-
-	// Debug session and permission data
-	$: {
-		console.log('Debug - Formation:', formation?.id, formation?.name);
-		console.log('Debug - Session:', $page.data.session);
-		console.log('Debug - Session user ID:', $page.data.session?.user?.id);
-		console.log('Debug - Formation created_by:', formation?.created_by);
-		console.log('Debug - Is editable by others:', formation?.is_editable_by_others);
-		console.log('Debug - Dev mode:', dev);
-		console.log('Debug - User IDs match:', $page.data.session?.user?.id === formation?.created_by);
-	}
 
 	// REMOVED: State for associated drills (isLoadingDrills, loadDrillsError)
 	// REMOVED: isLoading state
@@ -58,9 +46,18 @@
 	// Function to handle formation duplication
 	async function handleDuplicate() {
 		try {
-			const result = await apiFetch(`/api/formations/${formation.id}/duplicate`, {
-				method: 'POST'
+			const response = await fetch(`/api/formations/${formation.id}/duplicate`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' }
 			});
+
+			if (!response.ok) {
+				// Try to parse error message from response
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+			}
+
+			const result = await response.json();
 
 			toast.push('Formation duplicated successfully', {
 				theme: {
@@ -71,7 +68,7 @@
 			goto(`/formations/${result.id}/edit`);
 		} catch (error) {
 			console.error('Error duplicating formation:', error);
-			toast.push(error.message, {
+			toast.push(error.message || 'Failed to duplicate formation', {
 				theme: {
 					'--toastBackground': '#F56565',
 					'--toastBarBackground': '#C53030'

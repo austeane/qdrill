@@ -18,6 +18,7 @@
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { cart } from '$lib/stores/cartStore';
 	import AiPlanGeneratorModal from '$lib/components/practice-plan/AiPlanGeneratorModal.svelte';
+	import TitleWithTooltip from '$lib/components/TitleWithTooltip.svelte';
 
 	export let data;
 
@@ -317,8 +318,12 @@
 					<div class="relative flex justify-between items-start mb-4">
 						<div class="flex-1 pr-12">
 							<h2 class="text-xl font-bold">
-								<a href="/practice-plans/{plan.id}" class="text-blue-600 hover:text-blue-800">
-									{plan.name}
+								<a href="/practice-plans/{plan.id}" class="text-blue-600 hover:text-blue-800 block">
+									<TitleWithTooltip 
+										title={plan.name} 
+										className="text-xl font-bold text-blue-600 hover:text-blue-800"
+										maxWidth="100%"
+									/>
 								</a>
 							</h2>
 						</div>

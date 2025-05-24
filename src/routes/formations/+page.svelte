@@ -148,6 +148,8 @@
 	}
 	// Close dropdown on click outside
 	import { onMount } from 'svelte'; // Keep onMount for this
+	import TitleWithTooltip from '$lib/components/TitleWithTooltip.svelte';
+	
 	onMount(() => {
 		const handleClickOutside = (event) => {
 			if (sortOptionsRef && !sortOptionsRef.contains(event.target)) {
@@ -344,14 +346,18 @@
 				<a
 					href="/formations/{formation.id}"
 					data-testid="formation-card"
-					class="block bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+					class="block bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
 				>
 					<div class="p-6">
 						<h2
 							data-testid="formation-card-name"
-							class="text-xl font-semibold text-gray-800 mb-2 truncate"
+							class="text-xl font-semibold text-gray-800 mb-2"
 						>
-							{formation.name}
+							<TitleWithTooltip 
+								title={formation.name} 
+								className="text-xl font-semibold text-gray-800"
+								maxWidth="100%"
+							/>
 						</h2>
 						{#if formation.brief_description}
 							<p class="text-gray-600 mb-4 line-clamp-3 text-sm">{formation.brief_description}</p>

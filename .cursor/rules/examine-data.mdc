@@ -1,6 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-When working with data, examine it with a tool call using `psql "$NEON_DB_URL"`

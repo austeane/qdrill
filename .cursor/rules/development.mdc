@@ -1,0 +1,33 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Development Rules for QDrill Project
+
+## IMPORTANT: Development Server
+**ALWAYS use `vercel dev` to run the development server**
+- DO NOT use `pnpm run dev`
+- DO NOT use `npm run dev`
+- The correct command is: `vercel dev`
+
+## Package Management
+This project uses pnpm. Always use pnpm commands:
+- `pnpm install` (not npm install)
+- `pnpm add <package>` (not npm install <package>)
+- `pnpm remove <package>` (not npm uninstall)
+
+## Build Commands
+- For development server: `vercel dev`
+- For production build verification: `vercel build`
+- DO NOT use `pnpm run build` for verification
+
+## Database Access
+When examining data, use: `psql "$NEON_DB_URL"`
+
+## Summary of Key Commands
+- Start dev server: `vercel dev`
+- Install dependencies: `pnpm install`
+- Add package: `pnpm add <package>`
+- Build for production: `vercel build`
+- Check database: `psql "$NEON_DB_URL"`

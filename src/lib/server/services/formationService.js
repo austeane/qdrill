@@ -2,6 +2,7 @@ import { BaseEntityService } from './baseEntityService.js';
 import * as db from '$lib/server/db';
 import { NotFoundError, DatabaseError, ConflictError, ValidationError } from '$lib/server/errors';
 import { kyselyDb, sql } from '$lib/server/db'; // Ensure sql is imported
+import { dev } from '$app/environment';
 
 /**
  * Service for managing formations
@@ -246,9 +247,31 @@ export class FormationService extends BaseEntityService {
 	 * Update an existing formation
 	 * @param {number} id - Formation ID
 	 * @param {Object} formationData - Updated formation data
+	 * @param {number|null} userId - User ID updating the formation
 	 * @returns {Promise<Object>} - The updated formation
+	 * @throws {NotFoundError} If formation not found
+	 * @throws {ForbiddenError} If user lacks permission to edit
+	 * @throws {DatabaseError} On database error
 	 */
-	async updateFormation(id, formationData) {
+	async updateFormation(id, formationData, userId = null) {
+		// In dev mode, bypass permission checks
+		if (!dev) {
+			// Use base canUserEdit which throws errors for permission violations
+			try {
+				await this.canUserEdit(id, userId);
+			} catch (error) {
+				// Re-throw known errors (NotFoundError, ForbiddenError)
+				if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+					throw error;
+				}
+				// Wrap other errors as DatabaseError
+				console.error(`Error checking edit permission for formation ${id}:`, error);
+				throw new DatabaseError('Failed to check edit permission', error);
+			}
+		} else {
+			console.log(`[DEV MODE] Bypassing permission check for editing formation ${id} by user ${userId}`);
+		}
+
 		// Normalize formation data
 		const normalizedData = this.normalizeFormationData({
 			...formationData,

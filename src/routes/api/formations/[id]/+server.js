@@ -19,11 +19,7 @@ export async function GET({ params, locals }) {
 			return json({ error: 'Invalid formation ID' }, { status: 400 });
 		}
 
-		const formation = await formationService.getById(formationId);
-
-		if (!formationService.canUserView(formation, userId)) {
-			throw new NotFoundError('Formation not found');
-		}
+		const formation = await formationService.getById(formationId, ['*'], userId);
 
 		return json(formation);
 	} catch (err) {
@@ -50,7 +46,7 @@ export const PUT = authGuard(async ({ params, request, locals }) => {
 			return json({ error: 'Authentication required' }, { status: 401 });
 		}
 
-		const updatedFormation = await formationService.updateFormation(formationId, formationData);
+		const updatedFormation = await formationService.updateFormation(formationId, formationData, userId);
 		return json(updatedFormation);
 	} catch (err) {
 		return handleApiError(err);
@@ -71,15 +67,20 @@ export const DELETE = authGuard(async ({ params, locals }) => {
 			return json({ error: 'Invalid formation ID' }, { status: 400 });
 		}
 
-		if (!userId) {
+		if (!userId && !dev) {
 			return json({ error: 'Authentication required' }, { status: 401 });
 		}
 
-		await formationService.canUserEdit(formationId, userId);
+		// In dev mode, bypass permission checks
+		if (!dev) {
+			await formationService.canUserEdit(formationId, userId);
 
-		const formation = await formationService.getById(formationId);
-		if (formation.created_by !== userId) {
-			throw new ForbiddenError('Only the creator can delete this formation');
+			const formation = await formationService.getById(formationId, ['*'], userId);
+			if (formation.created_by !== userId) {
+				throw new ForbiddenError('Only the creator can delete this formation');
+			}
+		} else {
+			console.log(`[DEV MODE] Bypassing permission check for deleting formation ${formationId} by user ${userId}`);
 		}
 
 		await formationService.delete(formationId);

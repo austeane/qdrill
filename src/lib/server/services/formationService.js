@@ -443,7 +443,7 @@ export class FormationService extends BaseEntityService {
 			// Create new formation using the base create method
 			const newFormation = await this.create(newFormationData);
 
-			return { id: newFormation.id };
+			return newFormation;
 		} catch (error) {
 			console.error(`Error duplicating formation ${id}:`, error);
 			// Wrap errors during the duplication process

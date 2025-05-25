@@ -94,7 +94,15 @@
 	let drillSearchTerm = '';
 	let drillSuggestions = [];
 
-	let mounted = false;
+let mounted = false;
+
+// Track active practice plan filters to toggle Reset button
+$: hasActivePracticePlanFilters =
+        Object.keys($selectedPhaseOfSeason).length > 0 ||
+        Object.keys($selectedPracticeGoals).length > 0 ||
+        $selectedEstimatedParticipantsMin !== 1 ||
+        $selectedEstimatedParticipantsMax !== 100 ||
+        selectedDrills.length > 0;
 
 	onMount(() => {
 		mounted = true;
@@ -976,6 +984,15 @@
 					{/if}
 				</div>
 			{/if}
+                <!-- Reset Filters Button specifically for practice plans -->
+                {#if hasActivePracticePlanFilters}
+                        <button
+                                class="inline-flex items-center bg-red-500 text-white border border-red-600 rounded-full px-4 py-2 cursor-pointer hover:bg-red-600 transition-colors duration-300"
+                                on:click={resetFilters}
+                        >
+                                Reset Filters
+                        </button>
+                {/if}
 		</div>
 	{/if}
 

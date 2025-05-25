@@ -105,7 +105,7 @@
 		</div>
 
 		<!-- Edit/Delete Buttons (Permission check remains) -->
-		{#if formation && (dev || ($page.data.session && $page.data.session.user.id === formation.created_by) || formation.is_editable_by_others)}
+		{#if formation && $page.data.session && ((dev || $page.data.session.user.id === formation.created_by) || formation.is_editable_by_others)}
 			<div class="flex space-x-4">
 				<button
 					class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -119,7 +119,7 @@
 				>
 					Duplicate
 				</button>
-				{#if dev || ($page.data.session && $page.data.session.user.id === formation.created_by)}
+				{#if dev || $page.data.session.user.id === formation.created_by}
 					<button
 						class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
 						on:click={handleDelete}
@@ -128,8 +128,8 @@
 					</button>
 				{/if}
 			</div>
-		{:else if formation}
-			<!-- Show Duplicate button for users who can't edit -->
+		{:else if formation && $page.data.session}
+			<!-- Show Duplicate button for authenticated users who can't edit -->
 			<div class="flex space-x-4">
 				<button
 					class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"

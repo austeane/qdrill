@@ -1,6 +1,7 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-	import { navigating } from '$app/stores'; // Import navigating store if needed for disabling
+        import { createEventDispatcher } from 'svelte';
+        import { navigating } from '$app/stores';
+        import LoadingButton from '$lib/components/ui/button/LoadingButton.svelte';
 
 	export let currentPage = 1;
 	export let totalPages = 1;
@@ -24,24 +25,28 @@
 
 {#if totalPages > 1}
 	<div class="flex justify-center items-center mt-8 space-x-4" data-testid="pagination-controls">
-		<button
-			on:click={prevPage}
-			disabled={currentPage === 1 || $navigating}
-			class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors duration-300"
-			data-testid="pagination-prev-button"
-		>
-			Previous
-		</button>
+                <LoadingButton
+                        loading={$navigating}
+                        on:click={prevPage}
+                        disabled={currentPage === 1}
+                        variant="outline"
+                        size="sm"
+                        data-testid="pagination-prev-button"
+                >
+                        Previous
+                </LoadingButton>
 		<span class="text-gray-700" data-testid="pagination-current-page"
 			>Page {currentPage} of {totalPages}</span
 		>
-		<button
-			on:click={nextPage}
-			disabled={currentPage === totalPages || $navigating}
-			class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors duration-300"
-			data-testid="pagination-next-button"
-		>
-			Next
-		</button>
+                <LoadingButton
+                        loading={$navigating}
+                        on:click={nextPage}
+                        disabled={currentPage === totalPages}
+                        variant="outline"
+                        size="sm"
+                        data-testid="pagination-next-button"
+                >
+                        Next
+                </LoadingButton>
 	</div>
 {/if}

@@ -28,13 +28,23 @@
 		selectedEstimatedParticipantsMax,
 		updateFilterState as updatePracticePlanFilterState
 	} from '$lib/stores/practicePlanFilterStore';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
-	import debounce from 'lodash/debounce';
-	import { Plus, Minus, Search } from 'lucide-svelte';
+        import { page } from '$app/stores';
+        import { goto } from '$app/navigation';
+        import { browser } from '$app/environment';
+        import debounce from 'lodash/debounce';
+        import { Plus, Minus, Search } from 'lucide-svelte';
+        import { createLoadingState } from '$lib/utils/loadingStates.js';
+        import Spinner from '$lib/components/Spinner.svelte';
 
-	const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
+
+const filterApplying = createLoadingState();
+
+function handleFilterChangeWithLoading() {
+        filterApplying.start();
+                handleFilterChangeWithLoading();
+        setTimeout(() => filterApplying.stop(), 1000);
+}
 
 	export let customClass = '';
 	export let filterType = 'drills'; // New prop to determine filter context
@@ -135,8 +145,8 @@
 			selectedEstimatedParticipantsMax.set(100);
 			selectedDrills = [];
 		}
-		closeAllFilters();
-		dispatch('filterChange');
+                closeAllFilters();
+                handleFilterChangeWithLoading();
 	}
 
 	// Function to handle toggling filters
@@ -319,7 +329,7 @@
 			}
 			return updated;
 		});
-		dispatch('filterChange');
+                        handleFilterChangeWithLoading();
 	}
 
 	// Helper function for updating DRILL filter states
@@ -334,7 +344,7 @@
 				}
 				return updated;
 			});
-			dispatch('filterChange');
+                handleFilterChangeWithLoading();
 		};
 	}
 
@@ -350,20 +360,20 @@
 	function handleEstimatedParticipantsChange(event) {
 		selectedEstimatedParticipantsMin.set(estimatedParticipantsRange[0]);
 		selectedEstimatedParticipantsMax.set(estimatedParticipantsRange[1]);
-		dispatch('filterChange');
+                handleFilterChangeWithLoading();
 	}
 
 	// Update the range slider handlers
 	function handleNumberOfPeopleChange(event) {
 		selectedNumberOfPeopleMin.set(numberOfPeopleRange[0]);
 		selectedNumberOfPeopleMax.set(numberOfPeopleRange[1]);
-		dispatch('filterChange');
+                handleFilterChangeWithLoading();
 	}
 
 	function handleSuggestedLengthsChange(event) {
 		selectedSuggestedLengthsMin.set(suggestedLengthsRange[0]);
 		selectedSuggestedLengthsMax.set(suggestedLengthsRange[1]);
-		dispatch('filterChange');
+                handleFilterChangeWithLoading();
 	}
 
 	let skillsSearchTerm = '';
@@ -387,7 +397,7 @@
 	// Helper to toggle tri‑state boolean filters (null → true → false → null)
 	function toggleBooleanFilter(store) {
 		store.update((current) => (current === null ? true : current === true ? false : null));
-		dispatch('filterChange');
+                handleFilterChangeWithLoading();
 	}
 
 	function toggleHasVideo() {
@@ -405,6 +415,14 @@
 
 <!-- Filter Buttons -->
 <div class={`flex flex-wrap gap-2 mb-4 relative ${customClass}`} on:keydown={handleKeydown}>
+        {#if $filterApplying}
+                <div class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-20">
+                        <div class="flex items-center space-x-2">
+                                <Spinner size="sm" color="blue" />
+                                <span class="text-sm text-gray-600">Applying filters...</span>
+                        </div>
+                </div>
+        {/if}
 	<!-- Drills Filters -->
 	{#if filterType === 'drills' && (skillLevels.length || complexities.length || skillsFocusedOn.length || positionsFocusedOn.length || numberOfPeopleOptions.min !== null || numberOfPeopleOptions.max !== null || suggestedLengths.min !== null || suggestedLengths.max !== null || $selectedHasVideo || $selectedHasDiagrams || $selectedHasImages)}
 		<!-- Skill Levels Filter -->

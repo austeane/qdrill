@@ -186,12 +186,14 @@
 						Edit Plan
 					</a>
 				{/if}
-				<button
-					on:click={handleDuplicate}
-					class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors text-sm sm:text-base whitespace-nowrap"
-				>
-					Duplicate Plan
-				</button>
+				{#if $page.data.session}
+					<button
+						on:click={handleDuplicate}
+						class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors text-sm sm:text-base whitespace-nowrap"
+					>
+						Duplicate Plan
+					</button>
+				{/if}
 				<DeletePracticePlan planId={practicePlan.id} createdBy={practicePlan.created_by} />
 				<UpvoteDownvote practicePlanId={practicePlan.id} />
 			</div>

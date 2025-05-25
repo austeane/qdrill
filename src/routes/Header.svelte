@@ -1,54 +1,93 @@
 <!-- Header Component -->
 
 <script>
-	import { page } from '$app/stores';
-	import { cart } from '$lib/stores/cartStore';
-	import { onMount } from 'svelte';
-	import { useSession, signIn, signOut } from '$lib/auth-client';
+import { page } from '$app/stores';
+import { cart } from '$lib/stores/cartStore';
+import { onMount } from 'svelte';
+import { useSession, signIn, signOut } from '$lib/auth-client';
+
+// Reference to close dropdowns when clicking outside
+let navigationRef;
 
 	// Get session using Better Auth
 	const session = useSession();
 
-	let isMobileMenuOpen = false;
-	let isCartOpen = false;
-	let isDrillsDropdownOpen = false;
-	let isProfileDropdownOpen = false;
-	let isPracticePlansDesktopDropdownOpen = false;
-	let isPracticePlansMobileDropdownOpen = false;
+        let isMobileMenuOpen = false;
+        let isCartOpen = false;
+        // Track which dropdown is currently open
+        let activeDropdown = null;
 
-	// Optional: Close mobile menu and dropdown on route change
-	$: if ($page.url.pathname !== '/') {
-		isMobileMenuOpen = false;
-		isDrillsDropdownOpen = false;
-		isPracticePlansDesktopDropdownOpen = false;
-		isPracticePlansMobileDropdownOpen = false;
-	}
+        // Derived helpers for dropdown state
+        $: isDrillsDropdownOpen = activeDropdown === 'drills';
+        $: isPracticePlansDesktopDropdownOpen = activeDropdown === 'practice-plans';
+        $: isPracticePlansMobileDropdownOpen = activeDropdown === 'practice-plans-mobile';
+        $: isProfileDropdownOpen = activeDropdown === 'profile';
 
-	function toggleCart() {
-		isCartOpen = !isCartOpen;
-	}
+        // Optional: Close mobile menu and dropdown on route change
+        $: if ($page.url.pathname !== '/') {
+                isMobileMenuOpen = false;
+                activeDropdown = null;
+        }
 
-	function toggleMobileMenu() {
-		isMobileMenuOpen = !isMobileMenuOpen;
-	}
+        function toggleCart() {
+                isCartOpen = !isCartOpen;
+        }
 
-	// Close drills dropdown when clicking outside
-	onMount(() => {
-		const handleClickOutside = (event) => {
-			if (!event.target.closest('.drills-dropdown')) {
-				isDrillsDropdownOpen = false;
-			}
-			if (!event.target.closest('.cart-dropdown') && !event.target.closest('.cart-button')) {
-				isCartOpen = false;
-			}
-		};
+        function toggleMobileMenu() {
+                isMobileMenuOpen = !isMobileMenuOpen;
+        }
 
-		document.addEventListener('click', handleClickOutside);
+        // Determine if a navigation item is active
+        $: currentPath = $page.url.pathname;
+        function isActiveSection(path) {
+                return currentPath.startsWith(path);
+        }
 
-		return () => {
-			document.removeEventListener('click', handleClickOutside);
-		};
-	});
+        // Toggle dropdown visibility
+        function toggleDropdown(name, event) {
+                event?.preventDefault();
+                event?.stopPropagation();
+                activeDropdown = activeDropdown === name ? null : name;
+        }
+
+        function handleDropdownKeydown(event) {
+                if (event.key === 'Escape') {
+                        activeDropdown = null;
+                } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        const items = [
+                                ...event.currentTarget.querySelectorAll('[role="menuitem"]')
+                        ];
+                        const currentIndex = items.indexOf(event.target);
+                        let nextIndex;
+                        if (event.key === 'ArrowDown') {
+                                nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+                        } else {
+                                nextIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+                        }
+                        items[nextIndex]?.focus();
+                }
+        }
+
+        // Close dropdowns when clicking outside or pressing Escape
+        onMount(() => {
+                const handleClickOutside = (event) => {
+                        if (navigationRef && !navigationRef.contains(event.target)) {
+                                activeDropdown = null;
+                        }
+                        if (!event.target.closest('.cart-dropdown') && !event.target.closest('.cart-button')) {
+                                isCartOpen = false;
+                        }
+                };
+
+                document.addEventListener('click', handleClickOutside);
+                document.addEventListener('keydown', handleDropdownKeydown);
+
+                return () => {
+                        document.removeEventListener('click', handleClickOutside);
+                        document.removeEventListener('keydown', handleDropdownKeydown);
+                };
+        });
 
 	// User info from Better Auth
 	$: user = $session.data?.user;
@@ -81,139 +120,149 @@
 			<!-- Right side: Navigation Links -->
 			<div class="hidden md:flex items-center space-x-6">
 				<!-- Drills Dropdown -->
-				<div
-					role="button"
-					tabindex="0"
-					class="relative drills-dropdown"
-					on:mouseenter={() => (isDrillsDropdownOpen = true)}
-					on:mouseleave={() => (isDrillsDropdownOpen = false)}
-				>
-					<a
-						href="/drills"
-						class="text-gray-700 hover:text-gray-900 font-semibold flex items-center focus:outline-none"
-						aria-haspopup="true"
-						aria-expanded={isDrillsDropdownOpen}
-					>
-						Drills
-						<!-- Dropdown Arrow Icon -->
-						<svg
-							class="ml-1 h-4 w-4"
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M19 9l-7 7-7-7"
-							/>
-						</svg>
-					</a>
+                                <div class="relative drills-dropdown">
+                                        <button
+                                                class="flex items-center text-gray-700 hover:text-gray-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md px-2 py-1"
+                                                class:text-blue-600={isActiveSection('/drills')}
+                                                class:bg-blue-50={isActiveSection('/drills')}
+                                                on:click={(e) => toggleDropdown('drills', e)}
+                                                aria-expanded={isDrillsDropdownOpen}
+                                                aria-haspopup="true"
+                                                aria-controls="drills-menu"
+                                        >
+                                                <span>Drills</span>
+                                                <svg
+                                                        class="ml-1 h-4 w-4 transition-transform duration-200"
+                                                        class:rotate-180={isDrillsDropdownOpen}
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                        aria-hidden="true"
+                                                >
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                        </button>
 
 					<!-- Dropdown Menu -->
-					<div
-						class="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 transition-all duration-300 ease-in-out"
-						class:opacity-0={!isDrillsDropdownOpen}
-						class:invisible={!isDrillsDropdownOpen}
-						class:opacity-100={isDrillsDropdownOpen}
-						class:visible={isDrillsDropdownOpen}
-						role="menu"
-						aria-label="Drills options"
-					>
-						<a
-							href="/drills"
-							class="block px-4 py-2 text-gray-700 hover:bg-gray-100"
-							role="menuitem">View Drills</a
-						>
-						<a
-							href="/drills/create"
-							class="block px-4 py-2 text-gray-700 hover:bg-gray-100"
-							role="menuitem">Create Drill</a
-						>
-						<a
-							href="/drills/bulk-upload"
-							class="block px-4 py-2 text-gray-700 hover:bg-gray-100"
-							role="menuitem">Bulk Upload</a
-						>
-						<a href="/poll" class="block px-4 py-2 text-gray-700 hover:bg-gray-100" role="menuitem"
-							>Suggest Drills</a
-						>
-					</div>
+                                        <div
+                                                id="drills-menu"
+                                                class="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50"
+                                                class:opacity-0={!isDrillsDropdownOpen}
+                                                class:invisible={!isDrillsDropdownOpen}
+                                                class:opacity-100={isDrillsDropdownOpen}
+                                                class:visible={isDrillsDropdownOpen}
+                                                role="menu"
+                                                aria-label="Drills options"
+                                                data-dropdown="drills"
+                                                on:keydown={handleDropdownKeydown}
+                                        >
+                                                <a
+                                                        href="/drills"
+                                                        class="block px-4 py-2 text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none rounded-sm"
+                                                        role="menuitem"
+                                                        tabindex="0"
+                                                        on:click={() => (activeDropdown = null)}
+                                                >
+                                                        View Drills
+                                                </a>
+                                                <a
+                                                        href="/drills/create"
+                                                        class="block px-4 py-2 text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none rounded-sm"
+                                                        role="menuitem"
+                                                        tabindex="0"
+                                                        on:click={() => (activeDropdown = null)}
+                                                >
+                                                        Create Drill
+                                                </a>
+                                                <a
+                                                        href="/drills/bulk-upload"
+                                                        class="block px-4 py-2 text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none rounded-sm"
+                                                        role="menuitem"
+                                                        tabindex="0"
+                                                        on:click={() => (activeDropdown = null)}
+                                                >
+                                                        Bulk Upload
+                                                </a>
+                                                <a
+                                                        href="/poll"
+                                                        class="block px-4 py-2 text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none rounded-sm"
+                                                        role="menuitem"
+                                                        tabindex="0"
+                                                        on:click={() => (activeDropdown = null)}
+                                                >
+                                                        Suggest Drills
+                                                </a>
+                                        </div>
 				</div>
 
-				<div
-					role="button"
-					tabindex="0"
-					class="relative practice-plans-dropdown"
-					on:mouseenter={() => (isPracticePlansDesktopDropdownOpen = true)}
-					on:mouseleave={() => (isPracticePlansDesktopDropdownOpen = false)}
-				>
-					<a
-						href="/practice-plans"
-						class="text-gray-700 hover:text-gray-900 font-semibold flex items-center focus:outline-none"
-						aria-haspopup="true"
-						aria-expanded={isPracticePlansDesktopDropdownOpen}
-					>
-						Practice Plans
-						<!-- Dropdown Arrow Icon -->
-						<svg
-							class="ml-1 h-4 w-4"
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M19 9l-7 7-7-7"
-							/>
-						</svg>
-					</a>
+                                <div class="relative practice-plans-dropdown">
+                                        <button
+                                                class="flex items-center text-gray-700 hover:text-gray-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md px-2 py-1"
+                                                class:text-blue-600={isActiveSection('/practice-plans')}
+                                                class:bg-blue-50={isActiveSection('/practice-plans')}
+                                                on:click={(e) => toggleDropdown('practice-plans', e)}
+                                                aria-expanded={isPracticePlansDesktopDropdownOpen}
+                                                aria-haspopup="true"
+                                        >
+                                                <span>Practice Plans</span>
+                                                <svg class="ml-1 h-4 w-4 transition-transform duration-200" class:rotate-180={isPracticePlansDesktopDropdownOpen} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                        </button>
 
 					<!-- Practice Plans Dropdown Menu -->
-					<div
-						class="absolute left-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50 transition-all duration-300 ease-in-out"
-						class:opacity-0={!isPracticePlansDesktopDropdownOpen}
-						class:invisible={!isPracticePlansDesktopDropdownOpen}
-						class:opacity-100={isPracticePlansDesktopDropdownOpen}
-						class:visible={isPracticePlansDesktopDropdownOpen}
-						role="menu"
-						aria-label="Practice Plans options"
-					>
-						<div class="py-1">
-							<a
-								href="/practice-plans"
-								class="block px-4 py-2 text-gray-700 hover:bg-gray-100"
-								role="menuitem">View Plans</a
-							>
-							<a
-								href="/practice-plans/create"
-								class="block px-4 py-2 text-gray-700 hover:bg-gray-100"
-								role="menuitem">Create from Cart</a
-							>
-						</div>
-					</div>
+                                        <div
+                                                class="absolute left-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50"
+                                                class:opacity-0={!isPracticePlansDesktopDropdownOpen}
+                                                class:invisible={!isPracticePlansDesktopDropdownOpen}
+                                                class:opacity-100={isPracticePlansDesktopDropdownOpen}
+                                                class:visible={isPracticePlansDesktopDropdownOpen}
+                                                role="menu"
+                                                aria-label="Practice Plans options"
+                                                data-dropdown="practice-plans"
+                                                on:keydown={handleDropdownKeydown}
+                                        >
+                                                <a
+                                                        href="/practice-plans"
+                                                        class="block px-4 py-2 text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none rounded-sm"
+                                                        role="menuitem"
+                                                        tabindex="0"
+                                                        on:click={() => (activeDropdown = null)}
+                                                >
+                                                        View Plans
+                                                </a>
+                                                <a
+                                                        href="/practice-plans/create"
+                                                        class="block px-4 py-2 text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none rounded-sm"
+                                                        role="menuitem"
+                                                        tabindex="0"
+                                                        on:click={() => (activeDropdown = null)}
+                                                >
+                                                        Create from Cart
+                                                </a>
+                                        </div>
 				</div>
 
-				<!-- Formations Link -->
-				<a
-					href="/formations"
-					class="text-gray-700 hover:text-gray-900 font-semibold flex items-center focus:outline-none"
-				>
-					Formations
-				</a>
+                                <!-- Formations Link -->
+                                <a
+                                        href="/formations"
+                                        class="text-gray-700 hover:text-gray-900 font-semibold flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md px-2 py-1"
+                                        class:text-blue-600={isActiveSection('/formations')}
+                                        class:bg-blue-50={isActiveSection('/formations')}
+                                >
+                                        Formations
+                                </a>
 
 				<!-- Whiteboard Link -->
-				<a
-					href="/whiteboard"
-					class="text-gray-700 hover:text-gray-900 font-semibold flex items-center focus:outline-none"
-				>
-					Whiteboard
-				</a>
+                                <a
+                                        href="/whiteboard"
+                                        class="text-gray-700 hover:text-gray-900 font-semibold flex items-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md px-2 py-1"
+                                        class:text-blue-600={isActiveSection('/whiteboard')}
+                                        class:bg-blue-50={isActiveSection('/whiteboard')}
+                                >
+                                        Whiteboard
+                                </a>
 
 				<!-- Shopping Cart Icon -->
 				<div class="relative cart-dropdown">
@@ -279,58 +328,56 @@
 					{/if}
 				</div>
 				{#if user}
-					<div
-						role="button"
-						tabindex="0"
-						class="relative group drills-dropdown"
-						on:mouseenter={() => (isProfileDropdownOpen = true)}
-						on:mouseleave={() => (isProfileDropdownOpen = false)}
-					>
-						<a
-							href="/profile"
-							class="flex items-center text-gray-700 hover:text-gray-900 font-semibold focus:outline-none"
-							aria-haspopup="true"
-							aria-expanded={isProfileDropdownOpen}
-						>
-							<img src={user.image} alt={user.name} class="w-8 h-8 rounded-full" />
-							<span class="ml-2">{user.name}</span>
-							<!-- Dropdown Arrow Icon -->
-							<svg
-								class="ml-1 h-4 w-4"
-								xmlns="http://www.w3.org/2000/svg"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M19 9l-7 7-7-7"
-								/>
-							</svg>
-						</a>
-						<div
-							class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 transition-all duration-300 ease-in-out"
-							class:opacity-0={!isProfileDropdownOpen}
-							class:invisible={!isProfileDropdownOpen}
-							class:opacity-100={isProfileDropdownOpen}
-							class:visible={isProfileDropdownOpen}
-							role="menu"
-							aria-label="Profile options"
-						>
-							<a
-								href="/profile"
-								class="block px-4 py-2 text-gray-700 hover:bg-gray-100"
-								role="menuitem">Profile</a
-							>
-							<button
-								on:click={() => signOut()}
-								class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-								role="menuitem"
-							>
-								Sign out
-							</button>
+                                        <div class="relative group drills-dropdown">
+                                                <button
+                                                        class="flex items-center text-gray-700 hover:text-gray-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-md px-2 py-1"
+                                                        on:click={(e) => toggleDropdown('profile', e)}
+                                                        aria-expanded={isProfileDropdownOpen}
+                                                        aria-haspopup="true"
+                                                        aria-controls="profile-menu"
+                                                >
+                                                        <img src={user.image} alt={user.name} class="w-8 h-8 rounded-full" />
+                                                        <span class="ml-2">{user.name}</span>
+                                                        <svg
+                                                                class="ml-1 h-4 w-4 transition-transform duration-200"
+                                                                class:rotate-180={isProfileDropdownOpen}
+                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                                stroke="currentColor"
+                                                        >
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                        </svg>
+                                                </button>
+                                                <div
+                                                        id="profile-menu"
+                                                        class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50"
+                                                        class:opacity-0={!isProfileDropdownOpen}
+                                                        class:invisible={!isProfileDropdownOpen}
+                                                        class:opacity-100={isProfileDropdownOpen}
+                                                        class:visible={isProfileDropdownOpen}
+                                                        role="menu"
+                                                        aria-label="Profile options"
+                                                        data-dropdown="profile"
+                                                        on:keydown={handleDropdownKeydown}
+                                                >
+                                                        <a
+                                                                href="/profile"
+                                                                class="block px-4 py-2 text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none rounded-sm"
+                                                                role="menuitem"
+                                                                tabindex="0"
+                                                                on:click={() => (activeDropdown = null)}
+                                                        >Profile</a
+                                                        >
+                                                        <button
+                                                                on:click={() => signOut()}
+                                                                class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none rounded-sm"
+                                                                role="menuitem"
+                                                                tabindex="0"
+                                                                on:click={() => (activeDropdown = null)}
+                                                        >
+                                                                Sign out
+                                                        </button>
 						</div>
 					</div>
 				{:else}
@@ -454,120 +501,85 @@
 		<div class="md:hidden">
 			<div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
 				<!-- Drills Dropdown in Mobile Menu -->
-				<div class="relative drills-dropdown">
-					<a
-						href="/drills"
-						class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold flex justify-between items-center focus:outline-none"
-						on:click={() => (isDrillsDropdownOpen = !isDrillsDropdownOpen)}
-						aria-haspopup="true"
-						aria-expanded={isDrillsDropdownOpen}
-					>
-						Drills
-						<!-- Dropdown Arrow Icon -->
-						<svg
-							class="ml-1 h-4 w-4"
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M19 9l-7 7-7-7"
-							/>
-						</svg>
-					</a>
-					{#if isDrillsDropdownOpen}
-						<div class="mt-1 space-y-1 pl-4">
-							<a
-								href="/drills"
-								class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md"
-								role="menuitem">View Drills</a
-							>
-							<a
-								href="/drills/create"
-								class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md"
-								role="menuitem">Create Drill</a
-							>
-							<a
-								href="/drills/bulk-upload"
-								class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md"
-								role="menuitem">Bulk Upload</a
-							>
-							<a
-								href="/poll"
-								class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md"
-								role="menuitem">Suggest Drills</a
-							>
-						</div>
-					{/if}
+                                <div class="relative drills-dropdown">
+                                        <button
+                                                class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                on:click={(e) => toggleDropdown('drills', e)}
+                                                aria-haspopup="true"
+                                                aria-expanded={isDrillsDropdownOpen}
+                                                aria-controls="mobile-drills-menu"
+                                        >
+                                                Drills
+                                                <svg
+                                                        class="ml-1 h-4 w-4 transition-transform duration-200"
+                                                        class:rotate-180={isDrillsDropdownOpen}
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                >
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                        </button>
+                                        {#if isDrillsDropdownOpen}
+                                                <div id="mobile-drills-menu" class="mt-1 space-y-1 pl-4" role="menu" on:keydown={handleDropdownKeydown}>
+                                                        <a href="/drills" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem" tabindex="0" on:click={() => (activeDropdown = null)}>View Drills</a>
+                                                        <a href="/drills/create" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem" tabindex="0" on:click={() => (activeDropdown = null)}>Create Drill</a>
+                                                        <a href="/drills/bulk-upload" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem" tabindex="0" on:click={() => (activeDropdown = null)}>Bulk Upload</a>
+                                                        <a href="/poll" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem" tabindex="0" on:click={() => (activeDropdown = null)}>Suggest Drills</a>
+                                                </div>
+                                        {/if}
 				</div>
 
-				<div
-					role="button"
-					tabindex="0"
-					class="relative practice-plans-dropdown"
-					on:mouseenter={() => (isPracticePlansMobileDropdownOpen = true)}
-					on:mouseleave={() => (isPracticePlansMobileDropdownOpen = false)}
-				>
-					<a
-						href="/practice-plans"
-						class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold flex justify-between items-center focus:outline-none"
-						on:click={() =>
-							(isPracticePlansMobileDropdownOpen = !isPracticePlansMobileDropdownOpen)}
-						aria-haspopup="true"
-						aria-expanded={isPracticePlansMobileDropdownOpen}
-					>
-						Practice Plans
-						<!-- Dropdown Arrow Icon -->
-						<svg
-							class="ml-1 h-4 w-4"
-							xmlns="http://www.w3.org/2000/svg"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M19 9l-7 7-7-7"
-							/>
-						</svg>
-					</a>
-					{#if isPracticePlansMobileDropdownOpen}
-						<div class="mt-1 space-y-1 pl-4">
-							<a
-								href="/practice-plans"
-								class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md"
-								role="menuitem">View Plans</a
-							>
-							<a
-								href="/practice-plans/create"
-								class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md"
-								role="menuitem">Create from Cart</a
-							>
-						</div>
-					{/if}
+                                <div class="relative practice-plans-dropdown">
+                                        <button
+                                                class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                on:click={(e) => toggleDropdown('practice-plans-mobile', e)}
+                                                aria-haspopup="true"
+                                                aria-expanded={isPracticePlansMobileDropdownOpen}
+                                                aria-controls="mobile-practice-menu"
+                                        >
+                                                Practice Plans
+                                                <svg
+                                                        class="ml-1 h-4 w-4 transition-transform duration-200"
+                                                        class:rotate-180={isPracticePlansMobileDropdownOpen}
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                >
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                        </button>
+                                        {#if isPracticePlansMobileDropdownOpen}
+                                                <div id="mobile-practice-menu" class="mt-1 space-y-1 pl-4" role="menu" on:keydown={handleDropdownKeydown}>
+                                                        <a href="/practice-plans" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem" tabindex="0" on:click={() => (activeDropdown = null)}>View Plans</a>
+                                                        <a href="/practice-plans/create" class="block text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md" role="menuitem" tabindex="0" on:click={() => (activeDropdown = null)}>Create from Cart</a>
+                                                </div>
+                                        {/if}
 				</div>
 
 				<!-- Formations Link for Mobile -->
-				<a
-					href="/formations"
-					class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold flex justify-between items-center focus:outline-none"
-				>
-					Formations
-				</a>
+                                <a
+                                        href="/formations"
+                                        class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        class:bg-blue-50={isActiveSection('/formations')}
+                                        class:text-blue-600={isActiveSection('/formations')}
+                                        on:click={() => (isMobileMenuOpen = false)}
+                                >
+                                        Formations
+                                </a>
 
 				<!-- Whiteboard Link for Mobile -->
-				<a
-					href="/whiteboard"
-					class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold flex justify-between items-center focus:outline-none"
-				>
-					Whiteboard
-				</a>
+                                <a
+                                        href="/whiteboard"
+                                        class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        class:bg-blue-50={isActiveSection('/whiteboard')}
+                                        class:text-blue-600={isActiveSection('/whiteboard')}
+                                        on:click={() => (isMobileMenuOpen = false)}
+                                >
+                                        Whiteboard
+                                </a>
 
 				{#if user}
 					<div class="px-3 py-2">

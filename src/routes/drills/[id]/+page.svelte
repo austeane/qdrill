@@ -9,11 +9,15 @@
 	import Comments from '$lib/components/Comments.svelte';
 	import { toast } from '@zerodevx/svelte-toast';
 	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
-	import { dev } from '$app/environment';
-	import { apiFetch } from '$lib/utils/apiFetch.js';
+import { dev } from '$app/environment';
+import { apiFetch } from '$lib/utils/apiFetch.js';
+import Tooltip from '$lib/components/ui/Tooltip.svelte';
 
-	export let data;
-	console.log('[Page Component] Initial data:', data);
+export let data;
+console.log('[Page Component] Initial data:', data);
+
+// Determine if user is authenticated
+$: isAuthenticated = !!$page.data?.session?.user;
 
 	// Create a local writable store for the current drill data
 	const drill = writable(data.drill || {});
@@ -81,11 +85,15 @@
 		editableDiagram.set(null); // Reset the editable diagram after saving
 	}
 
-	function addDrillToPlan() {
-		cart.addDrill($drill);
-		// Show notification
-		alert('Drill added to plan');
-	}
+function addDrillToPlan() {
+        const added = cart.addDrill($drill);
+        if (!added) {
+                alert('Please sign in to add drills to your plan');
+                return;
+        }
+        // Show notification
+        alert('Drill added to plan');
+}
 
 	// Function to create a new variation
 	async function createVariation() {
@@ -288,12 +296,28 @@
 				>
 					Create New Drill
 				</a>
-				<button
-					on:click={addDrillToPlan}
-					class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
-				>
-					Add Drill to Plan
-				</button>
+                                <div class="relative">
+                                        <button
+                                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+                                                class:bg-gray-300={!isAuthenticated}
+                                                class:text-gray-500={!isAuthenticated}
+                                                class:cursor-not-allowed={!isAuthenticated}
+                                                disabled={!isAuthenticated}
+                                                on:click={isAuthenticated ? addDrillToPlan : undefined}
+                                                aria-label={isAuthenticated ? 'Add drill to plan' : 'Sign in required to add drills'}
+                                        >
+                                                {#if !isAuthenticated}
+                                                        Sign in to Add
+                                                {:else}
+                                                        Add Drill to Plan
+                                                {/if}
+                                        </button>
+                                        {#if !isAuthenticated}
+                                                <Tooltip text="Create a free account to save drills and build practice plans" position="top">
+                                                        <div class="absolute inset-0 pointer-events-none"></div>
+                                                </Tooltip>
+                                        {/if}
+                                </div>
 				{#if dev || $drill.created_by === $page.data.session?.user?.id}
 					<button
 						on:click={handleDelete}

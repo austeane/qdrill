@@ -6,12 +6,13 @@
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore.js';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
-	import { dev } from '$app/environment';
-	import { page } from '$app/stores';
-	import { goto, invalidate } from '$app/navigation';
-	import { navigating } from '$app/stores';
-	import { FILTER_STATES } from '$lib/constants';
-	import { apiFetch } from '$lib/utils/apiFetch.js';
+import { dev } from '$app/environment';
+import { page } from '$app/stores';
+import { goto, invalidate } from '$app/navigation';
+import { navigating } from '$app/stores';
+import { FILTER_STATES } from '$lib/constants';
+import { apiFetch } from '$lib/utils/apiFetch.js';
+import Tooltip from '$lib/components/ui/Tooltip.svelte';
 
 	// Import only necessary stores (filter/sort state)
 	import {
@@ -36,7 +37,10 @@
 	import Pagination from '$lib/components/Pagination.svelte';
 	import TitleWithTooltip from '$lib/components/TitleWithTooltip.svelte';
 
-	export let data;
+export let data;
+
+// Determine if user is authenticated
+$: isAuthenticated = !!$page.data?.session?.user;
 
 	// Filter options from load
 	$: filterOptions = data.filterOptions || {};
@@ -221,15 +225,16 @@
 	}
 
 	// Function to handle adding/removing drills from the cart
-	async function toggleDrillInCart(drill) {
-		const isInCart = drillsInCart.has(drill.id);
-		if (isInCart) {
-			cart.removeDrill(drill.id);
-			buttonStates = { ...buttonStates, [drill.id]: 'removed' };
-		} else {
-			cart.addDrill(drill);
-			buttonStates = { ...buttonStates, [drill.id]: 'added' };
-		}
+        async function toggleDrillInCart(drill) {
+                const isInCart = drillsInCart.has(drill.id);
+                if (isInCart) {
+                        cart.removeDrill(drill.id);
+                        buttonStates = { ...buttonStates, [drill.id]: 'removed' };
+                } else {
+                        const added = cart.addDrill(drill);
+                        if (!added) return;
+                        buttonStates = { ...buttonStates, [drill.id]: 'added' };
+                }
 		// No need for second buttonStates = { ...buttonStates };
 		setTimeout(() => {
 			// Update state based on actual cart status after timeout
@@ -512,36 +517,50 @@
 						</div>
 
 						<!-- Add to Practice Plan button -->
-						<div class="mt-auto">
-							<button
-								class="w-full py-2 px-4 rounded-md font-semibold text-white transition-colors duration-300"
-								class:bg-green-500={buttonStates[drill.id] === 'added'}
-								class:hover:bg-green-600={buttonStates[drill.id] === 'added'}
-								class:bg-red-500={buttonStates[drill.id] === 'removed' ||
-									buttonStates[drill.id] === 'in-cart'}
-								class:hover:bg-red-600={buttonStates[drill.id] === 'removed' ||
-									buttonStates[drill.id] === 'in-cart'}
-								class:bg-blue-500={!drillsInCart.has(drill.id) &&
-									buttonStates[drill.id] !== 'added' &&
-									buttonStates[drill.id] !== 'removed' &&
-									buttonStates[drill.id] !== 'in-cart'}
-								class:hover:bg-blue-600={!drillsInCart.has(drill.id) &&
-									buttonStates[drill.id] !== 'added' &&
-									buttonStates[drill.id] !== 'removed' &&
-									buttonStates[drill.id] !== 'in-cart'}
-								on:click|stopPropagation={() => toggleDrillInCart(drill)}
-							>
-								{#if buttonStates[drill.id] === 'added'}
-									Added
-								{:else if buttonStates[drill.id] === 'removed'}
-									Removed
-								{:else if buttonStates[drill.id] === 'in-cart'}
-									Remove from Plan
-								{:else}
-									Add to Plan
-								{/if}
-							</button>
-						</div>
+                                               <div class="mt-auto">
+                                                        <div class="relative">
+                                                                <button
+                                                                        class="w-full py-2 px-4 rounded-md font-semibold transition-colors duration-300"
+                                                                        class:bg-green-500={isAuthenticated && buttonStates[drill.id] === 'added'}
+                                                                        class:hover:bg-green-600={isAuthenticated && buttonStates[drill.id] === 'added'}
+                                                                        class:bg-red-500={isAuthenticated && (buttonStates[drill.id] === 'removed' || buttonStates[drill.id] === 'in-cart')}
+                                                                        class:hover:bg-red-600={isAuthenticated && (buttonStates[drill.id] === 'removed' || buttonStates[drill.id] === 'in-cart')}
+                                                                        class:bg-blue-500={isAuthenticated && !drillsInCart.has(drill.id) &&
+                                                                                buttonStates[drill.id] !== 'added' &&
+                                                                                buttonStates[drill.id] !== 'removed' &&
+                                                                                buttonStates[drill.id] !== 'in-cart'}
+                                                                        class:hover:bg-blue-600={isAuthenticated && !drillsInCart.has(drill.id) &&
+                                                                                buttonStates[drill.id] !== 'added' &&
+                                                                                buttonStates[drill.id] !== 'removed' &&
+                                                                                buttonStates[drill.id] !== 'in-cart'}
+                                                                        class:text-white={isAuthenticated}
+                                                                        class:bg-gray-300={!isAuthenticated}
+                                                                        class:text-gray-500={!isAuthenticated}
+                                                                        class:cursor-not-allowed={!isAuthenticated}
+                                                                        disabled={!isAuthenticated}
+                                                                        on:click|stopPropagation={() => isAuthenticated && toggleDrillInCart(drill)}
+                                                                        aria-label={isAuthenticated ? 'Add drill to plan' : 'Sign in required to add drills'}
+                                                                >
+                                                                        {#if !isAuthenticated}
+                                                                                Sign in to Add
+                                                                        {:else if buttonStates[drill.id] === 'added'}
+                                                                                Added
+                                                                        {:else if buttonStates[drill.id] === 'removed'}
+                                                                                Removed
+                                                                        {:else if buttonStates[drill.id] === 'in-cart'}
+                                                                                Remove from Plan
+                                                                        {:else}
+                                                                                Add to Plan
+                                                                        {/if}
+                                                                </button>
+
+                                                                {#if !isAuthenticated}
+                                                                        <Tooltip text="Create a free account to save drills and build practice plans" position="top">
+                                                                                <div class="absolute inset-0 pointer-events-none"></div>
+                                                                        </Tooltip>
+                                                                {/if}
+                                                        </div>
+                                                </div>
 					</div>
 				</div>
 			{/each}

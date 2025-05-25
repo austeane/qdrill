@@ -37,10 +37,10 @@
       class:mt-2={position === 'bottom'}
       class:mr-2={position === 'left'}
       class:ml-2={position === 'right'}
-      class:left-1/2={position === 'top' || position === 'bottom'}
-      class:top-1/2={position === 'left' || position === 'right'}
-      class:-translate-x-1/2={position === 'top' || position === 'bottom'}
-      class:-translate-y-1/2={position === 'left' || position === 'right'}
+      class:left-[50%]={position === 'top' || position === 'bottom'}
+      class:top-[50%]={position === 'left' || position === 'right'}
+      class:-translate-x-[50%]={position === 'top' || position === 'bottom'}
+      class:-translate-y-[50%]={position === 'left' || position === 'right'}
     >
       {text}
 
@@ -51,10 +51,10 @@
         class:bottom-full={position === 'bottom'}
         class:right-full={position === 'left'}
         class:left-full={position === 'right'}
-        class:left-1/2={position === 'top' || position === 'bottom'}
-        class:top-1/2={position === 'left' || position === 'right'}
-        class:-translate-x-1/2={position === 'top' || position === 'bottom'}
-        class:-translate-y-1/2={position === 'left' || position === 'right'}
+        class:left-[50%]={position === 'top' || position === 'bottom'}
+        class:top-[50%]={position === 'left' || position === 'right'}
+        class:-translate-x-[50%]={position === 'top' || position === 'bottom'}
+        class:-translate-y-[50%]={position === 'left' || position === 'right'}
         class:-mt-1={position === 'top'}
         class:-mb-1={position === 'bottom'}
         class:-mr-1={position === 'left'}

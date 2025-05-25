@@ -84,8 +84,10 @@
                                                on:click={handleSignIn}
                                                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg w-full sm:w-auto text-lg shadow-lg"
                                        >
-                                               Get Started Free
+                                               Sign In with Google
                                        </LoadingButton>
+                                       
+                                       <p class="text-sm text-gray-500">100% Free Forever • No Credit Card</p>
 
                                        <a
                                                href="/drills"
@@ -96,12 +98,13 @@
                                </div>
 
                                <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                       <h3 class="font-semibold text-blue-900 mb-2">What you get:</h3>
+                                       <h3 class="font-semibold text-blue-900 mb-2">Always Free - No Hidden Costs</h3>
                                        <ul class="text-sm text-blue-800 space-y-1">
                                                <li>✓ Save unlimited drills and practice plans</li>
                                                <li>✓ AI-powered practice plan generation</li>
                                                <li>✓ Share plans with your team</li>
                                                <li>✓ Access to community drills library</li>
+                                               <li>✓ No credit card required, ever</li>
                                        </ul>
                                </div>
                        {/if}

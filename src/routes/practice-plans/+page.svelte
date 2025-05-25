@@ -2,8 +2,8 @@
 	import FilterPanel from '$lib/components/FilterPanel.svelte';
 	import { onDestroy, onMount, afterUpdate } from 'svelte';
 	import { tick } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+        import { goto } from '$app/navigation';
+        import { page, navigating } from '$app/stores';
 	import debounce from 'lodash/debounce';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
@@ -15,7 +15,8 @@
 		selectedEstimatedParticipantsMax
 	} from '$lib/stores/practicePlanFilterStore';
 	import DeletePracticePlan from '$lib/components/DeletePracticePlan.svelte';
-	import Pagination from '$lib/components/Pagination.svelte';
+        import Pagination from '$lib/components/Pagination.svelte';
+        import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
 	import { cart } from '$lib/stores/cartStore';
 	import AiPlanGeneratorModal from '$lib/components/practice-plan/AiPlanGeneratorModal.svelte';
 	import TitleWithTooltip from '$lib/components/TitleWithTooltip.svelte';
@@ -306,9 +307,25 @@
 		</div>
 	{/if}
 
-	<!-- Practice Plans Grid -->
-	{#if practicePlans.length > 0}
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Practice Plans Grid -->
+        {#if $navigating && practicePlans.length === 0}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {#each Array(6) as _}
+                                <div class="bg-white rounded-lg shadow-md p-6">
+                                        <div class="flex items-center space-x-3 mb-4">
+                                                <div class="w-8 h-8 bg-gray-300 rounded"></div>
+                                                <SkeletonLoader lines={1} className="flex-1" />
+                                        </div>
+                                        <SkeletonLoader lines={3} className="mb-4" />
+                                        <div class="flex justify-between items-center">
+                                                <div class="h-4 bg-gray-300 rounded w-16"></div>
+                                                <div class="h-8 bg-gray-300 rounded w-20"></div>
+                                        </div>
+                                </div>
+                        {/each}
+                </div>
+        {:else if practicePlans.length > 0}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 			<!-- Use practicePlans directly (already paginated and sorted by server) -->
 			{#each practicePlans as plan (plan.id)}
 				<div

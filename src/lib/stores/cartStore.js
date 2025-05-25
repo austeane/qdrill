@@ -1,4 +1,6 @@
 import { writable } from 'svelte/store';
+import { page } from '$app/stores';
+import { get } from 'svelte/store';
 
 function createCartStore() {
 	const initialDrills =
@@ -10,18 +12,26 @@ function createCartStore() {
 
 	return {
 		subscribe,
-		addDrill: (drill) => {
-			update((items) => {
-				if (!items.find((d) => d.id === drill.id)) {
-					const updatedDrills = [...items, drill];
-					if (typeof window !== 'undefined') {
-						localStorage.setItem('cartDrills', JSON.stringify(updatedDrills));
-					}
-					return updatedDrills;
-				}
-				return items;
-			});
-		},
+               addDrill: (drill) => {
+                        // Check authentication before adding
+                        const currentPage = get(page);
+                        if (!currentPage.data?.session?.user) {
+                                console.warn('User must be authenticated to add drills to cart');
+                                return false;
+                        }
+
+                        update((items) => {
+                                if (!items.find((d) => d.id === drill.id)) {
+                                        const updatedDrills = [...items, drill];
+                                        if (typeof window !== 'undefined') {
+                                                localStorage.setItem('cartDrills', JSON.stringify(updatedDrills));
+                                        }
+                                        return updatedDrills;
+                                }
+                                return items;
+                        });
+                        return true;
+               },
 		removeDrill: (id) => {
 			update((items) => {
 				const updatedDrills = items.filter((d) => d.id !== id);

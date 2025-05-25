@@ -18,6 +18,8 @@
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { cart } from '$lib/stores/cartStore';
 	import AiPlanGeneratorModal from '$lib/components/practice-plan/AiPlanGeneratorModal.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
+	import { resetPracticePlanFilters } from '$lib/stores/practicePlanFilterStore';
 	import TitleWithTooltip from '$lib/components/TitleWithTooltip.svelte';
 
 	export let data;
@@ -36,6 +38,32 @@
 	let currentSortOrder = data.currentSortOrder || 'desc';
 
 	let showAiModal = false; // NEW modal state
+
+	$: hasFilters =
+		searchQuery ||
+		Object.keys($selectedPhaseOfSeason).length > 0 ||
+		Object.keys($selectedPracticeGoals).length > 0 ||
+		$selectedEstimatedParticipantsMin !== (filterOptions.estimatedParticipants?.min ?? 1) ||
+		$selectedEstimatedParticipantsMax !== (filterOptions.estimatedParticipants?.max ?? 100);
+
+	function clearAllFilters() {
+		resetPracticePlanFilters();
+		updateUrlParams();
+	}
+
+	$: emptyStateActions = hasFilters
+		? [
+				{ label: 'Clear Filters', onClick: clearAllFilters, primary: true },
+				{ label: 'Browse Drills', href: '/drills' }
+			]
+		: [
+				{
+					label: 'Create Practice Plan',
+					onClick: () => goto('/practice-plans/create'),
+					primary: true
+				},
+				{ label: 'Browse Drills', href: '/drills' }
+			];
 
 	// --- Initialize filter stores based on URL on mount/update ---
 	function initializeFiltersFromUrl() {
@@ -319,8 +347,8 @@
 						<div class="flex-1 pr-12">
 							<h2 class="text-xl font-bold">
 								<a href="/practice-plans/{plan.id}" class="text-blue-600 hover:text-blue-800 block">
-									<TitleWithTooltip 
-										title={plan.name} 
+									<TitleWithTooltip
+										title={plan.name}
 										className="text-xl font-bold text-blue-600 hover:text-blue-800"
 										maxWidth="100%"
 									/>
@@ -380,7 +408,15 @@
 			/>
 		{/if}
 	{:else if !error}
-		<p class="text-center text-gray-500 mt-8">No practice plans found matching your criteria.</p>
+		<EmptyState
+			title={hasFilters ? 'No practice plans found' : 'No practice plans yet'}
+			description={hasFilters
+				? 'Try removing some filters or creating a new plan with your criteria.'
+				: 'Create your first practice plan to get started with organized training.'}
+			icon="plans"
+			actions={emptyStateActions}
+			showSearchSuggestion={hasFilters}
+		/>
 	{/if}
 
 	<!-- Mount the modal -->

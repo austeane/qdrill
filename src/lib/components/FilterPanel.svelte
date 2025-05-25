@@ -30,9 +30,11 @@
 	} from '$lib/stores/practicePlanFilterStore';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
-	import debounce from 'lodash/debounce';
-	import { Plus, Minus, Search } from 'lucide-svelte';
+import { browser } from '$app/environment';
+import debounce from 'lodash/debounce';
+import { Plus, Minus, Search } from 'lucide-svelte';
+import Spinner from '$lib/components/Spinner.svelte';
+import { createLoadingState } from '$lib/utils/loadingStates.js';
 
 	const dispatch = createEventDispatcher();
 
@@ -91,8 +93,9 @@
 	let estimatedParticipantsRange = [1, 100];
 
 	// Variables for Contains Drill filter
-	let drillSearchTerm = '';
-	let drillSuggestions = [];
+let drillSearchTerm = '';
+let drillSuggestions = [];
+const drillSearchLoading = createLoadingState();
 
 	let mounted = false;
 
@@ -283,18 +286,27 @@
 	// Subscribe to Practice Plans Filters if needed
 
 	// Fetch drill suggestions
-	async function fetchDrillSuggestions() {
-		if (!mounted) return; // Ensure client-side execution
-		try {
-			const queryParam =
-				drillSearchTerm.trim() === '' ? '' : `?query=${encodeURIComponent(drillSearchTerm)}`;
-			const drills = await apiFetch(`/api/drills/search${queryParam}`);
-			drillSuggestions = drills.filter((drill) => !selectedDrills.some((d) => d.id === drill.id));
-		} catch (error) {
-			console.error(error);
-		}
-	}
+async function fetchDrillSuggestions() {
+        if (!mounted) {
+                drillSearchLoading.stop();
+                return;
+        }
+        try {
+                const queryParam =
+                        drillSearchTerm.trim() === '' ? '' : `?query=${encodeURIComponent(drillSearchTerm)}`;
+                const drills = await apiFetch(`/api/drills/search${queryParam}`);
+                drillSuggestions = drills.filter((drill) => !selectedDrills.some((d) => d.id === drill.id));
+        } catch (error) {
+                console.error(error);
+        } finally {
+                drillSearchLoading.stop();
+        }
+}
 
+function handleDrillSearchInput() {
+        drillSearchLoading.start();
+        debouncedFetchDrillSuggestions();
+}
 	const debouncedFetchDrillSuggestions = debounce(fetchDrillSuggestions, 300);
 
 	function addDrillToSelected(drill) {
@@ -936,13 +948,33 @@
 					role="menu"
 					tabindex="0"
 				>
-					<input
-						type="text"
-						placeholder="Search for drills..."
-						class="w-full p-2 border border-gray-300 rounded-md mb-2"
-						bind:value={drillSearchTerm}
-						on:input={debouncedFetchDrillSuggestions}
-					/>
+                                        <div class="relative mb-2">
+                                                <input
+                                                        type="text"
+                                                        placeholder="Search for drills..."
+                                                        class="w-full p-2 pr-8 border border-gray-300 rounded-md"
+                                                        bind:value={drillSearchTerm}
+                                                        on:input={handleDrillSearchInput}
+                                                />
+                                                {#if $drillSearchLoading}
+                                                        <div class="absolute right-2 top-1/2 transform -translate-y-1/2">
+                                                                <Spinner size="sm" color="gray" />
+                                                        </div>
+                                                {:else if drillSearchTerm}
+                                                        <button
+                                                                class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                                                on:click={() => {
+                                                                        drillSearchTerm = '';
+                                                                        drillSuggestions = [];
+                                                                }}
+                                                                aria-label="Clear search"
+                                                        >
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                                </svg>
+                                                        </button>
+                                                {/if}
+                                        </div>
 					{#if drillSuggestions.length > 0}
 						<ul class="max-h-48 overflow-y-auto">
 							{#each drillSuggestions as drill}

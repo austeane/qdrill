@@ -33,8 +33,10 @@
 		selectedDrillTypes
 	} from '$lib/stores/drillsStore';
 
-	import Pagination from '$lib/components/Pagination.svelte';
-	import TitleWithTooltip from '$lib/components/TitleWithTooltip.svelte';
+import Pagination from '$lib/components/Pagination.svelte';
+import TitleWithTooltip from '$lib/components/TitleWithTooltip.svelte';
+import Spinner from '$lib/components/Spinner.svelte';
+import { createLoadingState } from '$lib/utils/loadingStates.js';
 
 	export let data;
 
@@ -42,7 +44,11 @@
 	$: filterOptions = data.filterOptions || {};
 
 	// Object to hold temporary button states ('added', 'removed', or null)
-	let buttonStates = {};
+let buttonStates = {};
+
+// Loading state for search input
+const searchLoading = createLoadingState();
+let searchTimeout;
 
 	// Reactive set of drill IDs currently in the cart
 	$: drillsInCart = new Set($cart.map((d) => d.id));
@@ -206,9 +212,19 @@
 		}
 	}
 
-	function handleSearchInput() {
-		debounce(() => applyFiltersAndNavigate({ resetPage: true }));
-	}
+        function handleSearchInput() {
+                searchLoading.start();
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                        applyFiltersAndNavigate({ resetPage: true });
+                        searchLoading.stop();
+                }, 300);
+        }
+
+        function clearSearch() {
+                searchQuery.set('');
+                applyFiltersAndNavigate({ resetPage: true });
+        }
 
 	function handleSortChange(event) {
 		selectedSortOption.set(event.target.value);
@@ -380,15 +396,32 @@
 			{/if}
 		</div>
 
-		<input
-			type="text"
-			placeholder="Search drills..."
-			class="flex-grow p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-			bind:value={$searchQuery}
-			on:input={handleSearchInput}
-			aria-label="Search drills"
-			data-testid="search-input"
-		/>
+                <div class="relative flex-grow">
+                        <input
+                                type="text"
+                                placeholder="Search drills..."
+                                class="w-full p-3 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                bind:value={$searchQuery}
+                                on:input={handleSearchInput}
+                                aria-label="Search drills"
+                                data-testid="search-input"
+                        />
+                        {#if $searchLoading}
+                                <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                        <Spinner size="sm" color="gray" />
+                                </div>
+                        {:else if $searchQuery}
+                                <button
+                                        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                        on:click={clearSearch}
+                                        aria-label="Clear search"
+                                >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                </button>
+                        {/if}
+                </div>
 	</div>
 
 	<!-- Loading and Empty States -->

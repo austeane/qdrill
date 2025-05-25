@@ -4,7 +4,6 @@
 	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import debounce from 'lodash/debounce';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
 	import { FILTER_STATES } from '$lib/constants';
@@ -15,10 +14,12 @@
 		selectedEstimatedParticipantsMax
 	} from '$lib/stores/practicePlanFilterStore';
 	import DeletePracticePlan from '$lib/components/DeletePracticePlan.svelte';
-	import Pagination from '$lib/components/Pagination.svelte';
-	import { cart } from '$lib/stores/cartStore';
-	import AiPlanGeneratorModal from '$lib/components/practice-plan/AiPlanGeneratorModal.svelte';
-	import TitleWithTooltip from '$lib/components/TitleWithTooltip.svelte';
+import Pagination from '$lib/components/Pagination.svelte';
+import { cart } from '$lib/stores/cartStore';
+import AiPlanGeneratorModal from '$lib/components/practice-plan/AiPlanGeneratorModal.svelte';
+import TitleWithTooltip from '$lib/components/TitleWithTooltip.svelte';
+import Spinner from '$lib/components/Spinner.svelte';
+import { createLoadingState } from '$lib/utils/loadingStates.js';
 
 	export let data;
 
@@ -35,7 +36,11 @@
 	let currentSortBy = data.currentSortBy || 'created_at';
 	let currentSortOrder = data.currentSortOrder || 'desc';
 
-	let showAiModal = false; // NEW modal state
+let showAiModal = false; // NEW modal state
+
+// Loading state for search input
+const searchLoading = createLoadingState();
+let searchTimeout;
 
 	// --- Initialize filter stores based on URL on mount/update ---
 	function initializeFiltersFromUrl() {
@@ -120,8 +125,8 @@
 		};
 	});
 
-	// --- URL Update Logic ---
-	const updateUrlParams = debounce(() => {
+// --- URL Update Logic ---
+function updateUrlParams() {
 		const params = new URLSearchParams($page.url.searchParams);
 
 		// Update search
@@ -160,8 +165,8 @@
 		// Reset page to 1 when filters/search/sort change
 		params.set('page', '1');
 
-		goto(`?${params.toString()}`, { keepFocus: true, noScroll: true });
-	}, 300); // Debounce time
+        goto(`?${params.toString()}`, { keepFocus: true, noScroll: true });
+}
 
 	// Helper to update URL for multi-state filters
 	function updateFilterUrlParams(params, baseName, filterState) {
@@ -199,9 +204,23 @@
 	}
 
 	// Called when FilterPanel signals a change in its filters
-	function handleFilterChange() {
-		updateUrlParams();
-	}
+function handleFilterChange() {
+        updateUrlParams();
+}
+
+function handleSearchInput() {
+        searchLoading.start();
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+                updateUrlParams();
+                searchLoading.stop();
+        }, 300);
+}
+
+function clearSearch() {
+        searchQuery = '';
+        updateUrlParams();
+}
 
 	// --- Sort Options ---
 	const sortOptions = [
@@ -286,14 +305,32 @@
 		bind:selectedSortOrder={$selectedSortOrder}
 	/>
 
-	<!-- Search input -->
-	<input
-		type="text"
-		placeholder="Search practice plans..."
-		class="mb-6 w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-		bind:value={searchQuery}
-		on:input={updateUrlParams}
-	/>
+        <!-- Search input -->
+        <div class="relative mb-6 w-full">
+                <input
+                        type="text"
+                        placeholder="Search practice plans..."
+                        class="w-full p-3 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        bind:value={searchQuery}
+                        on:input={handleSearchInput}
+                        aria-label="Search practice plans"
+                />
+                {#if $searchLoading}
+                        <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <Spinner size="sm" color="gray" />
+                        </div>
+                {:else if searchQuery}
+                        <button
+                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                on:click={clearSearch}
+                                aria-label="Clear search"
+                        >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                        </button>
+                {/if}
+        </div>
 
 	<!-- Display Error Message -->
 	{#if error}

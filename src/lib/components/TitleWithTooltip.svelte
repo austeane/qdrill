@@ -10,6 +10,7 @@
 	let tooltipElement;
 	let isTruncated = false;
 	let tooltipPosition = { top: 0, left: 0 };
+	let hoverTimeout;
 	
 	// Check if text is truncated
 	function checkTruncation() {
@@ -22,25 +23,30 @@
 	function updateTooltipPosition() {
 		if (titleElement && tooltipElement && showTooltip) {
 			const rect = titleElement.getBoundingClientRect();
-			const tooltipRect = tooltipElement.getBoundingClientRect();
 			
-			// Position tooltip above the element, centered
-			tooltipPosition = {
-				top: rect.top - tooltipRect.height - 8, // 8px gap
-				left: rect.left + (rect.width / 2) - (tooltipRect.width / 2)
-			};
+			// Get computed dimensions after render
+			const tooltipStyles = window.getComputedStyle(tooltipElement);
+			const tooltipWidth = tooltipElement.offsetWidth;
+			const tooltipHeight = tooltipElement.offsetHeight;
 			
-			// Adjust if tooltip goes off-screen
-			if (tooltipPosition.left < 8) {
-				tooltipPosition.left = 8;
-			} else if (tooltipPosition.left + tooltipRect.width > window.innerWidth - 8) {
-				tooltipPosition.left = window.innerWidth - tooltipRect.width - 8;
+			// Calculate initial position (centered above the element)
+			let top = rect.top - tooltipHeight - 8; // 8px gap
+			let left = rect.left + (rect.width / 2) - (tooltipWidth / 2);
+			
+			// Adjust horizontal position if tooltip goes off-screen
+			if (left < 8) {
+				left = 8;
+			} else if (left + tooltipWidth > window.innerWidth - 8) {
+				left = window.innerWidth - tooltipWidth - 8;
 			}
 			
 			// If tooltip would go above viewport, show below instead
-			if (tooltipPosition.top < 8) {
-				tooltipPosition.top = rect.bottom + 8;
+			if (top < 8) {
+				top = rect.bottom + 8;
 			}
+			
+			// Update position
+			tooltipPosition = { top, left };
 		}
 	}
 	
@@ -50,7 +56,8 @@
 	}
 	
 	$: if (showTooltip && tooltipElement) {
-		queueMicrotask(updateTooltipPosition);
+		// Use setTimeout to ensure tooltip is rendered before positioning
+		setTimeout(updateTooltipPosition, 0);
 	}
 	
 	// Update position on scroll/resize
@@ -81,14 +88,27 @@
 		if (resizeListener) {
 			window.removeEventListener('resize', resizeListener);
 		}
+		if (hoverTimeout) {
+			clearTimeout(hoverTimeout);
+		}
 	});
 </script>
 
 <div 
 	class="inline-block {className}"
 	style="max-width: {maxWidth};"
-	on:mouseenter={() => showTooltip = isTruncated}
-	on:mouseleave={() => showTooltip = false}
+	on:mouseenter={() => {
+		if (isTruncated) {
+			clearTimeout(hoverTimeout);
+			hoverTimeout = setTimeout(() => {
+				showTooltip = true;
+			}, 200); // 200ms delay
+		}
+	}}
+	on:mouseleave={() => {
+		clearTimeout(hoverTimeout);
+		showTooltip = false;
+	}}
 >
 	<div 
 		bind:this={titleElement}

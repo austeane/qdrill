@@ -34,7 +34,6 @@
 	} from '$lib/stores/drillsStore';
 
 	import Pagination from '$lib/components/Pagination.svelte';
-	import TitleWithTooltip from '$lib/components/TitleWithTooltip.svelte';
 
 	export let data;
 
@@ -455,18 +454,14 @@
 						<div class="flex-grow mb-4">
 							<!-- Title and description -->
 							<div class="flex justify-between items-start mb-4">
-								<div class="flex-grow mr-16">
+								<div class="flex-grow mr-16 min-w-0">
 									<!-- Added mr-16 to give space for top-right actions -->
 									<h2
-										class="text-xl font-bold text-gray-800"
+										class="text-xl font-bold text-gray-800 overflow-hidden"
 										data-testid="drill-card-name"
 									>
-										<a href="/drills/{drill.id}" class="hover:text-blue-600 block">
-											<TitleWithTooltip 
-												title={drill.name} 
-												className="text-xl font-bold text-gray-800 hover:text-blue-600"
-												maxWidth="100%"
-											/>
+										<a href="/drills/{drill.id}" class="hover:text-blue-600 block overflow-hidden truncate" title={drill.name}>
+											{drill.name}
 										</a>
 									</h2>
 									<div class="prose prose-sm mt-2 text-gray-600 max-h-24 overflow-hidden">

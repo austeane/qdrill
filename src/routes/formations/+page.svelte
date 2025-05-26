@@ -148,7 +148,6 @@
 	}
 	// Close dropdown on click outside
 	import { onMount } from 'svelte'; // Keep onMount for this
-	import TitleWithTooltip from '$lib/components/TitleWithTooltip.svelte';
 	
 	onMount(() => {
 		const handleClickOutside = (event) => {
@@ -351,13 +350,10 @@
 					<div class="p-6">
 						<h2
 							data-testid="formation-card-name"
-							class="text-xl font-semibold text-gray-800 mb-2"
+							class="text-xl font-semibold text-gray-800 mb-2 truncate"
+							title={formation.name}
 						>
-							<TitleWithTooltip 
-								title={formation.name} 
-								className="text-xl font-semibold text-gray-800"
-								maxWidth="100%"
-							/>
+							{formation.name}
 						</h2>
 						{#if formation.brief_description}
 							<p class="text-gray-600 mb-4 line-clamp-3 text-sm">{formation.brief_description}</p>

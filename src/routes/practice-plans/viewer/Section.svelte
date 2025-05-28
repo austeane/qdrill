@@ -3,6 +3,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import DrillCard from './DrillCard.svelte';
 	import ParallelGroup from './ParallelGroup.svelte';
+	import FormationReference from '$lib/components/practice-plan/FormationReference.svelte';
 
 	export let section;
 	export let isActive = false;
@@ -61,9 +62,15 @@
 		skill_level: item.drill?.skill_level || item.skill_level || [],
 		skills_focused_on: item.drill?.skills_focused_on || item.skills_focused_on || []
 	}));
+	
+	// Separate formations from regular items
+	$: formations = normalizedItems?.filter(item => item.type === 'formation') || [];
+	$: drillItems = normalizedItems?.filter(item => item.type !== 'formation') || [];
 
 	$: {
 		console.log('[Section] Normalized items:', normalizedItems);
+		console.log('[Section] Formations:', formations);
+		console.log('[Section] Drill items:', drillItems);
 	}
 
 	function calculateSectionDuration(items) {
@@ -103,9 +110,11 @@
 		return totalDuration;
 	}
 
-	$: sectionDuration = calculateSectionDuration(section.items);
+	// Only calculate duration for non-formation items
+	$: sectionDuration = calculateSectionDuration(drillItems);
 
-	$: groupedItems = section.items?.reduce(
+	// Only group non-formation items
+	$: groupedItems = drillItems?.reduce(
 		(acc, item) => {
 			if (item.parallel_group_id) {
 				if (!acc.parallelGroups[item.parallel_group_id]) {
@@ -215,15 +224,18 @@
 
 	{#if !isCollapsed}
 		<div class="section-content" transition:slide>
-			<!-- Render items in their original order -->
-			{#each section.items as item, itemIndex (item.id)}
+			<!-- Display formation references if any -->
+			<FormationReference {formations} />
+			
+			<!-- Render drill items in their original order -->
+			{#each drillItems as item, itemIndex (item.id)}
 				{#if item.parallel_group_id}
 					<!-- Only render the parallel group once per group ID -->
-					{#if !section.items
+					{#if !drillItems
 						.slice(0, itemIndex)
 						.some((prevItem) => prevItem.parallel_group_id === item.parallel_group_id)}
 						<ParallelGroup
-							items={section.items.filter((i) => i.parallel_group_id === item.parallel_group_id)}
+							items={drillItems.filter((i) => i.parallel_group_id === item.parallel_group_id)}
 							{canEdit}
 							startTime={item.startTime}
 							on:edit={handleEdit}

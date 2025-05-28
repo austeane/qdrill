@@ -21,6 +21,14 @@
 			newDuration
 		);
 	};
+	export let onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
+		console.warn(
+			'onTimelineChange prop not provided to DrillItem',
+			sectionIndex,
+			itemIndex,
+			newTimeline
+		);
+	};
 	export let timelineItemIndex = null;
 	export let timeline = null;
 	export let parallelGroupId = null;
@@ -94,6 +102,19 @@
 				<span>{item.name}</span>
 			</div>
 			<div class="flex items-center space-x-2">
+				{#if !item.parallel_group_id}
+					<!-- Position selector for non-parallel items -->
+					<select
+						class="px-2 py-1 border rounded text-sm"
+						value={item.parallel_timeline || ''}
+						on:change={(e) => onTimelineChange(sectionIndex, itemIndex, e.target.value || null)}
+					>
+						<option value="">All Positions</option>
+						<option value="BEATERS">Beaters</option>
+						<option value="CHASERS">Chasers</option>
+						<option value="SEEKERS">Seekers</option>
+					</select>
+				{/if}
 				<div class="flex items-center">
 					<input
 						type="number"

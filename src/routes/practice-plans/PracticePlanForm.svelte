@@ -40,6 +40,7 @@
 		removeSection,
 		removeItem,
 		handleDurationChange,
+		handleTimelineChange,
 		handleUngroup,
 		getTimelineName,
 		getTimelineColor,
@@ -287,10 +288,7 @@
 	}
 	
 	// Modal event handlers
-	function handleAddDrillEvent(event) {
-		const { drill, sectionId } = event.detail;
-		addDrillToPlan(drill, sectionId);
-	}
+	// handleAddDrillEvent is already defined above
 	
 	function handleAddFormationEvent(event) {
 		const { formation, sectionId } = event.detail;
@@ -302,29 +300,11 @@
 		addParallelActivities(sectionId, activities);
 	}
 	
-	function handleAddBreakEvent(event) {
-		const { sectionId } = event.detail;
-		addBreak(sectionId);
-	}
-	
-	function handleAddOneOffEvent(event) {
-		const { name, sectionId } = event.detail;
-		addOneOffDrill(sectionId, name);
-	}
-	
-	function handleUpdateTimelineNameEvent(event) {
-		const { timeline, name } = event.detail;
-		updateTimelineName(timeline, name);
-	}
-	
-	function handleUpdateTimelineColorEvent(event) {
-		const { timeline, color } = event.detail;
-		updateTimelineColor(timeline, color);
-	}
-	
-	function handleSaveTimelinesEvent() {
-		handleTimelineSave();
-	}
+	// handleAddBreakEvent is already defined above
+	// handleAddOneOffEvent is already defined above
+	// handleUpdateTimelineNameEvent is already defined above
+	// handleUpdateTimelineColorEvent is already defined above
+	// handleSaveTimelinesEvent is already defined above
 </script>
 
 <!-- Wrap form in <form> tag and apply enhance -->
@@ -462,6 +442,7 @@
 				{onRemoveSection}
 				{onRemoveItem}
 				{onDurationChange}
+				onTimelineChange={handleTimelineChange}
 				{onUngroup}
 				timelineNameGetter={getTimelineName}
 				customTimelineNamesData={$customTimelineNames}

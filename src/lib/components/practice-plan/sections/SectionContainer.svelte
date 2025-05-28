@@ -30,6 +30,14 @@
 			newDuration
 		);
 	};
+	export let onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
+		console.warn(
+			'onTimelineChange prop not provided to SectionContainer',
+			sectionIndex,
+			itemIndex,
+			newTimeline
+		);
+	};
 	export let onUngroup = (groupId) => {
 		console.warn('onUngroup prop not provided to SectionContainer', groupId);
 	};
@@ -131,6 +139,7 @@
 						{itemIndex}
 						{sectionIndex}
 						{onDurationChange}
+						{onTimelineChange}
 						onRemove={() => onRemoveItem(sectionIndex, itemIndex)}
 					/>
 				{/if}

@@ -104,6 +104,19 @@
 	function getSectionColor(index) {
 		return sectionColors[index % sectionColors.length];
 	}
+	
+	// Group items by timeline for parallel activities
+	function groupByTimeline(items) {
+		const groups = {};
+		items.forEach(item => {
+			const timeline = item.parallel_timeline || 'default';
+			if (!groups[timeline]) {
+				groups[timeline] = [];
+			}
+			groups[timeline].push(item);
+		});
+		return groups;
+	}
 
 	// $: console.log('Timeline Sections:', sections);
 
@@ -193,27 +206,32 @@
 				<div class="section-items">
 					{#each section.items as item}
 						{#if item.type === 'parallel'}
+							{@const timelineGroups = groupByTimeline(item.items)}
 							<!-- Parallel group -->
 							<div
 								class="parallel-container"
 								style="height: {(item.duration / calculateSectionDuration(section.items)) * 100}%"
 							>
 								<div class="parallel-split">
-									{#each item.items as parallelItem}
-										<div
-											role="tooltip"
-											class="parallel-branch"
-											style="height: {(parallelItem.duration / item.duration) * 100}%"
-											on:mouseenter={(e) =>
-												showTooltip(
-													e,
-													`${section.name}: ${parallelItem.drill?.name || parallelItem.name || 'Unnamed Drill'}`
-												)}
-											on:mouseleave={hideTooltip}
-										>
-											<div class="parallel-item">
-												<div class="parallel-item-inner {getSectionColor(index)}"></div>
-											</div>
+									{#each Object.entries(timelineGroups) as [timeline, timelineItems]}
+										<div class="parallel-timeline">
+											{#each timelineItems as parallelItem, idx}
+												{@const totalTimelineDuration = timelineItems.reduce((sum, i) => sum + i.duration, 0)}
+												{@const cumulativeHeight = idx === 0 ? 0 : timelineItems.slice(0, idx).reduce((sum, i) => sum + i.duration, 0) / totalTimelineDuration * 100}
+												<div
+													role="tooltip"
+													class="parallel-item-wrapper"
+													style="height: {(parallelItem.duration / totalTimelineDuration) * 100}%; top: {cumulativeHeight}%"
+													on:mouseenter={(e) =>
+														showTooltip(
+															e,
+															`${section.name}: ${parallelItem.drill?.name || parallelItem.name || 'Unnamed Drill'}`
+														)}
+													on:mouseleave={hideTooltip}
+												>
+													<div class="parallel-item-inner {getSectionColor(index)}"></div>
+												</div>
+											{/each}
 										</div>
 									{/each}
 								</div>
@@ -344,18 +362,17 @@
 		padding: 0 0.25rem;
 	}
 
-	.parallel-branch {
+	.parallel-timeline {
 		flex: 1 !important;
 		position: relative;
 		min-height: 0;
 	}
 
-	.parallel-item {
+	.parallel-item-wrapper {
 		position: absolute;
-		top: 0;
 		left: 0;
 		right: 0;
-		bottom: 0;
+		padding: 0.0625rem 0;
 	}
 
 	.parallel-item-inner {
@@ -389,18 +406,17 @@
 		padding: 0 0.25rem;
 	}
 
-	.timeline .parallel-branch {
+	.timeline .parallel-timeline {
 		flex: 1 !important;
 		position: relative;
 		min-height: 0;
 	}
 
-	.timeline .parallel-item {
+	.timeline .parallel-item-wrapper {
 		position: absolute;
-		top: 0;
 		left: 0;
 		right: 0;
-		bottom: 0;
+		padding: 0.0625rem 0;
 	}
 
 	.timeline .parallel-item-inner {

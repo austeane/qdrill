@@ -10,6 +10,7 @@
 	} from '$lib/stores/dragManager';
 	import SectionHeader from './SectionHeader.svelte';
 	import DrillItem from '../items/DrillItem.svelte';
+	import FormationItem from '../items/FormationItem.svelte';
 	import ParallelGroup from '../items/ParallelGroup.svelte';
 
 	export let section;
@@ -115,6 +116,14 @@
 							{customTimelineNamesData}
 						/>
 					{/if}
+				{:else if item.type === 'formation'}
+					<!-- Render formation reference -->
+					<FormationItem
+						{item}
+						{itemIndex}
+						{sectionIndex}
+						onRemove={() => onRemoveItem(sectionIndex, itemIndex)}
+					/>
 				{:else}
 					<!-- Render regular drill items -->
 					<DrillItem

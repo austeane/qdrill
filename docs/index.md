@@ -22,11 +22,19 @@ A comprehensive code review was recently conducted to assess the codebase and id
   - [Drag and Drop System](./implementation/drag-and-drop.md)
   - [Timeline Management](./implementation/timeline-management.md)
   - [Service Layer Architecture](./implementation/service-layer.md)
+  - [Converting Markdown Practice Plans](./implementation/converting-markdown-practice-plans.md)
+  - [Parallel Timeline Improvements](./implementation/parallel-timeline-improvements.md)
   - Frontend implementation
   - Backend implementation
   - Testing strategy
   - Deployment process
   - Code patterns
+
+- **[Guides](./guides/)**: Step-by-step guides and tutorials
+  - [Creating Practice Plans Guide](./guides/creating-practice-plans-guide.md)
+  - [Loading States Best Practices](./guides/loading-states-best-practices.md)
+  - [LLM Guide for Creating Drills](./guides/llm_creating_drills.md)
+  - [LLM Guide for Creating Practice Plans](./guides/llm_creating_practice_plans.md)
 
 ## Related Documentation
 

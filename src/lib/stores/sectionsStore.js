@@ -687,6 +687,37 @@ export function handleDurationChange(sectionIndex, itemIndex, newDuration) {
 	}
 }
 
+export function handleTimelineChange(sectionIndex, itemIndex, newTimeline) {
+	console.log('[DEBUG] Updating timeline', { sectionIndex, itemIndex, newTimeline });
+
+	// Get the item before changing for history
+	const currentSections = get(sections);
+	const section = currentSections[sectionIndex];
+	const item = section?.items[itemIndex];
+
+	if (!item) return;
+
+	const oldTimeline = item.parallel_timeline;
+
+	addToHistory(
+		'CHANGE_TIMELINE',
+		{ sectionIndex, itemIndex, oldTimeline, newTimeline },
+		`Changed position from ${oldTimeline || 'All'} to ${newTimeline || 'All'}`
+	);
+
+	sections.update((currentSections) => {
+		const newSections = [...currentSections];
+		const section = newSections[sectionIndex];
+		
+		section.items[itemIndex] = {
+			...section.items[itemIndex],
+			parallel_timeline: newTimeline
+		};
+
+		return newSections;
+	});
+}
+
 // Function to add parallel activities for positions
 export function addParallelActivities(sectionId, activities) {
 	const groupId = `parallel-${Date.now()}`;

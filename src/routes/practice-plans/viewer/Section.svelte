@@ -9,6 +9,7 @@
 	export let canEdit = false;
 	export let sectionIndex = 0;
 	export let startTime = null;
+	export let selectedPositions = ['CHASERS', 'BEATERS', 'SEEKERS'];
 
 	const dispatch = createEventDispatcher();
 	let isCollapsed = false;

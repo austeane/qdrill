@@ -2,6 +2,8 @@
 
 This guide provides step-by-step instructions for creating practice plans in QDrill, whether through the UI or API.
 
+> **Important Update (2025)**: QDrill now supports position-based filtering with integrated parallel activities throughout the practice. This guide has been updated to reflect these changes.
+
 ## Table of Contents
 1. [Prerequisites](#prerequisites)
 2. [Understanding Practice Plan Structure](#understanding-practice-plan-structure)
@@ -153,47 +155,100 @@ response = requests.post(
 
 ## Working with Parallel Activities
 
-Parallel activities allow different position groups to do different drills simultaneously.
+Parallel activities allow different position groups to do different drills simultaneously. With the new position-based filtering, users can view any combination of positions to see their specific activities.
 
 ### Key Concepts
 
 1. **parallel_group_id**: Unique identifier for activities happening at the same time
-2. **parallel_timeline**: Label for the timeline (e.g., "BEATERS", "CHASERS")
-3. **groupTimelines**: Array of positions involved
+2. **parallel_timeline**: Position label (must be "BEATERS", "CHASERS", or "SEEKERS")
+3. **group_timelines**: Array of all positions involved in that time block
 
-### Example: Split Practice
+### Position-Based Filtering
+
+The practice plan viewer now includes a position filter that allows users to:
+- **Select single position**: See a linear view of just that position's activities
+- **Select multiple positions**: See parallel activities when selected positions differ
+- **Select all positions**: See the complete practice with all parallel activities
+
+### Example: Integrated Position Activities
 
 ```javascript
-// Beaters do beating progression
+// All three positions working in parallel during drills section
 {
-  "type": "drill",
-  "drill_id": 161,
-  "duration": 20,
-  "parallel_group_id": "split_1330",
-  "parallel_timeline": "BEATERS",
-  "groupTimelines": ["BEATERS"]
-}
-
-// Chasers do passing drill (same time)
-{
-  "type": "drill",
-  "drill_id": 162,
-  "duration": 20,
-  "parallel_group_id": "split_1330",  // Same ID
-  "parallel_timeline": "CHASERS",
-  "groupTimelines": ["CHASERS"]
+  "name": "Drills (13:30)",
+  "items": [
+    // Beaters activities
+    {
+      "type": "drill",
+      "drill_id": 161,
+      "duration": 15,
+      "name": "Arkansas",
+      "parallel_group_id": "drill_time_1",
+      "parallel_timeline": "BEATERS",
+      "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
+    },
+    {
+      "type": "drill",
+      "drill_id": 162,
+      "duration": 15,
+      "name": "Third-Courts",
+      "parallel_group_id": "drill_time_1",
+      "parallel_timeline": "BEATERS",
+      "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
+    },
+    // Chasers activity (same time)
+    {
+      "type": "drill",
+      "drill_id": 163,
+      "duration": 30,
+      "name": "4 on 4 no beaters",
+      "parallel_group_id": "drill_time_1",
+      "parallel_timeline": "CHASERS",
+      "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
+    },
+    // Seekers activities (same time)
+    {
+      "type": "drill",
+      "drill_id": 164,
+      "duration": 10,
+      "name": "Claw drill",
+      "parallel_group_id": "drill_time_1",
+      "parallel_timeline": "SEEKERS",
+      "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
+    },
+    {
+      "type": "drill",
+      "drill_id": 165,
+      "duration": 10,
+      "name": "Leg load and dive",
+      "parallel_group_id": "drill_time_1",
+      "parallel_timeline": "SEEKERS",
+      "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
+    },
+    {
+      "type": "drill",
+      "drill_id": 166,
+      "duration": 10,
+      "name": "Full dive",
+      "parallel_group_id": "drill_time_1",
+      "parallel_timeline": "SEEKERS",
+      "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
+    }
+  ]
 }
 ```
 
 ### Timeline Labels
 
-Standard labels to use:
-- `BEATERS` - Beater-only activities
-- `CHASERS` - Chaser-only activities
-- `KEEPERS` - Keeper-only activities  
-- `SEEKERS` - Seeker-only activities
-- `CHASERS/KEEPERS` - Combined group
-- `ALL` - Everyone together
+**Required position labels** (use exactly these values):
+- `BEATERS` - Beater-specific activities
+- `CHASERS` - Chaser-specific activities
+- `SEEKERS` - Seeker-specific activities
+
+**Important**: 
+- Do NOT create separate sections for individual positions (e.g., "Seeker Track")
+- Instead, integrate position-specific activities as parallel timelines within main sections
+- Activities without a `parallel_timeline` are assumed to be for all positions
 
 ## Including Formations
 
@@ -253,9 +308,10 @@ Formations represent tactical setups (defensive or offensive positions).
 ```
 13:00-13:15 - Warmup: Dodgeball
 13:15-13:30 - Arkansas Drill
-13:30-13:45 - Split:
-  - Beaters: Beating progression
-  - Chasers: Fast breaks
+13:30-14:00 - Position-specific work:
+  - Beaters: Beating progression (30 min)
+  - Chasers: Fast breaks (30 min)
+  - Seekers: Catching drills + 1v1 (30 min)
 ```
 
 **QDrill Structure:**
@@ -271,23 +327,48 @@ Formations represent tactical setups (defensive or offensive positions).
     {
       "name": "Skills",
       "items": [
-        {"type": "drill", "drill_id": 155, "duration": 15},
-        // Parallel activities
+        {"type": "drill", "drill_id": 155, "duration": 15}
+      ]
+    },
+    {
+      "name": "Position-Specific Training",
+      "items": [
+        // All three positions work in parallel
         {
           "type": "drill",
           "drill_id": 161,
-          "duration": 15,
-          "parallel_group_id": "split_1",
+          "duration": 30,
+          "name": "Beating progression",
+          "parallel_group_id": "position_work_1",
           "parallel_timeline": "BEATERS",
-          "groupTimelines": ["BEATERS"]
+          "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
         },
         {
           "type": "drill",
           "drill_id": 159,
-          "duration": 15,
-          "parallel_group_id": "split_1",
+          "duration": 30,
+          "name": "Fast breaks",
+          "parallel_group_id": "position_work_1",
           "parallel_timeline": "CHASERS",
-          "groupTimelines": ["CHASERS"]
+          "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
+        },
+        {
+          "type": "drill",
+          "drill_id": 164,
+          "duration": 15,
+          "name": "Catching drills",
+          "parallel_group_id": "position_work_1",
+          "parallel_timeline": "SEEKERS",
+          "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
+        },
+        {
+          "type": "drill",
+          "drill_id": 165,
+          "duration": 15,
+          "name": "1v1 with snitch",
+          "parallel_group_id": "position_work_1",
+          "parallel_timeline": "SEEKERS",
+          "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
         }
       ]
     }
@@ -305,9 +386,10 @@ Formations represent tactical setups (defensive or offensive positions).
 
 ### 2. Parallel Activities
 - Always use the same `parallel_group_id` for simultaneous activities
-- Ensure all position groups are accounted for
-- Consider using same duration for parallel activities
-- Label timelines clearly
+- Use only "BEATERS", "CHASERS", or "SEEKERS" for `parallel_timeline`
+- Include all involved positions in `group_timelines` array
+- Integrate position-specific work throughout practice (not as separate sections)
+- Consider total duration when positions have different length activities
 
 ### 3. Naming Conventions
 - Sections: "Warmup", "Technical Skills", "Tactical Work", "Conditioning", "Cool Down"
@@ -332,8 +414,9 @@ Formations represent tactical setups (defensive or offensive positions).
 
 1. **Parallel activities not displaying correctly**
    - Ensure all items have the same `parallel_group_id`
-   - Verify `parallel_timeline` is set for each item
-   - Check that `groupTimelines` array is properly formatted
+   - Verify `parallel_timeline` uses exact values: "BEATERS", "CHASERS", or "SEEKERS"
+   - Check that `group_timelines` array includes all positions involved
+   - Don't create separate sections for individual positions
 
 2. **Formation not appearing**
    - Verify formation exists in database
@@ -360,6 +443,74 @@ for section in plan['sections']:
 ```
 
 ## Advanced Features
+
+### Position Filter Usage
+
+The practice plan viewer includes a position filter that enhances the viewing experience:
+
+```javascript
+// Example: How different filter selections affect the view
+
+// With all positions selected (default):
+// - Shows complete practice with parallel activities in separate timelines
+// - Beaters, Chasers, and Seekers activities shown side-by-side when parallel
+
+// With only "Chasers" selected:
+// - Shows linear view of only chaser activities
+// - Parallel grouping is removed - just a simple timeline
+// - Other positions' activities are hidden
+
+// With "Chasers" and "Beaters" selected:
+// - Shows parallel activities when these two groups differ
+// - Seeker activities are hidden
+// - Useful for coaches focusing on field players
+```
+
+### Creating Position-Aware Practice Plans
+
+When creating practice plans, consider how they'll appear with different filter combinations:
+
+```python
+def create_position_aware_section(drill_map):
+    """Create a section with integrated position activities"""
+    return {
+        "name": "Technical Skills",
+        "items": [
+            # Activities for all positions (no parallel_timeline)
+            {
+                "type": "drill",
+                "drill_id": drill_map["team_warmup"],
+                "duration": 10,
+                "name": "Team Warmup"
+            },
+            # Position-specific parallel activities
+            {
+                "type": "drill",
+                "drill_id": drill_map["beater_drill"],
+                "duration": 20,
+                "parallel_group_id": "tech_1",
+                "parallel_timeline": "BEATERS",
+                "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
+            },
+            {
+                "type": "drill",
+                "drill_id": drill_map["chaser_drill"],
+                "duration": 20,
+                "parallel_group_id": "tech_1",
+                "parallel_timeline": "CHASERS",
+                "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
+            },
+            {
+                "type": "drill",
+                "drill_id": drill_map["seeker_drill"],
+                "duration": 20,
+                "parallel_group_id": "tech_1",
+                "parallel_timeline": "SEEKERS",
+                "group_timelines": ["BEATERS", "CHASERS", "SEEKERS"]
+            }
+        ]
+    }
+```
 
 ### Dynamic Duration Calculation
 

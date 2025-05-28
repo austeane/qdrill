@@ -73,6 +73,21 @@
 		const hour12 = hour % 12 || 12;
 		return `${hour12}:${minutes} ${ampm}`;
 	}
+	
+	// Helper functions for position badges
+	function getPositionColor(position) {
+		const colors = {
+			CHASERS: '#3B82F6', // Blue
+			BEATERS: '#EF4444', // Red
+			SEEKERS: '#10B981'  // Green
+		};
+		return colors[position] || '#6B7280'; // Gray fallback
+	}
+	
+	function formatPositionName(position) {
+		if (!position) return '';
+		return position.charAt(0) + position.slice(1).toLowerCase();
+	}
 </script>
 
 <div
@@ -104,6 +119,16 @@
 				<h3 class="drill-title">
 					{normalizedItem.name}
 				</h3>
+
+				<!-- Position Badge (only show when not in parallel group) -->
+				{#if item.parallel_timeline && !isInParallelGroup}
+					<span 
+						class="position-badge" 
+						style="background-color: {getPositionColor(item.parallel_timeline)}"
+					>
+						{formatPositionName(item.parallel_timeline)}
+					</span>
+				{/if}
 
 				<!-- Indicators -->
 				<div class="indicators">
@@ -323,6 +348,15 @@
 		gap: 0.5rem;
 		flex-grow: 1;
 	}
+	
+	.position-badge {
+		padding: 0.125rem 0.5rem;
+		border-radius: 9999px;
+		color: white;
+		font-size: 0.75rem;
+		font-weight: 500;
+		white-space: nowrap;
+	}
 
 	.indicators {
 		display: flex;
@@ -393,5 +427,121 @@
 
 	.video-link:hover {
 		color: theme('colors.blue.800');
+	}
+
+	/* Main card styles */
+	.drill-card {
+		background: white;
+		border: 1px solid theme('colors.gray.200');
+		border-radius: 0.5rem;
+		margin-bottom: 0.5rem;
+		transition: all 0.2s ease;
+	}
+
+	.drill-card:hover {
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	}
+
+	.drill-card.break {
+		background: theme('colors.gray.50');
+		border-color: theme('colors.gray.300');
+	}
+
+	.drill-card.parallel {
+		border-left: 4px solid theme('colors.blue.500');
+	}
+
+	.drill-card.expanded {
+		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	}
+
+	/* Card details section */
+	.card-details {
+		padding: 1rem;
+		border-top: 1px solid theme('colors.gray.200');
+	}
+
+	.brief-description {
+		margin-bottom: 1rem;
+		color: theme('colors.gray.600');
+		line-height: 1.5;
+	}
+
+	.detailed-description {
+		margin-bottom: 1rem;
+	}
+
+	.info-subtitle {
+		font-weight: 600;
+		margin-bottom: 0.5rem;
+		color: theme('colors.gray.700');
+	}
+
+	.description-text {
+		color: theme('colors.gray.600');
+		line-height: 1.6;
+	}
+
+	/* Key information styles */
+	.key-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		margin-bottom: 1rem;
+	}
+
+	.info-item {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		align-items: flex-start;
+	}
+
+	.info-label {
+		font-weight: 500;
+		color: theme('colors.gray.700');
+		min-width: 120px;
+	}
+
+	.info-value {
+		color: theme('colors.gray.600');
+		flex: 1;
+	}
+
+	/* Skill tags styles - THIS WAS MISSING! */
+	.skill-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		flex: 1;
+	}
+
+	.skill-tag {
+		background-color: theme('colors.gray.100');
+		color: theme('colors.gray.700');
+		padding: 0.25rem 0.75rem;
+		border-radius: 9999px;
+		font-size: 0.875rem;
+		font-weight: 500;
+		white-space: nowrap;
+	}
+
+	/* Indicators */
+	.indicator {
+		font-size: 1rem;
+		line-height: 1;
+	}
+
+	.diagram-indicator,
+	.video-indicator {
+		opacity: 0.7;
+	}
+
+	/* Diagrams preview */
+	.diagrams-preview {
+		margin-top: 1rem;
+		border: 1px solid theme('colors.gray.200');
+		border-radius: 0.5rem;
+		overflow: hidden;
 	}
 </style>

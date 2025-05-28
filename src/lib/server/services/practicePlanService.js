@@ -1147,6 +1147,11 @@ export class PracticePlanService extends BaseEntityService {
 		let totalDuration = 0;
 
 		items.forEach((item) => {
+			// Skip formations - they don't contribute to duration
+			if (item.type === 'formation') {
+				return;
+			}
+			
 			if (item.parallel_group_id) {
 				const group = parallelGroups.get(item.parallel_group_id) || { duration: 0 };
 				group.duration = Math.max(group.duration, item.duration || 0);

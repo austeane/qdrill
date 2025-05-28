@@ -108,8 +108,36 @@ A practice plan consists of:
 1. Navigate to **Practice Plans** → **Create New**
 2. Fill in basic information
 3. Add sections manually
-4. Add items to each section
+4. Add items to each section using the enhanced modal:
+   - **Drills**: Search and add existing drills
+   - **Formations**: Add tactical formations (offensive/defensive)
+   - **Parallel Activities**: Create position-specific activities in one step
+   - **Breaks/Activities**: Add breaks or one-off activities
 5. Save the plan
+
+### Enhanced Add Item Modal
+
+The new modal provides four ways to add items:
+
+#### Drill Tab
+- Search for existing drills
+- Click to add to the selected section
+- Shows skill level and suggested duration
+
+#### Formation Tab
+- Filter by type (offensive/defensive)
+- Search formations by name
+- Adds tactical setup visualization
+
+#### Parallel Activities Tab
+- Select which positions to include (Beaters, Chasers, Seekers)
+- Search and assign a drill for each selected position
+- Creates properly grouped parallel activities automatically
+- Requires at least 2 positions with drills
+
+#### Break/Activity Tab
+- Quick "Add 10 Minute Break" button
+- Create one-off activities with custom names
 
 ## Creating Plans via API
 

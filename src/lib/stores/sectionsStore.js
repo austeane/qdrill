@@ -516,7 +516,9 @@ export function addOneOffDrill(sectionId, name = 'Quick Activity') {
 	});
 }
 
-export function addDrillToPlan(drill, sectionId) {
+export function addDrillToPlan(drill, sectionId, options = {}) {
+	const { parallel_timeline = null, parallel_group_id = null } = options;
+	
 	addToHistory('ADD_DRILL', { drill, sectionId }, `Added "${drill.name}" to plan`);
 
 	sections.update((currentSections) => {
@@ -530,13 +532,49 @@ export function addDrillToPlan(drill, sectionId) {
 				name: drill.name,
 				drill: drill,
 				duration: 15,
-				selected_duration: 15
+				selected_duration: 15,
+				parallel_timeline: parallel_timeline,
+				parallel_group_id: parallel_group_id
 			};
 
 			targetSection.items = [...targetSection.items, newDrill];
 
 			// Add success toast notification
 			toast.push(`Added "${drill.name}" to ${targetSection.name}`, {
+				theme: {
+					'--toastBackground': '#4CAF50',
+					'--toastColor': 'white'
+				}
+			});
+		}
+
+		return newSections;
+	});
+}
+
+export function addFormationToPlan(formation, sectionId) {
+	addToHistory('ADD_FORMATION', { formation, sectionId }, `Added "${formation.name}" formation reference`);
+
+	sections.update((currentSections) => {
+		const newSections = [...currentSections];
+		const targetSection = newSections.find((s) => s.id === sectionId);
+
+		if (targetSection) {
+			const newFormation = {
+				id: `formation-${formation.id}`,
+				type: 'formation',
+				name: formation.name,
+				formation: formation,
+				formation_id: formation.id,
+				// No duration for formations - they're just references
+				duration: 0,
+				selected_duration: 0
+			};
+
+			targetSection.items = [...targetSection.items, newFormation];
+
+			// Add success toast notification
+			toast.push(`Added "${formation.name}" formation reference to ${targetSection.name}`, {
 				theme: {
 					'--toastBackground': '#4CAF50',
 					'--toastColor': 'white'
@@ -647,6 +685,48 @@ export function handleDurationChange(sectionIndex, itemIndex, newDuration) {
 			return newSections;
 		});
 	}
+}
+
+// Function to add parallel activities for positions
+export function addParallelActivities(sectionId, activities) {
+	const groupId = `parallel-${Date.now()}`;
+	const timelines = Object.keys(activities);
+	
+	addToHistory('ADD_PARALLEL_ACTIVITIES', { sectionId, activities, groupId }, 'Added parallel activities');
+	
+	sections.update((currentSections) => {
+		const newSections = [...currentSections];
+		const targetSection = newSections.find((s) => s.id === sectionId);
+		
+		if (targetSection) {
+			// Add each position's activity
+			Object.entries(activities).forEach(([timeline, drill]) => {
+				if (drill) {
+					const newItem = {
+						id: drill.id,
+						type: 'drill',
+						name: drill.name,
+						drill: drill,
+						duration: drill.duration || 15,
+						selected_duration: drill.duration || 15,
+						parallel_timeline: timeline,
+						parallel_group_id: groupId,
+						group_timelines: timelines
+					};
+					targetSection.items.push(newItem);
+				}
+			});
+			
+			toast.push('Added parallel activities', {
+				theme: {
+					'--toastBackground': '#4CAF50',
+					'--toastColor': 'white'
+				}
+			});
+		}
+		
+		return newSections;
+	});
 }
 
 // Parallel group management functions

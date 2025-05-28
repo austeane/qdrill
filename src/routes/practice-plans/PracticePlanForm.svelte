@@ -48,6 +48,8 @@
 		addBreak,
 		addDrillToPlan,
 		addOneOffDrill,
+		addFormationToPlan,
+		addParallelActivities,
 		updateTimelineColor,
 		updateTimelineName,
 		handleTimelineSave
@@ -55,7 +57,7 @@
 	} from '$lib/stores/sectionsStore';
 
 	// Import component modules
-	import DrillSearchModal from '$lib/components/practice-plan/modals/DrillSearchModal.svelte';
+	import EnhancedAddItemModal from '$lib/components/practice-plan/modals/EnhancedAddItemModal.svelte';
 	import TimelineSelectorModal from '$lib/components/practice-plan/modals/TimelineSelectorModal.svelte';
 	import SectionContainer from '$lib/components/practice-plan/sections/SectionContainer.svelte';
 	import PlanMetadataFields from '$lib/components/practice-plan/PlanMetadataFields.svelte';
@@ -283,6 +285,46 @@
 	function onUngroup(groupId) {
 		handleUngroup(groupId);
 	}
+	
+	// Modal event handlers
+	function handleAddDrillEvent(event) {
+		const { drill, sectionId } = event.detail;
+		addDrillToPlan(drill, sectionId);
+	}
+	
+	function handleAddFormationEvent(event) {
+		const { formation, sectionId } = event.detail;
+		addFormationToPlan(formation, sectionId);
+	}
+	
+	function handleAddParallelActivitiesEvent(event) {
+		const { activities, sectionId } = event.detail;
+		addParallelActivities(sectionId, activities);
+	}
+	
+	function handleAddBreakEvent(event) {
+		const { sectionId } = event.detail;
+		addBreak(sectionId);
+	}
+	
+	function handleAddOneOffEvent(event) {
+		const { name, sectionId } = event.detail;
+		addOneOffDrill(sectionId, name);
+	}
+	
+	function handleUpdateTimelineNameEvent(event) {
+		const { timeline, name } = event.detail;
+		updateTimelineName(timeline, name);
+	}
+	
+	function handleUpdateTimelineColorEvent(event) {
+		const { timeline, color } = event.detail;
+		updateTimelineColor(timeline, color);
+	}
+	
+	function handleSaveTimelinesEvent() {
+		handleTimelineSave();
+	}
 </script>
 
 <!-- Wrap form in <form> tag and apply enhance -->
@@ -467,12 +509,14 @@
 </form>
 
 <!-- Modals -->
-<DrillSearchModal
+<EnhancedAddItemModal
 	bind:show={showDrillSearch}
 	bind:selectedSectionId={selectedSectionForDrill}
 	on:addDrill={handleAddDrillEvent}
+	on:addFormation={handleAddFormationEvent}
+	on:addParallelActivities={handleAddParallelActivitiesEvent}
 	on:addBreak={handleAddBreakEvent}
-	on:addOneOffDrill={handleAddOneOffEvent}
+	on:addOneOff={handleAddOneOffEvent}
 />
 <TimelineSelectorModal
 	bind:show={showTimelineSelector}

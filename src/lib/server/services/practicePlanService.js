@@ -437,8 +437,8 @@ export class PracticePlanService extends BaseEntityService {
 
 						await client.query(
 							`INSERT INTO practice_plan_drills 
-               (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, diagram_data, parallel_group_id, parallel_timeline, group_timelines, name)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+               (practice_plan_id, section_id, drill_id, formation_id, order_in_plan, duration, type, diagram_data, parallel_group_id, parallel_timeline, group_timelines, name)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
 							[
 								planId,
 								dbSectionId,
@@ -465,11 +465,13 @@ export class PracticePlanService extends BaseEntityService {
 								item.groupTimelines ? `{${item.groupTimelines.join(',')}}` : null,
 								// Save the name field
 								item.name ||
-									(item.type === 'drill' && item.drill?.name
-										? item.drill.name
-										: item.type === 'one-off'
-											? 'Quick Activity'
-											: 'Break')
+										(item.type === 'drill' && item.drill?.name
+											? item.drill.name
+											: item.type === 'formation' && item.formation?.name
+												? item.formation.name
+												: item.type === 'one-off'
+													? 'Quick Activity'
+													: 'Break')
 							]
 						);
 					}
@@ -531,7 +533,8 @@ export class PracticePlanService extends BaseEntityService {
             ppd.practice_plan_id,
             ppd.section_id,
             ppd.drill_id,
-            ppd.order_in_plan,
+	            ppd.formation_id,
+	            ppd.order_in_plan,
             ppd.duration AS item_duration,
             ppd.type,
             ppd.name,
@@ -552,9 +555,15 @@ export class PracticePlanService extends BaseEntityService {
             d.skills_focused_on,
             d.positions_focused_on,
             d.video_link,
-            d.diagrams
-           FROM practice_plan_drills ppd
-           LEFT JOIN drills d ON ppd.drill_id = d.id
+            d.diagrams,
+	            f.id AS formation_id,
+	            f.name AS formation_name,
+	            f.brief_description AS formation_brief_description,
+	            f.detailed_description AS formation_detailed_description,
+	            f.diagrams AS formation_diagrams
+	           FROM practice_plan_drills ppd
+	           LEFT JOIN drills d ON ppd.drill_id = d.id
+	           LEFT JOIN formations f ON ppd.formation_id = f.id
            WHERE ppd.practice_plan_id = $1
            ORDER BY ppd.section_id, ppd.order_in_plan`,
 					[id]
@@ -723,10 +732,10 @@ export class PracticePlanService extends BaseEntityService {
 							}
 
 							await client.query(
-								`INSERT INTO practice_plan_drills 
-                 (practice_plan_id, section_id, drill_id, order_in_plan, duration, type, 
-                  parallel_group_id, parallel_timeline, group_timelines, name, diagram_data)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+									`INSERT INTO practice_plan_drills 
+	                 (practice_plan_id, section_id, drill_id, formation_id, order_in_plan, duration, type, 
+	                  parallel_group_id, parallel_timeline, group_timelines, name, diagram_data)
+	                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
 								[
 									id,
 									section.id,
@@ -742,7 +751,16 @@ export class PracticePlanService extends BaseEntityService {
 										// For other types (e.g., breaks), use null
 										return null;
 									})(),
-									index,
+										// Logic for determining formation_id
+										(() => {
+											// For formation items, use formation_id
+											if (item.type === 'formation') {
+												return item.formation_id || item.formation?.id || null;
+											}
+											// For other types, use null
+											return null;
+										})(),
+										index,
 									item.duration || item.selected_duration,
 									// Map 'one-off' type to 'drill' to conform to database constraints
 									item.type === 'one-off' || item.type === 'activity' ? 'drill' : item.type,
@@ -1006,16 +1024,17 @@ export class PracticePlanService extends BaseEntityService {
 
 					for (const drill of drillsResult.rows) {
 						await client.query(
-							`INSERT INTO practice_plan_drills 
-               (practice_plan_id, section_id, drill_id, order_in_plan, 
-                duration, type, diagram_data, parallel_group_id, parallel_timeline,
-                group_timelines, name)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+								`INSERT INTO practice_plan_drills 
+	               (practice_plan_id, section_id, drill_id, formation_id, order_in_plan, 
+	                duration, type, diagram_data, parallel_group_id, parallel_timeline,
+	                group_timelines, name)
+	               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
 							[
 								newPlanId,
 								newSectionId,
 								drill.drill_id,
-								drill.order_in_plan,
+									drill.formation_id,
+									drill.order_in_plan,
 								drill.duration,
 								drill.type,
 								drill.diagram_data,
@@ -1046,7 +1065,31 @@ export class PracticePlanService extends BaseEntityService {
 		// Check if this is a one-off drill (when type is 'drill' but drill_id is null)
 		const isOneOff = item.type === 'drill' && item.drill_id === null;
 
-		if (item.type === 'drill') {
+		if (item.type === 'formation') {
+			return {
+				id: item.id,
+				practice_plan_id: item.practice_plan_id,
+				type: 'formation',
+				duration: item.item_duration,
+				order_in_plan: item.order_in_plan,
+				section_id: item.section_id,
+				parallel_group_id: item.parallel_group_id,
+				parallel_timeline: item.parallel_timeline,
+				groupTimelines: item.groupTimelines,
+				diagram_data: item.ppd_diagram_data,
+				name: item.name || item.formation_name,
+				formation_id: item.formation_id,
+				formation: item.formation_id
+					? {
+							id: item.formation_id,
+							name: item.formation_name,
+							brief_description: item.formation_brief_description,
+							detailed_description: item.formation_detailed_description,
+							diagrams: item.formation_diagrams
+						}
+					: null
+			};
+		} else if (item.type === 'drill') {
 			return {
 				id: item.id,
 				practice_plan_id: item.practice_plan_id,

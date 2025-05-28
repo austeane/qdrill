@@ -141,41 +141,37 @@ export const POST = async ({ request, locals }) => {
 		const userId = locals.user?.id;
 
 		// --- Hydrate parallel group timeline data ---
+		// FIXED: Preserve parallel_timeline values from the request
 		if (rawData.sections && Array.isArray(rawData.sections)) {
 			rawData.sections.forEach((section) => {
 				if (section.items && Array.isArray(section.items)) {
-					let currentParallelBlockItems = []; // Stores items of the currently accumulating parallel block
-					let currentBlockTimelineNames = new Set(); // Stores unique timeline names for the current block
-
-					for (let i = 0; i < section.items.length; i++) {
-						const item = section.items[i];
-
+					// Group items by parallel_group_id to collect all timelines
+					const parallelGroups = new Map();
+					
+					// First pass: collect all timelines for each group
+					section.items.forEach((item) => {
 						if (item.parallel_group_id) {
-							// Item is part of a parallel block
-							currentParallelBlockItems.push(item);
-							currentBlockTimelineNames.add(item.parallel_group_id);
+							if (!parallelGroups.has(item.parallel_group_id)) {
+								parallelGroups.set(item.parallel_group_id, new Set());
+							}
+							// Use the parallel_timeline if provided, otherwise use group_id
+							const timeline = item.parallel_timeline || item.parallel_group_id;
+							parallelGroups.get(item.parallel_group_id).add(timeline);
 						}
-
-						// Check if the current parallel block ends here
-						// A block ends if:
-						//   1. The current item is NOT parallel_group_id (and a block was being built)
-						//   2. OR it's the last item in the section (and a block was being built)
-						const blockEnded = !item.parallel_group_id && currentParallelBlockItems.length > 0;
-						const isLastItemAndBlockExists =
-							i === section.items.length - 1 && currentParallelBlockItems.length > 0;
-
-						if (blockEnded || isLastItemAndBlockExists) {
-							const timelinesArray = Array.from(currentBlockTimelineNames);
-							currentParallelBlockItems.forEach((blockItem) => {
-								blockItem.parallel_timeline = blockItem.parallel_group_id; // Each item's timeline is its group ID
-								blockItem.groupTimelines = timelinesArray; // All items in this block know about all timelines in this block
-							});
-
-							// Reset for the next potential block
-							currentParallelBlockItems = [];
-							currentBlockTimelineNames.clear();
+					});
+					
+					// Second pass: set groupTimelines for all items in parallel groups
+					section.items.forEach((item) => {
+						if (item.parallel_group_id && parallelGroups.has(item.parallel_group_id)) {
+							// Convert Set to Array for groupTimelines
+							item.groupTimelines = Array.from(parallelGroups.get(item.parallel_group_id));
+							// Preserve the parallel_timeline if it was already set
+							// Only set it to group_id if it's not provided
+							if (!item.parallel_timeline) {
+								item.parallel_timeline = item.parallel_group_id;
+							}
 						}
-					}
+					});
 				}
 			});
 		}

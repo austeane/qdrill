@@ -18,6 +18,8 @@ This section provides technical details and implementation specifics for the QDr
 - Code Patterns
 - [Drag and Drop System](./drag-and-drop.md)
 - [Timeline Management](./timeline-management.md)
+- [Converting Markdown Practice Plans](./converting-markdown-practice-plans.md)
+- [Parallel Timeline Improvements](./parallel-timeline-improvements.md)
 
 _(Note: A recent [code review](../code-review/holistic-summary.md) assessed the overall implementation. Key findings related to implementation include state management complexity, API scalability/authorization issues, and opportunities for component refactoring. Refer to the code review notes for detailed recommendations.)_
 

@@ -20,6 +20,12 @@
 	export let onRemoveItem = (sectionIndex, itemIndex) => {
 		console.warn('onRemoveItem prop not provided to TimelineColumn', sectionIndex, itemIndex);
 	};
+	export let onDurationChange = (sectionIndex, itemIndex, newDuration) => {
+		console.warn('onDurationChange prop not provided to TimelineColumn', sectionIndex, itemIndex, newDuration);
+	};
+	export let onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
+		console.warn('onTimelineChange prop not provided to TimelineColumn', sectionIndex, itemIndex, newTimeline);
+	};
 	export let timelineNameGetter = (timeline) => timeline; // Simple default
 	export let customTimelineNamesData = {}; // Pass the reactive data (not directly used here, but needed by getter)
 
@@ -125,9 +131,8 @@
 					{parallelGroupId}
 					{sectionIndex}
 					onRemove={() => onRemoveItem(sectionIndex, originalItemIndex)}
-					onDurationChange={(secIdx, itemIdx, duration) => {
-						console.log(`Duration change in TimelineColumn for item ${itemIdx}: ${duration}`);
-					}}
+					{onDurationChange}
+					{onTimelineChange}
 				/>
 			{/each}
 		{/if}

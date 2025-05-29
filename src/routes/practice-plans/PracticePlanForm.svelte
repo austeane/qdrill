@@ -325,7 +325,25 @@
 
 		const sectionsValueForSubmission = get(sections);
 
-		formData.set('sections', JSON.stringify(sectionsValueForSubmission));
+		// Clean up sections to remove circular references and unnecessary data
+		const cleanedSections = sectionsValueForSubmission.map(section => ({
+			...section,
+			items: section.items.map(item => {
+				// Create a clean copy without the full formation object
+				const cleanItem = { ...item };
+				// Remove the formation object but keep formation_id
+				if (item.type === 'formation' && item.formation) {
+					delete cleanItem.formation;
+				}
+				// Remove the drill object but keep drill_id
+				if (item.drill) {
+					delete cleanItem.drill;
+				}
+				return cleanItem;
+			})
+		}));
+
+		formData.set('sections', JSON.stringify(cleanedSections));
 
 		return async ({ result, update }) => {
 			submitting = false;
@@ -474,7 +492,12 @@
 
 	<!-- Submit button -->
 	<div class="flex justify-end mt-8">
-		<Button type="submit" variant="default" class="min-w-[120px]" disabled={submitting}>
+		<Button 
+			type="submit" 
+			variant="default" 
+			class="min-w-[120px]" 
+			disabled={submitting}
+		>
 			{#if submitting}
 				<Spinner class="inline-block w-4 h-4 mr-2" />
 			{/if}

@@ -223,14 +223,6 @@ export function updateTimelineColor(timeline, color) {
 
 // Helper function to format drill items
 export function formatDrillItem(item, sectionId) {
-	console.log('[DEBUG] formatDrillItem - input item:', {
-		id: item.id,
-		type: item.type,
-		drill_id: item.drill_id,
-		parallel_group_id: item.parallel_group_id,
-		parallel_timeline: item.parallel_timeline,
-		groupTimelines: item.groupTimelines || item.group_timelines
-	});
 
 	// Determine if this is a one-off drill
 	// One-off drills have either:
@@ -261,7 +253,9 @@ export function formatDrillItem(item, sectionId) {
 		group_name: item.groupName || item.group_name,
 		// Preserve the timeline color and name
 		timeline_color: item.timeline_color,
-		timeline_name: item.timeline_name
+		timeline_name: item.timeline_name,
+		// Preserve formation data
+		formation: item.formation
 	};
 
 	if (item.parallel_group_id) {

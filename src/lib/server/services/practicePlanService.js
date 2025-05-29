@@ -455,6 +455,8 @@ export class PracticePlanService extends BaseEntityService {
 									// For other types (e.g., breaks), use null
 									return null;
 								})(),
+								// Logic for determining formation_id
+								item.type === 'formation' ? (item.formation_id || item.formation?.id || null) : null,
 								index,
 								item.duration,
 								// Map 'one-off' type to 'drill' to conform to database constraints
@@ -730,6 +732,7 @@ export class PracticePlanService extends BaseEntityService {
 									item: item?.name || 'unknown'
 								});
 							}
+							
 
 							await client.query(
 									`INSERT INTO practice_plan_drills 
@@ -752,14 +755,8 @@ export class PracticePlanService extends BaseEntityService {
 										return null;
 									})(),
 										// Logic for determining formation_id
-										(() => {
-											// For formation items, use formation_id
-											if (item.type === 'formation') {
-												return item.formation_id || item.formation?.id || null;
-											}
-											// For other types, use null
-											return null;
-										})(),
+										// For formation items, use formation_id
+										item.type === 'formation' ? (item.formation_id || item.formation?.id || null) : null,
 										index,
 									item.duration || item.selected_duration,
 									// Map 'one-off' type to 'drill' to conform to database constraints

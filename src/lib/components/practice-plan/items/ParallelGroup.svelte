@@ -16,6 +16,15 @@
 	export let onUngroup = (groupId) => {
 		console.warn('onUngroup prop not provided to ParallelGroup', groupId);
 	};
+	export let onDurationChange = (sectionIndex, itemIndex, newDuration) => {
+		console.warn('onDurationChange prop not provided to ParallelGroup', sectionIndex, itemIndex, newDuration);
+	};
+	export let onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
+		console.warn('onTimelineChange prop not provided to ParallelGroup', sectionIndex, itemIndex, newTimeline);
+	};
+	export let onRemoveItem = (sectionIndex, itemIndex) => {
+		console.warn('onRemoveItem prop not provided to ParallelGroup', sectionIndex, itemIndex);
+	};
 	export let timelineNameGetter = (timeline) => timeline;
 	export let customTimelineNamesData = {};
 
@@ -122,6 +131,9 @@
 					totalDuration={durations[timeline] || 0}
 					{timelineNameGetter}
 					{customTimelineNamesData}
+					{onDurationChange}
+					{onTimelineChange}
+					{onRemoveItem}
 				/>
 			{/each}
 		</div>

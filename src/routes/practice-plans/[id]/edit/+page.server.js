@@ -104,9 +104,9 @@ export const load = authGuard(async ({ params, locals, cookies, fetch }) => {
 
 /** @type {import('./$types').Actions} */
 export const actions = {
-	default: async ({ request, locals, params }) => {
+	default: authGuard(async ({ request, locals, params }) => {
 		const session = locals.session;
-		const userId = session?.user?.userId;
+		const userId = locals.user?.id; // Fix: use locals.user.id like in the load function
 		const planId = parseInt(params.id);
 
 		if (isNaN(planId)) {
@@ -117,6 +117,8 @@ export const actions = {
 		const data = Object.fromEntries(formData);
 
 		// --- Basic Data Parsing ---
+		const sections = JSON.parse(data.sections || '[]');
+		
 		const planData = {
 			name: data.planName,
 			description: data.planDescription,
@@ -128,7 +130,7 @@ export const actions = {
 			visibility: data.visibility,
 			is_editable_by_others: data.isEditableByOthers === 'on',
 			start_time: data.startTime ? data.startTime + ':00' : null,
-			sections: JSON.parse(data.sections || '[]')
+			sections
 		};
 
 		console.log(`[Edit Action - Plan ${planId}] Received planData:`, planData);
@@ -238,5 +240,5 @@ export const actions = {
 				});
 			}
 		}
-	}
+	})
 };

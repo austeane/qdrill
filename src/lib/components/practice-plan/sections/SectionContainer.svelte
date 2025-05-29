@@ -120,6 +120,9 @@
 							{sectionIndex}
 							sectionId={section.id}
 							{onUngroup}
+							{onDurationChange}
+							{onTimelineChange}
+							{onRemoveItem}
 							{timelineNameGetter}
 							{customTimelineNamesData}
 						/>

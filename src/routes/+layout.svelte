@@ -84,7 +84,8 @@
 </script>
 
 <div class="flex flex-col min-h-screen">
-	<Header />
+        <a href="#main-content" class="skip-to-content">Skip to main content</a>
+        <Header />
 
 	<!-- Global Navigation Loading Indicator -->
 	{#if $navigating}
@@ -93,11 +94,11 @@
 		</div>
 	{/if}
 
-	<main class="flex-1">
-		<div class="container mx-auto px-4 py-8">
-			<slot />
-		</div>
-	</main>
+        <main id="main-content" tabindex="-1" class="flex-1">
+                <div class="container mx-auto px-4 py-8">
+                        <slot />
+                </div>
+        </main>
 
 	<FeedbackButton />
 

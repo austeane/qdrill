@@ -448,9 +448,9 @@ export class PracticePlanService extends BaseEntityService {
 									if (item.type === 'one-off' || (typeof item.id === 'number' && item.id < 0)) {
 										return null;
 									}
-									// For drills, use drill_id or drill.id if available
+									// For drills, use drill_id, item.id, or drill.id if available
 									if (item.type === 'drill') {
-										return item.drill_id || item.drill?.id || null;
+										return item.drill_id || item.id || item.drill?.id || null;
 									}
 									// For other types (e.g., breaks), use null
 									return null;
@@ -747,9 +747,9 @@ export class PracticePlanService extends BaseEntityService {
 										if (item.type === 'one-off' || (typeof item.id === 'number' && item.id < 0)) {
 											return null;
 										}
-										// For drills, use drill_id or drill.id if available
+										// For drills, use drill_id, item.id, or drill.id if available
 										if (item.type === 'drill') {
-											return item.drill_id || item.drill?.id || null;
+											return item.drill_id || item.id || item.drill?.id || null;
 										}
 										// For other types (e.g., breaks), use null
 										return null;

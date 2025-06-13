@@ -1,18 +1,34 @@
 <!-- Home Page -->
 
 <script>
-	import { goto } from '$app/navigation';
-	import Spinner from '$lib/components/Spinner.svelte';
-	let isNavigating = false;
+       import { goto } from '$app/navigation';
+       import { page } from '$app/stores';
+       import { signIn } from '$lib/auth-client';
+       import Spinner from '$lib/components/Spinner.svelte';
+       import LoadingButton from '$lib/components/ui/button/LoadingButton.svelte';
 
-	async function navigateToWizard() {
-		isNavigating = true;
-		try {
-			await goto('/practice-plans');
-		} finally {
-			isNavigating = false;
-		}
-	}
+       let isNavigating = false;
+       let isSigningIn = false;
+
+       $: isAuthenticated = !!$page.data.session?.user;
+
+       async function navigateToWizard() {
+               isNavigating = true;
+               try {
+                       await goto('/practice-plans');
+               } finally {
+                       isNavigating = false;
+               }
+       }
+
+       async function handleSignIn() {
+               isSigningIn = true;
+               try {
+                       await signIn.social({ provider: 'google' });
+               } finally {
+                       isSigningIn = false;
+               }
+       }
 </script>
 
 <svelte:head>
@@ -36,28 +52,59 @@
 				Easily find, create, and share drills and practice plans. Focus on coaching, QDrill makes
 				planning easy.
 			</p>
-			<div class="space-y-4">
-				<button
-					on:click={navigateToWizard}
-					disabled={isNavigating}
-					class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto text-center relative"
-				>
-					{#if isNavigating}
-						<div class="absolute inset-0 flex items-center justify-center">
-							<Spinner size="sm" color="white" />
-						</div>
-						<span class="opacity-0">Create Practice Plan</span>
-					{:else}
-						Create Practice Plan
-					{/if}
-				</button>
-				<a
-					href="/drills"
-					class="inline-block bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto text-center"
-				>
-					Browse Drills
-				</a>
-			</div>
+                       {#if isAuthenticated}
+                               <div class="space-y-4">
+                                       <button
+                                               on:click={navigateToWizard}
+                                               disabled={isNavigating}
+                                               class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto text-center relative text-lg"
+                                       >
+                                               {#if isNavigating}
+                                                       <div class="absolute inset-0 flex items-center justify-center">
+                                                               <Spinner size="sm" color="white" />
+                                                       </div>
+                                                       <span class="opacity-0">Create Practice Plan</span>
+                                               {:else}
+                                                       Create Practice Plan
+                                               {/if}
+                                       </button>
+
+                                       <a
+                                               href="/drills"
+                                               class="inline-block bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-lg w-full sm:w-auto text-center ml-0 sm:ml-4"
+                                       >
+                                               Browse Drills
+                                       </a>
+                               </div>
+                       {:else}
+                               <div class="space-y-4">
+                                       <LoadingButton
+                                               loading={isSigningIn}
+                                               loadingText="Signing in..."
+                                               on:click={handleSignIn}
+                                               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg w-full sm:w-auto text-lg shadow-lg"
+                                       >
+                                               Get Started Free
+                                       </LoadingButton>
+
+                                       <a
+                                               href="/drills"
+                                               class="inline-block bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-lg w-full sm:w-auto text-center ml-0 sm:ml-4"
+                                       >
+                                               Browse Drills
+                                       </a>
+                               </div>
+
+                               <div class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                       <h3 class="font-semibold text-blue-900 mb-2">What you get:</h3>
+                                       <ul class="text-sm text-blue-800 space-y-1">
+                                               <li>✓ Save unlimited drills and practice plans</li>
+                                               <li>✓ AI-powered practice plan generation</li>
+                                               <li>✓ Share plans with your team</li>
+                                               <li>✓ Access to community drills library</li>
+                                       </ul>
+                               </div>
+                       {/if}
 		</div>
 		<!-- Right Side: Image -->
 		<div class="lg:w-1/2 flex justify-center">

@@ -8,6 +8,7 @@ This section provides technical details and implementation specifics for the QDr
   - Svelte and SvelteKit
   - CSS Implementation
   - State Management
+  - [Navigation Accessibility](./navigation.md)
 - Backend Implementation
   - API Structure
   - Authentication System

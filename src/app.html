@@ -6,7 +6,18 @@
 		<meta name="viewport" content="width=device-width" />
 		%sveltekit.head%
 	</head>
-	<body data-sveltekit-preload-data="hover">
-		<div style="display: contents">%sveltekit.body%</div>
-	</body>
+        <body data-sveltekit-preload-data="hover">
+                <div style="display: contents">%sveltekit.body%</div>
+                <noscript>
+                        <p style="text-align:center;color:red">This application requires JavaScript to run properly.</p>
+                </noscript>
+                <div id="fallback" style="display:none;text-align:center;padding:1rem;color:red;">
+                        Something went wrong loading the app. Please refresh the page.
+                </div>
+                <script>
+                        window.addEventListener('sveltekit:error', () => {
+                                document.getElementById('fallback').style.display = 'block';
+                        });
+                </script>
+        </body>
 </html>

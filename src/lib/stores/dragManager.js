@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import { sections } from './sectionsStore';
+import { sections, updateSections, setSections } from './sectionsStore';
 import { addToHistory } from './historyStore';
 
 // ----------------------------------------
@@ -1096,7 +1096,7 @@ export function handleDrop(event) {
 			// Try to recover state using the backup if anything went wrong
 			try {
 				console.warn('Trying to recover state from backup after drop error');
-				sections.set(sectionsBeforeAllDrops);
+				setSections(sectionsBeforeAllDrops);
 			} catch (recoveryError) {
 				console.error('Failed to recover state:', recoveryError);
 			}
@@ -1342,7 +1342,7 @@ function handleTimelineDrop(state, movedItem, sourceItemIndex) {
 		const sectionsBeforeUpdate = get(sections);
 		let errorOccurred = false;
 
-		sections.update((secs) => {
+		updateSections((secs) => {
 			try {
 				// Create a new copy of the sections array
 				const newSecs = [...secs];
@@ -1457,7 +1457,7 @@ function handleTimelineDrop(state, movedItem, sourceItemIndex) {
 		// If an error occurred during the update, restore from backup
 		if (errorOccurred) {
 			logger.warn('Restoring previous state due to error in timeline drop');
-			sections.set(sectionsBeforeUpdate);
+			setSections(sectionsBeforeUpdate);
 		}
 	} catch (updateError) {
 		logger.error('Error updating sections in timeline drop:', updateError);
@@ -1495,7 +1495,7 @@ function handleRegularDrop(state, movedItem, sourceItemIndex) {
 		const sectionsBeforeUpdate = get(sections);
 		let errorOccurred = false;
 
-		sections.update((secs) => {
+		updateSections((secs) => {
 			try {
 				// Create a copy of the sections array
 				const newSecs = [...secs];
@@ -1602,7 +1602,7 @@ function handleRegularDrop(state, movedItem, sourceItemIndex) {
 		// If an error occurred during the update, restore from backup
 		if (errorOccurred) {
 			console.warn('[WARN] Restoring previous state due to error in regular drop');
-			sections.set(sectionsBeforeUpdate);
+			setSections(sectionsBeforeUpdate);
 		}
 	} catch (updateError) {
 		console.error('Error updating sections in regular drop:', updateError);
@@ -1643,7 +1643,7 @@ function handleGroupDrop(state) {
 		const sectionsBeforeUpdate = get(sections);
 		let errorOccurred = false;
 
-		sections.update((secs) => {
+		updateSections((secs) => {
 			try {
 				// Validate indices again
 				if (
@@ -1749,7 +1749,7 @@ function handleGroupDrop(state) {
 		// If an error occurred during the update, restore from backup
 		if (errorOccurred) {
 			console.warn('[WARN] Restoring previous state due to error in group drop');
-			sections.set(sectionsBeforeUpdate);
+			setSections(sectionsBeforeUpdate);
 		}
 
 		// Additional cleanup after group drop
@@ -1786,7 +1786,7 @@ function handleSectionDrop(state) {
 		const sectionsBeforeUpdate = get(sections);
 		let errorOccurred = false;
 
-		sections.update((secs) => {
+		updateSections((secs) => {
 			try {
 				// Validate indices again
 				if (
@@ -1834,7 +1834,7 @@ function handleSectionDrop(state) {
 		// If an error occurred during the update, restore from backup
 		if (errorOccurred) {
 			console.warn('[WARN] Restoring previous state due to error in section drop');
-			sections.set(sectionsBeforeUpdate);
+			setSections(sectionsBeforeUpdate);
 		}
 
 		// Additional cleanup after section drop

@@ -10,23 +10,31 @@ import * as historyStore from '../historyStore';
 
 // Mock the necessary modules
 vi.mock('../sectionsStore', () => {
-	let mockStoreValue = [];
-	return {
-		sections: {
-			subscribe: (run) => {
-				run(mockSections);
-				return () => {};
-			},
-			update: vi.fn((cb) => {
-				const result = cb(mockSections);
-				mockSections = result;
-				return result;
-			}),
-			set: vi.fn((newVal) => {
-				mockSections = newVal;
-			})
-		}
-	};
+        let mockStoreValue = [];
+        return {
+                sections: {
+                        subscribe: (run) => {
+                                run(mockSections);
+                                return () => {};
+                        },
+                        update: vi.fn((cb) => {
+                                const result = cb(mockSections);
+                                mockSections = result;
+                                return result;
+                        }),
+                        set: vi.fn((newVal) => {
+                                mockSections = newVal;
+                        })
+                },
+                updateSections: vi.fn((cb) => {
+                        const result = cb(mockSections);
+                        mockSections = result;
+                        return result;
+                }),
+                setSections: vi.fn((val) => {
+                        mockSections = val;
+                })
+        };
 });
 
 vi.mock('../historyStore', () => {

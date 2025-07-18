@@ -1,36 +1,33 @@
 import { writable, get, derived } from 'svelte/store';
-import { toast } from '@zerodevx/svelte-toast';
 import { addToHistory } from './historyStore';
-
-// Section counter for generating unique IDs
-let sectionCounter = 0;
+import { v4 as uuidv4 } from 'uuid';
 
 // Default sections for new practice plans
 const DEFAULT_SECTIONS = [
-	{
-		id: `section-${++sectionCounter}`,
-		name: 'Warmup',
-		order: 0,
-		goals: [],
-		notes: '',
-		items: []
-	},
-	{
-		id: `section-${++sectionCounter}`,
-		name: 'Skill Building',
-		order: 1,
-		goals: [],
-		notes: '',
-		items: []
-	},
-	{
-		id: `section-${++sectionCounter}`,
-		name: 'Half Court',
-		order: 2,
-		goals: [],
-		notes: '',
-		items: []
-	}
+        {
+                id: `section-${uuidv4()}`,
+                name: 'Warmup',
+                order: 0,
+                goals: [],
+                notes: '',
+                items: []
+        },
+        {
+                id: `section-${uuidv4()}`,
+                name: 'Skill Building',
+                order: 1,
+                goals: [],
+                notes: '',
+                items: []
+        },
+        {
+                id: `section-${uuidv4()}`,
+                name: 'Half Court',
+                order: 2,
+                goals: [],
+                notes: '',
+                items: []
+        }
 ];
 
 // Timeline constants
@@ -85,6 +82,10 @@ export const selectedSectionId = writable(null);
 export const customTimelineColors = writable({});
 export const customTimelineNames = writable({});
 
+// Expose helpers for external modules to update the store
+export const updateSections = (cb) => sections.update(cb);
+export const setSections = (val) => sections.set(val);
+
 // Helper function to get a timeline's color (custom or default)
 export function getTimelineColor(timeline) {
 	const customColors = get(customTimelineColors);
@@ -97,7 +98,6 @@ export function getTimelineColor(timeline) {
 // Helper function to get a timeline's name (custom or default)
 export function getTimelineName(timeline) {
 	if (!timeline) {
-		console.warn('[DEBUG] getTimelineName called with undefined timeline');
 		return '';
 	}
 
@@ -106,34 +106,28 @@ export function getTimelineName(timeline) {
 
 	// Check if there's a custom name for this timeline
 	if (customNames && customNames[timeline]) {
-		console.log(`[DEBUG] Using custom name for ${timeline}: ${customNames[timeline]}`);
 		return customNames[timeline];
 	}
 
 	// Check if there's a default name
 	if (DEFAULT_TIMELINE_NAMES[timeline]) {
-		console.log(`[DEBUG] Using default name for ${timeline}: ${DEFAULT_TIMELINE_NAMES[timeline]}`);
 		return DEFAULT_TIMELINE_NAMES[timeline];
 	}
 
 	// If all else fails, use the timeline key
-	console.log(`[DEBUG] No name found for ${timeline}, using key as name`);
 	return timeline;
 }
 
 // Helper function to update a timeline's name
 export function updateTimelineName(timeline, name) {
-	console.log('[DEBUG] updateTimelineName called with:', { timeline, name });
 
 	if (!name || name.trim() === '') {
-		console.warn(`Cannot use empty name for timeline "${timeline}". Using default instead.`);
 		name = DEFAULT_TIMELINE_NAMES[timeline] || timeline;
 	}
 
 	// Update the customTimelineNames store
 	customTimelineNames.update((names) => {
 		const updatedNames = { ...names, [timeline]: name };
-		console.log('[DEBUG] Updated customTimelineNames:', updatedNames);
 		return updatedNames;
 	});
 
@@ -143,13 +137,10 @@ export function updateTimelineName(timeline, name) {
 			...PARALLEL_TIMELINES[timeline],
 			name: name
 		};
-		console.log('[DEBUG] Updated PARALLEL_TIMELINES entry:', PARALLEL_TIMELINES[timeline]);
 	} else {
-		console.warn(`[DEBUG] Could not update PARALLEL_TIMELINES for ${timeline} - entry not found`);
 	}
 
 	// Log the result of getting the timeline name to verify it works
-	console.log('[DEBUG] getTimelineName result after update:', getTimelineName(timeline));
 
 	// Update all section items that use this timeline to ensure reactivity
 	sections.update((currentSections) => {
@@ -177,7 +168,6 @@ export function updateTimelineName(timeline, name) {
 export function updateTimelineColor(timeline, color) {
 	// Validate that the color is a valid Tailwind color class
 	if (!Object.keys(TIMELINE_COLORS).includes(color)) {
-		console.warn(
 			`Invalid color class "${color}" for timeline "${timeline}". Must be one of: ${Object.keys(TIMELINE_COLORS).join(', ')}. Using default bg-gray-500 instead.`
 		);
 		// Use a safe default color if invalid
@@ -226,11 +216,12 @@ export function formatDrillItem(item, sectionId) {
 
 	// Determine if this is a one-off drill
 	// One-off drills have either:
-	// 1. type 'drill' with null drill_id and no drill object, or
-	// 2. A negative numeric ID (our new approach)
-	const isOneOff =
-		(item.type === 'drill' && !item.drill && !item.drill_id) ||
-		(typeof item.id === 'number' && item.id < 0);
+        // 1. type 'drill' with null drill_id and no drill object, or
+        // 2. An ID string starting with "oneoff-" (new approach)
+        const isOneOff =
+                (item.type === 'drill' && !item.drill && !item.drill_id) ||
+                (typeof item.id === 'string' && item.id.startsWith('oneoff-')) ||
+                (typeof item.id === 'number' && item.id < 0);
 
 	const base = {
 		id: item.drill?.id || item.id,
@@ -277,7 +268,6 @@ export function formatDrillItem(item, sectionId) {
 		base.groupTimelines = null;
 	}
 
-	console.log('[DEBUG] formatDrillItem - output base:', {
 		id: base.id,
 		type: base.type,
 		parallel_group_id: base.parallel_group_id,
@@ -331,7 +321,6 @@ export function initializeSections(practicePlan) {
 						groupTimelines: Array.from(parallelGroups.get(item.parallel_group_id) || [])
 					})
 				};
-				console.log('[DEBUG] Formatted item with group timelines:', formattedItem);
 				return formattedItem;
 			})
 		}))
@@ -377,19 +366,16 @@ export function initializeTimelinesFromPlan(plan) {
 
 	if (allTimelines.size > 0) {
 		selectedTimelines.set(allTimelines);
-		console.log('[DEBUG] Initialized selectedTimelines from plan:', Array.from(allTimelines));
 	}
 
 	// Initialize custom colors if any were found
 	if (Object.keys(colors).length > 0) {
 		customTimelineColors.set(colors);
-		console.log('[DEBUG] Initialized customTimelineColors from plan:', colors);
 	}
 
 	// Initialize custom names if any were found
 	if (Object.keys(names).length > 0) {
 		customTimelineNames.set(names);
-		console.log('[DEBUG] Initialized customTimelineNames from plan:', names);
 
 		// Update PARALLEL_TIMELINES for compatibility
 		Object.entries(names).forEach(([timeline, name]) => {
@@ -405,30 +391,21 @@ export function initializeTimelinesFromPlan(plan) {
 
 // Section management functions
 export function addSection() {
-	console.log('[sectionsStore.js] addSection called');
 	// Create snapshot for history before changing state
 	addToHistory('ADD_SECTION', null, 'Added section');
 
 	sections.update((currentSections) => {
-		console.log(
-			'[sectionsStore.js] sections.update started. Current sections count:',
-			currentSections.length
-		);
-		const newSectionData = {
-			id: `section-${++sectionCounter}`,
-			name: 'New Section',
-			order: currentSections.length,
-			goals: [],
-			notes: '',
-			items: []
-		};
-		const newSectionsArray = [...currentSections, newSectionData];
-		console.log(
-			'[sectionsStore.js] sections.update finished. New sections count:',
-			newSectionsArray.length
-		);
-		return newSectionsArray;
-	});
+                const newSectionData = {
+                        id: `section-${uuidv4()}`,
+                        name: 'New Section',
+                        order: currentSections.length,
+                        goals: [],
+                        notes: '',
+                        items: []
+                };
+                const newSectionsArray = [...currentSections, newSectionData];
+                return newSectionsArray;
+        });
 }
 
 export function removeSection(sectionId) {
@@ -460,8 +437,8 @@ export function addBreak(sectionId) {
 		const section = newSections[sectionIndex];
 
 		// Create new break item
-		const breakItem = {
-			id: `break-${Date.now()}`,
+                const breakItem = {
+                        id: `break-${uuidv4()}`,
 			type: 'break',
 			name: 'Break',
 			duration: 10,
@@ -487,24 +464,16 @@ export function addOneOffDrill(sectionId, name = 'Quick Activity') {
 
 		// Create new one-off drill item with a numeric ID (negative timestamp)
 		// This ensures it won't conflict with actual drill IDs but will be treated as an integer
-		const oneOffDrillItem = {
-			id: -Date.now(), // Use negative timestamp as ID (will be treated as an integer)
-			type: 'one-off',
-			name: name,
+                const oneOffDrillItem = {
+                        id: `oneoff-${uuidv4()}`,
+                        type: 'one-off',
+                        name: name,
 			duration: 10,
 			selected_duration: 10
 		};
 
-		// Add one-off drill to end of section
-		section.items.push(oneOffDrillItem);
-
-		// Add success toast notification
-		toast.push(`Added "${name}" to ${section.name}`, {
-			theme: {
-				'--toastBackground': '#4CAF50',
-				'--toastColor': 'white'
-			}
-		});
+                // Add one-off drill to end of section
+                section.items.push(oneOffDrillItem);
 
 		return newSections;
 	});
@@ -533,13 +502,6 @@ export function addDrillToPlan(drill, sectionId, options = {}) {
 
 			targetSection.items = [...targetSection.items, newDrill];
 
-			// Add success toast notification
-			toast.push(`Added "${drill.name}" to ${targetSection.name}`, {
-				theme: {
-					'--toastBackground': '#4CAF50',
-					'--toastColor': 'white'
-				}
-			});
 		}
 
 		return newSections;
@@ -565,16 +527,8 @@ export function addFormationToPlan(formation, sectionId) {
 				selected_duration: 0
 			};
 
-			targetSection.items = [...targetSection.items, newFormation];
-
-			// Add success toast notification
-			toast.push(`Added "${formation.name}" formation reference to ${targetSection.name}`, {
-				theme: {
-					'--toastBackground': '#4CAF50',
-					'--toastColor': 'white'
-				}
-			});
-		}
+                        targetSection.items = [...targetSection.items, newFormation];
+                }
 
 		return newSections;
 	});
@@ -629,7 +583,6 @@ export function removeItem(sectionIndex, itemIndex) {
 }
 
 export function handleDurationChange(sectionIndex, itemIndex, newDuration) {
-	console.log('[DEBUG] Updating duration', { sectionIndex, itemIndex, newDuration });
 
 	// Validate the duration - allow empty string during editing
 	if (newDuration === '' || (newDuration >= 1 && newDuration <= 120)) {
@@ -682,7 +635,6 @@ export function handleDurationChange(sectionIndex, itemIndex, newDuration) {
 }
 
 export function handleTimelineChange(sectionIndex, itemIndex, newTimeline) {
-	console.log('[DEBUG] Updating timeline', { sectionIndex, itemIndex, newTimeline });
 
 	// Get the item before changing for history
 	const currentSections = get(sections);
@@ -714,7 +666,7 @@ export function handleTimelineChange(sectionIndex, itemIndex, newTimeline) {
 
 // Function to add parallel activities for positions
 export function addParallelActivities(sectionId, activities) {
-	const groupId = `parallel-${Date.now()}`;
+        const groupId = `parallel-${uuidv4()}`;
 	const timelines = Object.keys(activities);
 	
 	addToHistory('ADD_PARALLEL_ACTIVITIES', { sectionId, activities, groupId }, 'Added parallel activities');
@@ -738,17 +690,10 @@ export function addParallelActivities(sectionId, activities) {
 						parallel_group_id: groupId,
 						group_timelines: timelines
 					};
-					targetSection.items.push(newItem);
-				}
-			});
-			
-			toast.push('Added parallel activities', {
-				theme: {
-					'--toastBackground': '#4CAF50',
-					'--toastColor': 'white'
-				}
-			});
-		}
+                        targetSection.items.push(newItem);
+                                }
+                        });
+                }
 		
 		return newSections;
 	});
@@ -756,10 +701,8 @@ export function addParallelActivities(sectionId, activities) {
 
 // Parallel group management functions
 export function handleUngroup(groupId) {
-	console.log('[DEBUG] Starting ungroup for groupId', groupId);
 
 	if (!groupId) {
-		console.log('[DEBUG] No groupId provided');
 		return;
 	}
 
@@ -777,13 +720,11 @@ export function handleUngroup(groupId) {
 	addToHistory('UNGROUP', { groupId, groupItems }, 'Ungrouped parallel drills');
 
 	sections.update((currentSections) => {
-		console.log('[DEBUG] Current sections', currentSections);
 
 		return currentSections.map((section) => {
 			// Find all items in this group
 			const groupItems = section.items.filter((item) => item.parallel_group_id === groupId);
 
-			console.log('[DEBUG] Found group items count', groupItems.length);
 
 			if (groupItems.length === 0) return section;
 
@@ -814,41 +755,34 @@ export function handleUngroup(groupId) {
 		});
 	});
 
-	toast.push('Ungrouped parallel drills');
 }
 
 export function createParallelBlock() {
 	const sectionId = get(selectedSectionId);
 	if (!sectionId) return;
 
-	console.log(
-		'[DEBUG] createParallelBlock - starting. Global selectedTimelines:',
-		Array.from(get(selectedTimelines))
-	);
 
-	if (get(selectedTimelines).size < 2) {
-		toast.push('Please select at least two timelines');
-		return;
-	}
+
+        if (get(selectedTimelines).size < 2) {
+                return;
+        }
 
 	sections.update((currentSections) => {
 		const newSections = [...currentSections];
 		const section = newSections.find((s) => s.id === sectionId);
 		if (!section) {
-			console.log(
 				'[DEBUG] createParallelBlock - section not found for selectedSectionId:',
 				sectionId
 			);
 			return currentSections;
 		}
 
-		const parallelGroupId = `group_${Date.now()}`;
+                const parallelGroupId = `group_${uuidv4()}`;
 		// Capture the timelines at this moment
 		const groupTimelines = Array.from(get(selectedTimelines));
 		// Use a fixed group name now
 		const groupName = 'Parallel Activities';
 
-		console.log(
 			'[DEBUG] createParallelBlock - captured groupTimelines for new block:',
 			groupTimelines
 		);
@@ -857,10 +791,9 @@ export function createParallelBlock() {
 		const placeholderDrills = groupTimelines.map((timeline) => {
 			// Debug the timeline name that will be used
 			const timelineName = getTimelineName(timeline);
-			console.log(`[DEBUG] Creating placeholder for ${timeline}, using name: ${timelineName}`);
 
-			return {
-				id: `placeholder_${timeline}_${Date.now()}`,
+                        return {
+                                id: `placeholder_${timeline}_${uuidv4()}`,
 				type: 'break',
 				name: `${timelineName} Drill`,
 				duration: 15,
@@ -875,13 +808,11 @@ export function createParallelBlock() {
 			};
 		});
 
-		console.log('[DEBUG] createParallelBlock - placeholderDrills to be added:', placeholderDrills);
 		section.items = [...section.items, ...placeholderDrills];
 		return newSections;
 	});
 
-	toast.push('Created parallel block. Drag drills into each timeline.');
-	console.log('[DEBUG] createParallelBlock - parallel block created in section:', sectionId);
+        // Parallel block created
 }
 
 export function updateParallelBlockTimelines(sectionId, parallelGroupId, newTimelines) {
@@ -938,12 +869,11 @@ export function updateParallelBlockTimelines(sectionId, parallelGroupId, newTime
 			const newPlaceholders = newTimelinesToAdd.map((timeline) => {
 				// Debug the timeline name that will be used
 				const timelineName = getTimelineName(timeline);
-				console.log(
 					`[DEBUG] Creating placeholder in updateParallelBlockTimelines for ${timeline}, using name: ${timelineName}`
 				);
 
-				return {
-					id: `placeholder_${timeline}_${Date.now()}`,
+                                return {
+                                        id: `placeholder_${timeline}_${uuidv4()}`,
 					type: 'break',
 					name: `${timelineName} Drill`,
 					duration: 15,
@@ -984,10 +914,9 @@ export function handleTimelineSelect(sectionId, parallelGroupId) {
 }
 
 export function handleTimelineSave() {
-	if (get(selectedTimelines).size < 2) {
-		toast.push('Please select at least two timelines');
-		return false;
-	}
+        if (get(selectedTimelines).size < 2) {
+                return false;
+        }
 
 	const sectionId = get(selectedSectionId);
 	if (sectionId) {
@@ -1063,7 +992,6 @@ export function removeTimelineFromGroup(sectionId, parallelGroupId, timeline) {
 		}));
 	});
 
-	toast.push(`Removed ${getTimelineName(timeline)} timeline`);
 }
 
 // Timeline duration calculation
@@ -1138,21 +1066,8 @@ export function calculateTimelineDurations(items, groupId) {
 		mismatches.length > 0 &&
 		(!lastDurationWarnings.has(groupId) || lastDurationWarnings.get(groupId) !== warningSig)
 	) {
-		const warningMessage = mismatches
-			.map(({ timeline, difference }) => `${getTimelineName(timeline)} (${difference}min shorter)`)
-			.join(', ');
-
-		// Store the current warning signature
-		lastDurationWarnings.set(groupId, warningSig);
-
-		// Show the toast
-		toast.push(`Timeline duration mismatch in group: ${warningMessage}`, {
-			theme: {
-				'--toastBackground': '#FFA500',
-				'--toastColor': 'black'
-			}
-		});
-	}
+                lastDurationWarnings.set(groupId, warningSig);
+        }
 
 	return durations;
 }
@@ -1160,12 +1075,9 @@ export function calculateTimelineDurations(items, groupId) {
 // DEBUG function to check the state of the timeline names
 export function debugTimelineNames() {
 	const customNames = get(customTimelineNames);
-	console.log('[DEBUG] Current custom timeline names:', customNames);
 
-	console.log('[DEBUG] Current PARALLEL_TIMELINES:', JSON.stringify(PARALLEL_TIMELINES, null, 2));
 
 	Object.keys(DEFAULT_TIMELINE_NAMES).forEach((key) => {
-		console.log(`[DEBUG] Timeline ${key} name:`, getTimelineName(key));
 	});
 
 	return customNames;
@@ -1263,16 +1175,16 @@ export function mergeIntoParallelGroup(sourceIndex, targetIndex, items) {
 	const newItems = [...items];
 	let groupId;
 
-	if (targetItem.parallel_group_id) {
-		// Add to existing group
-		groupId = targetItem.parallel_group_id;
+        if (targetItem.parallel_group_id) {
+                // Add to existing group
+                groupId = targetItem.parallel_group_id;
 		newItems[sourceIndex] = {
 			...sourceItem,
 			parallel_group_id: groupId
 		};
-	} else {
-		// Create new group
-		groupId = `group_${Date.now()}`;
+        } else {
+                // Create new group
+                groupId = `group_${uuidv4()}`;
 		newItems[sourceIndex] = {
 			...sourceItem,
 			parallel_group_id: groupId

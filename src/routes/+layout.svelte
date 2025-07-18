@@ -4,9 +4,10 @@
 	import { navigating } from '$app/stores';
 	import Header from './Header.svelte';
 	import './styles.css';
-	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
-	import FeedbackButton from '$lib/components/FeedbackButton.svelte';
-	import Spinner from '$lib/components/Spinner.svelte';
+        import { SvelteToast, toast } from '@zerodevx/svelte-toast';
+        import FeedbackButton from '$lib/components/FeedbackButton.svelte';
+        import Spinner from '$lib/components/Spinner.svelte';
+        import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { inject } from '@vercel/analytics';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { dev } from '$app/environment';
@@ -35,34 +36,21 @@
 		for (const item of itemsToAssociate) {
 			const entityId = sessionStorage.getItem(item.key);
 			if (entityId) {
-				try {
-					console.log(`Found ${item.key} with ID ${entityId}, attempting to associate...`);
-					const response = await fetch(`${item.endpoint}/${entityId}/associate`, {
-						method: 'POST'
-					});
-					if (response.ok) {
-						console.log(`${item.key} ${entityId} associated successfully.`);
-						// Optional: Show success toast
-						// toast.push(`Successfully claimed your ${item.key.replace('ToAssociate', '')}.`);
-					} else {
-						const errorData = await response.json();
-						console.error(
-							`Failed to associate ${item.key} ${entityId}:`,
-							response.status,
-							errorData
-						);
-						// Optional: Show error toast
-						// toast.push(`Could not claim ${item.key.replace('ToAssociate', '')}. It might already be owned.`, { theme: { '--toastBackground': '#F56565', '--toastColor': 'white' } });
-					}
-				} catch (error) {
-					console.error(`Error during association call for ${item.key} ${entityId}:`, error);
-					// Optional: Show error toast
-					// toast.push('An error occurred while claiming your item.', { theme: { '--toastBackground': '#F56565', '--toastColor': 'white' } });
-				} finally {
-					// Remove the item from sessionStorage regardless of success/failure
-					sessionStorage.removeItem(item.key);
-					console.log(`Removed ${item.key} from sessionStorage.`);
-				}
+                                try {
+                                        console.log(`Found ${item.key} with ID ${entityId}, attempting to associate...`);
+                                        await apiFetch(`${item.endpoint}/${entityId}/associate`, { method: 'POST' });
+                                        console.log(`${item.key} ${entityId} associated successfully.`);
+                                        // Optional: Show success toast
+                                        // toast.push(`Successfully claimed your ${item.key.replace('ToAssociate', '')}.`);
+                                } catch (error) {
+                                        console.error(`Error during association call for ${item.key} ${entityId}:`, error);
+                                        // Optional: Show error toast
+                                        // toast.push('An error occurred while claiming your item.', { theme: { '--toastBackground': '#F56565', '--toastColor': 'white' } });
+                                } finally {
+                                        // Remove the item from sessionStorage regardless of success/failure
+                                        sessionStorage.removeItem(item.key);
+                                        console.log(`Removed ${item.key} from sessionStorage.`);
+                                }
 			}
 		}
 	}

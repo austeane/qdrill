@@ -22,15 +22,46 @@ Redesign the landing page to feature a more prominent sign-in CTA and improve th
 
 ## Current Implementation Analysis
 
-```svelte
-<!-- Current CTA buttons in hero section -->
-<button on:click={navigateToWizard} class="...">Create Practice Plan</button>
-<a href="/drills" class="...">Browse Drills</a>
+The landing page hero currently contains only two actions: **Create Practice Plan** and **Browse Drills**. There is no sign‑in call‑to‑action in this section. The relevant portion of `src/routes/+page.svelte` is:
 
-<!-- Current sign-in in header (small) -->
-<button on:click={() => signIn.social({ provider: 'google' })}>
-  Sign in with Google
-</button>
+```svelte
+<div class="space-y-4">
+  <button
+    on:click={navigateToWizard}
+    disabled={isNavigating}
+    class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto text-center relative"
+  >
+    {#if isNavigating}
+      <div class="absolute inset-0 flex items-center justify-center">
+        <Spinner size="sm" color="white" />
+      </div>
+      <span class="opacity-0">Create Practice Plan</span>
+    {:else}
+      Create Practice Plan
+    {/if}
+  </button>
+  <a
+    href="/drills"
+    class="inline-block bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto text-center"
+  >
+    Browse Drills
+  </a>
+</div>
+```
+
+The sign‑in button is only present in the header and is relatively small:
+
+```svelte
+{#if user}
+  <!-- profile dropdown -->
+{:else}
+  <button
+    on:click={() => signIn.social({ provider: 'google' })}
+    class="text-gray-700 hover:text-gray-900 font-semibold"
+  >
+    Sign in with Google
+  </button>
+{/if}
 ```
 
 **Issues:**

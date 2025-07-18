@@ -5,9 +5,13 @@
 	import { cart } from '$lib/stores/cartStore';
 	import { onMount } from 'svelte';
 	import { useSession, signIn, signOut } from '$lib/auth-client';
+	import LoadingButton from '$lib/components/ui/button/LoadingButton.svelte';
 
 	// Get session using Better Auth
 	const session = useSession();
+
+	// sign-in loading indicator
+	let isSigningIn = false;
 
 	let isMobileMenuOpen = false;
 	let isCartOpen = false;
@@ -30,6 +34,16 @@
 
 	function toggleMobileMenu() {
 		isMobileMenuOpen = !isMobileMenuOpen;
+	}
+
+	// start Google sign-in flow with feedback
+	async function handleSignIn() {
+		isSigningIn = true;
+		try {
+			await signIn.social({ provider: 'google' });
+		} finally {
+			isSigningIn = false;
+		}
 	}
 
 	// Close drills dropdown when clicking outside
@@ -334,12 +348,15 @@
 						</div>
 					</div>
 				{:else}
-					<button
-						on:click={() => signIn.social({ provider: 'google' })}
-						class="text-gray-700 hover:text-gray-900 font-semibold"
+					<LoadingButton
+						loading={isSigningIn}
+						on:click={handleSignIn}
+						variant="default"
+						size="sm"
+						className="bg-blue-600 hover:bg-blue-700 text-white"
 					>
-						Sign in with Google
-					</button>
+						Sign In
+					</LoadingButton>
 				{/if}
 				<a
 					href="https://discord.gg/yuXBkACYE3"
@@ -583,12 +600,14 @@
 						</button>
 					</div>
 				{:else}
-					<button
-						on:click={() => signIn.social({ provider: 'google' })}
-						class="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold"
+					<LoadingButton
+						loading={isSigningIn}
+						on:click={handleSignIn}
+						size="sm"
+						className="w-full text-left text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-semibold"
 					>
-						Sign in with Google
-					</button>
+						Sign In
+					</LoadingButton>
 				{/if}
 				<a
 					href="https://discord.gg/yuXBkACYE3"

@@ -9,6 +9,14 @@
 - Schema: `src/lib/validation/practicePlanSchema.ts`
 - Database: `practice_plan_drills` table (uses `parallel_timeline` field)
 
+### Current Code Status
+
+The app currently implements a **PositionFilter** component (`src/lib/components/practice-plan/PositionFilter.svelte`).
+This filter lets users toggle between the three preset positions **CHASERS**, **BEATERS**, and **SEEKERS**.
+`+page.svelte` applies the filter using `filterSectionsByPositions()` to hide or flatten parallel groups.
+Group badges on cards also use hardcoded position colors. The system does not yet detect arbitrary
+`parallel_timeline` values, so custom group names are ignored.
+
 ## Problem Statement
 
 Current practice plans show all activities linearly, making it difficult to:

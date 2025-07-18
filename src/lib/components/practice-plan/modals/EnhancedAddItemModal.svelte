@@ -1,7 +1,8 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
 	import { toast } from '@zerodevx/svelte-toast';
-	import { apiFetch } from '$lib/utils/apiFetch.js';
+import { apiFetch } from '$lib/utils/apiFetch.js';
+import { focusTrap } from '$lib/actions/focusTrap.js';
 	
 	export let show = false;
 	export let selectedSectionId = null;
@@ -178,8 +179,8 @@
 </script>
 
 {#if show}
-	<div class="modal-backdrop" on:click={close}>
-		<div class="modal-content" on:click|stopPropagation>
+       <div class="modal-backdrop" on:click={close}>
+               <div class="modal-content" on:click|stopPropagation use:focusTrap tabindex="0">
 			<div class="modal-header">
 				<h2 class="modal-title">Add to Practice Plan</h2>
 				<button class="close-button" on:click={close}>×</button>
@@ -220,14 +221,16 @@
 			<div class="modal-body">
 				<!-- Drill Tab -->
 				{#if activeTab === 'drill'}
-					<div class="search-section">
-						<input
-							type="text"
-							placeholder="Search drills..."
-							bind:value={drillSearchQuery}
-							on:input={() => searchDrills(drillSearchQuery)}
-							class="search-input"
-						/>
+                                       <div class="search-section">
+                                               <label for="drill-search" class="sr-only">Search drills</label>
+                                               <input
+                                                       id="drill-search"
+                                                       type="text"
+                                                       placeholder="Search drills..."
+                                                       bind:value={drillSearchQuery}
+                                                       on:input={() => searchDrills(drillSearchQuery)}
+                                                       class="search-input"
+                                               />
 						
 						<div class="search-results">
 							{#each drillSearchResults as drill}
@@ -253,13 +256,15 @@
 							</select>
 						</div>
 						
-						<input
-							type="text"
-							placeholder="Search formations..."
-							bind:value={formationSearchQuery}
-							on:input={() => searchFormations(formationSearchQuery)}
-							class="search-input"
-						/>
+                                               <label for="formation-search" class="sr-only">Search formations</label>
+                                               <input
+                                                       id="formation-search"
+                                                       type="text"
+                                                       placeholder="Search formations..."
+                                                       bind:value={formationSearchQuery}
+                                                       on:input={() => searchFormations(formationSearchQuery)}
+                                                       class="search-input"
+                                               />
 						
 						<div class="search-results">
 							{#each formationSearchResults as formation}
@@ -303,12 +308,13 @@
 												<button class="clear-btn" on:click={() => clearParallelDrill(position)}>×</button>
 											</div>
 										{:else}
-											<input
-												type="text"
-												placeholder="Search drill..."
-												on:blur={(e) => searchParallelDrill(position, e.target.value)}
-												class="position-search"
-											/>
+                                                                               <input
+                                                                               type="text"
+                                                                               aria-label={`Search drill for ${position}`}
+                                                                               placeholder="Search drill..."
+                                                                               on:blur={(e) => searchParallelDrill(position, e.target.value)}
+                                                                               class="position-search"
+                                                                               />
 										{/if}
 									</div>
 								{/if}

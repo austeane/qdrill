@@ -62,7 +62,7 @@
 	import TimelineSelectorModal from '$lib/components/practice-plan/modals/TimelineSelectorModal.svelte';
 	import SectionContainer from '$lib/components/practice-plan/sections/SectionContainer.svelte';
 	import PlanMetadataFields from '$lib/components/practice-plan/PlanMetadataFields.svelte';
-       import { Button, LoadingButton } from '$lib/components/ui/button';
+	import { Button } from '$lib/components/ui/button'; // Restore the original button import
 	import SimpleButton from './components/SimpleButton.svelte'; // Import the new simple button
 	import Spinner from '$lib/components/Spinner.svelte'; // Assuming Spinner is top-level
 
@@ -491,17 +491,25 @@
 	</div>
 
 	<!-- Submit button -->
-       <div class="flex justify-end mt-8">
-               <LoadingButton
-                       type="submit"
-                       variant="default"
-                       class="min-w-[120px]"
-                       loading={submitting}
-                       loadingText={mode === 'edit' ? 'Updating...' : 'Creating...'}
-               >
-                       {mode === 'edit' ? 'Update Plan' : 'Create Plan'}
-               </LoadingButton>
-       </div>
+	<div class="flex justify-end mt-8">
+		<Button 
+			type="submit" 
+			variant="default" 
+			class="min-w-[120px]" 
+			disabled={submitting}
+		>
+			{#if submitting}
+				<Spinner class="inline-block w-4 h-4 mr-2" />
+			{/if}
+			{submitting
+				? mode === 'edit'
+					? 'Updating...'
+					: 'Creating...'
+				: mode === 'edit'
+					? 'Update Plan'
+					: 'Create Plan'}
+		</Button>
+	</div>
 </form>
 
 <!-- Modals -->

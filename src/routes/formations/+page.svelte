@@ -1,9 +1,8 @@
 <script>
 	// import { onMount } from 'svelte'; // Removed
 	import { applyAction, enhance } from '$app/forms';
-import { goto } from '$app/navigation';
-import { navigating } from '$app/stores';
-import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
+	import { goto } from '$app/navigation';
+	import { navigating } from '$app/stores';
 	import { page } from '$app/stores';
 	import {
 		formations,
@@ -320,14 +319,10 @@ import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
 	</div>
 
 	<!-- Loading State -->
-{#if $navigating}
-       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-               {#each Array(6) as _}
-                       <div class="bg-white rounded-lg shadow-sm p-6">
-                               <SkeletonLoader lines={3} showAvatar={true} />
-                       </div>
-               {/each}
-       </div>
+	{#if $navigating}
+		<div class="flex justify-center py-12">
+			<div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+		</div>
 		<!-- Empty State -->
 	{:else if !$formations || $formations.length === 0}
 		<div class="bg-white rounded-lg shadow-sm p-8 text-center">

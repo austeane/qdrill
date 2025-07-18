@@ -7,12 +7,9 @@
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore.js';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
 	import { dev } from '$app/environment';
-import { page } from '$app/stores';
-import { goto, invalidate } from '$app/navigation';
-import { navigating } from '$app/stores';
-import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
-import Spinner from '$lib/components/Spinner.svelte';
-import { createLoadingState } from '$lib/utils/loadingStates.js';
+	import { page } from '$app/stores';
+	import { goto, invalidate } from '$app/navigation';
+	import { navigating } from '$app/stores';
 	import { FILTER_STATES } from '$lib/constants';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
@@ -38,9 +35,7 @@ import { createLoadingState } from '$lib/utils/loadingStates.js';
 
 	import Pagination from '$lib/components/Pagination.svelte';
 
-export let data;
-
-const searchLoading = createLoadingState();
+	export let data;
 
 	// Filter options from load
 	$: filterOptions = data.filterOptions || {};
@@ -210,19 +205,14 @@ const searchLoading = createLoadingState();
 		}
 	}
 
-       function handleSearchInput() {
-               searchLoading.start();
-               debounce(() => applyFiltersAndNavigate({ resetPage: true }).finally(() => searchLoading.stop()));
-       }
+	function handleSearchInput() {
+		debounce(() => applyFiltersAndNavigate({ resetPage: true }));
+	}
 
-function handleSortChange(event) {
-        selectedSortOption.set(event.target.value);
-        applyFiltersAndNavigate({ resetPage: true });
-}
-
-function handleFilterChange() {
-       applyFiltersAndNavigate({ resetPage: true });
-}
+	function handleSortChange(event) {
+		selectedSortOption.set(event.target.value);
+		applyFiltersAndNavigate({ resetPage: true });
+	}
 
 	function toggleSortOrder() {
 		selectedSortOrder.update((order) => (order === 'asc' ? 'desc' : 'asc'));
@@ -344,9 +334,9 @@ function handleFilterChange() {
 		positionsFocusedOn={filterOptions.positionsFocusedOn}
 		numberOfPeopleOptions={filterOptions.numberOfPeopleOptions}
 		suggestedLengths={filterOptions.suggestedLengths}
-               drillTypes={filterOptions.drillTypes}
-               on:filterChange={handleFilterChange}
-       />
+		drillTypes={filterOptions.drillTypes}
+		on:filterChange={() => applyFiltersAndNavigate({ resetPage: true })}
+	/>
 
 	<!-- Sorting Section and Search Input -->
 	<div class="mb-6 flex items-center space-x-4">
@@ -389,39 +379,21 @@ function handleFilterChange() {
 			{/if}
 		</div>
 
-               <div class="relative flex-grow">
-                       <input
-                               type="text"
-                               placeholder="Search drills..."
-                               class="w-full p-3 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                               bind:value={$searchQuery}
-                               on:input={handleSearchInput}
-                               aria-label="Search drills"
-                               data-testid="search-input"
-                       />
-                       {#if $searchLoading}
-                               <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                       <Spinner size="sm" color="gray" />
-                               </div>
-                       {/if}
-               </div>
+		<input
+			type="text"
+			placeholder="Search drills..."
+			class="flex-grow p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+			bind:value={$searchQuery}
+			on:input={handleSearchInput}
+			aria-label="Search drills"
+			data-testid="search-input"
+		/>
 	</div>
 
 	<!-- Loading and Empty States -->
-       {#if $navigating && !data.items}
-               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                       {#each Array(6) as _}
-                               <div class="border border-gray-200 bg-white rounded-lg shadow-md p-6">
-                                       <SkeletonLoader lines={4} showAvatar={false} className="mb-4" />
-                                       <div class="space-y-2">
-                                               <div class="h-4 bg-gray-300 rounded w-1/2"></div>
-                                               <div class="h-4 bg-gray-300 rounded w-3/4"></div>
-                                               <div class="h-8 bg-gray-300 rounded w-full mt-4"></div>
-                                       </div>
-                               </div>
-                       {/each}
-               </div>
-       {:else if !data.items || data.items.length === 0}
+	{#if $navigating && !data.items}
+		<p class="text-center text-gray-500 py-10">Loading drills...</p>
+	{:else if !data.items || data.items.length === 0}
 		<p class="text-center text-gray-500 py-10">No drills match your criteria.</p>
 	{:else}
 		<!-- Drills Grid -->

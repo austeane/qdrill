@@ -37,30 +37,26 @@ describe('UserService', () => {
 			expect(result).toEqual(mockUser);
 		});
 
-		it('should return null when user not found', async () => {
-			db.query.mockResolvedValueOnce({ rows: [] });
-			const result = await userService.getUserByEmail('nonexistent@example.com');
-			expect(result).toBeNull();
-		});
+                it('should throw NotFoundError when user not found', async () => {
+                        db.query.mockResolvedValueOnce({ rows: [] });
+                        await expect(userService.getUserByEmail('nonexistent@example.com')).rejects.toThrow(NotFoundError);
+                });
 
-		it('should handle errors properly', async () => {
-			const mockError = new Error('Database error');
-			db.query.mockRejectedValueOnce(mockError);
-			await expect(userService.getUserByEmail('test@example.com')).rejects.toThrow(mockError);
-		});
+                it('should handle errors properly', async () => {
+                        const mockError = new Error('Database error');
+                        db.query.mockRejectedValueOnce(mockError);
+                        await expect(userService.getUserByEmail('test@example.com')).rejects.toThrow(DatabaseError);
+                });
 	});
 
 	describe('getUserProfile', () => {
 		it('should return complete user profile with related data', async () => {
-			const mockClientQuery = vi.fn();
-			db.getClient.mockResolvedValueOnce({
-				query: mockClientQuery,
-				release: vi.fn()
-			});
-
-			mockClientQuery.mockResolvedValueOnce({
-				rows: [{ id: '123', name: 'Test User', email: 'test@example.com' }]
-			});
+                        const mockClientQuery = vi.fn();
+                        db.query.mockResolvedValueOnce({ rows: [{ id: '123', name: 'Test User', email: 'test@example.com', image: null, email_verified: null }] });
+                        db.getClient.mockResolvedValueOnce({
+                                query: mockClientQuery,
+                                release: vi.fn()
+                        });
 			mockClientQuery.mockResolvedValueOnce({
 				rows: [{ id: 1, name: 'Drill 1', variation_count: 2 }]
 			});
@@ -77,13 +73,13 @@ describe('UserService', () => {
 				rows: [{ id: 1, drill_id: 1, drill_name: 'Drill 1' }]
 			});
 
-			const result = await userService.getUserProfile('123');
+                        const result = await userService.getUserProfile('123');
 
-			expect(mockClientQuery).toHaveBeenNthCalledWith(
-				1,
-				expect.stringContaining('SELECT id, name, email'),
-				['123']
-			);
+                        expect(mockClientQuery).toHaveBeenNthCalledWith(
+                                1,
+                                expect.stringContaining('SELECT id, name, brief_description'),
+                                ['123', 10, 0]
+                        );
 			expect(result).toHaveProperty('user');
 			expect(result).toHaveProperty('drills');
 			expect(result).toHaveProperty('practicePlans');
@@ -92,15 +88,10 @@ describe('UserService', () => {
 			expect(result).toHaveProperty('comments');
 		});
 
-		it('should return null if user not found', async () => {
-			const mockClientQuery = vi.fn().mockResolvedValueOnce({ rows: [] });
-			db.getClient.mockResolvedValueOnce({
-				query: mockClientQuery,
-				release: vi.fn()
-			});
-			const result = await userService.getUserProfile('nonexistent');
-			expect(result).toBeNull();
-		});
+                it('should throw NotFoundError if user not found', async () => {
+                        db.query.mockResolvedValueOnce({ rows: [] });
+                        await expect(userService.getUserProfile('nonexistent')).rejects.toThrow(NotFoundError);
+                });
 	});
 
 

@@ -1,10 +1,12 @@
 # Ticket 24: Conduct Systematic Accessibility (A11y) Review
 
 - **Priority:** Medium
-- **Issue:** The initial review noted potential accessibility concerns in several areas, but a systematic review is needed.
-  - Modals (`DrillSearchModal`, `EmptyCartModal`, `TimelineSelectorModal`, `FeedbackModal`): Focus trapping, keyboard navigation, ARIA attributes (`aria-modal`, `role="dialog"`, labels).
-  - Custom Controls (`ThreeStateCheckbox`): Needs proper ARIA roles/states (`role="checkbox"`, `aria-checked`) and keyboard interaction.
-  - General: Semantic HTML usage, color contrast, keyboard navigation for interactive elements (like drag/drop handles, custom buttons/dropdowns).
+- **Issue:** Some ARIA roles and keyboard handlers have been added (e.g., modals use `role="dialog"` and `aria-modal`, `ThreeStateCheckbox` exposes `role="checkbox"`), but a comprehensive review is still needed.
+  - **Modals** (`DrillSearchModal`, `EmptyCartModal`, `TimelineSelectorModal`, `FeedbackModal`, `Cart.svelte`): Focus trapping is not implemented and several inputs (e.g., in `FeedbackModal`) lack labels. Keyboard navigation should be validated.
+  - **Custom Controls** (`ThreeStateCheckbox`): Implements `role="checkbox"` with `aria-checked` and keyboard interaction; verify it works well with screen readers.
+  - **Filter Toggles** (`FilterPanel` buttons): Use `aria-expanded` and `aria-controls`, but ensure focus styles and keyboard operation are consistent.
+  - **Drag/Drop Elements** (`DrillItem.svelte` and related components): Currently rely on mouse interactions with no keyboard alternative or ARIA description.
+  - **General:** Review semantic HTML usage and color contrast across pages.
 - **Affected Files:** Potentially many components, including:
   - `src/components/practice-plan/modals/*.svelte`
   - [`src/components/FeedbackModal.svelte`](src/components/FeedbackModal.svelte)
@@ -13,9 +15,8 @@
   - Components involved in drag/drop ([`DrillItem.svelte`](src/components/DrillItem.svelte), etc.)
   - [`src/components/Cart.svelte`](src/components/Cart.svelte)
 - **Recommendations:**
-  - Conduct a thorough accessibility audit using automated tools (e.g., Axe DevTools) and manual testing (keyboard navigation, screen reader checks).
-  - Ensure all interactive elements are keyboard accessible and have clear focus indicators.
-  - Use semantic HTML elements where appropriate.
-  - Add necessary ARIA attributes to custom components/widgets to convey their role, state, and properties to assistive technologies.
-  - Verify sufficient color contrast.
-  - Ensure focus is managed correctly within modals and dynamic UI sections.
+  - Run automated accessibility audits (e.g., Axe DevTools or `cypress-axe`) and perform manual keyboard/screen reader testing.
+  - Implement focus trapping for all modal dialogs.
+  - Ensure every interactive control has an associated `<label>` and visible focus indicator.
+  - Provide keyboard alternatives or ARIA descriptions for drag handles and custom dropdowns.
+  - Document accessibility best practices for future components.

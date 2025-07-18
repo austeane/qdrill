@@ -7,6 +7,9 @@
 	import debounce from 'lodash/debounce';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
+	import { createDebouncedLoadingState } from '$lib/utils/loadingStates.js';
+	import { navigating } from '$app/stores';
 	import { FILTER_STATES } from '$lib/constants';
 	import {
 		selectedPhaseOfSeason,
@@ -35,6 +38,11 @@
 	let currentSortOrder = data.currentSortOrder || 'desc';
 
 	let showAiModal = false; // NEW modal state
+	const searchLoading = createDebouncedLoadingState();
+
+	$: if (!$navigating) {
+		searchLoading.stopDebounced();
+	}
 
 	// --- Initialize filter stores based on URL on mount/update ---
 	function initializeFiltersFromUrl() {
@@ -202,6 +210,16 @@
 		updateUrlParams();
 	}
 
+	function handleSearchInput() {
+		searchLoading.startDebounced();
+		updateUrlParams();
+	}
+
+	function clearSearch() {
+		searchQuery = '';
+		updateUrlParams();
+	}
+
 	// --- Sort Options ---
 	const sortOptions = [
 		{ value: 'name', label: 'Name' },
@@ -286,13 +304,35 @@
 	/>
 
 	<!-- Search input -->
-	<input
-		type="text"
-		placeholder="Search practice plans..."
-		class="mb-6 w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-		bind:value={searchQuery}
-		on:input={updateUrlParams}
-	/>
+	<div class="relative mb-6">
+		<input
+			type="text"
+			placeholder="Search practice plans..."
+			class="w-full p-3 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+			bind:value={searchQuery}
+			on:input={handleSearchInput}
+		/>
+		{#if $searchLoading}
+			<div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+				<Spinner size="sm" color="gray" />
+			</div>
+		{:else if searchQuery}
+			<button
+				class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+				on:click={clearSearch}
+				aria-label="Clear search"
+			>
+				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"
+					/>
+				</svg>
+			</button>
+		{/if}
+	</div>
 
 	<!-- Display Error Message -->
 	{#if error}
@@ -317,7 +357,11 @@
 					<div class="relative flex justify-between items-start mb-4">
 						<div class="flex-1 pr-12">
 							<h2 class="text-xl font-bold">
-								<a href="/practice-plans/{plan.id}" class="text-blue-600 hover:text-blue-800 block truncate" title={plan.name}>
+								<a
+									href="/practice-plans/{plan.id}"
+									class="text-blue-600 hover:text-blue-800 block truncate"
+									title={plan.name}
+								>
 									{plan.name}
 								</a>
 							</h2>

@@ -6,6 +6,7 @@
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore.js';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 	import { dev } from '$app/environment';
 	import { page } from '$app/stores';
 	import { goto, invalidate } from '$app/navigation';
@@ -30,7 +31,8 @@
 		selectedHasVideo,
 		selectedHasDiagrams,
 		selectedHasImages,
-		selectedDrillTypes
+		selectedDrillTypes,
+		searchLoading
 	} from '$lib/stores/drillsStore';
 
 	import Pagination from '$lib/components/Pagination.svelte';
@@ -206,7 +208,13 @@
 	}
 
 	function handleSearchInput() {
+		searchLoading.startDebounced();
 		debounce(() => applyFiltersAndNavigate({ resetPage: true }));
+	}
+
+	function clearSearch() {
+		searchQuery.set('');
+		applyFiltersAndNavigate({ resetPage: true });
 	}
 
 	function handleSortChange(event) {
@@ -240,6 +248,10 @@
 	}
 
 	import { slide } from 'svelte/transition';
+
+	$: if (!$navigating) {
+		searchLoading.stopDebounced();
+	}
 
 	let showSortOptions = false;
 	let sortOptionsRef;
@@ -379,15 +391,37 @@
 			{/if}
 		</div>
 
-		<input
-			type="text"
-			placeholder="Search drills..."
-			class="flex-grow p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-			bind:value={$searchQuery}
-			on:input={handleSearchInput}
-			aria-label="Search drills"
-			data-testid="search-input"
-		/>
+		<div class="relative flex-grow">
+			<input
+				type="text"
+				placeholder="Search drills..."
+				class="w-full p-3 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+				bind:value={$searchQuery}
+				on:input={handleSearchInput}
+				aria-label="Search drills"
+				data-testid="search-input"
+			/>
+			{#if $searchLoading}
+				<div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+					<Spinner size="sm" color="gray" />
+				</div>
+			{:else if $searchQuery}
+				<button
+					class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+					on:click={clearSearch}
+					aria-label="Clear search"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
+					</svg>
+				</button>
+			{/if}
+		</div>
 	</div>
 
 	<!-- Loading and Empty States -->
@@ -460,7 +494,11 @@
 										class="text-xl font-bold text-gray-800 overflow-hidden"
 										data-testid="drill-card-name"
 									>
-										<a href="/drills/{drill.id}" class="hover:text-blue-600 block overflow-hidden truncate" title={drill.name}>
+										<a
+											href="/drills/{drill.id}"
+											class="hover:text-blue-600 block overflow-hidden truncate"
+											title={drill.name}
+										>
 											{drill.name}
 										</a>
 									</h2>

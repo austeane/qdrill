@@ -2,6 +2,7 @@ import { writable, derived } from 'svelte/store';
 import { PREDEFINED_SKILLS } from '$lib/constants/skills';
 import { selectedSortOption, selectedSortOrder } from './sortStore.js';
 import { FILTER_STATES } from '$lib/constants';
+import { createDebouncedLoadingState } from '$lib/utils/loadingStates.js';
 
 // Pagination stores
 export const currentPage = writable(1);
@@ -23,6 +24,7 @@ export const selectedHasVideo = writable(null);
 export const selectedHasDiagrams = writable(null);
 export const selectedHasImages = writable(null);
 export const searchQuery = writable('');
+export const searchLoading = createDebouncedLoadingState();
 export const selectedDrillTypes = writable({});
 
 // Skills store

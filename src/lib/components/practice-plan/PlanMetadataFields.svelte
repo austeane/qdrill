@@ -116,17 +116,19 @@
 				>Participant Count</label
 			>
 			<!-- Standard input -->
-			<input
-				id="participantCount"
-				name="participantCount"
-				type="number"
-				min="1"
-				bind:value={$estimatedNumberOfParticipants}
-				placeholder="e.g., 15"
-				class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-			/>
-			<!-- Error handling for participantCount -->
-		</div>
+                        <input
+                                id="participantCount"
+                                name="participantCount"
+                                type="number"
+                                min="1"
+                                bind:value={$estimatedNumberOfParticipants}
+                                placeholder="e.g., 15"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        />
+                        {#if $metadataErrors.estimated_number_of_participants?.[0]}
+                                <p class="text-red-500 text-sm mt-1">{$metadataErrors.estimated_number_of_participants[0]}</p>
+                        {/if}
+                </div>
 
 		<div>
 			<!-- Standard label -->
@@ -134,20 +136,22 @@
 				>Phase of Season</label
 			>
 			<!-- Standard select -->
-			<select
-				id="phaseOfSeason"
-				name="phaseOfSeason"
-				bind:value={$phaseOfSeason}
-				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-			>
-				<option value="">Select Phase</option>
-				{#each phaseOfSeasonOptions as option}
-					<option value={option}>{option}</option>
-				{/each}
-			</select>
-			<!-- Error handling for phaseOfSeason -->
-		</div>
-	</div>
+                        <select
+                                id="phaseOfSeason"
+                                name="phaseOfSeason"
+                                bind:value={$phaseOfSeason}
+                                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                        >
+                                <option value="">Select Phase</option>
+                                {#each phaseOfSeasonOptions as option}
+                                        <option value={option}>{option}</option>
+                                {/each}
+                        </select>
+                        {#if $metadataErrors.phase_of_season?.[0]}
+                                <p class="text-red-500 text-sm mt-1">{$metadataErrors.phase_of_season[0]}</p>
+                        {/if}
+                </div>
+        </div>
 
 	<div>
 		<!-- Standard label -->
@@ -155,21 +159,23 @@
 			>Practice Start Time</label
 		>
 		<!-- Standard input -->
-		<input
-			id="startTime"
-			name="startTime"
-			type="time"
-			bind:value={$startTime}
-			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-		/>
-		<!-- Error handling for startTime -->
-	</div>
+                <input
+                        id="startTime"
+                        name="startTime"
+                        type="time"
+                        bind:value={$startTime}
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+                {#if $metadataErrors.start_time?.[0]}
+                        <p class="text-red-500 text-sm mt-1">{$metadataErrors.start_time[0]}</p>
+                {/if}
+        </div>
 
 	<div>
 		<!-- Standard label -->
 		<label class="block text-sm font-medium text-gray-700 mb-1">Focus Areas</label>
 		<!-- Replaced Popover/Command with Checkboxes -->
-		<div class="mt-2 space-y-2 border border-gray-200 rounded-md p-3 max-h-48 overflow-y-auto">
+                <div class="mt-2 space-y-2 border border-gray-200 rounded-md p-3 max-h-48 overflow-y-auto">
 			{#if focusAreaOptions.length === 0}
 				<p class="text-sm text-gray-500">No focus areas available.</p>
 			{:else}
@@ -186,9 +192,11 @@
 					</label>
 				{/each}
 			{/if}
-		</div>
-		<!-- Error handling for focusAreas -->
-	</div>
+                </div>
+                {#if $metadataErrors.focus_areas?.[0]}
+                        <p class="text-red-500 text-sm mt-1">{$metadataErrors.focus_areas[0]}</p>
+                {/if}
+        </div>
 
 	<div>
 		<label id="practice-goals-label" class="block text-sm font-medium text-gray-700 mb-1"
@@ -220,15 +228,17 @@
 			{/each}
 		</div>
 		<!-- Standard button -->
-		<button
-			type="button"
-			on:click={addPracticeGoal}
-			class="mt-2 inline-flex justify-center py-1 px-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-		>
-			+ Add Goal
-		</button>
-		<!-- Error handling for practiceGoals -->
-	</div>
+                <button
+                        type="button"
+                        on:click={addPracticeGoal}
+                        class="mt-2 inline-flex justify-center py-1 px-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                        + Add Goal
+                </button>
+                {#if $metadataErrors.practice_goals?.[0]}
+                        <p class="text-red-500 text-sm mt-1">{$metadataErrors.practice_goals[0]}</p>
+                {/if}
+        </div>
 
 	<!-- Visibility settings -->
 	<div class="space-y-2">

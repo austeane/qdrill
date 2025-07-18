@@ -4,9 +4,10 @@
 	import { goto } from '$app/navigation';
 	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
 	import { page } from '$app/stores';
-	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
-	import { authClient } from '$lib/auth-client';
-	import { createForm } from 'svelte-forms-lib';
+import { SvelteToast, toast } from '@zerodevx/svelte-toast';
+import { authClient } from '$lib/auth-client';
+import { createForm } from 'svelte-forms-lib';
+import { createFormationSchema, updateFormationSchema } from '$lib/validation/formationSchema';
 
 	// Initialize stores
 	export let formation = {
@@ -236,14 +237,29 @@
 	});
 
 	// Form validation
-	function validateForm() {
-		let newErrors = {};
-		if (!$name) newErrors.name = 'Name is required';
-		if (!$brief_description) newErrors.brief_description = 'Brief description is required';
-
-		errors.set(newErrors);
-		return Object.keys(newErrors).length === 0;
-	}
+       function validateForm() {
+               const formData = {
+                       id: formation.id,
+                       name: $name,
+                       brief_description: $brief_description,
+                       detailed_description: $detailed_description,
+                       diagrams: $diagrams,
+                       tags: $tags,
+                       is_editable_by_others: $is_editable_by_others,
+                       visibility: $visibility,
+                       formation_type: $formation_type
+               };
+               const schema = formation.id ? updateFormationSchema : createFormationSchema;
+               const result = schema.safeParse(formData);
+               if (!result.success) {
+                       const formatted = result.error.flatten().fieldErrors;
+                       errors.set(formatted);
+                       console.warn('[FormationForm Validation]', formatted);
+                       return false;
+               }
+               errors.set({});
+               return true;
+       }
 
 	// Use Better Auth session store
 	const session = authClient.useSession();

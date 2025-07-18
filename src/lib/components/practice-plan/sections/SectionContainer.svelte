@@ -50,9 +50,9 @@
 		dispatch('openDrillSearch', event.detail);
 	}
 
-	function handleOpenTimelineSelector() {
-		dispatch('openTimelineSelector');
-	}
+       function handleOpenTimelineSelector(event) {
+               dispatch('openTimelineSelector', event.detail);
+       }
 
 	// Group items by parallel group ID
 	$: groupedItems = groupItemsByParallelGroup(section.items);

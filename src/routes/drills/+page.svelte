@@ -1,6 +1,8 @@
 <!-- src/routes/drills/+page.svelte -->
 <script>
 	import FilterPanel from '$lib/components/FilterPanel.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
+	import { resetDrillFilters } from '$lib/stores/drillsStore';
 	import { cart } from '$lib/stores/cartStore';
 	import { onMount } from 'svelte';
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
@@ -298,6 +300,37 @@
 		{ value: 'complexity', label: 'Complexity' },
 		{ value: 'suggested_length', label: 'Suggested Length' }
 	];
+
+	// Determine if any filters are active
+	$: hasFilters =
+		$searchQuery ||
+		Object.keys($selectedSkillLevels).length > 0 ||
+		Object.keys($selectedComplexities).length > 0 ||
+		Object.keys($selectedSkillsFocusedOn).length > 0 ||
+		Object.keys($selectedPositionsFocusedOn).length > 0 ||
+		$selectedNumberOfPeopleMin !== null ||
+		$selectedNumberOfPeopleMax !== null ||
+		$selectedSuggestedLengthsMin !== null ||
+		$selectedSuggestedLengthsMax !== null ||
+		$selectedHasVideo !== null ||
+		$selectedHasDiagrams !== null ||
+		$selectedHasImages !== null ||
+		Object.keys($selectedDrillTypes).length > 0;
+
+	function clearAllFilters() {
+		resetDrillFilters();
+		applyFiltersAndNavigate({ resetPage: true });
+	}
+
+	$: emptyStateActions = hasFilters
+		? [
+				{ label: 'Clear Filters', onClick: clearAllFilters, primary: true },
+				{ label: 'Create New Drill', href: '/drills/create' }
+			]
+		: [
+				{ label: 'Create Your First Drill', href: '/drills/create', primary: true },
+				{ label: 'Browse All Drills', onClick: () => goto('/drills') }
+			];
 </script>
 
 <svelte:head>
@@ -394,7 +427,15 @@
 	{#if $navigating && !data.items}
 		<p class="text-center text-gray-500 py-10">Loading drills...</p>
 	{:else if !data.items || data.items.length === 0}
-		<p class="text-center text-gray-500 py-10">No drills match your criteria.</p>
+		<EmptyState
+			title={hasFilters ? 'No drills match your criteria' : 'No drills available'}
+			description={hasFilters
+				? "Try adjusting your search or filters to find what you're looking for."
+				: 'Get started by creating your first drill or exploring our collection.'}
+			icon="drills"
+			actions={emptyStateActions}
+			showSearchSuggestion={hasFilters}
+		/>
 	{:else}
 		<!-- Drills Grid -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -460,7 +501,11 @@
 										class="text-xl font-bold text-gray-800 overflow-hidden"
 										data-testid="drill-card-name"
 									>
-										<a href="/drills/{drill.id}" class="hover:text-blue-600 block overflow-hidden truncate" title={drill.name}>
+										<a
+											href="/drills/{drill.id}"
+											class="hover:text-blue-600 block overflow-hidden truncate"
+											title={drill.name}
+										>
 											{drill.name}
 										</a>
 									</h2>

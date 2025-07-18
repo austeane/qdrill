@@ -3,6 +3,7 @@
 	import { applyAction, enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { navigating } from '$app/stores';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { page } from '$app/stores';
 	import {
 		formations,
@@ -148,7 +149,7 @@
 	}
 	// Close dropdown on click outside
 	import { onMount } from 'svelte'; // Keep onMount for this
-	
+
 	onMount(() => {
 		const handleClickOutside = (event) => {
 			if (sortOptionsRef && !sortOptionsRef.contains(event.target)) {
@@ -158,6 +159,20 @@
 		document.addEventListener('click', handleClickOutside);
 		return () => document.removeEventListener('click', handleClickOutside);
 	});
+
+	// Determine if filters are active
+	$: hasFilters =
+		$searchQuery || Object.keys($selectedTags).length > 0 || $selectedFormationType !== null;
+
+	$: emptyStateActions = hasFilters
+		? [
+				{ label: 'Clear Filters', onClick: handleClearFilters, primary: true },
+				{ label: 'Create Formation', href: '/formations/create' }
+			]
+		: [
+				{ label: 'View All Formations', onClick: () => goto('/formations'), primary: true },
+				{ label: 'Create Formation', href: '/formations/create' }
+			];
 </script>
 
 <svelte:head>
@@ -325,18 +340,13 @@
 		</div>
 		<!-- Empty State -->
 	{:else if !$formations || $formations.length === 0}
-		<div class="bg-white rounded-lg shadow-sm p-8 text-center">
-			<h3 class="text-xl font-medium text-gray-800 mb-2">No formations found</h3>
-			<p class="text-gray-600 mb-4">
-				Try adjusting your search or filters, or create a new formation.
-			</p>
-			<button
-				class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md"
-				on:click={() => goto('/formations/create')}
-			>
-				Create Formation
-			</button>
-		</div>
+		<EmptyState
+			title="No formations found"
+			description="Explore our collection of quadball formations or contribute your own."
+			icon="formations"
+			actions={emptyStateActions}
+			showSearchSuggestion={hasFilters}
+		/>
 		<!-- Formations Grid -->
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

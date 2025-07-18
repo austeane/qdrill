@@ -1,5 +1,7 @@
 <script>
 	import FilterPanel from '$lib/components/FilterPanel.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
+	import { resetPracticePlanFilters } from '$lib/stores/practicePlanFilterStore';
 	import { onDestroy, onMount, afterUpdate } from 'svelte';
 	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -210,6 +212,31 @@
 		{ value: 'updated_at', label: 'Date Updated' }
 	];
 
+	// Determine if filters are active
+	$: hasFilters =
+		searchQuery ||
+		Object.keys($selectedPhaseOfSeason).length > 0 ||
+		Object.keys($selectedPracticeGoals).length > 0 ||
+		$selectedEstimatedParticipantsMin !== (filterOptions.estimatedParticipants?.min ?? 1) ||
+		$selectedEstimatedParticipantsMax !== (filterOptions.estimatedParticipants?.max ?? 100) ||
+		selectedDrills.length > 0;
+
+	function clearAllFilters() {
+		resetPracticePlanFilters();
+		selectedDrills = [];
+		searchQuery = '';
+		updateUrlParams();
+	}
+
+	$: emptyStateActions = [
+		{
+			label: hasFilters ? 'Clear Filters' : 'Create Practice Plan',
+			onClick: hasFilters ? clearAllFilters : () => goto('/practice-plans/create'),
+			primary: true
+		},
+		{ label: 'Browse Drills', href: '/drills' }
+	];
+
 	// Helper for DeletePracticePlan callback
 	function onPlanDeleted(deletedPlanId) {
 		practicePlans = practicePlans.filter((p) => p.id !== deletedPlanId);
@@ -317,7 +344,11 @@
 					<div class="relative flex justify-between items-start mb-4">
 						<div class="flex-1 pr-12">
 							<h2 class="text-xl font-bold">
-								<a href="/practice-plans/{plan.id}" class="text-blue-600 hover:text-blue-800 block truncate" title={plan.name}>
+								<a
+									href="/practice-plans/{plan.id}"
+									class="text-blue-600 hover:text-blue-800 block truncate"
+									title={plan.name}
+								>
 									{plan.name}
 								</a>
 							</h2>
@@ -375,7 +406,15 @@
 			/>
 		{/if}
 	{:else if !error}
-		<p class="text-center text-gray-500 mt-8">No practice plans found matching your criteria.</p>
+		<EmptyState
+			title={hasFilters ? 'No practice plans found' : 'No practice plans yet'}
+			description={hasFilters
+				? 'Try removing some filters or creating a new plan with your criteria.'
+				: 'Create your first practice plan to get started with organized training.'}
+			icon="plans"
+			actions={emptyStateActions}
+			showSearchSuggestion={hasFilters}
+		/>
 	{/if}
 
 	<!-- Mount the modal -->

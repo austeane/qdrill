@@ -3,7 +3,7 @@
 ## Priority: High
 **Impact**: High (User guidance and experience)  
 **Effort**: Low  
-**Status**: Open
+**Status**: Open (not started)
 
 ## Problem
 When no drills or practice plans match user criteria, the current empty state shows a generic "No drills match your criteria" message. This doesn't provide helpful guidance to users on what they can do next.
@@ -19,14 +19,37 @@ Implement friendly, helpful empty states that guide users toward productive acti
 - `src/routes/formations/+page.svelte` - Enhanced empty state for formations
 
 ### Supporting Files
-- `src/lib/components/EmptyState.svelte` - New reusable empty state component
+- `src/lib/components/EmptyState.svelte` - New reusable empty state component (does not exist yet)
 
 ## Current Implementation
+The project currently displays basic text messages when no results are found.
+
+**Drills page** (`src/routes/drills/+page.svelte`)
 ```svelte
-<!-- Current empty state in drills page -->
 {:else if !data.items || data.items.length === 0}
   <p class="text-center text-gray-500 py-10">No drills match your criteria.</p>
 ```
+
+**Practice plans page** (`src/routes/practice-plans/+page.svelte`)
+```svelte
+{:else if !error}
+  <p class="text-center text-gray-500 mt-8">No practice plans found matching your criteria.</p>
+```
+
+**Formations page** (`src/routes/formations/+page.svelte`)
+```svelte
+{:else if !$formations || $formations.length === 0}
+  <div class="bg-white rounded-lg shadow-sm p-8 text-center">
+    <h3 class="text-xl font-medium text-gray-800 mb-2">No formations found</h3>
+    <p class="text-gray-600 mb-4">
+      Try adjusting your search or filters, or create a new formation.
+    </p>
+    <button class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md" on:click={() => goto('/formations/create')}>
+      Create Formation
+    </button>
+  </div>
+```
+
 
 ## Implementation Details
 

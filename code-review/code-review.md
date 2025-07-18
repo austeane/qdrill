@@ -154,9 +154,8 @@ When reviewing, first create a new notes file, add your reviews there, then upda
 │   │   │   │   └── dragManager.test.js ✅*
 │   │   │   ├── cartStore.js ✅
 │   │   │   ├── dragManager.js ✅
-│   │   │   ├── dragStore.js ✅ (Unused?)
 │   │   │   ├── drillsStore.js ✅
-│   │   │   ├── feedbackStore.js ✅ (Partially unused?)
+│   │   │   ├── feedbackStore.js ✅ (only modal visibility)
 │   │   │   ├── formationsStore.js ✅
 │   │   │   ├── historyStore.js ✅
 │   │   │   ├── practicePlanStore.js ✅

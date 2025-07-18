@@ -122,10 +122,3 @@ export function redo() {
 }
 
 // Helper to wrap actions with history
-export function withHistory(action, type, payload, description) {
-	// Add current state to history before the action
-	addToHistory(type, payload, description);
-
-	// Perform the action
-	action();
-}

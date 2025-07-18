@@ -20,9 +20,8 @@
 		isEditableByOthers,
 		startTime,
 		errors as metadataErrors, // Rename to avoid conflict with form errors
-		initializeForm, // Keep initializeForm for setting initial state
-		resetForm, // Add resetForm if needed (e.g., on successful create)
-		addPracticeGoal,
+               initializeForm, // Keep initializeForm for setting initial state
+               addPracticeGoal,
 		removePracticeGoal,
 		updatePracticeGoal,
 		validateMetadataForm
@@ -53,9 +52,8 @@
 		addParallelActivities,
 		updateTimelineColor,
 		updateTimelineName,
-		handleTimelineSave
-		// handleDrillMove // Dnd logic likely uses this, ensure it's available if needed
-	} from '$lib/stores/sectionsStore';
+               handleTimelineSave
+       } from '$lib/stores/sectionsStore';
 
 	// Import component modules
 	import EnhancedAddItemModal from '$lib/components/practice-plan/modals/EnhancedAddItemModal.svelte';
@@ -94,8 +92,7 @@
 			initializeHistory(); // Initialize history for existing plan too
 		} else {
 			// If creating a new plan (practicePlan is null), ensure form is reset
-			// This might happen if navigating back/forth
-			// resetForm(); // Consider if a full reset is needed or if stores default correctly
+                       // This might happen if navigating back/forth
 		}
 	}
 
@@ -260,9 +257,7 @@
 		}
 		// Clean up event listener on component destruction
 		return () => {
-			window.removeEventListener('keydown', handleKeydown);
-			// Consider resetting form state if navigating away?
-			// resetForm();
+                       window.removeEventListener('keydown', handleKeydown);
 		};
 	});
 

@@ -69,15 +69,11 @@ This file contains notes on the review of the `src/lib` directory, evaluating co
 ## `src/lib/stores/dragManager.js`
 
 - **Notes:** Manages drag-and-drop state and logic primarily for adding items _from the drill search/cart_ into the practice plan sections. It handles `dragstart` from the source (e.g., cart) and `dragover`/`drop` onto sections or items within the plan builder. It interacts with `sectionsStore` to add the new item at the correct position. (Reviewed in `practice-plan-wizard-notes.md`).
-- **Potential Issues:** Seems distinct from the (potentially unused) `dragStore.js`, focusing on adding _new_ items rather than reordering existing ones within the plan.
+- **Potential Issues:** This module replaced the old `dragStore.js` (now removed) and focuses on adding _new_ items rather than reordering existing ones within the plan.
 
-## `src/lib/stores/dragStore.js`
+## `src/lib/stores/dragStore.js` (removed)
 
-- **Notes:** Contains extensive logic and multiple `writable` stores (`draggedItem`, `dragOverItem`, `draggedSection`, etc.) to manage the state of drag-and-drop operations _within_ the practice plan editor (reordering items, sections, groups). Includes functions for handling `dragstart`, `dragover`, `dragleave`, and `drop` events. Interacts with `sectionsStore` and `historyStore`.
-- **Potential Issues:**
-  - **Unused Code:** Based on previous `grep_search`, this entire module appears **completely unused**. This is highly suspicious given its size (~400 lines) and complexity. It might be legacy code from a refactor (perhaps replaced by `dragManager.js` for adding items, with reordering handled differently?), an incomplete feature, or intended for a different part of the application. Needs confirmation and likely **removal** if truly unused.
-  - **Complexity:** If it _were_ used, managing drag-and-drop state for such a complex, nested structure (items, sections, parallel groups) is inherently difficult.
-  - **DOM Manipulation:** Some drag handlers directly manipulate element classes (`e.currentTarget.classList.add/remove`). While sometimes necessary, prefer reactive `class:` directives where possible.
+`dragStore.js` previously attempted to manage drag state for reordering items within a practice plan. The file was unused and has since been deleted.
 
 ## `src/lib/stores/drillsStore.js`
 
@@ -86,10 +82,8 @@ This file contains notes on the review of the `src/lib` directory, evaluating co
 
 ## `src/lib/stores/feedbackStore.js`
 
-- **Notes:** Simple store containing two `writable` stores: `feedbackModalVisible` (boolean, likely controlling visibility of a feedback modal) and `feedbackList` (array, likely intended to hold fetched feedback items).
-- **Potential Issues:**
-  - **Partial Usage:** `feedbackModalVisible` is used (`FeedbackButton.svelte`, `FeedbackModal.svelte`). `feedbackList` appears **unused**.
-  - **Connection to Unused Server Code:** Likely related to the unused `src/lib/server/feedback.js`. If the feedback feature is removed/unimplemented, this store (or at least `feedbackList`) should be **removed**.
+`feedbackStore.js` now only exports `feedbackModalVisible` for controlling the feedback modal.
+
 
 ## `src/lib/stores/formationsStore.js`
 
@@ -105,7 +99,7 @@ This file contains notes on the review of the `src/lib` directory, evaluating co
   - **Complexity & State Dependency:** Undo/redo for the complex `$sections` state is difficult. Relies on deep copying via `JSON.stringify`.
   - **Snapshot Target:** Only snapshots `$sections`. Other state (e.g., plan metadata) is not included in undo/redo.
   - **Performance:** Deep copying large state via `JSON.stringify` on every action could be slow for very large plans.
-  - **`withHistory` Wrapper:** The `withHistory` function appears unused.
+  - **`withHistory` Wrapper:** Previously unused; this helper was removed during cleanup.
 
 ## `src/lib/stores/practicePlanStore.js`
 

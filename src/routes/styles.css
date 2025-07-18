@@ -95,9 +95,54 @@ body {
 
 /* Add the dragging class to the drag and drop styles */
 .dragging {
-	opacity: 0.4;
-	cursor: grabbing;
-	outline: 2px dashed #3b82f6;
-	background-color: rgba(59, 130, 246, 0.05);
-	z-index: 10;
+        opacity: 0.4;
+        cursor: grabbing;
+        outline: 2px dashed #3b82f6;
+        background-color: rgba(59, 130, 246, 0.05);
+        z-index: 10;
+}
+
+/* Improved focus visibility */
+*:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Ensure sufficient color contrast */
+.text-gray-500 {
+  color: #4b5563;
+}
+
+.text-gray-600 {
+  color: #374151;
+}
+
+/* Skip to main content link */
+.skip-to-content {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000;
+  color: white;
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 4px;
+  z-index: 1000;
+}
+
+.skip-to-content:focus {
+  top: 6px;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

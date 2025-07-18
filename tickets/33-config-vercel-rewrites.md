@@ -2,7 +2,7 @@
 
 **Priority:** Low
 
-**Description:** The `vercel.json` configuration includes rewrites for `/api/drills/(.*)` and `/api/practice-plans/(.*)` to their respective base paths (`/api/drills`, `/api/practice-plans`). These might be artifacts from an older routing setup and may no longer be necessary with SvelteKit's standard filesystem-based routing for parameterized routes (e.g., `src/routes/api/drills/[id]/+server.js`).
+**Description:** `vercel.json` currently defines rewrites that map `/api/drills` and `/api/practice-plans` to the exact same paths. Earlier versions used wildcard rewrites during the old Flask-based backend, but the app now relies solely on SvelteKit's filesystem API routes (e.g. `src/routes/api/drills/[id]/+server.js`). These identity rewrites appear redundant.
 
 **Affected Files:**
 
@@ -15,6 +15,6 @@
 
 **Action Required:**
 
-1.  **Investigate:** Determine if these rewrites serve any current purpose. Test API routes like `/api/drills/some-id` with the rewrites temporarily removed in a development or preview environment.
-2.  **Verify SvelteKit Routing:** Confirm that SvelteKit's filesystem routing (`[id]/+server.js`) correctly handles requests to parameterized API endpoints without the rewrites.
-3.  **Remove if Redundant:** If the rewrites are confirmed to be unnecessary, remove them from [`vercel.json`](vercel.json) to simplify the configuration and rely solely on SvelteKit's routing.
+1. **Confirm** that removing the rewrites does not affect API routing when deploying to Vercel. Test via `vercel dev` or a preview deployment.
+2. **Remove** the `"rewrites"` block from [`vercel.json`](vercel.json) if everything works without it.
+3. Simplify the configuration and rely solely on SvelteKit's built-in routing.

@@ -1,6 +1,6 @@
 <script>
-	import { timeline, basicInfo } from '$lib/stores/wizardStore';
-	import { sections as sectionsStore } from '$lib/stores/sectionsStore'; // Import the main store
+	import { timeline, basicInfo, syncTimelineWithSections } from '$lib/stores/wizardStore';
+	import { sections as sectionsStore } from '$lib/stores/sectionsStore';
 	// Removed import for wizardStore sections
 	// Removed import for wizardValidation
 	// Removed import for scheduleAutoSave
@@ -11,95 +11,8 @@
 		sections: false
 	};
 
-	// Reactive statement to initialize and sync timeline with sectionsStore
-	$: {
-		const sections = $sectionsStore;
-		let currentTimeline = $timeline;
-		let needsUpdate = false;
-
-		// --- Sync Timeline with SectionsStore ---
-
-		// 1. Check for removals: Filter out timeline sections whose IDs are no longer in sectionsStore
-		const sectionIds = new Set(sections.map((s) => s.id));
-		const syncedTimelineSections = currentTimeline.sections.filter((ts) => sectionIds.has(ts.id));
-		if (syncedTimelineSections.length !== currentTimeline.sections.length) {
-			needsUpdate = true;
-		}
-
-		// 2. Check for additions: Find sections in sectionsStore not yet in the timeline
-		const timelineSectionIds = new Set(syncedTimelineSections.map((ts) => ts.id));
-		const addedSections = sections.filter((s) => !timelineSectionIds.has(s.id));
-		if (addedSections.length > 0) {
-			needsUpdate = true;
-			const defaultDuration =
-				sections.length > 0 ? Math.floor($basicInfo.totalTime / sections.length) : 15;
-			addedSections.forEach((section) => {
-				syncedTimelineSections.push({
-					id: section.id,
-					name: section.name, // Get name from sectionsStore
-					// icon: section.icon, // Icon is not in sectionsStore
-					duration: defaultDuration, // Assign default duration
-					startTime: 0 // Start time will be recalculated
-				});
-			});
-		}
-
-		// 3. Check for name changes and reorder based on sectionsStore order
-		let reorderedAndUpdated = sections
-			.map((section) => {
-				let timelineSection = syncedTimelineSections.find((ts) => ts.id === section.id);
-				if (timelineSection) {
-					// Update name if it changed
-					if (timelineSection.name !== section.name) {
-						timelineSection.name = section.name;
-						needsUpdate = true;
-					}
-					return timelineSection;
-				} else {
-					// This case should theoretically be handled by additions check, but as a fallback:
-					const defaultDuration =
-						sections.length > 0 ? Math.floor($basicInfo.totalTime / sections.length) : 15;
-					needsUpdate = true;
-					return {
-						id: section.id,
-						name: section.name,
-						duration: defaultDuration,
-						startTime: 0
-					};
-				}
-			})
-			.filter(Boolean); // Filter out any potential undefined entries
-
-		if (reorderedAndUpdated.length !== syncedTimelineSections.length) {
-			needsUpdate = true; // Length change indicates sync issue
-		}
-		// Check if order actually changed
-		if (!needsUpdate) {
-			for (let i = 0; i < reorderedAndUpdated.length; i++) {
-				if (reorderedAndUpdated[i].id !== syncedTimelineSections[i]?.id) {
-					needsUpdate = true;
-					break;
-				}
-			}
-		}
-
-		// 4. Recalculate start times if any update occurred
-		if (needsUpdate) {
-			let currentStartTime = 0;
-			reorderedAndUpdated = reorderedAndUpdated.map((section) => {
-				const sectionCopy = { ...section }; // Create copy before modifying
-				sectionCopy.startTime = currentStartTime;
-				currentStartTime += sectionCopy.duration || 0;
-				return sectionCopy;
-			});
-
-			// 5. Update the timeline store
-			timeline.set({
-				totalTime: currentTimeline.totalTime || $basicInfo.totalTime, // Preserve totalTime if exists
-				sections: reorderedAndUpdated
-			});
-		}
-	}
+	// Keep timeline in sync whenever sections change
+	$: syncTimelineWithSections($sectionsStore);
 
 	// Handle duration change - still modifies the timeline store directly
 	function handleDurationChange(index, newDuration) {

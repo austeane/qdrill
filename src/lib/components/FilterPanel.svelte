@@ -1,6 +1,8 @@
 <script>
-	import RangeSlider from 'svelte-range-slider-pips';
-	import {
+import RangeSlider from 'svelte-range-slider-pips';
+import Spinner from '$lib/components/Spinner.svelte';
+import { createLoadingState } from '$lib/utils/loadingStates.js';
+import {
 		selectedSkillLevels,
 		selectedComplexities,
 		selectedSkillsFocusedOn,
@@ -34,7 +36,9 @@
 	import debounce from 'lodash/debounce';
 	import { Plus, Minus, Search } from 'lucide-svelte';
 
-	const dispatch = createEventDispatcher();
+       const dispatch = createEventDispatcher();
+
+       const filterApplying = createLoadingState();
 
 	export let customClass = '';
 	export let filterType = 'drills'; // New prop to determine filter context
@@ -96,18 +100,24 @@
 
 	let mounted = false;
 
-	onMount(() => {
-		mounted = true;
-		// Initialize slider ranges from store values in case they were loaded from URL
-		numberOfPeopleRange = [
-			$selectedNumberOfPeopleMin ?? effectiveNumberOfPeopleOptions.min,
-			$selectedNumberOfPeopleMax ?? effectiveNumberOfPeopleOptions.max
-		];
-		suggestedLengthsRange = [
-			$selectedSuggestedLengthsMin ?? effectiveSuggestedLengths.min,
-			$selectedSuggestedLengthsMax ?? effectiveSuggestedLengths.max
-		];
-	});
+       onMount(() => {
+               mounted = true;
+               // Initialize slider ranges from store values in case they were loaded from URL
+               numberOfPeopleRange = [
+                       $selectedNumberOfPeopleMin ?? effectiveNumberOfPeopleOptions.min,
+                       $selectedNumberOfPeopleMax ?? effectiveNumberOfPeopleOptions.max
+               ];
+               suggestedLengthsRange = [
+                       $selectedSuggestedLengthsMin ?? effectiveSuggestedLengths.min,
+                       $selectedSuggestedLengthsMax ?? effectiveSuggestedLengths.max
+               ];
+       });
+
+       function triggerFilterChange() {
+               filterApplying.start();
+               dispatch('filterChange');
+               setTimeout(() => filterApplying.stop(), 1000);
+       }
 
 	// Function to reset all filters
 	function resetFilters() {
@@ -135,9 +145,9 @@
 			selectedEstimatedParticipantsMax.set(100);
 			selectedDrills = [];
 		}
-		closeAllFilters();
-		dispatch('filterChange');
-	}
+               closeAllFilters();
+               triggerFilterChange();
+       }
 
 	// Function to handle toggling filters
 	function toggleFilter(filterName) {
@@ -319,8 +329,8 @@
 			}
 			return updated;
 		});
-		dispatch('filterChange');
-	}
+               triggerFilterChange();
+       }
 
 	// Helper function for updating DRILL filter states
 	function updateFilterState(store) {
@@ -334,9 +344,9 @@
 				}
 				return updated;
 			});
-			dispatch('filterChange');
-		};
-	}
+                       triggerFilterChange();
+               };
+       }
 
 	// Create update handlers for each filter type
 	const updateSkillLevel = updateFilterState(selectedSkillLevels);
@@ -350,21 +360,21 @@
 	function handleEstimatedParticipantsChange(event) {
 		selectedEstimatedParticipantsMin.set(estimatedParticipantsRange[0]);
 		selectedEstimatedParticipantsMax.set(estimatedParticipantsRange[1]);
-		dispatch('filterChange');
-	}
+               triggerFilterChange();
+       }
 
 	// Update the range slider handlers
 	function handleNumberOfPeopleChange(event) {
 		selectedNumberOfPeopleMin.set(numberOfPeopleRange[0]);
 		selectedNumberOfPeopleMax.set(numberOfPeopleRange[1]);
-		dispatch('filterChange');
-	}
+               triggerFilterChange();
+       }
 
 	function handleSuggestedLengthsChange(event) {
 		selectedSuggestedLengthsMin.set(suggestedLengthsRange[0]);
 		selectedSuggestedLengthsMax.set(suggestedLengthsRange[1]);
-		dispatch('filterChange');
-	}
+               triggerFilterChange();
+       }
 
 	let skillsSearchTerm = '';
 
@@ -386,9 +396,9 @@
 
 	// Helper to toggle tri‑state boolean filters (null → true → false → null)
 	function toggleBooleanFilter(store) {
-		store.update((current) => (current === null ? true : current === true ? false : null));
-		dispatch('filterChange');
-	}
+               store.update((current) => (current === null ? true : current === true ? false : null));
+               triggerFilterChange();
+       }
 
 	function toggleHasVideo() {
 		toggleBooleanFilter(selectedHasVideo);
@@ -405,6 +415,14 @@
 
 <!-- Filter Buttons -->
 <div class={`flex flex-wrap gap-2 mb-4 relative ${customClass}`} on:keydown={handleKeydown}>
+       {#if $filterApplying}
+               <div class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-20">
+                       <div class="flex items-center space-x-2">
+                               <Spinner size="sm" color="blue" />
+                               <span class="text-sm text-gray-600">Applying filters...</span>
+                       </div>
+               </div>
+       {/if}
 	<!-- Drills Filters -->
 	{#if filterType === 'drills' && (skillLevels.length || complexities.length || skillsFocusedOn.length || positionsFocusedOn.length || numberOfPeopleOptions.min !== null || numberOfPeopleOptions.max !== null || suggestedLengths.min !== null || suggestedLengths.max !== null || $selectedHasVideo || $selectedHasDiagrams || $selectedHasImages)}
 		<!-- Skill Levels Filter -->

@@ -7,13 +7,15 @@
 	import debounce from 'lodash/debounce';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
-	import { FILTER_STATES } from '$lib/constants';
-	import {
-		selectedPhaseOfSeason,
-		selectedPracticeGoals,
-		selectedEstimatedParticipantsMin,
-		selectedEstimatedParticipantsMax
-	} from '$lib/stores/practicePlanFilterStore';
+import { FILTER_STATES } from '$lib/constants';
+import {
+                selectedPhaseOfSeason,
+                selectedPracticeGoals,
+                selectedEstimatedParticipantsMin,
+                selectedEstimatedParticipantsMax,
+                initializePracticePlanFilters,
+                applyPracticePlanFilters
+        } from '$lib/stores/practicePlanFilterStore';
 	import DeletePracticePlan from '$lib/components/DeletePracticePlan.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { cart } from '$lib/stores/cartStore';
@@ -36,44 +38,22 @@
 
 	let showAiModal = false; // NEW modal state
 
-	// --- Initialize filter stores based on URL on mount/update ---
-	function initializeFiltersFromUrl() {
-		const searchParams = $page.url.searchParams;
+       // --- Initialize filter stores based on URL on mount/update ---
+       function initializeFiltersFromUrl() {
+               const searchParams = $page.url.searchParams;
+               initializePracticePlanFilters(searchParams, filterOptions);
 
-		// Helper to parse filter params (req/exc)
-		const parseFilterParam = (baseName) => {
-			const state = {};
-			searchParams.getAll(`${baseName}_req`).forEach((val) => {
-				state[val] = FILTER_STATES.REQUIRED;
-			});
-			searchParams.getAll(`${baseName}_exc`).forEach((val) => {
-				state[val] = FILTER_STATES.EXCLUDED;
-			});
-			return state;
-		};
-
-		selectedPhaseOfSeason.set(parseFilterParam('phase'));
-		selectedPracticeGoals.set(parseFilterParam('goal'));
-
-		selectedEstimatedParticipantsMin.set(
-			parseInt(searchParams.get('minP') || filterOptions.estimatedParticipants?.min || '1', 10)
-		);
-		selectedEstimatedParticipantsMax.set(
-			parseInt(searchParams.get('maxP') || filterOptions.estimatedParticipants?.max || '100', 10)
-		);
-
-		// Update local sort state if different from URL
-		const urlSortBy = searchParams.get('sortBy') || 'created_at';
-		const urlSortOrder = searchParams.get('sortOrder') || 'desc';
-		if (urlSortBy !== currentSortBy) {
-			currentSortBy = urlSortBy;
-			selectedSortOption.set(urlSortBy);
-		}
-		if (urlSortOrder !== currentSortOrder) {
-			currentSortOrder = urlSortOrder;
-			selectedSortOrder.set(urlSortOrder);
-		}
-	}
+               const urlSortBy = searchParams.get('sortBy') || 'created_at';
+               const urlSortOrder = searchParams.get('sortOrder') || 'desc';
+               if (urlSortBy !== currentSortBy) {
+                       currentSortBy = urlSortBy;
+                       selectedSortOption.set(urlSortBy);
+               }
+               if (urlSortOrder !== currentSortOrder) {
+                       currentSortOrder = urlSortOrder;
+                       selectedSortOrder.set(urlSortOrder);
+               }
+       }
 
 	onMount(() => {
 		initializeFiltersFromUrl();
@@ -134,21 +114,8 @@
 		params.set('sortBy', $selectedSortOption);
 		params.set('sortOrder', $selectedSortOrder);
 
-		// Update filters from stores
-		updateFilterUrlParams(params, 'phase', $selectedPhaseOfSeason);
-		updateFilterUrlParams(params, 'goal', $selectedPracticeGoals);
-
-		// Update range filters
-		if ($selectedEstimatedParticipantsMin !== (filterOptions.estimatedParticipants?.min ?? 1)) {
-			params.set('minP', $selectedEstimatedParticipantsMin.toString());
-		} else {
-			params.delete('minP');
-		}
-		if ($selectedEstimatedParticipantsMax !== (filterOptions.estimatedParticipants?.max ?? 100)) {
-			params.set('maxP', $selectedEstimatedParticipantsMax.toString());
-		} else {
-			params.delete('maxP');
-		}
+               // Update filters from stores
+               applyPracticePlanFilters(params, filterOptions);
 
 		// Update selected drills
 		params.delete('drillId'); // Clear existing
@@ -162,18 +129,6 @@
 		goto(`?${params.toString()}`, { keepFocus: true, noScroll: true });
 	}, 300); // Debounce time
 
-	// Helper to update URL for multi-state filters
-	function updateFilterUrlParams(params, baseName, filterState) {
-		params.delete(`${baseName}_req`);
-		params.delete(`${baseName}_exc`);
-		for (const [value, state] of Object.entries(filterState)) {
-			if (state === FILTER_STATES.REQUIRED) {
-				params.append(`${baseName}_req`, value);
-			} else if (state === FILTER_STATES.EXCLUDED) {
-				params.append(`${baseName}_exc`, value);
-			}
-		}
-	}
 
 	function handlePageChange(event) {
 		const newPage = event.detail.page;

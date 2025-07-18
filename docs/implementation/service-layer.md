@@ -220,7 +220,6 @@ export async function GET({ url }) {
   - `/api/drills/filter-options/+server.js`
   - `/api/drills/bulk-upload/+server.js`
   - `/api/drills/import/+server.js`
-  - `/api/drills/migrate-diagrams/+server.js`
 
 **Dependencies:**
 

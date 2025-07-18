@@ -3,8 +3,9 @@
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
-	import { apiFetch } from '$lib/utils/apiFetch';
+import { onMount } from 'svelte';
+import { apiFetch } from '$lib/utils/apiFetch';
+import { focusTrap } from '$lib/actions/focusTrap.js';
 
 	let feedbackText = '';
 	let feedbackType = 'general';
@@ -55,28 +56,31 @@
 </script>
 
 {#if $feedbackModalVisible}
-	<div
-		class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="feedback-title"
-		tabindex="-1"
+       <div
+               class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+               role="dialog"
+               aria-modal="true"
+               aria-labelledby="feedback-title"
+               tabindex="-1"
 		on:keydown={(e) => e.key === 'Escape' && closeModal()}
 	>
-		<div class="bg-white p-6 rounded shadow-lg max-w-md w-full">
-			<h2 id="feedback-title" class="text-xl font-semibold mb-4">Quick Feedback</h2>
-			<select bind:value={feedbackType} class="w-full border rounded p-2 mb-2">
-				<option value="bug">Bug</option>
-				<option value="general">General Comment</option>
-				<option value="feature">Feature Request</option>
-				<option value="other">Other</option>
-			</select>
-			<textarea
-				bind:value={feedbackText}
-				rows="4"
-				class="w-full border rounded p-2"
-				placeholder="Your feedback..."
-			></textarea>
+               <div class="bg-white p-6 rounded shadow-lg max-w-md w-full" use:focusTrap tabindex="0">
+                       <h2 id="feedback-title" class="text-xl font-semibold mb-4">Quick Feedback</h2>
+                       <label for="feedback-type" class="sr-only">Feedback type</label>
+                       <select id="feedback-type" bind:value={feedbackType} class="w-full border rounded p-2 mb-2">
+                               <option value="bug">Bug</option>
+                               <option value="general">General Comment</option>
+                               <option value="feature">Feature Request</option>
+                               <option value="other">Other</option>
+                       </select>
+                       <label for="feedback-text" class="sr-only">Your feedback</label>
+                       <textarea
+                               id="feedback-text"
+                               bind:value={feedbackText}
+                               rows="4"
+                               class="w-full border rounded p-2"
+                               placeholder="Your feedback..."
+                       ></textarea>
 			<div class="mt-4 flex justify-end">
 				<button
 					type="button"

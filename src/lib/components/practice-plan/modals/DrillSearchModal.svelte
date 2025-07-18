@@ -1,8 +1,9 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-	// Actions are now handled by the parent component via events
-	import { toast } from '@zerodevx/svelte-toast';
-	import { apiFetch } from '$lib/utils/apiFetch.js';
+import { createEventDispatcher } from 'svelte';
+// Actions are now handled by the parent component via events
+import { toast } from '@zerodevx/svelte-toast';
+import { apiFetch } from '$lib/utils/apiFetch.js';
+import { focusTrap } from '$lib/actions/focusTrap.js';
 
 	export let show = false;
 	export let selectedSectionId = null;
@@ -73,15 +74,15 @@
 </script>
 
 {#if show}
-	<div
-		class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="drill-search-title"
-		tabindex="-1"
-		on:keydown={(e) => e.key === 'Escape' && close()}
-	>
-		<div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
+       <div
+               class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+               role="dialog"
+               aria-modal="true"
+               aria-labelledby="drill-search-title"
+               tabindex="-1"
+               on:keydown={(e) => e.key === 'Escape' && close()}
+       >
+               <div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white" use:focusTrap tabindex="0">
 			<div class="mt-3">
 				<h3 id="drill-search-title" class="text-lg font-medium text-gray-900 mb-4">
 					Add to Practice Plan
@@ -109,13 +110,15 @@
 							<p class="text-sm text-gray-500">Quick activity with just a name and duration</p>
 						</div>
 					</div>
-					<div class="flex items-center gap-2">
-						<input
-							type="text"
-							bind:value={oneOffName}
-							placeholder="Activity name"
-							class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-						/>
+                                       <div class="flex items-center gap-2">
+                                               <label for="one-off-input" class="sr-only">One-off activity name</label>
+                                               <input
+                                                       id="one-off-input"
+                                                       type="text"
+                                                       bind:value={oneOffName}
+                                                       placeholder="Activity name"
+                                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                               />
 						<button
 							class="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
 							on:click={handleAddOneOffDrill}
@@ -128,16 +131,18 @@
 				<div class="border-t my-4"></div>
 
 				<!-- Search input -->
-				<div class="mb-4">
-					<input
-						type="text"
-						bind:value={searchQuery}
-						on:input={() => searchDrills(searchQuery)}
-						placeholder="Search drills..."
-						class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-						autofocus
-					/>
-				</div>
+                               <div class="mb-4">
+                                       <label for="drill-search-input" class="sr-only">Search drills</label>
+                                       <input
+                                               id="drill-search-input"
+                                               type="text"
+                                               bind:value={searchQuery}
+                                               on:input={() => searchDrills(searchQuery)}
+                                               placeholder="Search drills..."
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                               autofocus
+                                       />
+                               </div>
 
 				<!-- Search results -->
 				<div class="max-h-[400px] overflow-y-auto">

@@ -1,6 +1,7 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
-	import { PARALLEL_TIMELINES, TIMELINE_COLORS } from '$lib/stores/sectionsStore';
+import { PARALLEL_TIMELINES, TIMELINE_COLORS } from '$lib/stores/sectionsStore';
+import { focusTrap } from '$lib/actions/focusTrap.js';
 
 	export let show = false;
 	export let selectedTimelines;
@@ -109,15 +110,15 @@
 </script>
 
 {#if show}
-	<div
-		class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="timeline-selector-title"
-		tabindex="-1"
-		on:keydown={(e) => e.key === 'Escape' && close()}
-	>
-		<div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
+       <div
+               class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+               role="dialog"
+               aria-modal="true"
+               aria-labelledby="timeline-selector-title"
+               tabindex="-1"
+               on:keydown={(e) => e.key === 'Escape' && close()}
+       >
+               <div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white" use:focusTrap tabindex="0">
 			<div class="mt-3">
 				<h3 id="timeline-selector-title" class="text-lg font-medium text-gray-900 mb-4">
 					Configure Timelines
@@ -190,13 +191,15 @@
 									: PARALLEL_TIMELINES[activeTimeline]?.name || activeTimeline
 								: ''}
 						</h5>
-						<div class="flex items-center">
-							<input
-								type="text"
-								bind:value={editingName}
-								placeholder="Enter timeline name"
-								class="flex-grow p-2 border border-gray-300 rounded mr-2"
-							/>
+                                               <div class="flex items-center">
+                                                       <label for="timeline-name" class="sr-only">Timeline name</label>
+                                                       <input
+                                                               id="timeline-name"
+                                                               type="text"
+                                                               bind:value={editingName}
+                                                               placeholder="Enter timeline name"
+                                                               class="flex-grow p-2 border border-gray-300 rounded mr-2"
+                                                       />
 							<button
 								type="button"
 								on:click={saveTimelineName}

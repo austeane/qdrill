@@ -2,8 +2,9 @@
 	/* NEW component */
 	import { createEventDispatcher } from 'svelte';
 	import { goto } from '$app/navigation';
-	import AiPlanGenerator from './AiPlanGenerator.svelte';
-	import { apiFetch } from '$lib/utils/apiFetch.js';
+import AiPlanGenerator from './AiPlanGenerator.svelte';
+import { apiFetch } from '$lib/utils/apiFetch.js';
+import { focusTrap } from '$lib/actions/focusTrap.js';
 
 	// Props
 	export let isOpen = false;
@@ -60,8 +61,8 @@
 </script>
 
 {#if isOpen}
-	<div class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-		<div class="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 relative">
+       <div class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+               <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 relative" use:focusTrap tabindex="0">
 			<!-- Close button -->
 			<button
 				class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl leading-none"

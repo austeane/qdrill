@@ -1,7 +1,8 @@
 <script>
 	import { cart } from '$lib/stores/cartStore';
-	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+import { onMount } from 'svelte';
+import { page } from '$app/stores';
+import { focusTrap } from '$lib/actions/focusTrap.js';
 
 	let isOpen = false;
 
@@ -48,14 +49,15 @@
 	</button>
 
 	{#if isOpen}
-		<div
-			id="cart-menu"
-			class="absolute bottom-full right-0 mb-2 w-64 bg-white rounded-lg shadow-xl p-4"
-			role="dialog"
-			aria-modal="true"
-			tabindex="-1"
-			on:keydown={(e) => e.key === 'Escape' && (isOpen = false)}
-		>
+               <div
+                       id="cart-menu"
+                       class="absolute bottom-full right-0 mb-2 w-64 bg-white rounded-lg shadow-xl p-4"
+                       role="dialog"
+                       aria-modal="true"
+                       tabindex="-1"
+                       use:focusTrap
+                       on:keydown={(e) => e.key === 'Escape' && (isOpen = false)}
+               >
 			<h3 class="text-lg font-semibold mb-2">Selected Drills</h3>
 			{#if $cart.length === 0}
 				<p>No drills selected</p>

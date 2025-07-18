@@ -32,12 +32,13 @@
       ```
     - If the returned list is empty, the LLM can proceed to use `create_drill`.
 
-2.  **[DONE - Implemented via Script] `create_drill(drill_data: object)` Tool:**
+2.  **[Partially Implemented] `create_drill(drill_data: object)` Tool:**
 
     - **Purpose:** Create a new drill when one doesn't exist.
-    - **Underlying API:** `POST /api/drills`.
-    - **Implementation:** This action is currently performed by asking the user to run the `create_drill_script.py` script located in the project root. This script handles calling the API with the correct data format.
-    - **Usage Guide:** See `docs/guides/llm_creating_drills.md` for detailed instructions on how to prepare data, update the script, ask the user to run it, and verify the results.
+    - **Underlying API:** `POST /api/drills` (implemented in `src/routes/api/drills/+server.js`).
+      - Incoming data is validated with `createDrillSchema` and persisted via `drillService.createDrill`.
+    - **Current State:** There is no wrapper tool in the repository. Older documentation referenced a `create_drill_script.py` helper, but that file does not exist.
+    - **Next Step:** Provide a simple script or function that posts JSON matching `createDrillSchema` to the endpoint so the LLM can invoke it reliably.
 
 3.  **[Ready for Implementation] `create_practice_plan(plan_data: object)` Tool:**
     - **Purpose:** Create the entire practice plan structure, including metadata, sections, and items (linking to existing or newly created drills).

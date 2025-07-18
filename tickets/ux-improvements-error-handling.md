@@ -5,11 +5,14 @@
 **Effort**: Low-Medium  
 **Status**: Open
 
-## Progress Update (2024-08-17)
-- Server-side API routes use a shared `handleApiError` helper with custom error classes (`src/routes/api/utils/handleApiError.js` and `src/lib/server/errors.js`).
-- Client pages increasingly use `apiFetch` (`src/lib/utils/apiFetch.js`) for consistent error parsing.
-- Custom error pages (`+error.svelte`) and an `ErrorBoundary` component have not been implemented yet.
-- The whiteboard page still renders Excalidraw without retry logic or detailed errors.
+## Progress Update (2025-07-18)
+- Global `ErrorBoundary` component (`src/lib/components/ErrorBoundary.svelte`) wraps layout content.
+- Custom error page (`src/routes/+error.svelte`) shows helpful actions and search.
+- `apiFetch` now throws `APIError` instances and uses new helper functions in `src/lib/utils/errorHandling.js`.
+- Whiteboard page includes retry logic and troubleshooting guidance.
+- `app.html` provides a fallback message when JavaScript is disabled.
+- Linting passes with warnings but `pnpm run test` currently fails in multiple suites.
+- Build produces a Svelte warning for `$navigating` in `src/routes/practice-plans/+page.svelte`.
 
 ## Problem
 According to UX feedback:

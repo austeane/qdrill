@@ -2,14 +2,13 @@
 
 **Priority:** Low
 
-**Description:** Several server-side service files and client-side utility functions appear to be unused, likely remnants of abandoned features or refactoring efforts.
+**Description:** This ticket originally flagged several service and utility modules as unused. Most of those files have since been removed from the repository or are in active use. The ticket should be updated to reflect the current situation.
 
-**Affected Files:**
+**Current State:**
 
-- [`src/lib/server/feedback.js`](src/lib/server/feedback.js) (Entire feedback service seems unused)
-- [`src/lib/utils/loggerUtils.js`](src/lib/utils/loggerUtils.js) (Appears completely unused, `console.log` used directly instead)
-- [`src/lib/vitals.js`](src/lib/vitals.js) (Web vitals reporting is explicitly disabled)
-- [`src/lib/utils/diagramMigration.js`](src/lib/utils/diagramMigration.js) (Likely obsolete after one-time use)
+- [`src/lib/server/feedback.js`](src/lib/server/feedback.js) is actively used by the feedback API routes and the feedback page. It should remain.
+- [`src/lib/utils/loggerUtils.js`](src/lib/utils/loggerUtils.js) and [`src/lib/vitals.js`](src/lib/vitals.js) no longer exist.
+- [`src/lib/utils/diagramMigration.js`](src/lib/utils/diagramMigration.js) and the associated migration API routes have been removed, but `src/routes/admin/+page.svelte` still calls `/api/drills/migrate-diagrams` and `/api/drills/test-migration`.
 
 **Related Notes:**
 
@@ -18,7 +17,6 @@
 
 **Action Required:**
 
-1.  Confirm that no components or API routes import or call functions from [`src/lib/server/feedback.js`](src/lib/server/feedback.js). If confirmed unused, delete the file.
-2.  Confirm that no files import or call functions from [`src/lib/utils/loggerUtils.js`](src/lib/utils/loggerUtils.js). If confirmed unused, delete the file.
-3.  Decide if web vitals reporting ([`src/lib/vitals.js`](src/lib/vitals.js)) is needed. If not, the file can likely be removed (or kept as disabled if preferred).
-4.  Confirm the Fabric.js to Excalidraw migration is complete and successful. If so, [`src/lib/utils/diagramMigration.js`](src/lib/utils/diagramMigration.js) and the related API route ([`src/routes/api/drills/migrate-diagrams/+server.js`](src/routes/api/drills/migrate-diagrams/+server.js), [`src/routes/api/drills/test-migration/+server.js`](src/routes/api/drills/test-migration/+server.js)) can be removed.
+1. Clean up `src/routes/admin/+page.svelte` to remove or replace the calls to the deleted migration endpoints.
+2. Verify that no code references the removed `loggerUtils` or `vitals` modules.
+3. Close this ticket after the admin page cleanup is completed.

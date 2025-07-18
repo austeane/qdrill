@@ -21,14 +21,25 @@ export const auth = betterAuth({
 		type: 'postgres' // Add type hint for the CLI
 	},
 	// Uncommented after successful migration
-	callbacks: {
-		async session({ session, user }) {
-			if (session.user) {
-				session.user.id = user.id;
-			}
-			return session;
-		}
-	},
+        callbacks: {
+                async session({ session, user }) {
+                        if (session.user) {
+                                session.user.id = user.id;
+                                try {
+                                        const roleRes = await kyselyDb
+                                                .selectFrom('users')
+                                                .select('role')
+                                                .where('id', '=', user.id)
+                                                .executeTakeFirst();
+                                        session.user.role = roleRes?.role ?? 'user';
+                                } catch (err) {
+                                        console.error('Failed to fetch user role', err);
+                                        session.user.role = 'user';
+                                }
+                        }
+                        return session;
+                }
+        },
 
 	debug: process.env.NODE_ENV !== 'production'
 });

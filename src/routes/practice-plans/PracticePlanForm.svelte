@@ -52,7 +52,10 @@
 		addParallelActivities,
 		updateTimelineColor,
 		updateTimelineName,
-               handleTimelineSave
+               handleTimelineSave,
+               handleTimelineSelect,
+               PARALLEL_TIMELINES,
+               TIMELINE_COLORS
        } from '$lib/stores/sectionsStore';
 
 	// Import component modules
@@ -110,9 +113,12 @@
 		showDrillSearch = true;
 	}
 
-	function handleOpenTimelineSelector() {
-		showTimelineSelector = true;
-	}
+       function handleOpenTimelineSelector(event) {
+               const { sectionId, parallelGroupId } = event.detail;
+               if (handleTimelineSelect(sectionId, parallelGroupId)) {
+                       showTimelineSelector = true;
+               }
+       }
 
 	function handleAddDrillEvent(event) {
 		const { drill, sectionId } = event.detail;
@@ -513,14 +519,16 @@
 	on:addOneOff={handleAddOneOffEvent}
 />
 <TimelineSelectorModal
-	bind:show={showTimelineSelector}
-	{selectedTimelines}
-	{getTimelineColor}
-	{getTimelineName}
-	{customTimelineNames}
-	on:updateTimelineName={handleUpdateTimelineNameEvent}
-	on:updateTimelineColor={handleUpdateTimelineColorEvent}
-	on:saveTimelines={handleSaveTimelinesEvent}
+        bind:show={showTimelineSelector}
+        {selectedTimelines}
+        {getTimelineColor}
+        {getTimelineName}
+        {customTimelineNames}
+        parallelTimelines={PARALLEL_TIMELINES}
+        timelineColors={TIMELINE_COLORS}
+        on:updateTimelineName={handleUpdateTimelineNameEvent}
+        on:updateTimelineColor={handleUpdateTimelineColorEvent}
+        on:saveTimelines={handleSaveTimelinesEvent}
 />
 
 <!-- Display general form errors from server action -->

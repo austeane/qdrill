@@ -2,15 +2,12 @@
 	import FilterPanel from '$lib/components/FilterPanel.svelte';
 	import { onDestroy, onMount, afterUpdate } from 'svelte';
 	import { tick } from 'svelte';
-import { goto } from '$app/navigation';
-import { page, navigating } from '$app/stores';
+	import { goto } from '$app/navigation';
+        import { page, navigating } from '$app/stores';
 	import debounce from 'lodash/debounce';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
-import { FILTER_STATES } from '$lib/constants';
-import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
-import Spinner from '$lib/components/Spinner.svelte';
-import { createLoadingState } from '$lib/utils/loadingStates.js';
+	import { FILTER_STATES } from '$lib/constants';
 	import {
 		selectedPhaseOfSeason,
 		selectedPracticeGoals,
@@ -22,9 +19,7 @@ import { createLoadingState } from '$lib/utils/loadingStates.js';
 	import { cart } from '$lib/stores/cartStore';
 	import AiPlanGeneratorModal from '$lib/components/practice-plan/AiPlanGeneratorModal.svelte';
 
-export let data;
-
-const searchLoading = createLoadingState();
+	export let data;
 
 	// Data from load function (now contains paginated items and metadata)
 	$: practicePlans = data.practicePlans || [];
@@ -125,9 +120,8 @@ const searchLoading = createLoadingState();
 	});
 
 	// --- URL Update Logic ---
-const updateUrlParams = debounce(() => {
-       searchLoading.start();
-       const params = new URLSearchParams($page.url.searchParams);
+	const updateUrlParams = debounce(() => {
+		const params = new URLSearchParams($page.url.searchParams);
 
 		// Update search
 		if (searchQuery) {
@@ -165,9 +159,8 @@ const updateUrlParams = debounce(() => {
 		// Reset page to 1 when filters/search/sort change
 		params.set('page', '1');
 
-       goto(`?${params.toString()}`, { keepFocus: true, noScroll: true });
-       setTimeout(() => searchLoading.stop(), 1000);
-}, 300); // Debounce time
+		goto(`?${params.toString()}`, { keepFocus: true, noScroll: true });
+	}, 300); // Debounce time
 
 	// Helper to update URL for multi-state filters
 	function updateFilterUrlParams(params, baseName, filterState) {
@@ -292,21 +285,14 @@ const updateUrlParams = debounce(() => {
 		bind:selectedSortOrder={$selectedSortOrder}
 	/>
 
-       <!-- Search input -->
-       <div class="relative mb-6">
-               <input
-                       type="text"
-                       placeholder="Search practice plans..."
-                       class="w-full p-3 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       bind:value={searchQuery}
-                       on:input={updateUrlParams}
-               />
-               {#if $searchLoading}
-                       <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
-                               <Spinner size="sm" color="gray" />
-                       </div>
-               {/if}
-       </div>
+	<!-- Search input -->
+	<input
+		type="text"
+		placeholder="Search practice plans..."
+		class="mb-6 w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+		bind:value={searchQuery}
+		on:input={updateUrlParams}
+	/>
 
 	<!-- Display Error Message -->
 	{#if error}
@@ -319,25 +305,9 @@ const updateUrlParams = debounce(() => {
 		</div>
 	{/if}
 
-       <!-- Practice Plans Grid -->
-       {#if $navigating && practicePlans.length === 0}
-               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                       {#each Array(6) as _}
-                               <div class="bg-white rounded-lg shadow-md p-6">
-                                       <div class="flex items-center space-x-3 mb-4">
-                                               <div class="w-8 h-8 bg-gray-300 rounded"></div>
-                                               <SkeletonLoader lines={1} className="flex-1" />
-                                       </div>
-                                       <SkeletonLoader lines={3} className="mb-4" />
-                                       <div class="flex justify-between items-center">
-                                               <div class="h-4 bg-gray-300 rounded w-16"></div>
-                                               <div class="h-8 bg-gray-300 rounded w-20"></div>
-                                       </div>
-                               </div>
-                       {/each}
-               </div>
-       {:else if practicePlans.length > 0}
-               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+	<!-- Practice Plans Grid -->
+	{#if practicePlans.length > 0}
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 			<!-- Use practicePlans directly (already paginated and sorted by server) -->
 			{#each practicePlans as plan (plan.id)}
 				<div

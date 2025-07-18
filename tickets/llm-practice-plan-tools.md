@@ -32,14 +32,14 @@
       ```
     - If the returned list is empty, the LLM can proceed to use `create_drill`.
 
-2.  **[DONE - Implemented via Script] `create_drill(drill_data: object)` Tool:**
+2.  **[DONE] `create_drill(drill_data: object)` Tool:**
 
     - **Purpose:** Create a new drill when one doesn't exist.
-    - **Underlying API:** `POST /api/drills`.
-    - **Implementation:** This action is currently performed by asking the user to run the `create_drill_script.py` script located in the project root. This script handles calling the API with the correct data format.
-    - **Usage Guide:** See `docs/guides/llm_creating_drills.md` for detailed instructions on how to prepare data, update the script, ask the user to run it, and verify the results.
+    - **Underlying API:** `POST /api/drills` (implemented in `src/routes/api/drills/+server.js`).
+      - Incoming data is validated with `createDrillSchema` and persisted via `drillService.createDrill`.
+    - **Implementation:** Wrapper script `create_drill_script.py` posts JSON data matching `createDrillSchema` to the API. Edit the `DRILLS_TO_CREATE` list and run `python create_drill_script.py`.
 
-3.  **[Ready for Implementation] `create_practice_plan(plan_data: object)` Tool:**
+3.  **[DONE] `create_practice_plan(plan_data: object)` Tool:**
     - **Purpose:** Create the entire practice plan structure, including metadata, sections, and items (linking to existing or newly created drills).
     - **Underlying API:** `POST /api/practice-plans`.
       - The endpoint uses `createPracticePlanSchema` (Zod schema located in `src/lib/validation/practicePlanSchema.ts`) for validation.
@@ -47,6 +47,6 @@
     - **Input:** `plan_data` (object): A nested JSON object representing the entire plan, conforming to `createPracticePlanSchema`. Requires top-level metadata (`name`) and at least one section containing at least one item.
       - See `createPracticePlanSchema` in `src/lib/validation/practicePlanSchema.ts` for the exact expected structure and fields for the plan, sections, and items.
     - **Output:** `{id: number, message: string}`: Object containing the ID of the newly created practice plan and a success message.
-    - **Status:** The existing API endpoint and service layer **already support** the required nested creation functionality. No backend changes are needed.
+    - **Implementation:** Wrapper script `create_practice_plan_script.py` sends a full practice plan object to the API. Edit `PRACTICE_PLAN_DATA` and run `python create_practice_plan_script.py`.
 
 By building these tools, the LLM can interact with the application safely and efficiently, leveraging the existing robust backend logic.

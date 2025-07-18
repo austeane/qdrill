@@ -1349,3 +1349,125 @@ export function removeFromParallelGroup(itemId, items) {
 		return item;
 	});
 }
+
+// ------------------------------------------------------
+// Drag-and-drop helper APIs used by dragManager
+// ------------------------------------------------------
+
+/**
+ * Get the current sections value.
+ * @returns {Array}
+ */
+export function getSections() {
+        return get(sections);
+}
+
+/**
+ * Move an item to a new location referenced by stable IDs.
+ *
+ * @param {object} params
+ * @param {string|number} params.itemId - Item ID to move
+ * @param {string} params.targetSectionId - ID of section receiving the item
+ * @param {string|number|null} [params.targetItemId] - ID of item to position relative to
+ * @param {'before'|'after'} [params.position='after'] - Insert position
+ * @param {(item:object)=>object} [params.transform] - Optional transform applied to the item
+ */
+export function moveItem({ itemId, targetSectionId, targetItemId = null, position = 'after', transform }) {
+        sections.update((secs) => {
+                const newSecs = [...secs];
+
+                // Locate the item and its current section
+                const srcSectionIndex = newSecs.findIndex((s) => s.items.some((i) => i.id === itemId));
+                if (srcSectionIndex === -1) return secs;
+
+                const srcItems = [...newSecs[srcSectionIndex].items];
+                const itemIndex = srcItems.findIndex((i) => i.id === itemId);
+                if (itemIndex === -1) return secs;
+
+                const [item] = srcItems.splice(itemIndex, 1);
+
+                newSecs[srcSectionIndex] = { ...newSecs[srcSectionIndex], items: srcItems };
+
+                // Optionally transform the item before inserting
+                const finalItem = transform ? transform(item) : item;
+
+                const targetSectionIndex = newSecs.findIndex((s) => s.id === targetSectionId);
+                if (targetSectionIndex === -1) return secs;
+
+                const targetItems = [...newSecs[targetSectionIndex].items];
+
+                let insertIndex = targetItems.length;
+                if (targetItemId !== null && targetItemId !== undefined) {
+                        const idx = targetItems.findIndex((i) => i.id === targetItemId);
+                        if (idx !== -1) {
+                                insertIndex = position === 'before' ? idx : idx + 1;
+                        }
+                }
+
+                targetItems.splice(Math.min(insertIndex, targetItems.length), 0, finalItem);
+                newSecs[targetSectionIndex] = { ...newSecs[targetSectionIndex], items: targetItems };
+
+                return newSecs;
+        });
+
+        addToHistory('MOVE_ITEM', { itemId, targetSectionId, targetItemId, position }, 'Moved item');
+}
+
+/**
+ * Update a single item's properties.
+ *
+ * @param {string|number} itemId
+ * @param {(item:object)=>object} updater
+ */
+export function updateItem(itemId, updater) {
+        sections.update((secs) =>
+                secs.map((section) => {
+                        const idx = section.items.findIndex((i) => i.id === itemId);
+                        if (idx === -1) return section;
+                        const items = [...section.items];
+                        items[idx] = updater(items[idx]);
+                        return { ...section, items };
+                })
+        );
+}
+
+/**
+ * Move a section before or after another section.
+ *
+ * @param {object} params
+ * @param {string} params.sectionId
+ * @param {string} params.targetSectionId
+ * @param {'before'|'after'} [params.position='after']
+ */
+export function moveSection({ sectionId, targetSectionId, position = 'after' }) {
+        sections.update((secs) => {
+                const newSecs = [...secs];
+                const srcIndex = newSecs.findIndex((s) => s.id === sectionId);
+                const targetIndex = newSecs.findIndex((s) => s.id === targetSectionId);
+                if (srcIndex === -1 || targetIndex === -1) return secs;
+
+                const [section] = newSecs.splice(srcIndex, 1);
+
+                let insertIndex = targetIndex;
+                if (position === 'after') {
+                        insertIndex = srcIndex < targetIndex ? targetIndex : targetIndex + 1;
+                } else {
+                        insertIndex = srcIndex < targetIndex ? targetIndex - 1 : targetIndex;
+                }
+
+                insertIndex = Math.max(0, Math.min(insertIndex, newSecs.length));
+                newSecs.splice(insertIndex, 0, section);
+
+                return newSecs.map((s, i) => ({ ...s, order: i }));
+        });
+
+        addToHistory('MOVE_SECTION', { sectionId, targetSectionId, position }, 'Moved section');
+}
+
+/**
+ * Replace the entire sections array.
+ * @param {Array} newSections
+ */
+export function setSections(newSections) {
+        sections.set(newSections);
+}

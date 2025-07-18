@@ -2,8 +2,8 @@
 	import FilterPanel from '$lib/components/FilterPanel.svelte';
 	import { onDestroy, onMount, afterUpdate } from 'svelte';
 	import { tick } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
+import { goto } from '$app/navigation';
+import { page, navigating } from '$app/stores';
 	import debounce from 'lodash/debounce';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';

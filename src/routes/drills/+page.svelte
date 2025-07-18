@@ -8,6 +8,7 @@
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
 	import { dev } from '$app/environment';
 	import { page } from '$app/stores';
+	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import { goto, invalidate } from '$app/navigation';
 	import { navigating } from '$app/stores';
 	import { FILTER_STATES } from '$lib/constants';
@@ -36,6 +37,9 @@
 	import Pagination from '$lib/components/Pagination.svelte';
 
 	export let data;
+
+	// Determine authentication status for optional tooltip
+	$: isAuthenticated = !!$page.data.session?.user;
 
 	// Filter options from load
 	$: filterOptions = data.filterOptions || {};
@@ -460,7 +464,11 @@
 										class="text-xl font-bold text-gray-800 overflow-hidden"
 										data-testid="drill-card-name"
 									>
-										<a href="/drills/{drill.id}" class="hover:text-blue-600 block overflow-hidden truncate" title={drill.name}>
+										<a
+											href="/drills/{drill.id}"
+											class="hover:text-blue-600 block overflow-hidden truncate"
+											title={drill.name}
+										>
 											{drill.name}
 										</a>
 									</h2>
@@ -508,34 +516,69 @@
 
 						<!-- Add to Practice Plan button -->
 						<div class="mt-auto">
-							<button
-								class="w-full py-2 px-4 rounded-md font-semibold text-white transition-colors duration-300"
-								class:bg-green-500={buttonStates[drill.id] === 'added'}
-								class:hover:bg-green-600={buttonStates[drill.id] === 'added'}
-								class:bg-red-500={buttonStates[drill.id] === 'removed' ||
-									buttonStates[drill.id] === 'in-cart'}
-								class:hover:bg-red-600={buttonStates[drill.id] === 'removed' ||
-									buttonStates[drill.id] === 'in-cart'}
-								class:bg-blue-500={!drillsInCart.has(drill.id) &&
-									buttonStates[drill.id] !== 'added' &&
-									buttonStates[drill.id] !== 'removed' &&
-									buttonStates[drill.id] !== 'in-cart'}
-								class:hover:bg-blue-600={!drillsInCart.has(drill.id) &&
-									buttonStates[drill.id] !== 'added' &&
-									buttonStates[drill.id] !== 'removed' &&
-									buttonStates[drill.id] !== 'in-cart'}
-								on:click|stopPropagation={() => toggleDrillInCart(drill)}
-							>
-								{#if buttonStates[drill.id] === 'added'}
-									Added
-								{:else if buttonStates[drill.id] === 'removed'}
-									Removed
-								{:else if buttonStates[drill.id] === 'in-cart'}
-									Remove from Plan
-								{:else}
-									Add to Plan
-								{/if}
-							</button>
+							{#if !isAuthenticated}
+								<Tooltip text="Sign in to save private plans" position="top">
+									<button
+										class="w-full py-2 px-4 rounded-md font-semibold text-white transition-colors duration-300"
+										class:bg-green-500={buttonStates[drill.id] === 'added'}
+										class:hover:bg-green-600={buttonStates[drill.id] === 'added'}
+										class:bg-red-500={buttonStates[drill.id] === 'removed' ||
+											buttonStates[drill.id] === 'in-cart'}
+										class:hover:bg-red-600={buttonStates[drill.id] === 'removed' ||
+											buttonStates[drill.id] === 'in-cart'}
+										class:bg-blue-500={!drillsInCart.has(drill.id) &&
+											buttonStates[drill.id] !== 'added' &&
+											buttonStates[drill.id] !== 'removed' &&
+											buttonStates[drill.id] !== 'in-cart'}
+										class:hover:bg-blue-600={!drillsInCart.has(drill.id) &&
+											buttonStates[drill.id] !== 'added' &&
+											buttonStates[drill.id] !== 'removed' &&
+											buttonStates[drill.id] !== 'in-cart'}
+										on:click|stopPropagation={() => toggleDrillInCart(drill)}
+										aria-label="Add drill to plan"
+									>
+										{#if buttonStates[drill.id] === 'added'}
+											Added
+										{:else if buttonStates[drill.id] === 'removed'}
+											Removed
+										{:else if buttonStates[drill.id] === 'in-cart'}
+											Remove from Plan
+										{:else}
+											Add to Plan
+										{/if}
+									</button>
+								</Tooltip>
+							{:else}
+								<button
+									class="w-full py-2 px-4 rounded-md font-semibold text-white transition-colors duration-300"
+									class:bg-green-500={buttonStates[drill.id] === 'added'}
+									class:hover:bg-green-600={buttonStates[drill.id] === 'added'}
+									class:bg-red-500={buttonStates[drill.id] === 'removed' ||
+										buttonStates[drill.id] === 'in-cart'}
+									class:hover:bg-red-600={buttonStates[drill.id] === 'removed' ||
+										buttonStates[drill.id] === 'in-cart'}
+									class:bg-blue-500={!drillsInCart.has(drill.id) &&
+										buttonStates[drill.id] !== 'added' &&
+										buttonStates[drill.id] !== 'removed' &&
+										buttonStates[drill.id] !== 'in-cart'}
+									class:hover:bg-blue-600={!drillsInCart.has(drill.id) &&
+										buttonStates[drill.id] !== 'added' &&
+										buttonStates[drill.id] !== 'removed' &&
+										buttonStates[drill.id] !== 'in-cart'}
+									on:click|stopPropagation={() => toggleDrillInCart(drill)}
+									aria-label="Add drill to plan"
+								>
+									{#if buttonStates[drill.id] === 'added'}
+										Added
+									{:else if buttonStates[drill.id] === 'removed'}
+										Removed
+									{:else if buttonStates[drill.id] === 'in-cart'}
+										Remove from Plan
+									{:else}
+										Add to Plan
+									{/if}
+								</button>
+							{/if}
 						</div>
 					</div>
 				</div>

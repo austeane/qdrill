@@ -1,6 +1,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { practicePlanBasicInfoSchema } from '$lib/validation/practicePlanSchema';
 import { apiFetch } from '$lib/utils/apiFetch.js';
+import { sections } from '$lib/stores/sectionsStore';
 
 // Basic info store
 export const basicInfo = writable({
@@ -17,7 +18,8 @@ export const basicInfo = writable({
 
 // Timeline store for section arrangement
 export const timeline = writable({
-	sections: [], // This timeline.sections array still needs to sync with sectionsStore in the component
+	// Sections with duration and startTime; kept in sync with sectionsStore
+	sections: [],
 	totalTime: 0
 });
 
@@ -117,6 +119,74 @@ export function scheduleAutoSave() {
 		}
 	}, 5000);
 }
+
+// ----- Timeline Synchronization -----
+function recalcStartTimes(sectionsList) {
+	let start = 0;
+	return sectionsList.map((s) => {
+		const copy = { ...s, startTime: start };
+		start += s.duration || 0;
+		return copy;
+	});
+}
+
+export function syncTimelineWithSections(updatedSections) {
+	const currentTimeline = get(timeline);
+	let synced = currentTimeline.sections.filter((ts) => updatedSections.some((s) => s.id === ts.id));
+	let changed = synced.length !== currentTimeline.sections.length;
+
+	const ids = new Set(synced.map((s) => s.id));
+	const defaults =
+		updatedSections.length > 0
+			? Math.floor(
+					(currentTimeline.totalTime || get(basicInfo).totalTime || 120) / updatedSections.length
+				)
+			: 15;
+
+	updatedSections.forEach((section) => {
+		if (!ids.has(section.id)) {
+			changed = true;
+			synced.push({
+				id: section.id,
+				name: section.name,
+				duration: defaults,
+				startTime: 0
+			});
+			ids.add(section.id);
+		} else {
+			const item = synced.find((s) => s.id === section.id);
+			if (item && item.name !== section.name) {
+				item.name = section.name;
+				changed = true;
+			}
+		}
+	});
+
+	const ordered = updatedSections.map((s) => synced.find((t) => t.id === s.id));
+
+	if (!changed) {
+		for (let i = 0; i < ordered.length; i++) {
+			if (ordered[i]?.id !== currentTimeline.sections[i]?.id) {
+				changed = true;
+				break;
+			}
+		}
+	}
+
+	const withTimes = recalcStartTimes(ordered);
+
+	if (changed) {
+		timeline.set({
+			totalTime: currentTimeline.totalTime || get(basicInfo).totalTime,
+			sections: withTimes
+		});
+	} else {
+		timeline.update((t) => ({ ...t, sections: withTimes }));
+	}
+}
+
+// Keep timeline synced whenever sections change
+sections.subscribe(syncTimelineWithSections);
 
 // Navigation guards - Update to use validateBasicInfo
 export function canProceedToNextStep($wizardState) {

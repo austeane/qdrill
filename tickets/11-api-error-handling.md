@@ -1,3 +1,17 @@
+## Progress Update (2025-05-31)
+
+### Completed:
+
+- Most Svelte components now use `apiFetch` for API requests. `poll/+page.svelte`, `feedback/+page.svelte`, `UpvoteDownvote.svelte`, `Comments.svelte`, `FilterPanel.svelte`, and `ExcalidrawWrapper.svelte` were refactored after the previous update.
+- API routes import the shared `handleApiError` from `src/routes/api/utils/handleApiError.js` (over 30 files). Only `src/routes/api/practice-plans/+server.js` still contains a local copy.
+- The `handleApiError` helper now maps common Postgres constraint errors (e.g., unique or foreign key violations) to a `CONFLICT` response.
+- Documentation in `docs/guides/loading-states-best-practices.md` includes examples of using `apiFetch` in both client and server code.
+
+### Remaining Work:
+
+- Some form pages and formation routes still use direct `fetch` calls (e.g., `FormationForm.svelte`, `formations/[id]/+page.svelte`, several `+page.server.js` files). Converting these to `apiFetch` would unify error handling.
+- Extract the inline error handler from `src/routes/api/practice-plans/+server.js` so all routes rely on the shared utility.
+
 ## Progress Update (2024-08-17)
 
 ### Completed:

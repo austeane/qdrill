@@ -7,8 +7,9 @@
 	import { PREDEFINED_SKILLS } from '$lib/constants/skills';
 	import { page } from '$app/stores';
 	import { authClient } from '$lib/auth-client';
-	import { toast } from '@zerodevx/svelte-toast';
-	import { apiFetch } from '$lib/utils/apiFetch.js';
+import { toast } from '@zerodevx/svelte-toast';
+import { apiFetch } from '$lib/utils/apiFetch.js';
+import { createDrillSchema, updateDrillSchema } from '$lib/validation/drillSchema';
 
 	const dispatch = createEventDispatcher();
 
@@ -340,36 +341,43 @@
 		}
 	}
 
-	function validateForm() {
-		let newErrors = {};
-		if (!$name) newErrors.name = 'Name is required';
-		if (!$brief_description) newErrors.brief_description = 'Brief description is required';
-		if ($skill_level.length === 0) newErrors.skill_level = 'Skill level is required';
-		if (!$suggested_length) newErrors.suggested_length = 'Suggested length of time is required';
-		if ($selectedSkills.length === 0)
-			newErrors.skills_focused_on = 'Skills focused on are required';
-		if ($positions_focused_on.length === 0)
-			newErrors.positions_focused_on = 'Positions focused on are required';
-		if ($drill_type.length === 0) newErrors.drill_type = 'At least one drill type is required';
+       function validateForm() {
+                       const maxParticipants =
+                               $number_of_people_max === '' || $number_of_people_max === '0'
+                                       ? null
+                                       : Number($number_of_people_max);
+                       const minParticipants = $number_of_people_min === '' ? null : Number($number_of_people_min);
 
-		if ($number_of_people_min && !Number.isInteger(Number($number_of_people_min))) {
-			newErrors.number_of_people_min = 'Min number of people must be a whole number';
-		}
-		if (
-			$number_of_people_max !== '' &&
-			$number_of_people_max !== '0' &&
-			!Number.isInteger(Number($number_of_people_max))
-		) {
-			newErrors.number_of_people_max = 'Max number of people must be a whole number';
-		}
+               const formData = {
+                       id: drill.id,
+                       name: $name,
+                       brief_description: $brief_description,
+                       detailed_description: $detailed_description,
+                       skill_level: $skill_level,
+                       complexity: $complexity ? $complexity.charAt(0).toUpperCase() + $complexity.slice(1) : null,
+                       suggested_length: parseLengthRange($suggested_length),
+                       number_of_people: { min: minParticipants, max: maxParticipants },
+                       skills_focused_on: $selectedSkills,
+                       positions_focused_on: $positions_focused_on,
+                       video_link: $video_link || null,
+                       diagrams: $diagrams,
+                       drill_type: $drill_type,
+                       is_editable_by_others: $is_editable_by_others,
+                       visibility: $visibility,
+                       parent_drill_id: $isVariation ? $parentDrillId : null
+               };
 
-		if ($isVariation && !$parentDrillId) {
-			newErrors.parentDrillId = 'Parent drill is required for variations';
-		}
-
-		errors.set(newErrors);
-		return Object.keys(newErrors).length === 0;
-	}
+               const schema = drill.id ? updateDrillSchema : createDrillSchema;
+               const result = schema.safeParse(formData);
+               if (!result.success) {
+                       const formatted = result.error.flatten().fieldErrors;
+                       errors.set(formatted);
+                       console.warn('[DrillForm Validation]', formatted);
+                       return false;
+               }
+               errors.set({});
+               return true;
+       }
 
 	async function handleSubmit() {
 		diagramRefs.forEach((ref) => {
@@ -398,10 +406,15 @@
 					complexity: $complexity
 						? $complexity.charAt(0).toUpperCase() + $complexity.slice(1)
 						: null,
-					suggested_length: parseLengthRange($suggested_length),
-					number_of_people_min: $number_of_people_min,
-					number_of_people_max: $number_of_people_max,
-					skills_focused_on: $selectedSkills,
+                                       suggested_length: parseLengthRange($suggested_length),
+                                       number_of_people: {
+                                               min: $number_of_people_min === '' ? null : Number($number_of_people_min),
+                                               max:
+                                                       $number_of_people_max === '' || $number_of_people_max === '0'
+                                                               ? null
+                                                               : Number($number_of_people_max)
+                                       },
+                                       skills_focused_on: $selectedSkills,
 					positions_focused_on: $positions_focused_on,
 					video_link: $video_link,
 					diagrams: $diagrams,
@@ -440,11 +453,10 @@
 				detailed_description: $detailed_description,
 				skill_level: $skill_level,
 				complexity: $complexity ? $complexity.charAt(0).toUpperCase() + $complexity.slice(1) : null,
-				suggested_length: parseLengthRange($suggested_length),
-				number_of_people_min: minParticipants,
-				number_of_people_max: maxParticipants,
-				skills_focused_on: $selectedSkills,
-				positions_focused_on: $positions_focused_on,
+                               suggested_length: parseLengthRange($suggested_length),
+                               number_of_people: { min: minParticipants, max: maxParticipants },
+                               skills_focused_on: $selectedSkills,
+                               positions_focused_on: $positions_focused_on,
 				video_link: $video_link || null,
 				diagrams: $diagrams,
 				drill_type: $drill_type,
@@ -816,12 +828,12 @@
 								class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
 							/>
 						</div>
-						{#if numberWarnings.number_of_people_min}
-							<p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_min}</p>
-						{/if}
-						{#if $errors.number_of_people_min}
-							<p class="text-red-500 text-sm mt-1">{$errors.number_of_people_min}</p>
-						{/if}
+                                               {#if numberWarnings.number_of_people_min}
+                                                       <p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_min}</p>
+                                               {/if}
+                                               {#if $errors.number_of_people}
+                                                       <p class="text-red-500 text-sm mt-1">{$errors.number_of_people[0]}</p>
+                                               {/if}
 
 						<div class="flex flex-col">
 							<label for="number_of_people_max" class="mb-1 text-sm font-medium text-gray-700"
@@ -835,12 +847,12 @@
 								class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
 							/>
 						</div>
-						{#if numberWarnings.number_of_people_max}
-							<p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_max}</p>
-						{/if}
-						{#if $errors.number_of_people_max}
-							<p class="text-red-500 text-sm mt-1">{$errors.number_of_people_max}</p>
-						{/if}
+                                               {#if numberWarnings.number_of_people_max}
+                                                       <p class="text-yellow-500 text-sm mt-1">{numberWarnings.number_of_people_max}</p>
+                                               {/if}
+                                               {#if $errors.number_of_people}
+                                                       <p class="text-red-500 text-sm mt-1">{$errors.number_of_people[0]}</p>
+                                               {/if}
 
 						<div class="flex flex-col">
 							<label for="skills_focused_on" class="mb-1 text-sm font-medium text-gray-700"

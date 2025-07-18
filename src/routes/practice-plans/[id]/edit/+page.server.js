@@ -6,6 +6,7 @@ import { normalizeItems } from '$lib/utils/practicePlanUtils.js';
 import { practicePlanSchema } from '$lib/validation/practicePlanSchema.ts';
 import { z } from 'zod';
 import { NotFoundError, ForbiddenError, ValidationError, DatabaseError } from '$lib/server/errors';
+import { apiFetch } from '$lib/utils/apiFetch.js';
 
 const COOKIE_NAME = 'pendingPlanToken'; // Add cookie name constant
 
@@ -21,43 +22,29 @@ export const load = authGuard(async ({ params, locals, cookies, fetch }) => {
 	const token = cookies.get(COOKIE_NAME);
 	if (token) {
 		console.log(`[Load /practice-plans/edit] Found pending plan token: ${token}`);
-		try {
-			const response = await fetch('/api/pending-plans');
-			if (response.ok) {
-				const data = await response.json();
-				if (data && data.plan) {
-					pendingPlanData = data.plan;
-					console.log('[Load /practice-plans/edit] Successfully loaded pending plan data.');
-					// Delete after load
-					try {
-						const deleteResponse = await fetch('/api/pending-plans', { method: 'DELETE' });
-						if (!deleteResponse.ok) {
-							console.error(
-								'[Load /practice-plans/edit] Failed to delete pending plan after load.'
-							);
-						} else {
-							console.log('[Load /practice-plans/edit] Pending plan deleted after load.');
-						}
-					} catch (deleteError) {
-						console.error(
-							'[Load /practice-plans/edit] Error deleting pending plan after load:',
-							deleteError
-						);
-					}
-				} else {
-					console.log('[Load /practice-plans/edit] Pending plan data from API was null/empty.');
-					cookies.delete(COOKIE_NAME, { path: '/' });
-				}
-			} else {
-				console.error(
-					`[Load /practice-plans/edit] Error fetching pending plan: ${response.status}`
-				);
-				cookies.delete(COOKIE_NAME, { path: '/' });
-			}
-		} catch (err) {
-			console.error('[Load /practice-plans/edit] Exception fetching/processing pending plan:', err);
-			cookies.delete(COOKIE_NAME, { path: '/' });
-		}
+                try {
+                        const data = await apiFetch('/api/pending-plans', {}, fetch);
+                        if (data && data.plan) {
+                                pendingPlanData = data.plan;
+                                console.log('[Load /practice-plans/edit] Successfully loaded pending plan data.');
+                                // Delete after load
+                                try {
+                                        await apiFetch('/api/pending-plans', { method: 'DELETE' }, fetch);
+                                        console.log('[Load /practice-plans/edit] Pending plan deleted after load.');
+                                } catch (deleteError) {
+                                        console.error(
+                                                '[Load /practice-plans/edit] Error deleting pending plan after load:',
+                                                deleteError
+                                        );
+                                }
+                        } else {
+                                console.log('[Load /practice-plans/edit] Pending plan data from API was null/empty.');
+                                cookies.delete(COOKIE_NAME, { path: '/' });
+                        }
+                } catch (err) {
+                        console.error('[Load /practice-plans/edit] Exception fetching/processing pending plan:', err);
+                        cookies.delete(COOKIE_NAME, { path: '/' });
+                }
 	}
 
 	// --- 2. Load Existing Practice Plan (only if no pending data loaded) ---

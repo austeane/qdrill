@@ -9,7 +9,8 @@
 	import { dev } from '$app/environment';
 	import { page } from '$app/stores';
 	import { goto, invalidate } from '$app/navigation';
-	import { navigating } from '$app/stores';
+import { navigating } from '$app/stores';
+import { onDestroy } from 'svelte';
 	import { FILTER_STATES } from '$lib/constants';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
@@ -35,7 +36,11 @@
 
 	import Pagination from '$lib/components/Pagination.svelte';
 
-	export let data;
+export let data;
+
+let isNavigating = false;
+const unsubNavigating = navigating.subscribe((v) => (isNavigating = !!v));
+onDestroy(unsubNavigating);
 
 	// Filter options from load
 	$: filterOptions = data.filterOptions || {};
@@ -391,8 +396,8 @@
 	</div>
 
 	<!-- Loading and Empty States -->
-	{#if $navigating && !data.items}
-		<p class="text-center text-gray-500 py-10">Loading drills...</p>
+       {#if isNavigating && !data.items}
+               <p class="text-center text-gray-500 py-10">Loading drills...</p>
 	{:else if !data.items || data.items.length === 0}
 		<p class="text-center text-gray-500 py-10">No drills match your criteria.</p>
 	{:else}

@@ -10,7 +10,7 @@ This document synthesizes the findings from the detailed code review notes, prov
     - **Wizard vs. Form State Duplication:** The Practice Plan Wizard (`wizardStore`, `wizardValidation`) largely duplicates state (especially `sections`) and logic (validation, submission flow) found in the main form (`practicePlanStore`, `sectionsStore`). This leads to confusion and maintenance overhead.
     - **Store Dependencies:** Components are often tightly coupled to specific store implementations (e.g., shared practice plan components, modals importing store functions directly), hindering reusability (especially between the wizard and the main form).
     - **Reactivity Issues:** Some areas show signs of fighting Svelte's reactivity (e.g., `TimelineSelectorModal` using `setTimeout` and manual updates), suggesting potential issues in state management patterns.
-    - **Unused Stores:** `dragStore.js` appears completely unused. Parts of `feedbackStore` (`feedbackList`) are also unused.
+    - **Unused Stores:** The previously unused `dragStore.js` file has been removed. The obsolete `feedbackList` export was also deleted from `feedbackStore`.
 
 2.  **API Design, Implementation & Scalability:**
 
@@ -55,7 +55,7 @@ This document synthesizes the findings from the detailed code review notes, prov
     - **Vercel Rewrites:** Potentially redundant rewrites in `vercel.json`.
 
 8.  **Unused/Dead Code:**
-    - Significant amounts of potentially unused code identified: `Counter.svelte`, `dragStore.js`, `feedback.js`, `loggerUtils.js`, parts of `feedbackStore`, `src/lib/vitals.js` (disabled).
+    - Significant amounts of potentially unused code identified: `Counter.svelte`, `feedback.js`, `loggerUtils.js`, portions of `feedbackStore` (prior to cleanup), `src/lib/vitals.js` (disabled).
 
 ## Overarching Recommendations
 

@@ -53,19 +53,6 @@ export function initializeForm(practicePlan) {
 	errors.set({}); // Clear errors on initialization
 }
 
-// Reset form to default state
-export function resetForm() {
-	planName.set('');
-	planDescription.set('');
-	phaseOfSeason.set('');
-	estimatedNumberOfParticipants.set('');
-	practiceGoals.set(['']);
-	visibility.set('public');
-	isEditableByOthers.set(false);
-	startTime.set('09:00');
-	errors.set({});
-	formInitialized.set(false); // Mark as not initialized
-}
 
 // Validate metadata fields using Zod schema
 export function validateMetadataForm() {

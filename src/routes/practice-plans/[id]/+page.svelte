@@ -9,7 +9,8 @@
 	import Timeline from '../viewer/Timeline.svelte';
 	import Section from '../viewer/Section.svelte';
 	import DeletePracticePlan from '$lib/components/DeletePracticePlan.svelte';
-	import PositionFilter from '$lib/components/practice-plan/PositionFilter.svelte';
+       import GroupFilter from '$lib/components/practice-plan/GroupFilter.svelte';
+       import { filterSectionsByGroup } from '$lib/utils/groupFilter.js';
 	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
@@ -20,8 +21,8 @@
 	// Store for tracking the current section
 	const currentSectionId = writable(null);
 	
-	// Position filter state
-	let selectedPositions = ['CHASERS', 'BEATERS', 'SEEKERS'];
+       // Group filter state
+       let selectedGroupFilter = 'All Groups';
 
 	// Calculate total duration considering parallel activities
 	$: totalDuration = practicePlan.sections.reduce((sum, section) => sum + section.duration, 0);
@@ -90,104 +91,13 @@
 		);
 	}
 	
-	// Handle position filter change
-	function handlePositionFilterChange(event) {
-		selectedPositions = event.detail.selectedPositions;
-	}
-	
-	// Filter sections based on selected positions
-	$: filteredSections = filterSectionsByPositions(practicePlan.sections, selectedPositions);
-	
-	function filterSectionsByPositions(sections, positions) {
-		// If all positions are selected, return original sections
-		if (positions.length === 3) {
-			return sections;
-		}
-		
-		return sections.map(section => {
-			const filteredItems = section.items.filter(item => {
-				// If item has no parallel_timeline, it's for everyone
-				if (!item.parallel_timeline) {
-					return true;
-				}
-				
-				// Check if the item's timeline matches any selected position
-				return positions.includes(item.parallel_timeline);
-			});
-			
-			// If only one position is selected, remove parallel grouping
-			if (positions.length === 1) {
-				// Flatten parallel groups - just show items in sequence
-				const processedItems = [];
-				filteredItems.forEach(item => {
-					// Reset parallel group indicators for single position view
-					processedItems.push({
-						...item,
-						parallel_group_id: null,
-						parallel_timeline: null,
-						group_timelines: null
-					});
-				});
-				return {
-					...section,
-					items: processedItems
-				};
-			}
-			
-			// For multiple positions, we need to check each parallel group
-			// to see if it still has multiple positions after filtering
-			const processedItems = [];
-			const parallelGroups = {};
-			
-			// First, group items by parallel_group_id
-			filteredItems.forEach(item => {
-				if (item.parallel_group_id) {
-					if (!parallelGroups[item.parallel_group_id]) {
-						parallelGroups[item.parallel_group_id] = [];
-					}
-					parallelGroups[item.parallel_group_id].push(item);
-				} else {
-					// Non-parallel items go straight through
-					processedItems.push(item);
-				}
-			});
-			
-			// Then check each parallel group
-			Object.entries(parallelGroups).forEach(([groupId, groupItems]) => {
-				// Count unique positions in this group after filtering
-				const uniquePositions = new Set(
-					groupItems.map(item => item.parallel_timeline).filter(Boolean)
-				);
-				
-				if (uniquePositions.size > 1) {
-					// Multiple positions visible - keep parallel structure
-					groupItems.forEach(item => processedItems.push(item));
-				} else {
-					// Only one position visible in this group - flatten it
-					groupItems.forEach(item => {
-						processedItems.push({
-							...item,
-							parallel_group_id: null,
-							parallel_timeline: null,
-							group_timelines: null
-						});
-					});
-				}
-			});
-			
-			// Sort items by their original order
-			processedItems.sort((a, b) => {
-				const indexA = filteredItems.indexOf(filteredItems.find(item => item.id === a.id));
-				const indexB = filteredItems.indexOf(filteredItems.find(item => item.id === b.id));
-				return indexA - indexB;
-			});
-			
-			return {
-				...section,
-				items: processedItems
-			};
-		}).filter(section => section.items.length > 0); // Remove empty sections
-	}
+       // Handle group filter change
+       function handleGroupFilterChange(event) {
+               selectedGroupFilter = event.detail.filter;
+       }
+
+       // Filter sections based on selected group
+       $: filteredSections = filterSectionsByGroup(practicePlan.sections, selectedGroupFilter);
 
 	// Calculate section start times
 	function calculateSectionStartTime(sections, sectionIndex) {
@@ -361,12 +271,12 @@
 		</div>
 	{/if}
 
-	<!-- Position Filter -->
-	<PositionFilter 
-		sections={practicePlan.sections}
-		bind:selectedPositions
-		on:filterChange={handlePositionFilterChange}
-	/>
+       <!-- Group Filter -->
+       <GroupFilter
+               sections={practicePlan.sections}
+               bind:selectedFilter={selectedGroupFilter}
+               on:filterChange={handleGroupFilterChange}
+       />
 
 	<!-- Main Content -->
 	<div class="flex gap-6">
@@ -387,8 +297,7 @@
 						isActive={section.id === $currentSectionId}
 						canEdit={false}
 						sectionIndex={index}
-						startTime={calculateSectionStartTime(filteredSections, index)}
-						{selectedPositions}
+                                               startTime={calculateSectionStartTime(filteredSections, index)}
 					/>
 				</div>
 			{/each}

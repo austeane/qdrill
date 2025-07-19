@@ -18,6 +18,7 @@
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { cart } from '$lib/stores/cartStore';
 	import AiPlanGeneratorModal from '$lib/components/practice-plan/AiPlanGeneratorModal.svelte';
+	import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
 
 	export let data;
 
@@ -306,7 +307,19 @@
 	{/if}
 
 	<!-- Practice Plans Grid -->
-	{#if practicePlans.length > 0}
+	{#if $navigating && !practicePlans.length}
+		<!-- Loading skeletons -->
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+			{#each Array(6) as _, i}
+				<SkeletonLoader 
+					lines={3} 
+					showCard={true}
+					showButton={true}
+					className="h-56"
+				/>
+			{/each}
+		</div>
+	{:else if practicePlans.length > 0}
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 			<!-- Use practicePlans directly (already paginated and sorted by server) -->
 			{#each practicePlans as plan (plan.id)}

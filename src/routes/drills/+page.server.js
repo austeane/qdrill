@@ -1,4 +1,5 @@
 import { drillService } from '$lib/server/services/drillService.js';
+import { apiFetch } from '$lib/utils/apiFetch.js';
 
 export async function load({ fetch, url, locals }) {
 	try {
@@ -65,21 +66,17 @@ export async function load({ fetch, url, locals }) {
 		const serviceOptions = { page, limit, sortBy, sortOrder, userId };
 
 		// Fetch drills using the parsed filters/options and filter options in parallel
-		const [drillsResult, filterOptionsResponse] = await Promise.all([
-			drillService.getFilteredDrills(filters, serviceOptions), // Pass parsed filters here
-			fetch('/api/drills/filter-options') // Keep fetching filter options for UI
-		]);
+                const [drillsResult, filterOptionsResponse] = await Promise.all([
+                        drillService.getFilteredDrills(filters, serviceOptions), // Pass parsed filters here
+                        apiFetch('/api/drills/filter-options', {}, fetch).catch(error => {
+                                // Log the error but don't fail the page load
+                                console.error('Failed to fetch filter options:', error);
+                                return null; // Return null on error to allow graceful degradation
+                        })
+                ]);
 
-		if (!filterOptionsResponse.ok) {
-			// Log error but potentially continue without filter options?
-			console.error(`Failed to fetch filter options: ${filterOptionsResponse.status}`);
-			// Or throw error if filter options are critical:
-			// throw new Error('Failed to fetch filter options');
-		}
-
-		// Process results
-		const drillsData = drillsResult; // Service returns { items, pagination }
-		const filterOptions = filterOptionsResponse.ok ? await filterOptionsResponse.json() : {}; // Default if fetch failed
+                const drillsData = drillsResult; // Service returns { items, pagination }
+                const filterOptions = filterOptionsResponse || {}; // Default to empty object if null/error
 
 		return {
 			// Follow the structure { items: [], pagination: {} } for consistency

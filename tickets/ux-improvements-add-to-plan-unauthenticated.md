@@ -1,15 +1,15 @@
-# UX Improvement: Fix Add to Plan Button for Unauthenticated Users
+# UX Improvement: Clarify Add to Plan Button for Unauthenticated Users
 
-## Priority: High
-**Impact**: High (Core functionality clarity)  
-**Effort**: Low  
-**Status**: Open
+## Priority: Low
+**Impact**: Low (current behavior already works)
+**Effort**: N/A
+**Status**: Resolved
 
 ## Problem
-According to UX feedback, unauthenticated users can click "Add Drill to Plan" buttons but nothing happens, creating confusion. The button should either be disabled or show a helpful tooltip/message indicating sign-in is required.
+Early UX feedback suggested that logged-out visitors saw no effect when clicking "Add Drill to Plan."  The current implementation actually stores selected drills in `localStorage` via `cartStore.js`, so even unauthenticated users can build a practice plan.  Plans created without a user ID are automatically set to `public`.
 
 ## Solution
-Implement proper handling for unauthenticated users by either disabling the button with clear messaging or showing a sign-in prompt when clicked.
+No change is required for basic functionality.  Optionally, we could surface a tooltip encouraging sign‑in so users can save private plans, but the button itself works for everyone.
 
 ## Files to Modify
 
@@ -18,9 +18,8 @@ Implement proper handling for unauthenticated users by either disabling the butt
 - `src/lib/components/DrillCard.svelte` - If drill cards are componentized
 - `src/routes/formations/+page.svelte` - Formation add buttons if applicable
 
-### Supporting Files
-- `src/lib/stores/cartStore.js` - Ensure proper authentication checks
-- `src/lib/components/ui/Tooltip.svelte` - For showing helpful tooltips
+### Supporting Files Reviewed
+- `src/lib/stores/cartStore.js` - Handles cart persistence in `localStorage` without auth checks
 
 ## Current Implementation
 ```svelte
@@ -33,7 +32,7 @@ Implement proper handling for unauthenticated users by either disabling the butt
 </button>
 ```
 
-The button currently works the same for authenticated and unauthenticated users.
+The button already works the same for authenticated and unauthenticated users.
 
 ## Implementation Details
 
@@ -246,27 +245,21 @@ export const cart = createCartStore();
 ```
 
 ## Acceptance Criteria
-- [ ] Unauthenticated users see clear indication that sign-in is required
-- [ ] Button behavior is intuitive and doesn't create confusion
-- [ ] Helpful tooltip or message guides users to sign in
-- [ ] Sign-in process is smooth and returns user to their original task
+- [x] Unauthenticated users can successfully add drills to their cart
+- [ ] (Optional) Tooltip encourages creating an account for private plan features
 - [ ] Consistent behavior across all "Add to Plan" buttons
 - [ ] Accessibility: proper ARIA labels and screen reader support
-- [ ] Button states are visually distinct for different user states
 - [ ] Mobile-friendly implementation
 
 ## Testing
-- [ ] Test button behavior while signed out
-- [ ] Test button behavior while signed in
-- [ ] Test tooltip/modal functionality
-- [ ] Test sign-in flow and return to original page
+- [ ] Verify cart persistence while signed out
+- [ ] Verify cart functionality while signed in
+- [ ] Test optional tooltip
 - [ ] Test keyboard navigation and accessibility
 - [ ] Test on mobile devices
 - [ ] Test screen reader compatibility
-- [ ] Test error handling if sign-in fails
 
 ## Notes
-- Recommend Option A (disabled button with tooltip) for immediate clarity
-- Consider tracking conversion rates from sign-in prompts
-- Ensure sign-in redirect returns users to the same page/context
-- Consider adding benefits messaging (e.g., "Free account, save unlimited drills") 
+- The cart persists in `localStorage` even when not logged in.
+- Anonymous plans are automatically set to `public` and editable by others.
+- A tooltip inviting users to sign in could be explored as a future enhancement.

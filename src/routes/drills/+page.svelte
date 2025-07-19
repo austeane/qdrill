@@ -471,7 +471,11 @@
 										class="text-xl font-bold text-gray-800 overflow-hidden"
 										data-testid="drill-card-name"
 									>
-										<a href="/drills/{drill.id}" class="hover:text-blue-600 block overflow-hidden truncate" title={drill.name}>
+										<a
+											href="/drills/{drill.id}"
+											class="hover:text-blue-600 block overflow-hidden truncate"
+											title={drill.name}
+										>
 											{drill.name}
 										</a>
 									</h2>

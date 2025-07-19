@@ -7,8 +7,8 @@
 		<span class="reference-label">Formations:</span>
 		<div class="formation-links">
 			{#each formations as formation}
-				<a 
-					href="/formations/{formation.formation_id || formation.id}" 
+				<a
+					href="/formations/{formation.formation_id || formation.id}"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="formation-link"
@@ -33,20 +33,20 @@
 		margin-bottom: 0.75rem;
 		font-size: 0.875rem;
 	}
-	
+
 	.reference-label {
 		font-weight: 500;
 		color: theme('colors.gray.600');
 		white-space: nowrap;
 	}
-	
+
 	.formation-links {
 		display: flex;
 		gap: 0.75rem;
 		flex-wrap: wrap;
 		align-items: center;
 	}
-	
+
 	.formation-link {
 		color: theme('colors.blue.600');
 		text-decoration: none;
@@ -55,13 +55,13 @@
 		transition: all 0.2s;
 		white-space: nowrap;
 	}
-	
+
 	.formation-link:hover {
 		background: theme('colors.blue.50');
 		color: theme('colors.blue.700');
 		text-decoration: underline;
 	}
-	
+
 	.formation-link::after {
 		content: '↗';
 		margin-left: 0.25rem;

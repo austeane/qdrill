@@ -330,7 +330,11 @@
 					<div class="relative flex justify-between items-start mb-4">
 						<div class="flex-1 pr-12">
 							<h2 class="text-xl font-bold">
-								<a href="/practice-plans/{plan.id}" class="text-blue-600 hover:text-blue-800 block truncate" title={plan.name}>
+								<a
+									href="/practice-plans/{plan.id}"
+									class="text-blue-600 hover:text-blue-800 block truncate"
+									title={plan.name}
+								>
 									{plan.name}
 								</a>
 							</h2>

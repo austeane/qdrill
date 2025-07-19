@@ -5,6 +5,10 @@
 **Effort**: Medium  
 **Status**: Open
 
+## Current State
+The navigation is still primarily hover-based. `Header.svelte` uses `mouseenter`/`mouseleave` events to show dropdowns and lacks an active-route highlight. A simple mobile menu controlled by `isMobileMenuOpen` exists, but there is no keyboard navigation support and only minimal `aria` attributes. The "skip to main content" link and global focus styles have not been implemented. The referenced directory `src/lib/components/ui/navigation/` is not present in the codebase.
+
+
 ## Problem
 According to UX feedback, the navigation has several issues:
 1. Clickable vs hover behavior - clicking a top-level item both toggles dropdown and navigates, which feels inconsistent
@@ -23,7 +27,7 @@ Improve navigation behavior, add proper keyboard navigation, enhance accessibili
 - `src/routes/+layout.svelte` - Layout accessibility improvements
 
 ### Supporting Files
-- `src/lib/components/ui/navigation/` - Potential new navigation components
+- `src/lib/components/ui/navigation/` - Potential new navigation components (directory not present yet)
 - `src/routes/styles.css` - Global accessibility styles
 
 ## Current Issues Analysis

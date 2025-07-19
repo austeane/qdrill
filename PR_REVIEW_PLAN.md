@@ -97,13 +97,20 @@ gh pr merge 135
 ```
 
 #### PR #119 - Vercel Rewrites Config
-```bash
-gh pr checkout 119
-# Deploy to preview
-vercel --prod=false
+**Status**: ✅ MERGED
+**Merge Date**: 2025-07-19
+**Branch**: lo6xdp-codex/update-33-config-vercel-rewrites.md
 
-# Test all routes work correctly
-# Verify no broken redirects
+```bash
+# Verification completed:
+# ✅ Removed redundant rewrites from vercel.json (now just empty object)
+# ✅ All API routes work correctly without rewrites
+# ✅ Tested /api/drills and /api/practice-plans endpoints
+# ✅ SvelteKit filesystem routing handles all paths properly
+
+# Successfully merged
+gh pr review 119 --approve
+gh pr merge 119
 ```
 
 #### PR #120 - Theme Consistency

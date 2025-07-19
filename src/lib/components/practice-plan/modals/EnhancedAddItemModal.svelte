@@ -2,24 +2,24 @@
 	import { createEventDispatcher } from 'svelte';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
-	
+
 	export let show = false;
 	export let selectedSectionId = null;
-	
+
 	const dispatch = createEventDispatcher();
-	
+
 	// Tab states
 	let activeTab = 'drill'; // 'drill', 'formation', 'parallel', 'break'
-	
+
 	// Drill search state
 	let drillSearchQuery = '';
 	let drillSearchResults = [];
-	
+
 	// Formation search state
 	let formationSearchQuery = '';
 	let formationSearchResults = [];
 	let formationType = 'all'; // 'all', 'offensive', 'defensive'
-	
+
 	// Parallel activities state
 	let parallelActivities = {
 		BEATERS: null,
@@ -27,10 +27,10 @@
 		SEEKERS: null
 	};
 	let selectedPositions = new Set(['BEATERS', 'CHASERS']);
-	
+
 	// One-off activity state
 	let oneOffName = 'Quick Activity';
-	
+
 	function close() {
 		show = false;
 		// Reset all states
@@ -44,14 +44,14 @@
 		oneOffName = 'Quick Activity';
 		dispatch('close');
 	}
-	
+
 	// Drill search
 	async function searchDrills(query) {
 		if (!query || query.trim() === '') {
 			drillSearchResults = [];
 			return;
 		}
-		
+
 		try {
 			drillSearchResults = await apiFetch(`/api/drills/search?query=${encodeURIComponent(query)}`);
 		} catch (error) {
@@ -60,14 +60,14 @@
 			toast.push(`Search failed: ${error.message}`, { theme: { '--toastBackground': 'red' } });
 		}
 	}
-	
+
 	// Formation search
 	async function searchFormations(query) {
 		if (!query || query.trim() === '') {
 			formationSearchResults = [];
 			return;
 		}
-		
+
 		try {
 			let url = `/api/formations/search?query=${encodeURIComponent(query)}`;
 			if (formationType !== 'all') {
@@ -80,15 +80,17 @@
 			toast.push(`Search failed: ${error.message}`, { theme: { '--toastBackground': 'red' } });
 		}
 	}
-	
+
 	// Parallel activity drill search
 	async function searchParallelDrill(position, query) {
 		if (!query || query.trim() === '') {
 			return;
 		}
-		
+
 		try {
-			const results = await apiFetch(`/api/drills/search?query=${encodeURIComponent(query)}&position=${position.toLowerCase()}`);
+			const results = await apiFetch(
+				`/api/drills/search?query=${encodeURIComponent(query)}&position=${position.toLowerCase()}`
+			);
 			if (results.length > 0) {
 				parallelActivities[position] = results[0];
 			}
@@ -97,71 +99,73 @@
 			toast.push(`Search failed: ${error.message}`, { theme: { '--toastBackground': 'red' } });
 		}
 	}
-	
+
 	// Handlers
 	function handleAddDrill(drill) {
 		if (!selectedSectionId) {
 			toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
 			return;
 		}
-		
+
 		dispatch('addDrill', { drill, sectionId: selectedSectionId });
 		close();
 	}
-	
+
 	function handleAddFormation(formation) {
 		if (!selectedSectionId) {
 			toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
 			return;
 		}
-		
+
 		dispatch('addFormation', { formation, sectionId: selectedSectionId });
 		close();
 	}
-	
+
 	function handleAddParallelActivities() {
 		if (!selectedSectionId) {
 			toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
 			return;
 		}
-		
+
 		// Filter to only selected positions with drills
 		const activities = {};
-		selectedPositions.forEach(pos => {
+		selectedPositions.forEach((pos) => {
 			if (parallelActivities[pos]) {
 				activities[pos] = parallelActivities[pos];
 			}
 		});
-		
+
 		if (Object.keys(activities).length < 2) {
-			toast.push('Select drills for at least 2 positions', { theme: { '--toastBackground': 'red' } });
+			toast.push('Select drills for at least 2 positions', {
+				theme: { '--toastBackground': 'red' }
+			});
 			return;
 		}
-		
+
 		dispatch('addParallelActivities', { activities, sectionId: selectedSectionId });
 		close();
 	}
-	
+
 	function handleAddBreak() {
 		if (!selectedSectionId) {
 			toast.push('No section selected', { theme: { '--toastBackground': 'red' } });
 			return;
 		}
-		
+
 		dispatch('addBreak', { sectionId: selectedSectionId });
 		close();
 	}
-	
+
 	function handleAddOneOff() {
 		if (!selectedSectionId || !oneOffName.trim()) {
 			toast.push('Enter activity name', { theme: { '--toastBackground': 'red' } });
 			return;
 		}
-		
+
 		dispatch('addOneOff', { name: oneOffName.trim(), sectionId: selectedSectionId });
 		close();
 	}
-	
+
 	function togglePosition(position) {
 		if (selectedPositions.has(position)) {
 			selectedPositions.delete(position);
@@ -170,7 +174,7 @@
 		}
 		selectedPositions = new Set(selectedPositions); // Trigger reactivity
 	}
-	
+
 	function clearParallelDrill(position) {
 		parallelActivities[position] = null;
 		parallelActivities = { ...parallelActivities }; // Trigger reactivity
@@ -184,39 +188,39 @@
 				<h2 class="modal-title">Add to Practice Plan</h2>
 				<button class="close-button" on:click={close}>×</button>
 			</div>
-			
+
 			<!-- Tabs -->
 			<div class="tabs">
-				<button 
-					class="tab" 
+				<button
+					class="tab"
 					class:active={activeTab === 'drill'}
-					on:click={() => activeTab = 'drill'}
+					on:click={() => (activeTab = 'drill')}
 				>
 					Drill
 				</button>
-				<button 
-					class="tab" 
+				<button
+					class="tab"
 					class:active={activeTab === 'formation'}
-					on:click={() => activeTab = 'formation'}
+					on:click={() => (activeTab = 'formation')}
 				>
 					Formation
 				</button>
-				<button 
-					class="tab" 
+				<button
+					class="tab"
 					class:active={activeTab === 'parallel'}
-					on:click={() => activeTab = 'parallel'}
+					on:click={() => (activeTab = 'parallel')}
 				>
 					Parallel Activities
 				</button>
-				<button 
-					class="tab" 
+				<button
+					class="tab"
 					class:active={activeTab === 'break'}
-					on:click={() => activeTab = 'break'}
+					on:click={() => (activeTab = 'break')}
 				>
 					Break/Activity
 				</button>
 			</div>
-			
+
 			<div class="modal-body">
 				<!-- Drill Tab -->
 				{#if activeTab === 'drill'}
@@ -228,31 +232,36 @@
 							on:input={() => searchDrills(drillSearchQuery)}
 							class="search-input"
 						/>
-						
+
 						<div class="search-results">
 							{#each drillSearchResults as drill}
 								<div class="result-item" on:click={() => handleAddDrill(drill)}>
 									<div class="result-name">{drill.name}</div>
 									<div class="result-details">
-										{drill.skill_level?.join(', ')} • {drill.suggested_length_min}-{drill.suggested_length_max} min
+										{drill.skill_level?.join(', ')} • {drill.suggested_length_min}-{drill.suggested_length_max}
+										min
 									</div>
 								</div>
 							{/each}
 						</div>
 					</div>
 				{/if}
-				
+
 				<!-- Formation Tab -->
 				{#if activeTab === 'formation'}
 					<div class="search-section">
 						<div class="formation-filters">
-							<select bind:value={formationType} on:change={() => searchFormations(formationSearchQuery)} class="filter-select">
+							<select
+								bind:value={formationType}
+								on:change={() => searchFormations(formationSearchQuery)}
+								class="filter-select"
+							>
 								<option value="all">All Formations</option>
 								<option value="offensive">Offensive</option>
 								<option value="defensive">Defensive</option>
 							</select>
 						</div>
-						
+
 						<input
 							type="text"
 							placeholder="Search formations..."
@@ -260,7 +269,7 @@
 							on:input={() => searchFormations(formationSearchQuery)}
 							class="search-input"
 						/>
-						
+
 						<div class="search-results">
 							{#each formationSearchResults as formation}
 								<div class="result-item" on:click={() => handleAddFormation(formation)}>
@@ -273,12 +282,12 @@
 						</div>
 					</div>
 				{/if}
-				
+
 				<!-- Parallel Activities Tab -->
 				{#if activeTab === 'parallel'}
 					<div class="parallel-section">
 						<p class="help-text">Create parallel activities for different position groups</p>
-						
+
 						<div class="position-selector">
 							{#each ['BEATERS', 'CHASERS', 'SEEKERS'] as position}
 								<label class="position-checkbox">
@@ -291,7 +300,7 @@
 								</label>
 							{/each}
 						</div>
-						
+
 						<div class="position-drills">
 							{#each ['BEATERS', 'CHASERS', 'SEEKERS'] as position}
 								{#if selectedPositions.has(position)}
@@ -300,7 +309,9 @@
 										{#if parallelActivities[position]}
 											<div class="selected-drill">
 												{parallelActivities[position].name}
-												<button class="clear-btn" on:click={() => clearParallelDrill(position)}>×</button>
+												<button class="clear-btn" on:click={() => clearParallelDrill(position)}
+													>×</button
+												>
 											</div>
 										{:else}
 											<input
@@ -314,8 +325,8 @@
 								{/if}
 							{/each}
 						</div>
-						
-						<button 
+
+						<button
 							class="add-button"
 							on:click={handleAddParallelActivities}
 							disabled={Object.values(parallelActivities).filter(Boolean).length < 2}
@@ -324,16 +335,14 @@
 						</button>
 					</div>
 				{/if}
-				
+
 				<!-- Break/Activity Tab -->
 				{#if activeTab === 'break'}
 					<div class="break-section">
-						<button class="break-button" on:click={handleAddBreak}>
-							Add 10 Minute Break
-						</button>
-						
+						<button class="break-button" on:click={handleAddBreak}> Add 10 Minute Break </button>
+
 						<div class="divider">OR</div>
-						
+
 						<div class="one-off-section">
 							<label>Quick Activity Name:</label>
 							<input
@@ -342,9 +351,7 @@
 								placeholder="Activity name..."
 								class="one-off-input"
 							/>
-							<button class="add-button" on:click={handleAddOneOff}>
-								Add Activity
-							</button>
+							<button class="add-button" on:click={handleAddOneOff}> Add Activity </button>
 						</div>
 					</div>
 				{/if}
@@ -366,7 +373,7 @@
 		justify-content: center;
 		z-index: 1000;
 	}
-	
+
 	.modal-content {
 		background: white;
 		border-radius: 0.5rem;
@@ -377,7 +384,7 @@
 		display: flex;
 		flex-direction: column;
 	}
-	
+
 	.modal-header {
 		display: flex;
 		justify-content: space-between;
@@ -385,12 +392,12 @@
 		padding: 1rem;
 		border-bottom: 1px solid #e5e7eb;
 	}
-	
+
 	.modal-title {
 		font-size: 1.25rem;
 		font-weight: 600;
 	}
-	
+
 	.close-button {
 		background: none;
 		border: none;
@@ -398,13 +405,13 @@
 		cursor: pointer;
 		color: #6b7280;
 	}
-	
+
 	.tabs {
 		display: flex;
 		border-bottom: 1px solid #e5e7eb;
 		background: #f9fafb;
 	}
-	
+
 	.tab {
 		flex: 1;
 		padding: 0.75rem;
@@ -416,28 +423,28 @@
 		color: #6b7280;
 		transition: all 0.2s;
 	}
-	
+
 	.tab:hover {
 		color: #374151;
 	}
-	
+
 	.tab.active {
 		color: #3b82f6;
 		border-bottom-color: #3b82f6;
 	}
-	
+
 	.modal-body {
 		flex: 1;
 		overflow-y: auto;
 		padding: 1rem;
 	}
-	
+
 	.search-section {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
 	}
-	
+
 	.search-input {
 		width: 100%;
 		padding: 0.5rem;
@@ -445,7 +452,7 @@
 		border-radius: 0.375rem;
 		font-size: 1rem;
 	}
-	
+
 	.search-results {
 		display: flex;
 		flex-direction: column;
@@ -453,7 +460,7 @@
 		max-height: 300px;
 		overflow-y: auto;
 	}
-	
+
 	.result-item {
 		padding: 0.75rem;
 		border: 1px solid #e5e7eb;
@@ -461,26 +468,26 @@
 		cursor: pointer;
 		transition: all 0.2s;
 	}
-	
+
 	.result-item:hover {
 		background: #f3f4f6;
 		border-color: #3b82f6;
 	}
-	
+
 	.result-name {
 		font-weight: 500;
 		margin-bottom: 0.25rem;
 	}
-	
+
 	.result-details {
 		font-size: 0.875rem;
 		color: #6b7280;
 	}
-	
+
 	.formation-filters {
 		margin-bottom: 0.5rem;
 	}
-	
+
 	.filter-select {
 		width: 100%;
 		padding: 0.5rem;
@@ -488,55 +495,55 @@
 		border-radius: 0.375rem;
 		background: white;
 	}
-	
+
 	.parallel-section {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
 	}
-	
+
 	.help-text {
 		color: #6b7280;
 		font-size: 0.875rem;
 	}
-	
+
 	.position-selector {
 		display: flex;
 		gap: 1rem;
 		margin-bottom: 1rem;
 	}
-	
+
 	.position-checkbox {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
 		cursor: pointer;
 	}
-	
+
 	.position-drills {
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;
 	}
-	
+
 	.position-drill-row {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
 	}
-	
+
 	.position-label {
 		font-weight: 500;
 		min-width: 100px;
 	}
-	
+
 	.position-search {
 		flex: 1;
 		padding: 0.5rem;
 		border: 1px solid #d1d5db;
 		border-radius: 0.375rem;
 	}
-	
+
 	.selected-drill {
 		flex: 1;
 		display: flex;
@@ -546,7 +553,7 @@
 		background: #f3f4f6;
 		border-radius: 0.375rem;
 	}
-	
+
 	.clear-btn {
 		background: none;
 		border: none;
@@ -554,7 +561,7 @@
 		cursor: pointer;
 		color: #6b7280;
 	}
-	
+
 	.break-section {
 		display: flex;
 		flex-direction: column;
@@ -562,7 +569,7 @@
 		align-items: center;
 		padding: 2rem;
 	}
-	
+
 	.break-button {
 		padding: 1rem 2rem;
 		background: #10b981;
@@ -574,30 +581,30 @@
 		cursor: pointer;
 		transition: all 0.2s;
 	}
-	
+
 	.break-button:hover {
 		background: #059669;
 	}
-	
+
 	.divider {
 		color: #6b7280;
 		font-weight: 500;
 		margin: 1rem 0;
 	}
-	
+
 	.one-off-section {
 		width: 100%;
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
 	}
-	
+
 	.one-off-input {
 		padding: 0.5rem;
 		border: 1px solid #d1d5db;
 		border-radius: 0.375rem;
 	}
-	
+
 	.add-button {
 		padding: 0.5rem 1rem;
 		background: #3b82f6;
@@ -608,11 +615,11 @@
 		cursor: pointer;
 		transition: all 0.2s;
 	}
-	
+
 	.add-button:hover:not(:disabled) {
 		background: #2563eb;
 	}
-	
+
 	.add-button:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;

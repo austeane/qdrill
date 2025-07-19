@@ -6,7 +6,7 @@ export async function load({ params, locals }) {
 	try {
 		const session = locals.session;
 		const userId = session?.user?.id;
-		
+
 		const formationId = parseInt(params.id);
 		if (isNaN(formationId)) {
 			throw error(400, 'Invalid Formation ID');

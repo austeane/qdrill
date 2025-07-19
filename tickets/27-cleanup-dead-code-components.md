@@ -7,13 +7,13 @@
 **Affected Files:**
 
 - [`src/routes/Counter.svelte`](src/routes/Counter.svelte) (removed in commit `b984680`)
-- [`src/lib/components/Cart.svelte`](src/lib/components/Cart.svelte)
-- [`src/lib/components/LoginButton.svelte`](src/lib/components/LoginButton.svelte)
-- [`src/lib/components/SkeletonLoader.svelte`](src/lib/components/SkeletonLoader.svelte)
-- [`src/lib/components/TitleWithTooltip.svelte`](src/lib/components/TitleWithTooltip.svelte)
-- [`src/lib/components/practice-plan/ParallelActivityCreator.svelte`](src/lib/components/practice-plan/ParallelActivityCreator.svelte)
-- [`src/lib/components/practice-plan/ParallelTimelineView.svelte`](src/lib/components/practice-plan/ParallelTimelineView.svelte)
-- [`src/lib/components/practice-plan/modals/DrillSearchModal.svelte`](src/lib/components/practice-plan/modals/DrillSearchModal.svelte)
+- [`src/lib/components/Cart.svelte`](src/lib/components/Cart.svelte) (removed in commit `2a7b3e5`)
+- [`src/lib/components/LoginButton.svelte`](src/lib/components/LoginButton.svelte) (removed in commit `2a7b3e5`)
+- [`src/lib/components/SkeletonLoader.svelte`](src/lib/components/SkeletonLoader.svelte) (kept - actively used by loading states feature)
+- [`src/lib/components/TitleWithTooltip.svelte`](src/lib/components/TitleWithTooltip.svelte) (removed in commit `2a7b3e5`)
+- [`src/lib/components/practice-plan/ParallelActivityCreator.svelte`](src/lib/components/practice-plan/ParallelActivityCreator.svelte) (removed in commit `2a7b3e5`)
+- [`src/lib/components/practice-plan/ParallelTimelineView.svelte`](src/lib/components/practice-plan/ParallelTimelineView.svelte) (removed in commit `2a7b3e5`)
+- [`src/lib/components/practice-plan/modals/DrillSearchModal.svelte`](src/lib/components/practice-plan/modals/DrillSearchModal.svelte) (removed in commit `2a7b3e5`)
 
 **Related Notes:**
 
@@ -22,6 +22,6 @@
 
 **Action Required:**
 
-1.  Confirm that the components listed above are not referenced anywhere in the application (beyond documentation).
-2.  Remove the truly unused components from the repository.
+1.  Confirm that the components listed above are not referenced anywhere in the application (beyond documentation). ✅
+2.  Remove the truly unused components from the repository. ✅
 3.  Continue scanning for any additional dead code components.

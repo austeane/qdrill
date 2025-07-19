@@ -13,8 +13,9 @@
 - [`code-review/config-app-notes.md`](code-review/config-app-notes.md)
 - [`code-review/holistic-summary.md`](code-review/holistic-summary.md)
 
-**Action Required:**
+**Status:** Completed – the redundant rewrites have been removed from `vercel.json`. The file now contains an empty object (`{}`), and SvelteKit's filesystem routes handle the API paths without issue.
 
-1. **Confirm** that removing the rewrites does not affect API routing when deploying to Vercel. Test via `vercel dev` or a preview deployment.
-2. **Remove** the `"rewrites"` block from [`vercel.json`](vercel.json) if everything works without it.
-3. Simplify the configuration and rely solely on SvelteKit's built-in routing.
+**Action Taken:**
+
+1. Confirmed locally that `vercel dev` serves API routes correctly with the rewrites removed.
+2. Deleted the `"rewrites"` array from [`vercel.json`](vercel.json) to simplify the configuration.

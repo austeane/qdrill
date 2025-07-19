@@ -1,3 +1,17 @@
+## Progress Update (2025-06-30)
+
+### Completed:
+
+- Converted remaining pages to use `apiFetch` instead of direct `fetch` calls, including `FormationForm.svelte`, `formations/[id]/+page.svelte`, `profile/+page.server.js`, several drills pages, and `practice-plans/[id]/edit/+page.server.js`.
+- Session association logic in `+layout.svelte` now uses `apiFetch`.
+- `src/routes/api/practice-plans/+server.js` now imports `handleApiError` from the shared utility and the inline version was removed.
+
+### Ticket Status:
+
+- All API routes rely on the shared error handling helpers.
+- All client and server code uses `apiFetch` for API requests.
+- Error mapping for Postgres constraints handled via `handleApiError`.
+
 ## Progress Update (2025-05-31)
 
 ### Completed:
@@ -9,8 +23,7 @@
 
 ### Remaining Work:
 
-- Some form pages and formation routes still use direct `fetch` calls (e.g., `FormationForm.svelte`, `formations/[id]/+page.svelte`, several `+page.server.js` files). Converting these to `apiFetch` would unify error handling.
-- Extract the inline error handler from `src/routes/api/practice-plans/+server.js` so all routes rely on the shared utility.
+- None. The ticket has been fully implemented.
 
 ## Progress Update (2024-08-17)
 

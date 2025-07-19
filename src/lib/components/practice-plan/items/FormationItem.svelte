@@ -65,7 +65,9 @@
 	on:dragend={handleDragEnd}
 >
 	<!-- Formation reference content -->
-	<div class="bg-blue-50 p-4 rounded-lg shadow-sm border border-blue-200 transition-all duration-200 hover:shadow-md">
+	<div
+		class="bg-blue-50 p-4 rounded-lg shadow-sm border border-blue-200 transition-all duration-200 hover:shadow-md"
+	>
 		<div class="flex justify-between items-center">
 			<div class="flex items-center">
 				<div class="mr-2 cursor-grab">⋮⋮</div>
@@ -73,8 +75,8 @@
 			</div>
 			<div class="flex items-center space-x-4">
 				<span class="text-sm text-blue-600">Formation Reference</span>
-				<a 
-					href="/formations/{item.formation_id || item.formation?.id}" 
+				<a
+					href="/formations/{item.formation_id || item.formation?.id}"
 					target="_blank"
 					rel="noopener noreferrer"
 					class="text-blue-600 hover:text-blue-700 text-sm underline"

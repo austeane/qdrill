@@ -93,7 +93,7 @@ parallel_items = [
         "groupTimelines": ["BEATERS"]
     },
     {
-        "type": "drill", 
+        "type": "drill",
         "drill_id": 124,  # Chaser-specific drill
         "duration": 15,
         "parallel_group_id": "group_1330",
@@ -201,13 +201,10 @@ if response.status_code == 201:
 
 1. **drill**: Links to an existing drill in the database
    - Requires: `drill_id`
-   
 2. **formation**: Links to a tactical formation
    - Requires: `formation_id`
-   
 3. **break**: Water/rest break
    - No ID required
-   
 4. **activity**: One-off activity not in drill database
    - No ID required, uses `name` field
 
@@ -222,6 +219,7 @@ if response.status_code == 201:
 ## Common Patterns
 
 ### Positional Splits
+
 ```python
 # When positions do different activities
 items = [
@@ -245,6 +243,7 @@ items = [
 ```
 
 ### Progressive Drills
+
 ```python
 # Building complexity through a sequence
 items = [
@@ -255,6 +254,7 @@ items = [
 ```
 
 ### Formation Practice
+
 ```python
 # Combining formations with drills
 items = [
@@ -277,6 +277,7 @@ After creating a practice plan, verify:
 ## Future Enhancements
 
 The system is designed to support:
+
 - Automated markdown parsing
 - AI-assisted drill creation from descriptions
 - Time optimization suggestions

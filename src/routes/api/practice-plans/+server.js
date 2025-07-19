@@ -147,7 +147,7 @@ export const POST = async ({ request, locals }) => {
 				if (section.items && Array.isArray(section.items)) {
 					// Group items by parallel_group_id to collect all timelines
 					const parallelGroups = new Map();
-					
+
 					// First pass: collect all timelines for each group
 					section.items.forEach((item) => {
 						if (item.parallel_group_id) {
@@ -159,7 +159,7 @@ export const POST = async ({ request, locals }) => {
 							parallelGroups.get(item.parallel_group_id).add(timeline);
 						}
 					});
-					
+
 					// Second pass: set groupTimelines for all items in parallel groups
 					section.items.forEach((item) => {
 						if (item.parallel_group_id && parallelGroups.has(item.parallel_group_id)) {

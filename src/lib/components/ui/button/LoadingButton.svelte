@@ -34,7 +34,9 @@
 		${variants[variant] || variants.default}
 		${sizes[size] || sizes.default}
 		${className}
-	`.trim().replace(/\s+/g, ' ');
+	`
+		.trim()
+		.replace(/\s+/g, ' ');
 </script>
 
 <button
@@ -47,13 +49,15 @@
 >
 	{#if loading}
 		<div class="flex items-center justify-center">
-			<Spinner 
-				size="sm" 
-				color={variant === 'default' || variant === 'destructive' || variant === 'secondary' ? 'white' : 'blue'} 
+			<Spinner
+				size="sm"
+				color={variant === 'default' || variant === 'destructive' || variant === 'secondary'
+					? 'white'
+					: 'blue'}
 			/>
 			<span class="ml-2">{loadingText}</span>
 		</div>
 	{:else}
 		<slot />
 	{/if}
-</button> 
+</button>

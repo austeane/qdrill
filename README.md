@@ -87,6 +87,7 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 ### 8. UX and Design
 
 - **Design Aesthetic**: The design will follow a style similar to Figma, with a clean, minimalist look. The color scheme and fonts will be inspired by Figma, but with an emphasis on ensuring faster loading times and responsive filtering without noticeable delays.
+- **Helpful Empty States**: Reusable `EmptyState` component guides users when searches return no results.
 
 ## Development
 

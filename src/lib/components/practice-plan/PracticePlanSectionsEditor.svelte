@@ -12,7 +12,7 @@
     customTimelineNames
   } from '$lib/stores/sectionsStore';
   import SectionContainer from '$lib/components/practice-plan/sections/SectionContainer.svelte';
-  import SimpleButton from '../../routes/practice-plans/components/SimpleButton.svelte';
+  import SimpleButton from '../../../routes/practice-plans/components/SimpleButton.svelte';
 
   const dispatch = createEventDispatcher();
 

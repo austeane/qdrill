@@ -257,8 +257,6 @@ import { practicePlanAuthHandler } from "$lib/utils/actions/practicePlanAuthHand
 		};
 	});
 
-	}
-
 	// Modal event handlers
 	// handleAddDrillEvent is already defined above
 

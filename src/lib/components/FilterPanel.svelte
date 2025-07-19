@@ -1,5 +1,7 @@
 <script>
-	import RangeSlider from 'svelte-range-slider-pips';
+import RangeSlider from 'svelte-range-slider-pips';
+import RangeFilter from '$lib/components/RangeFilter.svelte';
+import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 	import {
 		selectedSkillLevels,
 		selectedComplexities,
@@ -11,9 +13,8 @@
 		selectedSuggestedLengthsMax,
 		selectedHasVideo,
 		selectedHasDiagrams,
-		selectedHasImages,
-		searchQuery,
-		selectedDrillTypes
+               selectedHasImages,
+               selectedDrillTypes
 	} from '$lib/stores/drillsStore';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
@@ -28,8 +29,6 @@
 		selectedEstimatedParticipantsMax,
 		updateFilterState as updatePracticePlanFilterState
 	} from '$lib/stores/practicePlanFilterStore';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import debounce from 'lodash/debounce';
 	import { Plus, Minus, Search } from 'lucide-svelte';
@@ -93,7 +92,8 @@
 	// Variables for Contains Drill filter
 	let drillSearchTerm = '';
 	let drillSuggestions = [];
-	let isSearchingDrills = false;
+	let drillLoading = false;
+	let drillError = null;
 
 	let mounted = false;
 
@@ -142,7 +142,6 @@
 
 	// Function to handle toggling filters
 	function toggleFilter(filterName) {
-		console.log(`[FilterPanel] toggleFilter called with: ${filterName}`);
 
 		let isCurrentlyOpen = false;
 		// Check the current state of the filter being toggled
@@ -185,12 +184,8 @@
 				break;
 		}
 
-		console.log(
-			`[FilterPanel] isCurrentlyOpen before: ${isCurrentlyOpen}, showSkillLevels before: ${showSkillLevels}`
-		);
 		// Always close all filters first
 		closeAllFilters();
-		console.log(`[FilterPanel] After closeAllFilters, showSkillLevels: ${showSkillLevels}`);
 
 		// If the target filter wasn't the one that was open, open it now.
 		if (!isCurrentlyOpen) {
@@ -233,7 +228,6 @@
 					break;
 			}
 		}
-		console.log(`[FilterPanel] At end of toggleFilter, showSkillLevels: ${showSkillLevels}`);
 		// If it *was* open, closeAllFilters() already handled closing it.
 	}
 
@@ -286,16 +280,18 @@
 	// Fetch drill suggestions
 	async function fetchDrillSuggestions() {
 		if (!mounted) return; // Ensure client-side execution
-		isSearchingDrills = true;
+		drillLoading = true;
+		drillError = null;
 		try {
 			const queryParam =
 				drillSearchTerm.trim() === '' ? '' : `?query=${encodeURIComponent(drillSearchTerm)}`;
 			const drills = await apiFetch(`/api/drills/search${queryParam}`);
 			drillSuggestions = drills.filter((drill) => !selectedDrills.some((d) => d.id === drill.id));
 		} catch (error) {
+			drillError = 'Failed to fetch drills';
 			console.error(error);
 		} finally {
-			isSearchingDrills = false;
+			drillLoading = false;
 		}
 	}
 
@@ -947,11 +943,10 @@
 						bind:value={drillSearchTerm}
 						on:input={debouncedFetchDrillSuggestions}
 					/>
-					{#if isSearchingDrills}
-						<div class="p-4 text-center">
-							<div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-							<p class="mt-2 text-gray-600">Searching drills...</p>
-						</div>
+					{#if drillLoading}
+						<p class="text-gray-500">Loading...</p>
+					{:else if drillError}
+						<p class="text-red-500">{drillError}</p>
 					{:else if drillSuggestions.length > 0}
 						<ul class="max-h-48 overflow-y-auto">
 							{#each drillSuggestions as drill}
@@ -963,7 +958,7 @@
 								</li>
 							{/each}
 						</ul>
-					{:else if drillSuggestions.length === 0 && drillSearchTerm.trim() !== ''}
+					{:else if drillSearchTerm.trim() !== ''}
 						<p class="text-gray-500">No drills found.</p>
 					{/if}
 					{#if selectedDrills.length > 0}

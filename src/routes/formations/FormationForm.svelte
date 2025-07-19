@@ -741,7 +741,6 @@
 									<ExcalidrawWrapper
 										data={diagram}
 										id={`diagram-${i}`}
-										index={i}
 										bind:this={diagramRefs[i]}
 										on:save={(event) => handleDiagramSave(event, i)}
 									/>

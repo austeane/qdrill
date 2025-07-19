@@ -30,8 +30,8 @@
 Start with these independent, low-risk PRs:
 
 #### PR #127 - SQL Duplication Cleanup
-**Status**: ✅ Verified and ready to merge
-**Testing Date**: 2025-07-19
+**Status**: ✅ MERGED
+**Merge Date**: 2025-07-19
 **Known Issues**: See [Filter Panel Errors](/docs/known-issues/filter-panel-errors.md) and [Unit Test Failures](/docs/known-issues/unit-test-failures.md) - these are pre-existing issues not caused by this PR
 
 ```bash

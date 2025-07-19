@@ -11,8 +11,6 @@
 
 	export let data = null;
 	export let id = '';
-	export let showSaveButton = false;
-	export let index;
 	export let readonly = false;
 	export let template = 'blank';
 	export let startFullscreen = false;
@@ -33,76 +31,6 @@
 		};
 	}
 
-	function zoomToIncludeAllElements(api) {
-		if (!api) return;
-
-		const elements = api.getSceneElements();
-		if (!elements.length) return;
-
-		// Find the bounds of all elements
-		let minX = Infinity;
-		let minY = Infinity;
-		let maxX = -Infinity;
-		let maxY = -Infinity;
-
-		elements.forEach((el) => {
-			// For lines, we need to consider their points
-			if (el.type === 'line' && el.points) {
-				el.points.forEach((point) => {
-					const absoluteX = el.x + point[0];
-					const absoluteY = el.y + point[1];
-					minX = Math.min(minX, absoluteX);
-					minY = Math.min(minY, absoluteY);
-					maxX = Math.max(maxX, absoluteX);
-					maxY = Math.max(maxY, absoluteY);
-				});
-			} else {
-				// For other elements
-				const left = el.x;
-				const top = el.y;
-				const right = el.x + (el.width || 0);
-				const bottom = el.y + (el.height || 0);
-
-				minX = Math.min(minX, left);
-				minY = Math.min(minY, top);
-				maxX = Math.max(maxX, right);
-				maxY = Math.max(maxY, bottom);
-			}
-		});
-
-		// Add padding (40% for more space)
-		const padding = 0.4;
-		const width = maxX - minX;
-		const height = maxY - minY;
-		minX -= width * padding;
-		minY -= height * padding;
-		maxX += width * padding;
-		maxY += height * padding;
-
-		// Calculate center point
-		const centerX = (minX + maxX) / 2;
-		const centerY = (minY + maxY) / 2;
-
-		// Calculate zoom level
-		const containerWidth = window.innerWidth;
-		const containerHeight = window.innerHeight;
-
-		const zoomX = containerWidth / (maxX - minX);
-		const zoomY = containerHeight / (maxY - minY);
-		const zoom = Math.min(zoomX, zoomY, 0.7); // Cap at 0.7 to ensure some padding
-
-		// Update the view
-		api.updateScene({
-			appState: {
-				...api.getAppState(),
-				scrollX: containerWidth / 2 - centerX * zoom,
-				scrollY: containerHeight / 2 - centerY * zoom,
-				zoom: {
-					value: zoom
-				}
-			}
-		});
-	}
 	function toggleFullscreen() {
 		if (!excalidrawAPI) return;
 		fullscreenData = {
@@ -202,24 +130,6 @@
 		return elements;
 	}
 
-	function handleImageElements(elements, files) {
-		elements.forEach((element) => {
-			if (element.type === 'image') {
-				const file = files[element.fileId];
-				if (file?.staticPath) {
-					element.staticImagePath = file.staticPath;
-				} else if (file?.dataURL) {
-					element.dataURL = file.dataURL;
-				} else {
-					console.warn('Image element missing both staticPath and dataURL:', {
-						elementId: element.fileId,
-						element: element
-					});
-				}
-			}
-		});
-		return elements;
-	}
 
 	onMount(async () => {
 		if (!browser) return;
@@ -237,7 +147,6 @@
 					appState: {
 						viewBackgroundColor: '#ffffff',
 						gridSize: 20,
-						collaborators: [],
 						...(data.appState || {}),
 						// Ensure we have a collaborators array
 						collaborators: Array.isArray(data.appState?.collaborators)

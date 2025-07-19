@@ -49,4 +49,4 @@
 			<div class="h-10 bg-gray-300 rounded w-full mt-4"></div>
 		{/if}
 	{/if}
-</div> 
+</div>

@@ -781,7 +781,6 @@ export class BaseEntityService {
 			const isEditable = entity[editableByOthersColumn] === true;
 			const isUnowned = entity[userIdColumn] === null;
 
-
 			if (!(isCreator || isEditable || isUnowned)) {
 				throw new ForbiddenError(
 					`User ${userId} is not authorized to edit ${this.tableName.slice(0, -1)} ${entityId}`

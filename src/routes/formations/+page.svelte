@@ -148,7 +148,7 @@
 	}
 	// Close dropdown on click outside
 	import { onMount } from 'svelte'; // Keep onMount for this
-	
+
 	onMount(() => {
 		const handleClickOutside = (event) => {
 			if (sortOptionsRef && !sortOptionsRef.contains(event.target)) {

@@ -6,8 +6,14 @@
 
 **Affected Files:**
 
-- [`src/routes/Counter.svelte`](src/routes/Counter.svelte) (Likely example code)
-- Potentially others identified during a systematic dead code analysis.
+- [`src/routes/Counter.svelte`](src/routes/Counter.svelte) (removed in commit `b984680`)
+- [`src/lib/components/Cart.svelte`](src/lib/components/Cart.svelte)
+- [`src/lib/components/LoginButton.svelte`](src/lib/components/LoginButton.svelte)
+- [`src/lib/components/SkeletonLoader.svelte`](src/lib/components/SkeletonLoader.svelte)
+- [`src/lib/components/TitleWithTooltip.svelte`](src/lib/components/TitleWithTooltip.svelte)
+- [`src/lib/components/practice-plan/ParallelActivityCreator.svelte`](src/lib/components/practice-plan/ParallelActivityCreator.svelte)
+- [`src/lib/components/practice-plan/ParallelTimelineView.svelte`](src/lib/components/practice-plan/ParallelTimelineView.svelte)
+- [`src/lib/components/practice-plan/modals/DrillSearchModal.svelte`](src/lib/components/practice-plan/modals/DrillSearchModal.svelte)
 
 **Related Notes:**
 
@@ -16,6 +22,6 @@
 
 **Action Required:**
 
-1.  Verify that [`src/routes/Counter.svelte`](src/routes/Counter.svelte) is indeed unused (check for imports/references).
-2.  If unused, delete the component file.
-3.  Conduct a broader search for other potentially unused components (e.g., using code analysis tools or manual checks) and remove them if confirmed.
+1.  Confirm that the components listed above are not referenced anywhere in the application (beyond documentation).
+2.  Remove the truly unused components from the repository.
+3.  Continue scanning for any additional dead code components.

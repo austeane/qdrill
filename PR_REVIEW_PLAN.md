@@ -185,9 +185,25 @@ gh pr merge 120
 ```
 
 3. **PR #124 - Dead Code Stores**
+**Status**: ✅ MERGED
+**Merge Date**: 2025-07-19
+
 ```bash
-gh pr checkout 124
-# Subagent task: Verify no components import deleted stores
+# Implementation completed and verified:
+# ✅ Removed unused store functions that were not imported anywhere
+# ✅ Verified feedbackStore.js is still needed (used by FeedbackModal and FeedbackButton)
+# ✅ Tested application functionality - all pages work correctly
+
+# Functions removed:
+# - resetDrillFilters() from drillsStore.js
+# - removeTimelineFromGroup() from sectionsStore.js
+# - withHistory() from historyStore.js
+# - resetPracticePlanFilters() from practicePlanFilterStore.js
+# - resetForm() from practicePlanMetadataStore.js
+# - initializeWizard() from wizardStore.js
+
+# Stores kept:
+# - feedbackStore.js (actively used)
 ```
 
 4. **PR #123 - Admin Migration Page**

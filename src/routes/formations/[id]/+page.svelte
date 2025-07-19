@@ -93,7 +93,7 @@
 		</div>
 
 		<!-- Edit/Delete Buttons (Permission check remains) -->
-		{#if formation && $page.data.session && ((dev || $page.data.session.user.id === formation.created_by) || formation.is_editable_by_others)}
+		{#if formation && $page.data.session && (dev || $page.data.session.user.id === formation.created_by || formation.is_editable_by_others)}
 			<div class="flex space-x-4">
 				<button
 					class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"

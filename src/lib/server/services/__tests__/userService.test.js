@@ -102,6 +102,4 @@ describe('UserService', () => {
 			expect(result).toBeNull();
 		});
 	});
-
-
 });

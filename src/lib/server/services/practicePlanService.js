@@ -456,7 +456,7 @@ export class PracticePlanService extends BaseEntityService {
 									return null;
 								})(),
 								// Logic for determining formation_id
-								item.type === 'formation' ? (item.formation_id || item.formation?.id || null) : null,
+								item.type === 'formation' ? item.formation_id || item.formation?.id || null : null,
 								index,
 								item.duration,
 								// Map 'one-off' type to 'drill' to conform to database constraints
@@ -467,13 +467,13 @@ export class PracticePlanService extends BaseEntityService {
 								item.groupTimelines ? `{${item.groupTimelines.join(',')}}` : null,
 								// Save the name field
 								item.name ||
-										(item.type === 'drill' && item.drill?.name
-											? item.drill.name
-											: item.type === 'formation' && item.formation?.name
-												? item.formation.name
-												: item.type === 'one-off'
-													? 'Quick Activity'
-													: 'Break')
+									(item.type === 'drill' && item.drill?.name
+										? item.drill.name
+										: item.type === 'formation' && item.formation?.name
+											? item.formation.name
+											: item.type === 'one-off'
+												? 'Quick Activity'
+												: 'Break')
 							]
 						);
 					}
@@ -732,10 +732,9 @@ export class PracticePlanService extends BaseEntityService {
 									item: item?.name || 'unknown'
 								});
 							}
-							
 
 							await client.query(
-									`INSERT INTO practice_plan_drills 
+								`INSERT INTO practice_plan_drills 
 	                 (practice_plan_id, section_id, drill_id, formation_id, order_in_plan, duration, type, 
 	                  parallel_group_id, parallel_timeline, group_timelines, name, diagram_data)
 	                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
@@ -754,10 +753,12 @@ export class PracticePlanService extends BaseEntityService {
 										// For other types (e.g., breaks), use null
 										return null;
 									})(),
-										// Logic for determining formation_id
-										// For formation items, use formation_id
-										item.type === 'formation' ? (item.formation_id || item.formation?.id || null) : null,
-										index,
+									// Logic for determining formation_id
+									// For formation items, use formation_id
+									item.type === 'formation'
+										? item.formation_id || item.formation?.id || null
+										: null,
+									index,
 									item.duration || item.selected_duration,
 									// Map 'one-off' type to 'drill' to conform to database constraints
 									item.type === 'one-off' || item.type === 'activity' ? 'drill' : item.type,
@@ -1021,7 +1022,7 @@ export class PracticePlanService extends BaseEntityService {
 
 					for (const drill of drillsResult.rows) {
 						await client.query(
-								`INSERT INTO practice_plan_drills 
+							`INSERT INTO practice_plan_drills 
 	               (practice_plan_id, section_id, drill_id, formation_id, order_in_plan, 
 	                duration, type, diagram_data, parallel_group_id, parallel_timeline,
 	                group_timelines, name)
@@ -1030,8 +1031,8 @@ export class PracticePlanService extends BaseEntityService {
 								newPlanId,
 								newSectionId,
 								drill.drill_id,
-									drill.formation_id,
-									drill.order_in_plan,
+								drill.formation_id,
+								drill.order_in_plan,
 								drill.duration,
 								drill.type,
 								drill.diagram_data,
@@ -1148,7 +1149,7 @@ export class PracticePlanService extends BaseEntityService {
 			if (item.type === 'formation') {
 				return;
 			}
-			
+
 			if (item.parallel_group_id) {
 				const group = parallelGroups.get(item.parallel_group_id) || { duration: 0 };
 				group.duration = Math.max(group.duration, item.duration || 0);

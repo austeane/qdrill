@@ -1,14 +1,14 @@
 # Ticket 19: Refactor Complex FilterPanel Component
 
 - **Priority:** Medium
-- **Issue:** The `FilterPanel` component is large and complex, managing state for numerous filters across different entity types (drills, practice plans) using multiple stores (`drillsStore`, `sortStore`, `practicePlanStore`). It also handles URL manipulation (`goto`) and specific API calls (drill search).
+- **Issue:** The `FilterPanel` in [`src/lib/components/FilterPanel.svelte`](src/lib/components/FilterPanel.svelte) is nearly one thousand lines long and manages filter UI for both drills and practice plans. It imports several stores directly (`drillsStore`, `sortStore`, `practicePlanFilterStore`) and contains extensive local state for dropdown visibility, range sliders, and tri‑state checkboxes. URL parameters are now updated by the page components, leaving unused `page` and `goto` imports in `FilterPanel`. The component still performs debounced drill search via `apiFetch` and includes console debugging statements.
 - **Affected Files:**
-  - [`src/components/FilterPanel.svelte`](src/components/FilterPanel.svelte)
-  - Stores it interacts with ([`drillsStore.js`](src/lib/stores/drillsStore.js), [`practicePlanStore.js`](src/lib/stores/practicePlanStore.js), [`sortStore.js`](src/lib/stores/sortStore.js))
+  - [`src/lib/components/FilterPanel.svelte`](src/lib/components/FilterPanel.svelte)
+  - Interacting stores: [`drillsStore.js`](src/lib/stores/drillsStore.js), [`practicePlanFilterStore.js`](src/lib/stores/practicePlanFilterStore.js), [`sortStore.js`](src/lib/stores/sortStore.js)
 - **Recommendations:**
-  - Break down `FilterPanel` into smaller, more focused sub-components (e.g., `RangeFilter`, `ThreeStateFilter`, `DrillSearchFilter`).
-  - Decouple filter state management. Instead of importing multiple specific stores, consider passing filter configurations and state/callbacks via props, or create a more unified filter store strategy.
-  - Abstract URL update logic. The component shouldn't be solely responsible for complex URL construction; this could be handled by the parent page or a dedicated utility.
-  - Improve API interaction for the drill search (loading state, error handling).
-  - Simplify the reactive logic that subscribes to numerous store changes.
+  - Break down `FilterPanel` into focused sub-components (`RangeFilter`, `ThreeStateFilter`, `DrillSearchFilter`, etc.).
+  - Decouple filter state management by passing values and callbacks via props or by creating a unified filter store.
+  - Remove the unused URL logic (`goto`, `page`) and keep navigation handling in the parent pages.
+  - Improve drill search API interaction with explicit loading/error handling.
+  - Reduce console logging and simplify reactive subscriptions.
 - **Related Tickets:** [15](./15-refactor-component-coupling.md), [9](./09-refactor-state-practiceplanstore.md)

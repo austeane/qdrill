@@ -76,7 +76,9 @@
 
 	<!-- Global Navigation Loading Indicator -->
 	{#if $navigating}
-		<div class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 animate-pulse">
+		<div
+			class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 animate-pulse"
+		>
 			<div class="h-full bg-blue-400 animate-pulse opacity-75"></div>
 		</div>
 	{/if}

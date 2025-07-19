@@ -184,8 +184,6 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 				break;
 		}
 
-			`[FilterPanel] isCurrentlyOpen before: ${isCurrentlyOpen}, showSkillLevels before: ${showSkillLevels}`
-		);
 		// Always close all filters first
 		closeAllFilters();
 

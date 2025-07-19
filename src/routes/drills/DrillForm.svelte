@@ -66,6 +66,7 @@
 	let fileInput;
 	let showSkillsModal = false;
 	let modalSkillSearchTerm = writable('');
+	let isSubmitting = false;
 
 	let isVariation = writable(!!drill.parent_drill_id);
 	let parentDrillId = writable(drill.parent_drill_id ?? null);
@@ -372,6 +373,8 @@
 	}
 
 	async function handleSubmit() {
+		if (isSubmitting) return; // Prevent double submission
+		
 		diagramRefs.forEach((ref) => {
 			if (ref && typeof ref.saveDiagram === 'function') {
 				ref.saveDiagram();
@@ -381,6 +384,8 @@
 		await tick();
 
 		if (!validateForm()) return;
+		
+		isSubmitting = true;
 
 		if (!$page.data.session && $visibility !== 'public') {
 			const confirmed = confirm(
@@ -412,6 +417,7 @@
 				};
 				console.log('Storing pending drill data:', formData);
 				sessionStorage.setItem('pendingDrillData', JSON.stringify(formData));
+				isSubmitting = false;
 				await authClient.signIn.social({ provider: 'google' });
 				return;
 			} else {
@@ -476,6 +482,7 @@
 					});
 					toast.push('Activity in practice plan updated successfully!');
 					// Navigate back to the practice plan
+					isSubmitting = false;
 					goto(`/practice-plans/${practicePlanId}`);
 					return; // Important to return here to skip default navigation
 				} catch (linkError) {
@@ -501,15 +508,18 @@
 				if (confirmed) {
 					console.log('Setting drillToAssociate:', result.id);
 					sessionStorage.setItem('drillToAssociate', result.id);
+					isSubmitting = false;
 					await authClient.signIn.social({ provider: 'google' });
 					return;
 				}
 			}
 
 			toast.push('Drill saved successfully!');
+			isSubmitting = false;
 			goto(`/drills/${result.id}`);
 		} catch (error) {
 			console.error('Error submitting drill:', error);
+			isSubmitting = false;
 			toast.push(`Error saving drill: ${error.message}. Please try again.`, {
 				theme: {
 					'--toastBackground': '#F56565',
@@ -1029,9 +1039,15 @@
 					<button
 						type="submit"
 						on:click={handleSubmit}
-						class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mb-3"
+						disabled={isSubmitting}
+						class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mb-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
 					>
-						{drill?.id ? 'Save Changes' : 'Create Drill'}
+						{#if isSubmitting}
+							<div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+							{drill?.id ? 'Saving...' : 'Creating...'}
+						{:else}
+							{drill?.id ? 'Save Changes' : 'Create Drill'}
+						{/if}
 					</button>
 					<button
 						type="button"

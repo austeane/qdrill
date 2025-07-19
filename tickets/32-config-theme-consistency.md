@@ -21,3 +21,12 @@
     - **Option B (CSS Vars):** Define colors _only_ as CSS variables in [`src/routes/styles.css`](src/routes/styles.css). Ensure the Tailwind theme configuration (`theme.extend.colors`) references these CSS variables (e.g., `theme-1: 'var(--color-theme-1)'`).
 2.  Refactor hardcoded color values in [`src/routes/styles.css`](src/routes/styles.css) (e.g., `#3b82f6` used for drag/drop indicators) to use the chosen theme system (either Tailwind utility classes like `bg-blue-500` or theme-specific classes like `bg-theme-1`, or the corresponding CSS variable like `var(--color-theme-1)`).
 3.  Ensure visual consistency across the application after consolidation.
+
+## Implementation Notes (Completed)
+
+- Chose **Option B**: CSS variables in `src/routes/styles.css` serve as the
+  single source of truth for theme colors.
+- `tailwind.config.js` now references these variables for `theme-1`,
+  `theme-2`, `primary`, and drag-related colors.
+- Hardcoded drag-and-drop colors in `src/routes/styles.css` were replaced with
+  references to the theme variables.

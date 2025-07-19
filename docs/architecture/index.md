@@ -90,12 +90,12 @@ The application follows a unidirectional data flow pattern with Svelte's reactiv
 
 QDrill uses Svelte's store pattern for state management with specialized stores for different application concerns.
 
-_(Note: The code review identified significant complexity and tight coupling in several key stores, particularly `sectionsStore` and `practicePlanStore`. State duplication exists between the practice plan wizard (`wizardStore`) and the main form/cart (`practicePlanStore`, `sectionsStore`), leading to maintenance challenges. Components are often tightly coupled to specific store implementations, hindering reusability. The `dragStore` appears unused. Refactoring state management for better separation of concerns, reduced coupling, and eliminating duplication is a key recommendation. See `code-review/` for details.)_
+_(Note: The code review identified significant complexity and tight coupling in several key stores, particularly `sectionsStore` and `practicePlanStore`. State duplication exists between the practice plan wizard (`wizardStore`) and the main form/cart (`practicePlanStore`, `sectionsStore`), leading to maintenance challenges. Components are often tightly coupled to specific store implementations. The old `dragStore.js` file was unused and has been removed. Refactoring state management for better separation of concerns, reduced coupling, and eliminating duplication is a key recommendation. See `code-review/` for details.)_
 
 ### Key Stores
 
 - **cartStore**: Manages selected drills using localStorage for persistence
-- **dragStore/dragManager**: Implements complex drag-and-drop functionality
+- **dragManager**: Implements complex drag-and-drop functionality
 - **sectionsStore**: Core practice plan state management with sections, timelines, parallel groups
 - **practicePlanStore**: Manages overall practice plan metadata and operations
 - **wizardStore/wizardValidation**: Multi-step practice plan creation wizard state
@@ -109,7 +109,7 @@ _(Note: The code review identified significant complexity and tight coupling in 
 - **Immutable Updates**: State modifications use spread operators for immutable updates
 - **Local Storage Persistence**: Critical user state persists between sessions
 - **History Tracking**: State snapshots for undo/redo capabilities
-- **Store Interactions**: Coordinated updates between interdependent stores (e.g., dragStore, sectionsStore, and historyStore during drag operations)
+- **Store Interactions**: Coordinated updates between interdependent stores (e.g., dragManager, sectionsStore, and historyStore during drag operations)
 - **Error Recovery**: State backups before complex operations with restoration on error
 
 ## API Design

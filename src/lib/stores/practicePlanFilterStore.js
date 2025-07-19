@@ -26,15 +26,3 @@ export function updateFilterState(store) {
 	};
 }
 
-// Function to reset all practice plan filters
-export function resetPracticePlanFilters() {
-	selectedPhaseOfSeason.set({});
-	selectedPracticeGoals.set({});
-	// Reset range filters - get defaults from where they are defined (e.g., component or constants)
-	// Assuming default range 1-100 for participants for now
-	selectedEstimatedParticipantsMin.set(1);
-	selectedEstimatedParticipantsMax.set(100);
-	// Reset other filters as needed
-	selectedVisibility.set('public');
-	selectedEditability.set(false);
-}

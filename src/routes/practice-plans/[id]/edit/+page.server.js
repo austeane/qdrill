@@ -105,7 +105,7 @@ export const actions = {
 
 		// --- Basic Data Parsing ---
 		const sections = JSON.parse(data.sections || '[]');
-		
+
 		const planData = {
 			name: data.planName,
 			description: data.planDescription,

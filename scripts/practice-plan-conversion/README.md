@@ -5,7 +5,9 @@ This directory contains Python scripts for creating practice plans in QDrill, de
 ## Scripts
 
 ### create_practice_plan_template.py
+
 **The main template for creating any practice plan.** This comprehensive template shows how to:
+
 - Create practice plans with proper metadata
 - Organize sections and items
 - Implement parallel activities for different position groups
@@ -13,6 +15,7 @@ This directory contains Python scripts for creating practice plans in QDrill, de
 - Handle all item types (drills, formations, breaks, activities)
 
 **Usage:**
+
 ```bash
 # 1. Copy this template
 cp create_practice_plan_template.py my_practice_plan.py
@@ -24,7 +27,9 @@ python my_practice_plan.py
 ```
 
 ### create_practice_plan_drills.py
+
 Creates the 13 specialized drills needed for the GTA practice plan example:
+
 - Arkansas (offensive/defensive fundamentals)
 - Triangle Defense & Beater Box (aggressive defensive drills)
 - Seek and Catch
@@ -34,16 +39,21 @@ Creates the 13 specialized drills needed for the GTA practice plan example:
 - Position-specific fitness activities
 
 ### create_aggressive_formations.py
+
 Creates tactical formations for aggressive defensive styles:
+
 - Aggressive Zone Defense
 - Diamond Press
 - High-Low Split
 
 ### create_formation_drills.py
+
 Creates drills specifically designed to practice with formations.
 
 ### create_gta_practice_plan_fixed.py
+
 The complete example showing how the 2025 GTA May 31 practice plan was converted, including:
+
 - Proper parallel timeline structure for split activities
 - Formation integration
 - Correct timing and sections
@@ -53,12 +63,14 @@ The complete example showing how the 2025 GTA May 31 practice plan was converted
 To create a new practice plan:
 
 1. **Prepare your drills and formations**
+
    ```python
    # First, ensure all drills exist in the system
    # Either create them via UI or use the API
    ```
 
 2. **Use the template**
+
    ```python
    # Copy create_practice_plan_template.py
    # Update the drill_ids and formation_ids dictionaries
@@ -66,6 +78,7 @@ To create a new practice plan:
    ```
 
 3. **Handle parallel activities**
+
    ```python
    # For activities happening simultaneously:
    {
@@ -83,19 +96,24 @@ To create a new practice plan:
 ## Key Concepts
 
 ### Parallel Activities
+
 When different position groups do different activities at the same time:
+
 - All items must have the same `parallel_group_id`
 - Each item needs a `parallel_timeline` label
 - Include `groupTimelines` array for filtering
 
 ### Item Types
+
 - `drill` - Links to existing drill (requires drill_id)
-- `formation` - Links to formation (requires formation_id)  
+- `formation` - Links to formation (requires formation_id)
 - `break` - Water/rest break
 - `activity` - One-off activity not in drill database
 
 ### Timeline Labels
+
 Standard position group labels:
+
 - `BEATERS`
 - `CHASERS`
 - `KEEPERS`

@@ -4,17 +4,17 @@ export default {
 	theme: {
 		extend: {
 			colors: {
-				'theme-1': '#ff3e00',
-				'theme-2': '#4075a6',
-				primary: '#4075a6',
+                               'theme-1': 'var(--color-theme-1)',
+                               'theme-2': 'var(--color-theme-2)',
+                               primary: 'var(--color-theme-2)',
 				'primary-foreground': '#ffffff',
 				'bg-0': 'rgb(202, 216, 228)',
 				'bg-1': 'hsl(209, 36%, 86%)',
 				'bg-2': 'hsl(224, 44%, 95%)',
 				text: 'rgba(0, 0, 0, 0.7)',
-				'drag-indicator': '#3b82f6',
-				'drag-highlight': 'rgba(59, 130, 246, 0.05)',
-				'drag-border': '#3b82f6'
+                               'drag-indicator': 'var(--color-theme-1)',
+                               'drag-highlight': 'rgba(255, 62, 0, 0.05)',
+                               'drag-border': 'var(--color-theme-1)'
 			},
 			fontFamily: {
 				body: [
@@ -41,12 +41,12 @@ export default {
 							color: 'rgba(0, 0, 0, 0.8)',
 							fontWeight: '600'
 						},
-						a: {
-							color: '#3b82f6', // Matches your theme-1 color
-							'&:hover': {
-								color: '#2563eb'
-							}
-						},
+                                               a: {
+                                                       color: 'var(--color-theme-1)',
+                                                       '&:hover': {
+                                                               color: '#2563eb'
+                                                       }
+                                               },
 						ul: {
 							listStyleType: 'disc'
 						}

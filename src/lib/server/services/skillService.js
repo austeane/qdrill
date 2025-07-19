@@ -162,11 +162,11 @@ export class SkillService extends BaseEntityService {
 	 * @returns {Promise<void>}
 	 * @private
 	 */
-       async addSkillsToDatabase(skills, drillId, client) {
-               for (const skill of skills) {
-                       await upsertSkillCounts(client, skill, drillId);
-               }
-       }
+	async addSkillsToDatabase(skills, drillId, client) {
+		for (const skill of skills) {
+			await upsertSkillCounts(client, skill, drillId);
+		}
+	}
 
 	/**
 	 * Get skill recommendations based on related skills

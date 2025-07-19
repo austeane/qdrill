@@ -63,7 +63,10 @@
 	let errors = writable({});
 	let mounted = false;
 	let diagramKey = 0;
-	let diagramRefs = [];
+let diagramRefs = [];
+$: if ($diagrams) {
+       diagramRefs = new Array($diagrams.length);
+}
 
 	let showAddDiagramModal = false;
 	let selectedTemplate = 'blank';
@@ -121,16 +124,19 @@
 		const diagramData = event.detail;
 
 		// Ensure proper structure when saving
-		const processedData = {
-			elements: diagramData.elements || [],
-			appState: {
-				...(diagramData.appState || {}),
-				collaborators: Array.isArray(diagramData.appState?.collaborators)
-					? diagramData.appState.collaborators
-					: []
-			},
-			files: diagramData.files || {}
-		};
+       const processedData = {
+               elements: diagramData.elements || [],
+               appState: {
+                       viewBackgroundColor: '#ffffff',
+                       gridSize: 20,
+                       ...(diagramData.appState || {}),
+                       collaborators: Array.isArray(diagramData.appState?.collaborators)
+                               ? diagramData.appState.collaborators
+                               : []
+               },
+               files: diagramData.files || {},
+               template: $diagrams[index]?.template || 'blank'
+       };
 
 		diagrams.update((d) => {
 			const newDiagrams = [...d];
@@ -738,13 +744,14 @@
 											</button>
 										</div>
 									</div>
-									<ExcalidrawWrapper
-										data={diagram}
-										id={`diagram-${i}`}
-										index={i}
-										bind:this={diagramRefs[i]}
-										on:save={(event) => handleDiagramSave(event, i)}
-									/>
+                                                                        <ExcalidrawWrapper
+                                                                               data={diagram}
+                                                                               id={`diagram-${i}`}
+                                                                               readonly={false}
+                                                                               template={diagram.template || 'blank'}
+                                                                               bind:this={diagramRefs[i]}
+                                                                               on:save={(event) => handleDiagramSave(event, i)}
+                                                                        />
 								</div>
 							{/each}
 

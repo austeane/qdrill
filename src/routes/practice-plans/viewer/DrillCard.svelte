@@ -265,17 +265,17 @@
 				{#if normalizedItem.hasDiagrams}
 					<div class="diagrams-preview">
 						{#if normalizedItem.drill?.diagrams?.[0]}
-							<ExcalidrawWrapper
-								data={normalizedItem.drill.diagrams[0]}
-								readonly={true}
-								showSaveButton={false}
-							/>
+                                                        <ExcalidrawWrapper
+                                                                data={normalizedItem.drill.diagrams[0]}
+                                                                id={`plan-diagram-${item.drill_id}-0`}
+                                                                readonly={true}
+                                                        />
 						{:else if normalizedItem.diagrams?.[0]}
-							<ExcalidrawWrapper
-								data={normalizedItem.diagrams[0]}
-								readonly={true}
-								showSaveButton={false}
-							/>
+                                                        <ExcalidrawWrapper
+                                                                data={normalizedItem.diagrams[0]}
+                                                                id={`plan-diagram-${index}-0`}
+                                                                readonly={true}
+                                                        />
 						{/if}
 					</div>
 				{/if}

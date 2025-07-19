@@ -492,12 +492,11 @@
 								<!-- Removed unused 'key' directive -->
 								<div class="border rounded-lg p-2">
 									<h3 class="text-center font-medium mb-2">Diagram {index + 1}</h3>
-									<ExcalidrawWrapper
-										data={diagramData}
-										id={`diagram-${$drill.id}-${index}`}
-										{index}
-										viewOnly={true}
-									/>
+                                                                       <ExcalidrawWrapper
+                                                                               data={diagramData}
+                                                                               id={`diagram-${$drill.id}-${index}`}
+                                                                               readonly={true}
+                                                                        />
 								</div>
 							{/each}
 						{/if}

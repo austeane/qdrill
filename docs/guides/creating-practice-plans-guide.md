@@ -5,6 +5,7 @@ This guide provides step-by-step instructions for creating practice plans in QDr
 > **Important Update (2025)**: QDrill now supports position-based filtering with integrated parallel activities throughout the practice. This guide has been updated to reflect these changes.
 
 ## Table of Contents
+
 1. [Prerequisites](#prerequisites)
 2. [Understanding Practice Plan Structure](#understanding-practice-plan-structure)
 3. [Creating Plans via UI](#creating-plans-via-ui)
@@ -18,6 +19,7 @@ This guide provides step-by-step instructions for creating practice plans in QDr
 ## Prerequisites
 
 Before creating a practice plan, ensure you have:
+
 1. Created all necessary drills in the system
 2. Created any formations you want to include
 3. Decided on the practice structure and timing
@@ -36,7 +38,7 @@ A practice plan consists of:
   "phase_of_season": "In-Season",
   "estimated_number_of_participants": 18,
   "visibility": "public",
-  
+
   // Sections (major parts of practice)
   "sections": [
     {
@@ -53,6 +55,7 @@ A practice plan consists of:
 ### Item Types
 
 1. **Drill** - Links to existing drill in database
+
    ```javascript
    {
      "type": "drill",
@@ -63,6 +66,7 @@ A practice plan consists of:
    ```
 
 2. **Formation** - Links to tactical formation
+
    ```javascript
    {
      "type": "formation",
@@ -73,6 +77,7 @@ A practice plan consists of:
    ```
 
 3. **Break** - Water/rest break
+
    ```javascript
    {
      "type": "break",
@@ -120,22 +125,26 @@ A practice plan consists of:
 The new modal provides four ways to add items:
 
 #### Drill Tab
+
 - Search for existing drills
 - Click to add to the selected section
 - Shows skill level and suggested duration
 
 #### Formation Tab
+
 - Filter by type (offensive/defensive)
 - Search formations by name
 - Adds tactical setup visualization
 
 #### Parallel Activities Tab
+
 - Select which positions to include (Beaters, Chasers, Seekers)
 - Search and assign a drill for each selected position
 - Creates properly grouped parallel activities automatically
 - Requires at least 2 positions with drills
 
 #### Break/Activity Tab
+
 - Quick "Add 10 Minute Break" button
 - Create one-off activities with custom names
 
@@ -194,6 +203,7 @@ Parallel activities allow different position groups to do different drills simul
 ### Position-Based Filtering
 
 The practice plan viewer now includes a position filter that allows users to:
+
 - **Select single position**: See a linear view of just that position's activities
 - **Select multiple positions**: See parallel activities when selected positions differ
 - **Select all positions**: See the complete practice with all parallel activities
@@ -269,11 +279,13 @@ The practice plan viewer now includes a position filter that allows users to:
 ### Timeline Labels
 
 **Required position labels** (use exactly these values):
+
 - `BEATERS` - Beater-specific activities
 - `CHASERS` - Chaser-specific activities
 - `SEEKERS` - Seeker-specific activities
 
-**Important**: 
+**Important**:
+
 - Do NOT create separate sections for individual positions (e.g., "Seeker Track")
 - Instead, integrate position-specific activities as parallel timelines within main sections
 - Activities without a `parallel_timeline` are assumed to be for all positions
@@ -304,12 +316,14 @@ Formations represent tactical setups (defensive or offensive positions).
 ### Step-by-Step Process
 
 1. **Analyze the markdown plan**
+
    - Identify all drills mentioned
    - Note timing and duration
    - Find parallel activities (e.g., "Beaters: X, Chasers: Y")
    - List formations or tactical elements
 
 2. **Create missing drills**
+
    ```python
    # Use the API or UI to create drills
    drill_data = {
@@ -322,6 +336,7 @@ Formations represent tactical setups (defensive or offensive positions).
    ```
 
 3. **Map the structure**
+
    - Convert time blocks to sections
    - Convert activities to appropriate item types
    - Handle splits as parallel activities
@@ -333,6 +348,7 @@ Formations represent tactical setups (defensive or offensive positions).
 ### Example Conversion
 
 **Markdown:**
+
 ```
 13:00-13:15 - Warmup: Dodgeball
 13:15-13:30 - Arkansas Drill
@@ -343,6 +359,7 @@ Formations represent tactical setups (defensive or offensive positions).
 ```
 
 **QDrill Structure:**
+
 ```javascript
 {
   "sections": [
@@ -407,12 +424,14 @@ Formations represent tactical setups (defensive or offensive positions).
 ## Best Practices
 
 ### 1. Plan Organization
+
 - Use clear, descriptive section names
 - Order sections logically (warmup → skills → tactics → conditioning → cooldown)
 - Include breaks between intense activities
 - Keep total duration reasonable (90-120 minutes)
 
 ### 2. Parallel Activities
+
 - Always use the same `parallel_group_id` for simultaneous activities
 - Use only "BEATERS", "CHASERS", or "SEEKERS" for `parallel_timeline`
 - Include all involved positions in `group_timelines` array
@@ -420,11 +439,13 @@ Formations represent tactical setups (defensive or offensive positions).
 - Consider total duration when positions have different length activities
 
 ### 3. Naming Conventions
+
 - Sections: "Warmup", "Technical Skills", "Tactical Work", "Conditioning", "Cool Down"
 - Parallel group IDs: `split_<time>` or `parallel_<sequence>`
 - Be consistent with timeline labels
 
 ### 4. Duration Guidelines
+
 - Warmup: 15-20 minutes
 - Main activities: 15-30 minutes each
 - Breaks: 5-10 minutes
@@ -432,6 +453,7 @@ Formations represent tactical setups (defensive or offensive positions).
 - Formations: 5-10 minutes to set up
 
 ### 5. Data Management
+
 - Keep a record of commonly used drill IDs
 - Document special drills or formations
 - Save successful practice plan templates
@@ -441,12 +463,14 @@ Formations represent tactical setups (defensive or offensive positions).
 ### Common Issues
 
 1. **Parallel activities not displaying correctly**
+
    - Ensure all items have the same `parallel_group_id`
    - Verify `parallel_timeline` uses exact values: "BEATERS", "CHASERS", or "SEEKERS"
    - Check that `group_timelines` array includes all positions involved
    - Don't create separate sections for individual positions
 
 2. **Formation not appearing**
+
    - Verify formation exists in database
    - Ensure `type: "formation"` is set correctly
    - Check formation_id is valid

@@ -891,10 +891,10 @@ export class DrillService extends BaseEntityService {
 		// Use the provided client or the default db module
 		const dbInterface = client || db;
 
-               for (const skill of skills) {
-                       await upsertSkillCounts(dbInterface, skill, drillId);
-               }
-       }
+		for (const skill of skills) {
+			await upsertSkillCounts(dbInterface, skill, drillId);
+		}
+	}
 
 	/**
 	 * Toggle upvote for a drill

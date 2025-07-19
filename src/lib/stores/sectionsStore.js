@@ -223,6 +223,7 @@ export function updateTimelineColor(timeline, color) {
 
 // Helper function to format drill items
 export function formatDrillItem(item, sectionId) {
+
 	// Determine if this is a one-off drill
 	// One-off drills have either:
 	// 1. type 'drill' with null drill_id and no drill object, or
@@ -511,7 +512,7 @@ export function addOneOffDrill(sectionId, name = 'Quick Activity') {
 
 export function addDrillToPlan(drill, sectionId, options = {}) {
 	const { parallel_timeline = null, parallel_group_id = null } = options;
-
+	
 	addToHistory('ADD_DRILL', { drill, sectionId }, `Added "${drill.name}" to plan`);
 
 	sections.update((currentSections) => {
@@ -546,11 +547,7 @@ export function addDrillToPlan(drill, sectionId, options = {}) {
 }
 
 export function addFormationToPlan(formation, sectionId) {
-	addToHistory(
-		'ADD_FORMATION',
-		{ formation, sectionId },
-		`Added "${formation.name}" formation reference`
-	);
+	addToHistory('ADD_FORMATION', { formation, sectionId }, `Added "${formation.name}" formation reference`);
 
 	sections.update((currentSections) => {
 		const newSections = [...currentSections];
@@ -705,7 +702,7 @@ export function handleTimelineChange(sectionIndex, itemIndex, newTimeline) {
 	sections.update((currentSections) => {
 		const newSections = [...currentSections];
 		const section = newSections[sectionIndex];
-
+		
 		section.items[itemIndex] = {
 			...section.items[itemIndex],
 			parallel_timeline: newTimeline
@@ -719,17 +716,13 @@ export function handleTimelineChange(sectionIndex, itemIndex, newTimeline) {
 export function addParallelActivities(sectionId, activities) {
 	const groupId = `parallel-${Date.now()}`;
 	const timelines = Object.keys(activities);
-
-	addToHistory(
-		'ADD_PARALLEL_ACTIVITIES',
-		{ sectionId, activities, groupId },
-		'Added parallel activities'
-	);
-
+	
+	addToHistory('ADD_PARALLEL_ACTIVITIES', { sectionId, activities, groupId }, 'Added parallel activities');
+	
 	sections.update((currentSections) => {
 		const newSections = [...currentSections];
 		const targetSection = newSections.find((s) => s.id === sectionId);
-
+		
 		if (targetSection) {
 			// Add each position's activity
 			Object.entries(activities).forEach(([timeline, drill]) => {
@@ -748,7 +741,7 @@ export function addParallelActivities(sectionId, activities) {
 					targetSection.items.push(newItem);
 				}
 			});
-
+			
 			toast.push('Added parallel activities', {
 				theme: {
 					'--toastBackground': '#4CAF50',
@@ -756,7 +749,7 @@ export function addParallelActivities(sectionId, activities) {
 				}
 			});
 		}
-
+		
 		return newSections;
 	});
 }
@@ -1014,8 +1007,169 @@ export function handleTimelineSave() {
 	return true; // Return true to indicate the modal should be closed
 }
 
+export function removeTimelineFromGroup(sectionId, parallelGroupId, timeline) {
+	sections.update((currentSections) => {
+		const section = currentSections.find((s) => s.id === sectionId);
+		if (!section) return currentSections;
+
+		// Find items in this timeline
+		const timelineItems = section.items.filter(
+			(item) => item.parallel_group_id === parallelGroupId && item.parallel_timeline === timeline
+		);
+
+		// If this is the last or second-to-last timeline, ungroup everything
+		const groupItems = section.items.filter((item) => item.parallel_group_id === parallelGroupId);
+		if (groupItems.length <= 2) {
+			return currentSections.map((s) => ({
+				...s,
+				items: s.items.map((item) => {
+					if (item.parallel_group_id === parallelGroupId) {
+						const { parallel_group_id, parallel_timeline, groupTimelines, ...rest } = item;
+						return {
+							...rest,
+							// Preserve these properties when ungrouping with prefixes
+							// This allows us to potentially recover them if the item is grouped again
+							// without interfering with the normal item structure
+							_previous_timeline: parallel_timeline,
+							_previous_color: item.timeline_color,
+							_previous_group_name: item.group_name
+						};
+					}
+					return item;
+				})
+			}));
+		}
+
+		// Remove items from this timeline
+		return currentSections.map((s) => ({
+			...s,
+			items: s.items
+				.filter(
+					(item) =>
+						!(item.parallel_group_id === parallelGroupId && item.parallel_timeline === timeline)
+				)
+				.map((item) => {
+					// Update groupTimelines for remaining items in the group
+					if (item.parallel_group_id === parallelGroupId) {
+						return {
+							...item,
+							groupTimelines: item.groupTimelines.filter((t) => t !== timeline),
+							// Preserve the group name and color when removing a timeline
+							group_name: item.group_name
+						};
+					}
+					return item;
+				})
+		}));
+	});
+
+	toast.push(`Removed ${getTimelineName(timeline)} timeline`);
+}
 
 // Timeline duration calculation
+export function getParallelBlockDuration(items, groupId) {
+	if (!groupId) return 0;
+
+	const groupItems = items.filter((item) => item.parallel_group_id === groupId);
+	if (!groupItems.length) return 0;
+
+	// Get all unique timelines in this group
+	const timelines = new Set(groupItems.map((item) => item.parallel_timeline));
+
+	// Calculate total duration for each timeline
+	const timelineDurations = Array.from(timelines).map((timeline) => {
+		const timelineItems = groupItems.filter((item) => item.parallel_timeline === timeline);
+		return timelineItems.reduce(
+			(total, item) => total + (parseInt(item.selected_duration || item.duration, 10) || 0),
+			0
+		);
+	});
+
+	// Return the maximum duration across all timelines
+	return Math.max(...timelineDurations);
+}
+
+// Cache for previous duration calculations to avoid duplicate warnings
+let lastDurationWarnings = new Map();
+
+export function calculateTimelineDurations(items, groupId) {
+	if (!groupId) return {};
+
+	// Get all items in this specific parallel group
+	const groupItems = items.filter((item) => item.parallel_group_id === groupId);
+	if (groupItems.length === 0) return {};
+
+	// Get the timelines that are actually used in this group
+	const firstItem = groupItems[0];
+	const groupTimelines = firstItem?.groupTimelines || [];
+
+	// Calculate duration for each timeline in this group
+	const durations = {};
+	groupTimelines.forEach((timeline) => {
+		const timelineItems = groupItems.filter((item) => item.parallel_timeline === timeline);
+		durations[timeline] = timelineItems.reduce(
+			(total, item) => total + (parseInt(item.selected_duration) || parseInt(item.duration) || 0),
+			0
+		);
+	});
+
+	// Find the maximum duration among the timelines in this group
+	const maxDuration = Math.max(...Object.values(durations), 0);
+
+	// Check for mismatches only within this group's timelines
+	const mismatches = [];
+	Object.entries(durations).forEach(([timeline, duration]) => {
+		if (duration < maxDuration) {
+			mismatches.push({
+				timeline,
+				difference: maxDuration - duration
+			});
+		}
+	});
+
+	// Create a unique warning signature for this group's mismatches
+	const warningSig = mismatches
+		.map((m) => `${m.timeline}:${m.difference}`)
+		.sort()
+		.join('|');
+
+	// Only show warning if the signature has changed or hasn't been shown for this group
+	if (
+		mismatches.length > 0 &&
+		(!lastDurationWarnings.has(groupId) || lastDurationWarnings.get(groupId) !== warningSig)
+	) {
+		const warningMessage = mismatches
+			.map(({ timeline, difference }) => `${getTimelineName(timeline)} (${difference}min shorter)`)
+			.join(', ');
+
+		// Store the current warning signature
+		lastDurationWarnings.set(groupId, warningSig);
+
+		// Show the toast
+		toast.push(`Timeline duration mismatch in group: ${warningMessage}`, {
+			theme: {
+				'--toastBackground': '#FFA500',
+				'--toastColor': 'black'
+			}
+		});
+	}
+
+	return durations;
+}
+
+// DEBUG function to check the state of the timeline names
+export function debugTimelineNames() {
+	const customNames = get(customTimelineNames);
+	console.log('[DEBUG] Current custom timeline names:', customNames);
+
+	console.log('[DEBUG] Current PARALLEL_TIMELINES:', JSON.stringify(PARALLEL_TIMELINES, null, 2));
+
+	Object.keys(DEFAULT_TIMELINE_NAMES).forEach((key) => {
+		console.log(`[DEBUG] Timeline ${key} name:`, getTimelineName(key));
+	});
+
+	return customNames;
+}
 
 // Create a derived store for total duration
 export const totalPlanDuration = derived(sections, ($sections) => {
@@ -1069,3 +1223,342 @@ export const totalPlanDuration = derived(sections, ($sections) => {
  * @param {boolean} isGrouping - True if the drop target indicates grouping (e.g., dropping onto an item), false for reordering (dropping between items).
  * @returns {Array} The new array of items after the move.
  */
+export function handleDrillMove(sourceIndex, targetIndex, items, isGrouping) {
+	if (isGrouping) {
+		// Handle grouping (when dragged on top)
+		return mergeIntoParallelGroup(sourceIndex, targetIndex, items);
+	} else {
+		// Handle reordering (when dragged between)
+		const newItems = [...items];
+		const [removed] = newItems.splice(sourceIndex, 1);
+		newItems.splice(targetIndex, 0, removed);
+		return newItems;
+	}
+}
+
+/**
+ * Merges a source item into a parallel group with a target item.
+ * If the target item is already in a group, the source item is added to that group.
+ * If the target item is not in a group, a new group is created containing both items.
+ * Handles duration updates for the group.
+ * @param {number} sourceIndex - The index of the item being dragged.
+ * @param {number} targetIndex - The index of the item being dropped onto.
+ * @param {Array} items - The current array of items in the section.
+ * @returns {Array} The new array of items with the merged/new group.
+ */
+export function mergeIntoParallelGroup(sourceIndex, targetIndex, items) {
+	const sourceItem = items[sourceIndex];
+	const targetItem = items[targetIndex];
+
+	if (!sourceItem || !targetItem || sourceIndex === targetIndex) return items;
+
+	// Prevent merging an item into its own group again
+	if (
+		sourceItem.parallel_group_id &&
+		sourceItem.parallel_group_id === targetItem.parallel_group_id
+	) {
+		return items;
+	}
+
+	const newItems = [...items];
+	let groupId;
+
+	if (targetItem.parallel_group_id) {
+		// Add to existing group
+		groupId = targetItem.parallel_group_id;
+		newItems[sourceIndex] = {
+			...sourceItem,
+			parallel_group_id: groupId
+		};
+	} else {
+		// Create new group
+		groupId = `group_${Date.now()}`;
+		newItems[sourceIndex] = {
+			...sourceItem,
+			parallel_group_id: groupId
+		};
+		newItems[targetIndex] = {
+			...targetItem,
+			parallel_group_id: groupId
+		};
+	}
+
+	// Update durations for all items in the group - This logic likely needs refinement
+	// based on how parallel duration should actually work (max of timelines?)
+	// For now, keep the original logic (max of the two merged items)
+	// A better approach might recalculate based on *all* items in the group
+	const groupDuration = Math.max(
+		parseInt(sourceItem.selected_duration || sourceItem.duration || 0),
+		parseInt(targetItem.selected_duration || targetItem.duration || 0)
+	);
+
+	return newItems.map((item) => {
+		if (item.parallel_group_id === groupId) {
+			return {
+				...item,
+				selected_duration: groupDuration // Apply the calculated max duration
+				// Consider if original `duration` should also be updated or kept separate
+			};
+		}
+		return item;
+	});
+}
+
+/**
+ * Removes an item from its parallel group.
+ * If removing the item leaves only one other item in the group, the group is dissolved entirely.
+ * @param {string|number} itemId - The ID of the item to remove from its group.
+ * @param {Array} items - The current array of items in the section.
+ * @returns {Array} The new array of items with the item removed from the group.
+ */
+export function removeFromParallelGroup(itemId, items) {
+	// Find the item being removed and its group ID
+	const itemIndex = items.findIndex((item) => item.id === itemId);
+	if (itemIndex === -1) return items; // Item not found
+
+	const itemToRemove = items[itemIndex];
+	const groupId = itemToRemove?.parallel_group_id;
+
+	if (!groupId) return items; // Item is not in a group
+
+	// Count how many items will remain in the group
+	const remainingGroupItems = items.filter(
+		(item) => item.parallel_group_id === groupId && item.id !== itemId
+	);
+
+	// If only one item would remain, dissolve the group
+	if (remainingGroupItems.length <= 1) {
+		return items.map((item) => {
+			if (item.parallel_group_id === groupId) {
+				// Remove group properties
+				const { parallel_group_id, parallel_timeline, groupTimelines, ...rest } = item;
+				// Restore original duration? Or keep selected_duration?
+				// Let's keep selected_duration for now, assuming it was manually set.
+				return rest;
+			}
+			return item;
+		});
+	}
+
+	// Otherwise, just remove the one item from the group
+	return items.map((item) => {
+		if (item.id === itemId) {
+			const { parallel_group_id, parallel_timeline, groupTimelines, ...rest } = item;
+			return rest;
+		}
+		return item;
+	});
+}
+
+// ------------------------------------------------------
+// Drag-and-drop helper APIs used by dragManager
+// ------------------------------------------------------
+
+/**
+ * Get the current sections value.
+ * @returns {Array}
+ */
+export function getSections() {
+        return get(sections);
+}
+
+/**
+ * Move an item to a new location referenced by stable IDs.
+ *
+ * @param {object} params
+ * @param {string|number} params.itemId - Item ID to move
+ * @param {string} params.targetSectionId - ID of section receiving the item
+ * @param {string|number|null} [params.targetItemId] - ID of item to position relative to
+ * @param {'before'|'after'} [params.position='after'] - Insert position
+ * @param {(item:object)=>object} [params.transform] - Optional transform applied to the item
+ */
+export function moveItem({ itemId, targetSectionId, targetItemId = null, position = 'after', transform }) {
+        // Create backup before operation
+        const backup = get(sections);
+        
+        try {
+                // Validate input parameters
+                if (!itemId) {
+                        console.error('moveItem: itemId is required');
+                        return false;
+                }
+                if (!targetSectionId) {
+                        console.error('moveItem: targetSectionId is required');
+                        return false;
+                }
+                if (position && !['before', 'after'].includes(position)) {
+                        console.error('moveItem: position must be "before" or "after"');
+                        return false;
+                }
+                
+                sections.update((secs) => {
+                        const newSecs = [...secs];
+
+                        // Locate the item and its current section
+                        const srcSectionIndex = newSecs.findIndex((s) => s.items.some((i) => i.id === itemId));
+                        if (srcSectionIndex === -1) {
+                                console.error(`moveItem: Item with id ${itemId} not found`);
+                                throw new Error(`Item with id ${itemId} not found`);
+                        }
+
+                        const srcItems = [...newSecs[srcSectionIndex].items];
+                        const itemIndex = srcItems.findIndex((i) => i.id === itemId);
+                        if (itemIndex === -1) {
+                                console.error(`moveItem: Item with id ${itemId} not found in section`);
+                                throw new Error(`Item with id ${itemId} not found in section`);
+                        }
+
+                        const [item] = srcItems.splice(itemIndex, 1);
+
+                        newSecs[srcSectionIndex] = { ...newSecs[srcSectionIndex], items: srcItems };
+
+                        // Optionally transform the item before inserting
+                        let finalItem;
+                        try {
+                                finalItem = transform ? transform(item) : item;
+                        } catch (transformError) {
+                                console.error('moveItem: Error in transform function:', transformError);
+                                throw transformError;
+                        }
+
+                        const targetSectionIndex = newSecs.findIndex((s) => s.id === targetSectionId);
+                        if (targetSectionIndex === -1) {
+                                console.error(`moveItem: Target section with id ${targetSectionId} not found`);
+                                throw new Error(`Target section with id ${targetSectionId} not found`);
+                        }
+
+                        const targetItems = [...newSecs[targetSectionIndex].items];
+
+                        let insertIndex = targetItems.length;
+                        if (targetItemId !== null && targetItemId !== undefined) {
+                                const idx = targetItems.findIndex((i) => i.id === targetItemId);
+                                if (idx === -1) {
+                                        console.warn(`moveItem: Target item with id ${targetItemId} not found, adding to end`);
+                                } else {
+                                        insertIndex = position === 'before' ? idx : idx + 1;
+                                }
+                        }
+
+                        targetItems.splice(Math.min(insertIndex, targetItems.length), 0, finalItem);
+                        newSecs[targetSectionIndex] = { ...newSecs[targetSectionIndex], items: targetItems };
+
+                        return newSecs;
+                });
+
+                addToHistory('MOVE_ITEM', { itemId, targetSectionId, targetItemId, position }, 'Moved item');
+                return true;
+        } catch (error) {
+                console.error('moveItem failed:', error);
+                // Restore backup on error
+                sections.set(backup);
+                toast.push('Failed to move item: ' + error.message, {
+                        theme: {
+                                '--toastBackground': '#f44336',
+                                '--toastColor': 'white'
+                        }
+                });
+                return false;
+        }
+}
+
+/**
+ * Update a single item's properties.
+ *
+ * @param {string|number} itemId
+ * @param {(item:object)=>object} updater
+ */
+export function updateItem(itemId, updater) {
+        sections.update((secs) =>
+                secs.map((section) => {
+                        const idx = section.items.findIndex((i) => i.id === itemId);
+                        if (idx === -1) return section;
+                        const items = [...section.items];
+                        items[idx] = updater(items[idx]);
+                        return { ...section, items };
+                })
+        );
+}
+
+/**
+ * Move a section before or after another section.
+ *
+ * @param {object} params
+ * @param {string} params.sectionId
+ * @param {string} params.targetSectionId
+ * @param {'before'|'after'} [params.position='after']
+ */
+export function moveSection({ sectionId, targetSectionId, position = 'after' }) {
+        // Create backup before operation
+        const backup = get(sections);
+        
+        try {
+                // Validate input parameters
+                if (!sectionId) {
+                        console.error('moveSection: sectionId is required');
+                        return false;
+                }
+                if (!targetSectionId) {
+                        console.error('moveSection: targetSectionId is required');
+                        return false;
+                }
+                if (sectionId === targetSectionId) {
+                        console.error('moveSection: Cannot move section to itself');
+                        return false;
+                }
+                if (position && !['before', 'after'].includes(position)) {
+                        console.error('moveSection: position must be "before" or "after"');
+                        return false;
+                }
+                
+                sections.update((secs) => {
+                        const newSecs = [...secs];
+                        const srcIndex = newSecs.findIndex((s) => s.id === sectionId);
+                        const targetIndex = newSecs.findIndex((s) => s.id === targetSectionId);
+                        
+                        if (srcIndex === -1) {
+                                console.error(`moveSection: Section with id ${sectionId} not found`);
+                                throw new Error(`Section with id ${sectionId} not found`);
+                        }
+                        if (targetIndex === -1) {
+                                console.error(`moveSection: Target section with id ${targetSectionId} not found`);
+                                throw new Error(`Target section with id ${targetSectionId} not found`);
+                        }
+
+                        const [section] = newSecs.splice(srcIndex, 1);
+
+                        let insertIndex = targetIndex;
+                        if (position === 'after') {
+                                insertIndex = srcIndex < targetIndex ? targetIndex : targetIndex + 1;
+                        } else {
+                                insertIndex = srcIndex < targetIndex ? targetIndex - 1 : targetIndex;
+                        }
+
+                        insertIndex = Math.max(0, Math.min(insertIndex, newSecs.length));
+                        newSecs.splice(insertIndex, 0, section);
+
+                        return newSecs.map((s, i) => ({ ...s, order: i }));
+                });
+
+                addToHistory('MOVE_SECTION', { sectionId, targetSectionId, position }, 'Moved section');
+                return true;
+        } catch (error) {
+                console.error('moveSection failed:', error);
+                // Restore backup on error
+                sections.set(backup);
+                toast.push('Failed to move section: ' + error.message, {
+                        theme: {
+                                '--toastBackground': '#f44336',
+                                '--toastColor': 'white'
+                        }
+                });
+                return false;
+        }
+}
+
+/**
+ * Replace the entire sections array.
+ * @param {Array} newSections
+ */
+export function setSections(newSections) {
+        sections.set(newSections);
+}

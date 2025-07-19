@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import { sections } from './sectionsStore';
+import { getSections, moveItem, moveSection, setSections } from './sectionsStore';
 import { addToHistory } from './historyStore';
 
 // ----------------------------------------
@@ -301,16 +301,6 @@ function initializeDrag(event) {
 	event.stopPropagation();
 	event.dataTransfer.effectAllowed = 'move';
 	return true;
-}
-
-// ----------------------------------------
-// EXPOSE DRAG STATE FOR DEBUG
-// ----------------------------------------
-if (typeof window !== 'undefined') {
-	window.__dragManager = {
-		get: () => get(dragState),
-		update: (fn) => dragState.update(fn)
-	};
 }
 
 // ----------------------------------------
@@ -815,7 +805,7 @@ export function handleEmptySectionDragOver(event, sectionIndex, element) {
 		}
 
 		// Check if the section is truly empty at this point
-		const secs = get(sections);
+                const secs = getSections();
 		const currentItems = secs[sectionIndex]?.items || [];
 
 		// If not empty anymore, calculate the proper target index
@@ -1051,12 +1041,12 @@ export function handleDrop(event) {
 
 		// Record state before drop for history (only if needed)
 		let sectionsBeforeDrop;
-		if (shouldRecordHistory) {
-			sectionsBeforeDrop = get(sections);
-		}
+                if (shouldRecordHistory) {
+                        sectionsBeforeDrop = getSections();
+                }
 
 		// Make a full backup of sections in case anything goes wrong during the drop operation
-		const sectionsBeforeAllDrops = JSON.parse(JSON.stringify(get(sections)));
+                const sectionsBeforeAllDrops = JSON.parse(JSON.stringify(getSections()));
 
 		console.log('[DEBUG] About to process drop with type:', state.dragType);
 
@@ -1096,7 +1086,7 @@ export function handleDrop(event) {
 			// Try to recover state using the backup if anything went wrong
 			try {
 				console.warn('Trying to recover state from backup after drop error');
-				sections.set(sectionsBeforeAllDrops);
+                                setSections(sectionsBeforeAllDrops);
 			} catch (recoveryError) {
 				console.error('Failed to recover state:', recoveryError);
 			}
@@ -1126,7 +1116,7 @@ function handleItemDrop(state) {
 		console.log('[DEBUG] handleItemDrop called with state:', state);
 
 		// Get the current sections
-		const allSections = get(sections);
+                const allSections = getSections();
 
 		// Validate section indices
 		if (
@@ -1330,517 +1320,132 @@ function appendToTimeline(sectionItems, movedItem, state) {
  * Handle dropping an item into a timeline.
  */
 function handleTimelineDrop(state, movedItem, sourceItemIndex) {
-	logger.debug('Dropping into timeline:', {
-		targetTimeline: state.targetTimeline,
-		targetGroupId: state.targetGroupId,
-		targetIndex: state.targetIndex,
-		dropPosition: state.dropPosition
-	});
+        logger.debug('Dropping into timeline:', {
+                targetTimeline: state.targetTimeline,
+                targetGroupId: state.targetGroupId,
+                targetIndex: state.targetIndex,
+                dropPosition: state.dropPosition
+        });
 
-	try {
-		// First, save a snapshot of the current state in case we need to recover
-		const sectionsBeforeUpdate = get(sections);
-		let errorOccurred = false;
+        try {
+                const secs = getSections();
+                const targetSection = secs[state.targetSection];
+                if (!targetSection) return;
 
-		sections.update((secs) => {
-			try {
-				// Create a new copy of the sections array
-				const newSecs = [...secs];
+                const targetItem = state.targetIndex !== null ? targetSection.items[state.targetIndex] : null;
 
-				// Re-validate indices to be safe
-				if (
-					!isValidSectionIndex(newSecs, state.sourceSection) ||
-					!isValidSectionIndex(newSecs, state.targetSection)
-				) {
-					logger.error('Section indices invalid during update');
-					return secs; // Return unchanged
-				}
-
-				// Prepare the item with timeline data
-				movedItem = prepareTimelineItem(movedItem, state, secs);
-
-				// Get correct source item index using our helper
-				const { item: sourceItem, index: finalSourceItemIndex } = findSourceItem(secs, state);
-
-				if (!sourceItem) {
-					logger.error('Source item not found during timeline drop');
-					return secs; // Return unchanged
-				}
-
-				// Check if this is a reordering within the same timeline or a move to a different timeline
-				const isSameTimeline =
-					state.sourceSection === state.targetSection &&
-					state.sourceGroupId === state.targetGroupId &&
-					state.sourceTimeline === state.targetTimeline;
-
-				// Check if we're dropping on a specific item in the timeline
-				const isDroppingOnItem =
-					state.targetIndex !== null &&
-					(state.dropPosition === 'before' || state.dropPosition === 'after');
-
-				// Starting point for section updates
-				if (state.sourceSection === state.targetSection) {
-					// Within the same section
-					const sectionItems = [...newSecs[state.sourceSection].items];
-
-					// Save the original items before removal for reference
-					const originalSectionItems = [...sectionItems];
-
-					// Remove the item from its original position
-					if (finalSourceItemIndex < sectionItems.length) {
-						sectionItems.splice(finalSourceItemIndex, 1);
-					} else {
-						logger.error(
-							'Item index out of bounds in splice operation:',
-							finalSourceItemIndex,
-							'length:',
-							sectionItems.length
-						);
-						return secs; // Return unchanged on error
-					}
-
-					// REORDERING CASE - If we're reordering within the same timeline and dropping on an item
-					if (isSameTimeline && isDroppingOnItem) {
-						handleSameTimelineReordering(sectionItems, movedItem, state, originalSectionItems);
-					}
-					// MOVE TO END CASE - We're moving to the end of a timeline
-					else {
-						appendToTimeline(sectionItems, movedItem, state);
-					}
-
-					// Update the section
-					newSecs[state.sourceSection] = {
-						...newSecs[state.sourceSection],
-						items: sectionItems
-					};
-				} else {
-					// Between different sections
-					const sourceItems = [...newSecs[state.sourceSection].items];
-					const targetItems = [...newSecs[state.targetSection].items];
-
-					// Remove from source
-					if (finalSourceItemIndex < sourceItems.length) {
-						sourceItems.splice(finalSourceItemIndex, 1);
-					} else {
-						logger.error(
-							'Item index out of bounds in cross-section splice operation:',
-							finalSourceItemIndex,
-							'length:',
-							sourceItems.length
-						);
-						return secs; // Return unchanged on error
-					}
-
-					// Add to target section's timeline
-					appendToTimeline(targetItems, movedItem, state);
-
-					// Update both sections
-					newSecs[state.sourceSection] = {
-						...newSecs[state.sourceSection],
-						items: sourceItems
-					};
-
-					newSecs[state.targetSection] = {
-						...newSecs[state.targetSection],
-						items: targetItems
-					};
-				}
-
-				return newSecs;
-			} catch (e) {
-				logger.error('Error during timeline drop update:', e);
-				errorOccurred = true;
-				return secs; // Return unchanged on error
-			}
-		});
-
-		// If an error occurred during the update, restore from backup
-		if (errorOccurred) {
-			logger.warn('Restoring previous state due to error in timeline drop');
-			sections.set(sectionsBeforeUpdate);
-		}
-	} catch (updateError) {
-		logger.error('Error updating sections in timeline drop:', updateError);
-		throw updateError; // Re-throw to allow recovery in main handler
-	}
+                moveItem({
+                        itemId: movedItem.id,
+                        targetSectionId: targetSection.id,
+                        targetItemId: targetItem ? targetItem.id : null,
+                        position: state.dropPosition || 'after',
+                        transform: () => prepareTimelineItem(movedItem, state, secs)
+                });
+        } catch (error) {
+                logger.error('Error handling timeline drop:', error);
+                throw error;
+        }
 }
 
 /**
  * Handle dropping an item before or after another item (not into a timeline).
  */
 function handleRegularDrop(state, movedItem, sourceItemIndex) {
-	try {
-		// Calculate the target index
-		let targetIndex;
+        try {
+                const secs = getSections();
+                const targetSection = secs[state.targetSection];
+                if (!targetSection) return;
 
-		if (state.dropPosition === 'before') {
-			targetIndex = state.targetIndex;
-		} else {
-			// after
-			targetIndex = state.targetIndex + 1;
-		}
+                const targetItem = state.targetIndex !== null ? targetSection.items[state.targetIndex] : null;
 
-		// If source section is same as target and source index is before target,
-		// adjust the target index
-		if (state.sourceSection === state.targetSection && sourceItemIndex < targetIndex) {
-			targetIndex--;
-		}
-
-		// Reset group properties when moving outside a group
-		movedItem.parallel_group_id = null;
-		movedItem.parallel_timeline = null;
-		movedItem.groupTimelines = null;
-
-		// Save backup of current state
-		const sectionsBeforeUpdate = get(sections);
-		let errorOccurred = false;
-
-		sections.update((secs) => {
-			try {
-				// Create a copy of the sections array
-				const newSecs = [...secs];
-
-				// Validate indices again to be sure
-				if (
-					!isValidSectionIndex(secs, state.sourceSection) ||
-					!isValidSectionIndex(secs, state.targetSection)
-				) {
-					console.error('Section indices invalid during regular drop');
-					return secs; // Return unchanged
-				}
-
-				// Find source item again to be safe
-				const { item: sourceItem, index: finalSourceItemIndex } = findSourceItem(secs, state);
-
-				if (!sourceItem) {
-					console.error('Source item not found during regular drop');
-					return secs; // Return unchanged
-				}
-
-				// Special handling for within the same section
-				if (state.sourceSection === state.targetSection) {
-					const sectionItems = [...newSecs[state.sourceSection].items];
-
-					// Remove the item from its original position
-					if (finalSourceItemIndex < sectionItems.length) {
-						sectionItems.splice(finalSourceItemIndex, 1);
-					} else {
-						console.error(
-							'Item index out of bounds in regular drop splice operation:',
-							finalSourceItemIndex,
-							'length:',
-							sectionItems.length
-						);
-						return secs; // Return unchanged
-					}
-
-					// Add the item to the target position
-					console.log(
-						'[DEBUG] Adding item to position',
-						targetIndex,
-						'name:',
-						movedItem.name,
-						'id:',
-						movedItem.id
-					);
-					sectionItems.splice(Math.min(targetIndex, sectionItems.length), 0, movedItem);
-
-					// Update the section
-					newSecs[state.sourceSection] = {
-						...newSecs[state.sourceSection],
-						items: sectionItems
-					};
-				} else {
-					// Between different sections
-					const sourceItems = [...newSecs[state.sourceSection].items];
-					const targetItems = [...newSecs[state.targetSection].items];
-
-					// Remove from source
-					if (finalSourceItemIndex < sourceItems.length) {
-						sourceItems.splice(finalSourceItemIndex, 1);
-					} else {
-						console.error(
-							'Item index out of bounds in cross-section splice operation:',
-							finalSourceItemIndex,
-							'length:',
-							sourceItems.length
-						);
-						return secs; // Return unchanged
-					}
-
-					// Add to target
-					console.log(
-						'[DEBUG] Adding item to target section at position',
-						targetIndex,
-						'name:',
-						movedItem.name,
-						'id:',
-						movedItem.id
-					);
-					targetItems.splice(Math.min(targetIndex, targetItems.length), 0, movedItem);
-
-					// Update both sections
-					newSecs[state.sourceSection] = {
-						...newSecs[state.sourceSection],
-						items: sourceItems
-					};
-
-					newSecs[state.targetSection] = {
-						...newSecs[state.targetSection],
-						items: targetItems
-					};
-				}
-
-				return newSecs;
-			} catch (e) {
-				console.error('Error during regular drop update:', e);
-				errorOccurred = true;
-				return secs; // Return unchanged on error
-			}
-		});
-
-		// If an error occurred during the update, restore from backup
-		if (errorOccurred) {
-			console.warn('[WARN] Restoring previous state due to error in regular drop');
-			sections.set(sectionsBeforeUpdate);
-		}
-	} catch (updateError) {
-		console.error('Error updating sections in regular drop:', updateError);
-		throw updateError; // Re-throw to allow recovery in main handler
-	}
+                moveItem({
+                        itemId: movedItem.id,
+                        targetSectionId: targetSection.id,
+                        targetItemId: targetItem ? targetItem.id : null,
+                        position: state.dropPosition || 'after',
+                        transform: () => ({
+                                ...movedItem,
+                                parallel_group_id: null,
+                                parallel_timeline: null,
+                                groupTimelines: null
+                        })
+                });
+        } catch (error) {
+                console.error('Error handling regular drop:', error);
+                throw error;
+        }
 }
 
 /**
  * Handle dropping a group onto a target position.
  */
 function handleGroupDrop(state) {
-	try {
-		// Get the current sections
-		const allSections = get(sections);
+        try {
+                const secs = getSections();
+                const sourceSection = secs[state.sourceSection];
+                const targetSection = secs[state.targetSection];
 
-		// Validate section indices and group ID
-		if (
-			!isValidSectionIndex(allSections, state.sourceSection) ||
-			!isValidSectionIndex(allSections, state.targetSection) ||
-			!state.sourceGroupId
-		) {
-			console.error('Invalid section indexes or group ID for group drop:', state);
-			return;
-		}
+                if (!sourceSection || !targetSection || !state.sourceGroupId) {
+                        console.error('Invalid indices or group ID for group drop:', state);
+                        return;
+                }
 
-		// Get all items in the group from the source section
-		const sourceSection = allSections[state.sourceSection];
-		const groupItems = sourceSection.items.filter(
-			(item) => item.parallel_group_id === state.sourceGroupId
-		);
+                const groupItems = sourceSection.items.filter(
+                        (item) => item.parallel_group_id === state.sourceGroupId
+                );
 
-		if (groupItems.length === 0) {
-			console.error('No group items found for group ID:', state.sourceGroupId);
-			return;
-		}
+                if (groupItems.length === 0) {
+                        console.error('No group items found for group ID:', state.sourceGroupId);
+                        return;
+                }
 
-		// Save backup of current state
-		const sectionsBeforeUpdate = get(sections);
-		let errorOccurred = false;
+                let insertAfterId = state.targetIndex !== null ? targetSection.items[state.targetIndex]?.id : null;
 
-		sections.update((secs) => {
-			try {
-				// Validate indices again
-				if (
-					!isValidSectionIndex(secs, state.sourceSection) ||
-					!isValidSectionIndex(secs, state.targetSection)
-				) {
-					console.error('Section indices invalid during group update');
-					return secs; // Return unchanged
-				}
+                groupItems.forEach((item, idx) => {
+                        moveItem({
+                                itemId: item.id,
+                                targetSectionId: targetSection.id,
+                                targetItemId: insertAfterId,
+                                position: idx === 0 ? state.dropPosition || 'after' : 'after'
+                        });
+                        insertAfterId = item.id;
+                });
 
-				// Create a new clean array of sections
-				const newSecs = [...secs];
-
-				// Clone the group items to avoid reference issues
-				const groupItemsClone = groupItems.map((item) => ({ ...item }));
-
-				// Calculate the target index
-				let targetIndex =
-					state.dropPosition === 'before' ? state.targetIndex : state.targetIndex + 1;
-
-				// Special handling for within the same section vs. different sections
-				if (state.sourceSection === state.targetSection) {
-					// Within the same section
-					const allSectionItems = [...newSecs[state.sourceSection].items];
-
-					// Create a new array without the group items
-					const itemsWithoutGroup = allSectionItems.filter(
-						(item) => item.parallel_group_id !== state.sourceGroupId
-					);
-
-					// Adjust target index to account for removed group items
-					// If target index is after the original position of the group
-					let adjustedTargetIndex = targetIndex;
-
-					// Find the index of the first group item in the original array
-					const firstGroupItemIndex = allSectionItems.findIndex(
-						(item) => item.parallel_group_id === state.sourceGroupId
-					);
-
-					// Get the count of group items
-					const groupItemCount = groupItemsClone.length;
-
-					// If the group was before our target and we're removing it, we need to adjust
-					if (firstGroupItemIndex !== -1 && firstGroupItemIndex < targetIndex) {
-						adjustedTargetIndex = Math.max(0, targetIndex - groupItemCount);
-					}
-
-					// Make sure target index is within bounds
-					const boundedTargetIndex = Math.min(adjustedTargetIndex, itemsWithoutGroup.length);
-
-					// Insert group items at the target position
-					const finalItems = [
-						...itemsWithoutGroup.slice(0, boundedTargetIndex),
-						...groupItemsClone,
-						...itemsWithoutGroup.slice(boundedTargetIndex)
-					];
-
-					// Update the section
-					newSecs[state.sourceSection] = {
-						...newSecs[state.sourceSection],
-						items: finalItems
-					};
-				} else {
-					// Between different sections
-					const sourceItems = [...newSecs[state.sourceSection].items];
-					const targetItems = [...newSecs[state.targetSection].items];
-
-					// Filter out the group items from source
-					const sourceItemsWithoutGroup = sourceItems.filter(
-						(item) => item.parallel_group_id !== state.sourceGroupId
-					);
-
-					// Calculate target index in bounds
-					const boundedTargetIndex = Math.min(targetIndex, targetItems.length);
-
-					// Insert group items at the target position
-					const finalTargetItems = [
-						...targetItems.slice(0, boundedTargetIndex),
-						...groupItemsClone,
-						...targetItems.slice(boundedTargetIndex)
-					];
-
-					// Update both sections
-					newSecs[state.sourceSection] = {
-						...newSecs[state.sourceSection],
-						items: sourceItemsWithoutGroup
-					};
-
-					newSecs[state.targetSection] = {
-						...newSecs[state.targetSection],
-						items: finalTargetItems
-					};
-				}
-
-				return newSecs;
-			} catch (e) {
-				console.error('Error during group drop operation:', e);
-				errorOccurred = true;
-				return secs; // Return unchanged on error
-			}
-		});
-
-		// If an error occurred during the update, restore from backup
-		if (errorOccurred) {
-			console.warn('[WARN] Restoring previous state due to error in group drop');
-			sections.set(sectionsBeforeUpdate);
-		}
-
-		// Additional cleanup after group drop
-		setTimeout(() => multiPhaseCleanup(), 50);
-	} catch (error) {
-		console.error('Error handling group drop:', error);
-		throw error; // Re-throw to allow recovery in main handler
-	}
+                setTimeout(() => multiPhaseCleanup(), 50);
+        } catch (error) {
+                console.error('Error handling group drop:', error);
+                throw error;
+        }
 }
 
 /**
  * Handle dropping a section before or after another section.
  */
 function handleSectionDrop(state) {
-	try {
-		// Validate section indices
-		if (state.sourceSection === null || state.targetSection === null) {
-			console.error('Invalid source or target in section drag state:', state);
-			return;
-		}
+        try {
+                if (state.sourceSection === null || state.targetSection === null) {
+                        console.error('Invalid source or target in section drag state:', state);
+                        return;
+                }
 
-		// Get the current sections
-		const allSections = get(sections);
+                const secs = getSections();
+                const sourceSection = secs[state.sourceSection];
+                const targetSection = secs[state.targetSection];
 
-		if (
-			!isValidSectionIndex(allSections, state.sourceSection) ||
-			!isValidSectionIndex(allSections, state.targetSection)
-		) {
-			console.error('Section indices out of bounds:', state);
-			return;
-		}
+                if (!sourceSection || !targetSection) {
+                        console.error('Section indices out of bounds:', state);
+                        return;
+                }
 
-		// Save backup of current state
-		const sectionsBeforeUpdate = get(sections);
-		let errorOccurred = false;
+                moveSection({
+                        sectionId: sourceSection.id,
+                        targetSectionId: targetSection.id,
+                        position: state.dropPosition || 'before'
+                });
 
-		sections.update((secs) => {
-			try {
-				// Validate indices again
-				if (
-					!isValidSectionIndex(secs, state.sourceSection) ||
-					!isValidSectionIndex(secs, state.targetSection)
-				) {
-					console.error('Section indices invalid during section drop');
-					return secs; // Return unchanged
-				}
-
-				// Create a defensive copy of the sections array
-				const newSecs = [...secs];
-
-				// Get the section to move (without modifying original yet)
-				const movedSection = { ...newSecs[state.sourceSection] };
-
-				// Remove the source section
-				newSecs.splice(state.sourceSection, 1);
-
-				// Calculate the target index
-				let targetIndex = state.targetSection;
-				if (state.dropPosition === 'after') {
-					targetIndex++;
-				}
-
-				// Adjust index if moving from before to after
-				if (state.sourceSection < targetIndex) {
-					targetIndex--;
-				}
-
-				// Bound the target index to be within array limits
-				targetIndex = Math.max(0, Math.min(targetIndex, newSecs.length));
-
-				// Insert the section at the target position
-				newSecs.splice(targetIndex, 0, movedSection);
-
-				return newSecs;
-			} catch (e) {
-				console.error('Error during section drop operation:', e);
-				errorOccurred = true;
-				return secs; // Return unchanged on error
-			}
-		});
-
-		// If an error occurred during the update, restore from backup
-		if (errorOccurred) {
-			console.warn('[WARN] Restoring previous state due to error in section drop');
-			sections.set(sectionsBeforeUpdate);
-		}
-
-		// Additional cleanup after section drop
-		setTimeout(() => multiPhaseCleanup(), 50);
-	} catch (error) {
-		console.error('Error handling section drop:', error);
-		throw error; // Re-throw to allow recovery in main handler
-	}
+                setTimeout(() => multiPhaseCleanup(), 50);
+        } catch (error) {
+                console.error('Error handling section drop:', error);
+                throw error;
+        }
 }

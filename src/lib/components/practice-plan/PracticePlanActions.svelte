@@ -1,7 +1,9 @@
 <script>
   import { undo, redo, canUndo, canRedo } from '$lib/stores/historyStore';
-  import { totalPlanDuration, startTime } from '$lib/stores/sectionsStore';
+  import { totalPlanDuration } from '$lib/stores/sectionsStore';
+  import { startTime } from '$lib/stores/practicePlanMetadataStore';
   import { formatTime } from '$lib/utils/timeUtils';
+  import { Button } from '$lib/components/ui/button';
 </script>
 
 <div class="bg-blue-50 p-4 rounded-lg shadow-sm flex justify-between items-center">

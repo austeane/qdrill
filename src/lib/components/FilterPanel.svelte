@@ -93,6 +93,7 @@
 	// Variables for Contains Drill filter
 	let drillSearchTerm = '';
 	let drillSuggestions = [];
+	let isSearchingDrills = false;
 
 	let mounted = false;
 
@@ -285,6 +286,7 @@
 	// Fetch drill suggestions
 	async function fetchDrillSuggestions() {
 		if (!mounted) return; // Ensure client-side execution
+		isSearchingDrills = true;
 		try {
 			const queryParam =
 				drillSearchTerm.trim() === '' ? '' : `?query=${encodeURIComponent(drillSearchTerm)}`;
@@ -292,6 +294,8 @@
 			drillSuggestions = drills.filter((drill) => !selectedDrills.some((d) => d.id === drill.id));
 		} catch (error) {
 			console.error(error);
+		} finally {
+			isSearchingDrills = false;
 		}
 	}
 
@@ -943,7 +947,12 @@
 						bind:value={drillSearchTerm}
 						on:input={debouncedFetchDrillSuggestions}
 					/>
-					{#if drillSuggestions.length > 0}
+					{#if isSearchingDrills}
+						<div class="p-4 text-center">
+							<div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+							<p class="mt-2 text-gray-600">Searching drills...</p>
+						</div>
+					{:else if drillSuggestions.length > 0}
 						<ul class="max-h-48 overflow-y-auto">
 							{#each drillSuggestions as drill}
 								<li
@@ -954,8 +963,7 @@
 								</li>
 							{/each}
 						</ul>
-					{/if}
-					{#if drillSuggestions.length === 0 && drillSearchTerm.trim() !== ''}
+					{:else if drillSuggestions.length === 0 && drillSearchTerm.trim() !== ''}
 						<p class="text-gray-500">No drills found.</p>
 					{/if}
 					{#if selectedDrills.length > 0}

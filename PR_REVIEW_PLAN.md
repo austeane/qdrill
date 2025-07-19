@@ -162,15 +162,26 @@ gh pr merge 120
 ```
 
 2. **PR #125 - Dead Code Components** (After confirming SkeletonLoader status)
-```bash
-gh pr checkout 125
-# Update PR to NOT delete SkeletonLoader.svelte
-git checkout src/lib/components/SkeletonLoader.svelte
-git commit -m "Keep SkeletonLoader.svelte as it's used by loading states"
-git push
+**Status**: ✅ MERGED
+**Merge Date**: 2025-07-19
 
-# Verify remaining deletions are safe
-# Subagent task: Search codebase for any imports of deleted components
+```bash
+# Implementation completed and verified:
+# ✅ Updated PR to keep SkeletonLoader.svelte (actively used by loading states)
+# ✅ Verified remaining component deletions were safe (no imports found)
+# ✅ Tested application - all pages load correctly without deleted components
+# ✅ Resolved merge conflicts with main branch
+
+# Components removed:
+# - Cart.svelte
+# - LoginButton.svelte
+# - TitleWithTooltip.svelte
+# - ParallelActivityCreator.svelte
+# - ParallelTimelineView.svelte
+# - DrillSearchModal.svelte
+
+# Components kept:
+# - SkeletonLoader.svelte (enhanced and actively used)
 ```
 
 3. **PR #124 - Dead Code Stores**

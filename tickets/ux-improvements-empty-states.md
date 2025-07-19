@@ -1,43 +1,59 @@
 # UX Improvement: Enhanced Empty States
 
 ## Priority: High
-
 **Impact**: High (User guidance and experience)  
 **Effort**: Low  
-**Status**: Open
+**Status**: Open (not started)
 
 ## Problem
-
 When no drills or practice plans match user criteria, the current empty state shows a generic "No drills match your criteria" message. This doesn't provide helpful guidance to users on what they can do next.
 
 ## Solution
-
 Implement friendly, helpful empty states that guide users toward productive actions when no results are found.
 
 ## Files to Modify
 
 ### Primary Files
-
 - `src/routes/drills/+page.svelte` - Enhanced empty state for drills
 - `src/routes/practice-plans/+page.svelte` - Enhanced empty state for practice plans
 - `src/routes/formations/+page.svelte` - Enhanced empty state for formations
 
 ### Supporting Files
-
-- `src/lib/components/EmptyState.svelte` - New reusable empty state component
+- `src/lib/components/EmptyState.svelte` - New reusable empty state component (does not exist yet)
 
 ## Current Implementation
+The project currently displays basic text messages when no results are found.
 
+**Drills page** (`src/routes/drills/+page.svelte`)
 ```svelte
-<!-- Current empty state in drills page -->
 {:else if !data.items || data.items.length === 0}
   <p class="text-center text-gray-500 py-10">No drills match your criteria.</p>
 ```
 
+**Practice plans page** (`src/routes/practice-plans/+page.svelte`)
+```svelte
+{:else if !error}
+  <p class="text-center text-gray-500 mt-8">No practice plans found matching your criteria.</p>
+```
+
+**Formations page** (`src/routes/formations/+page.svelte`)
+```svelte
+{:else if !$formations || $formations.length === 0}
+  <div class="bg-white rounded-lg shadow-sm p-8 text-center">
+    <h3 class="text-xl font-medium text-gray-800 mb-2">No formations found</h3>
+    <p class="text-gray-600 mb-4">
+      Try adjusting your search or filters, or create a new formation.
+    </p>
+    <button class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md" on:click={() => goto('/formations/create')}>
+      Create Formation
+    </button>
+  </div>
+```
+
+
 ## Implementation Details
 
 ### Create Reusable EmptyState Component
-
 ```svelte
 <!-- src/lib/components/EmptyState.svelte -->
 <script>
@@ -61,13 +77,13 @@ Implement friendly, helpful empty states that guide users toward productive acti
       </svg>
     {/if}
   </div>
-
+  
   <!-- Title and Description -->
   <h3 class="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
   {#if description}
     <p class="text-gray-600 text-center max-w-md mb-6">{description}</p>
   {/if}
-
+  
   <!-- Search Suggestions -->
   {#if showSearchSuggestion}
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 max-w-md">
@@ -79,7 +95,7 @@ Implement friendly, helpful empty states that guide users toward productive acti
       </ul>
     </div>
   {/if}
-
+  
   <!-- Actions -->
   {#if actions.length > 0}
     <div class="flex flex-wrap gap-3 justify-center">
@@ -118,12 +134,11 @@ Implement friendly, helpful empty states that guide users toward productive acti
 ```
 
 ### Enhanced Drills Empty State
-
 ```svelte
 <!-- In src/routes/drills/+page.svelte -->
 <script>
   import EmptyState from '$lib/components/EmptyState.svelte';
-
+  
   // Determine if filters are applied
   $: hasFilters = (
     $searchQuery ||
@@ -131,8 +146,8 @@ Implement friendly, helpful empty states that guide users toward productive acti
     Object.keys($selectedComplexities).length > 0
     // ... other filter checks
   );
-
-  $: emptyStateActions = hasFilters
+  
+  $: emptyStateActions = hasFilters 
     ? [
         { label: "Clear Filters", onClick: clearAllFilters, primary: true },
         { label: "Create New Drill", href: "/drills/create" }
@@ -147,7 +162,7 @@ Implement friendly, helpful empty states that guide users toward productive acti
 {:else if !data.items || data.items.length === 0}
   <EmptyState
     title={hasFilters ? "No drills match your criteria" : "No drills available"}
-    description={hasFilters
+    description={hasFilters 
       ? "Try adjusting your search or filters to find what you're looking for."
       : "Get started by creating your first drill or exploring our collection."
     }
@@ -158,44 +173,40 @@ Implement friendly, helpful empty states that guide users toward productive acti
 ```
 
 ### Enhanced Practice Plans Empty State
-
 ```svelte
 <!-- In src/routes/practice-plans/+page.svelte -->
 <EmptyState
-	title={hasFilters ? 'No practice plans found' : 'No practice plans yet'}
-	description={hasFilters
-		? 'Try removing some filters or creating a new plan with your criteria.'
-		: 'Create your first practice plan to get started with organized training.'}
-	icon="plans"
-	actions={[
-		{
-			label: hasFilters ? 'Clear Filters' : 'Create Practice Plan',
-			onClick: hasFilters ? clearAllFilters : () => goto('/practice-plans/create'),
-			primary: true
-		},
-		{ label: 'Browse Drills', href: '/drills' }
-	]}
-	showSearchSuggestion={hasFilters}
+  title={hasFilters ? "No practice plans found" : "No practice plans yet"}
+  description={hasFilters 
+    ? "Try removing some filters or creating a new plan with your criteria."
+    : "Create your first practice plan to get started with organized training."
+  }
+  icon="plans"
+  actions={[
+    { label: hasFilters ? "Clear Filters" : "Create Practice Plan", 
+      onClick: hasFilters ? clearAllFilters : () => goto('/practice-plans/create'), 
+      primary: true },
+    { label: "Browse Drills", href: "/drills" }
+  ]}
+  showSearchSuggestion={hasFilters}
 />
 ```
 
 ### Enhanced Formations Empty State
-
 ```svelte
 <!-- In src/routes/formations/+page.svelte -->
 <EmptyState
-	title="No formations found"
-	description="Explore our collection of quadball formations or contribute your own."
-	icon="formations"
-	actions={[
-		{ label: 'View All Formations', onClick: () => goto('/formations'), primary: true },
-		{ label: 'Create Formation', href: '/formations/create' }
-	]}
+  title="No formations found"
+  description="Explore our collection of quadball formations or contribute your own."
+  icon="formations"
+  actions={[
+    { label: "View All Formations", onClick: () => goto('/formations'), primary: true },
+    { label: "Create Formation", href: "/formations/create" }
+  ]}
 />
 ```
 
 ## Acceptance Criteria
-
 - [ ] Empty states are contextually relevant to the page and user state
 - [ ] Clear calls-to-action provided when no results found
 - [ ] Different messages for filtered vs. unfiltered empty states
@@ -206,7 +217,6 @@ Implement friendly, helpful empty states that guide users toward productive acti
 - [ ] Accessibility: proper headings, ARIA labels, keyboard navigation
 
 ## Testing
-
 - [ ] Test empty states with and without filters applied
 - [ ] Test all action buttons and links work correctly
 - [ ] Test responsive behavior on different screen sizes
@@ -215,8 +225,7 @@ Implement friendly, helpful empty states that guide users toward productive acti
 - [ ] Test empty states after clearing filters
 
 ## Notes
-
 - Consider adding illustrations or icons to make empty states more engaging
 - Track user actions from empty states to measure effectiveness
 - Consider personalized suggestions based on user history
-- Ensure empty states don't show during loading states
+- Ensure empty states don't show during loading states 

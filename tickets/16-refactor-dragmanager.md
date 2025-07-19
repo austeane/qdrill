@@ -2,20 +2,29 @@
 
 **Priority:** Medium
 
-**Description:** The [`src/lib/stores/dragManager.js`](src/lib/stores/dragManager.js) store, responsible for handling all drag-and-drop operations within the practice plan builder, is overly complex and tightly coupled to `sectionsStore`. Its intricate logic for tracking drag state and handling drops is fragile and hard to maintain. It also relies on concerning patterns like accessing state via `window.__dragManager`.
+**Description:** The [`src/lib/stores/dragManager.js`](src/lib/stores/dragManager.js) store still handles all drag-and-drop interactions for the practice plan builder. The file has grown to nearly 2,000 lines and maintains a large `dragState` object containing source/target indices, IDs, timeline info, and DOM element identifiers. Drop handlers call `sections.update` directly in many places, leading to tight coupling with [`sectionsStore`](src/lib/stores/sectionsStore.js). A global `window.__dragManager` object is exposed for debugging; it is currently referenced only by [`TimelineColumn.svelte`](src/lib/components/practice-plan/items/TimelineColumn.svelte) to patch drop information before calling `handleDrop`.
 
 **Affected Files:**
 
 - [`src/lib/stores/dragManager.js`](src/lib/stores/dragManager.js)
 - [`src/lib/stores/sectionsStore.js`](src/lib/stores/sectionsStore.js) (Directly modified by `dragManager`)
-- [`src/components/practice-plan/items/TimelineColumn.svelte`](src/components/practice-plan/items/TimelineColumn.svelte) (Uses `window.__dragManager` workaround)
-- All components that import drag handlers from `dragManager` ([`SectionContainer`](src/components/practice-plan/sections/SectionContainer.svelte), [`DrillItem`](src/components/practice-plan/items/DrillItem.svelte), [`ParallelGroup`](src/components/practice-plan/items/ParallelGroup.svelte), etc.)
+- [`src/components/practice-plan/items/TimelineColumn.svelte`](src/components/practice-plan/items/TimelineColumn.svelte) (still references `window.__dragManager`)
+- Components importing drag handlers from `dragManager` ([`SectionContainer`](src/components/practice-plan/sections/SectionContainer.svelte), [`DrillItem`](src/lib/components/practice-plan/items/DrillItem.svelte), [`ParallelGroup`](src/lib/components/practice-plan/items/ParallelGroup.svelte), etc.) now receive most data via props (see Ticket 15) but remain dependent on `dragManager`'s API
+- [`src/lib/stores/__tests__/dragManager.test.js`](src/lib/stores/__tests__/dragManager.test.js) (test suite exercising current behaviour)
 
 **Related Notes:**
 
 - [`code-review/shared-components-notes.md`](code-review/shared-components-notes.md) (`dragManager` review)
 - [`code-review/practice-plan-notes.md`](code-review/practice-plan-notes.md) (`sectionsStore` coupling)
 - [`code-review/holistic-summary.md`](code-review/holistic-summary.md) (Key Themes: State Management)
+
+## Current State (2024-08)
+
+- `dragState` tracks source and target info (indices, IDs, timelines) plus DOM element IDs for visual cues.
+- Several helper functions manipulate the DOM (`updateDropIndicators`, `multiPhaseCleanup`) to add/remove CSS classes.
+- Drop handlers (`handleTimelineDrop`, `handleRegularDrop`, `handleGroupDrop`, `handleSectionDrop`) perform complex mutations using `sections.update`.
+- `window.__dragManager` exposes the store for debugging; only `TimelineColumn.svelte` accesses it.
+- A Vitest suite (`dragManager.test.js`) covers drop calculations and state transitions.
 
 **Action Required:**
 

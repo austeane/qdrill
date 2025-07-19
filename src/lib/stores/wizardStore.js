@@ -55,24 +55,6 @@ export function validateBasicInfo() {
 }
 
 // Helper functions
-export function initializeWizard() {
-	basicInfo.set({
-		name: '',
-		description: '',
-		participants: '',
-		phaseOfSeason: null,
-		practiceGoals: [''],
-		visibility: 'public',
-		isEditableByOthers: false
-	});
-	// sections.set([]); // Removed initialization of wizard sections
-	timeline.set({ sections: [], totalTime: 0 });
-	currentStep.set(1);
-	draftId.set(null);
-	lastSaved.set(null);
-	validationErrors.set({});
-	formInteracted.set(false);
-}
 
 // Derived store for overall wizard state
 export const wizardState = derived(

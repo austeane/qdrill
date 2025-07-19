@@ -6,6 +6,12 @@
 **Effort**: Low-Medium  
 **Status**: Open
 
+## Progress Update (2024-08-17)
+- Server-side API routes use a shared `handleApiError` helper with custom error classes (`src/routes/api/utils/handleApiError.js` and `src/lib/server/errors.js`).
+- Client pages increasingly use `apiFetch` (`src/lib/utils/apiFetch.js`) for consistent error parsing.
+- Custom error pages (`+error.svelte`) and an `ErrorBoundary` component have not been implemented yet.
+- The whiteboard page still renders Excalidraw without retry logic or detailed errors.
+
 ## Problem
 
 According to UX feedback:
@@ -25,7 +31,8 @@ Implement custom error pages and robust error handling throughout the applicatio
 
 - `src/routes/+error.svelte` - Custom error page component
 - `src/app.html` - Global error fallback
-- `src/lib/utils/errorHandling.js` - Centralized error handling utilities
+- `src/routes/api/utils/handleApiError.js` - API error helper (already implemented)
+- `src/lib/utils/apiFetch.js` - Client error helper
 - `src/routes/whiteboard/+page.svelte` - Enhanced Excalidraw error handling
 
 ### Supporting Files
@@ -54,6 +61,7 @@ Currently, the application falls back to generic Vercel error pages instead of b
 ```
 
 This provides minimal user guidance and no recovery options.
+API endpoints now return structured errors using `handleApiError`, but most pages still only check `data.error` and display generic messages.
 
 ## Implementation Details
 

@@ -495,8 +495,7 @@
 									<ExcalidrawWrapper
 										data={diagramData}
 										id={`diagram-${$drill.id}-${index}`}
-										{index}
-										viewOnly={true}
+										readonly={true}
 									/>
 								</div>
 							{/each}

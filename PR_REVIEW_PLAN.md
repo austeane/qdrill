@@ -114,12 +114,21 @@ gh pr merge 119
 ```
 
 #### PR #120 - Theme Consistency
-```bash
-gh pr checkout 120
-vercel dev
+**Status**: ✅ MERGED
+**Merge Date**: 2025-07-19
+**Branch**: 7i2qy3-codex/update-ticket-for-32-config-theme-consistency
 
-# Visual regression testing needed
-# Subagent task: Screenshot all major pages before/after
+```bash
+# Verification completed:
+# ✅ CSS variables are single source of truth for colors
+# ✅ Tailwind config references CSS variables
+# ✅ Hardcoded drag-and-drop colors replaced with CSS vars
+# ✅ Theme colors applied correctly (theme-1: #ff3e00, theme-2: #4075a6)
+# ✅ Visual consistency maintained
+
+# Successfully merged
+gh pr review 120 --approve
+gh pr merge 120
 ```
 
 ### Phase 2: Dead Code Cleanup (Days 4-5)

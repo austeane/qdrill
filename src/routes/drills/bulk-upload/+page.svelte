@@ -672,9 +672,8 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 								{#each drill.diagrams as diagram, diagIndex (diagIndex)}
 									<ExcalidrawWrapper
 										data={diagram}
-										{index}
-										{diagIndex}
-										showSaveButton={drill.editableDiagramIndex === diagIndex}
+										id={`bulk-drill-${index}-diagram-${diagIndex}`}
+										readonly={drill.editableDiagramIndex !== diagIndex}
 										on:save={(event) => saveDiagram(index, diagIndex, event)}
 									/>
 									{#if drill.editableDiagramIndex === diagIndex}
@@ -777,9 +776,8 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 								{#each drill.diagrams as diagram, diagIndex (diagIndex)}
 									<ExcalidrawWrapper
 										data={diagram}
-										{index}
-										{diagIndex}
-										showSaveButton={drill.editableDiagramIndex === diagIndex}
+										id={`bulk-drill-${index}-diagram-${diagIndex}`}
+										readonly={drill.editableDiagramIndex !== diagIndex}
 										on:save={(event) => saveDiagram(index, diagIndex, event)}
 									/>
 									{#if drill.editableDiagramIndex === diagIndex}

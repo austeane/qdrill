@@ -108,6 +108,9 @@
 		: [];
 
 	let diagramRefs = [];
+	$: if ($diagrams) {
+		diagramRefs = new Array($diagrams.length);
+	}
 
 	const drillTypeOptions = [
 		'Competitive',
@@ -166,12 +169,15 @@
 		const processedData = {
 			elements: diagramData.elements || [],
 			appState: {
+				viewBackgroundColor: '#ffffff',
+				gridSize: 20,
 				...(diagramData.appState || {}),
 				collaborators: Array.isArray(diagramData.appState?.collaborators)
 					? diagramData.appState.collaborators
 					: []
 			},
-			files: diagramData.files || {}
+			files: diagramData.files || {},
+			template: $diagrams[index]?.template || 'blank'
 		};
 		diagrams.update((d) => {
 			const newDiagrams = [...d];
@@ -950,6 +956,135 @@
 							/>
 						</div>
 
+						<div class="mb-6">
+							<label class="block text-gray-700 font-medium mb-2" for="diagrams">
+								Diagrams
+								<span class="text-sm text-gray-500 font-normal"
+									>(Optional - Add visual diagrams to illustrate your drill)</span
+								>
+							</label>
+
+							{#if $diagrams && $diagrams.length > 0}
+								<div class="space-y-4 mb-4">
+									{#each $diagrams as diagram, diagramIndex (diagramIndex)}
+										<div
+											class="border border-gray-300 rounded-lg bg-white shadow-sm overflow-hidden"
+										>
+											<div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+												<div class="flex justify-between items-center">
+													<h4 class="text-lg font-medium text-gray-700">
+														Diagram {diagramIndex + 1}
+														{#if diagram.template && diagram.template !== 'blank'}
+															<span class="text-sm text-gray-500 ml-2">
+																({diagram.template.replace(/([A-Z])/g, ' $1').trim()})
+															</span>
+														{/if}
+													</h4>
+
+													<div class="flex items-center gap-2">
+														<div class="flex gap-1 mr-2">
+															<button
+																type="button"
+																on:click={() => handleMoveUp(diagramIndex)}
+																disabled={diagramIndex === 0}
+																class="p-1 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+																title="Move up"
+															>
+																<svg
+																	class="w-5 h-5"
+																	fill="none"
+																	stroke="currentColor"
+																	viewBox="0 0 24 24"
+																>
+																	<path
+																		stroke-linecap="round"
+																		stroke-linejoin="round"
+																		stroke-width="2"
+																		d="M5 15l7-7 7 7"
+																	></path>
+																</svg>
+															</button>
+															<button
+																type="button"
+																on:click={() => handleMoveDown(diagramIndex)}
+																disabled={diagramIndex === $diagrams.length - 1}
+																class="p-1 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+																title="Move down"
+															>
+																<svg
+																	class="w-5 h-5"
+																	fill="none"
+																	stroke="currentColor"
+																	viewBox="0 0 24 24"
+																>
+																	<path
+																		stroke-linecap="round"
+																		stroke-linejoin="round"
+																		stroke-width="2"
+																		d="M19 9l-7 7-7-7"
+																	></path>
+																</svg>
+															</button>
+														</div>
+
+														<button
+															type="button"
+															on:click={() => duplicateDiagram(diagramIndex)}
+															class="px-3 py-1 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md transition-colors"
+														>
+															Duplicate
+														</button>
+														<button
+															type="button"
+															on:click={() => deleteDiagram(diagramIndex)}
+															class="px-3 py-1 text-sm bg-red-100 text-red-700 hover:bg-red-200 rounded-md transition-colors"
+														>
+															Delete
+														</button>
+													</div>
+												</div>
+											</div>
+
+											<div class="p-4">
+												<div class="excalidraw-form-container" style="height: 500px;">
+													<ExcalidrawWrapper
+														data={diagram}
+														id={`drill-${drill.id || 'new'}-diagram-${diagramIndex}`}
+														readonly={false}
+														template={diagram.template || 'blank'}
+														startFullscreen={false}
+														on:save={(event) => handleDiagramSave(event, diagramIndex)}
+														bind:this={diagramRefs[diagramIndex]}
+													/>
+												</div>
+											</div>
+										</div>
+									{/each}
+								</div>
+							{/if}
+
+							<button
+								type="button"
+								on:click={() => (showAddDiagramModal = true)}
+								class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+							>
+								<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M12 4v16m8-8H4"
+									></path>
+								</svg>
+								Add Diagram
+							</button>
+
+							<p class="mt-2 text-sm text-gray-500">
+								Use diagrams to show field setup, player positions, movement patterns, or drill
+								progressions.
+							</p>
+						</div>
+
 						<div class="flex flex-col">
 							<label for="visibility-select" class="mb-1 text-sm font-medium text-gray-700"
 								>Visibility:</label
@@ -1142,6 +1277,17 @@
 
 	:global(.dndzone.dropzone) {
 		background-color: rgba(59, 130, 246, 0.1);
+	}
+
+	.excalidraw-form-container {
+		border: 1px solid #e5e7eb;
+		border-radius: 0.375rem;
+		overflow: hidden;
+		position: relative;
+	}
+
+	.excalidraw-form-container :global(.excalidraw) {
+		background: #ffffff;
 	}
 
 	textarea {

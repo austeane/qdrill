@@ -21,6 +21,7 @@ This section provides technical details and implementation specifics for the QDr
 - [Converting Markdown Practice Plans](./converting-markdown-practice-plans.md)
 - [Parallel Timeline Improvements](./parallel-timeline-improvements.md)
 - [Position-Based Filtering](./position-filtering.md)
+- [Landing Page CTA Hierarchy](./landing-page-cta.md)
 
 _(Note: A recent [code review](../code-review/holistic-summary.md) assessed the overall implementation. Key findings related to implementation include state management complexity, API scalability/authorization issues, and opportunities for component refactoring. Refer to the code review notes for detailed recommendations.)_
 

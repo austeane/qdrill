@@ -2,10 +2,11 @@
 	import { onMount, tick } from 'svelte';
 	import { writable } from 'svelte/store';
 	import { goto } from '$app/navigation';
-	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
-	import { page } from '$app/stores';
-	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
-	import { authClient } from '$lib/auth-client';
+        import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
+        import { page } from '$app/stores';
+        import { SvelteToast, toast } from '@zerodevx/svelte-toast';
+        import { authClient } from '$lib/auth-client';
+        import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { createForm } from 'svelte-forms-lib';
 
 	// Initialize stores
@@ -339,17 +340,11 @@
 				const { diagrams: _, ...loggableData } = requestBody;
 				console.log('Submitting formation data:', loggableData);
 
-				const response = await fetch(url, {
-					method,
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(requestBody)
-				});
-
-				if (!response.ok) {
-					throw new Error(await response.text());
-				}
-
-				const result = await response.json();
+                                const result = await apiFetch(url, {
+                                        method,
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(requestBody)
+                                });
 
 				// After successful submission for non-logged in users
 				if (!isLoggedIn) {
@@ -431,24 +426,18 @@
 		if (formationToAssociate && isLoggedIn) {
 			// Use reactive boolean
 			// Call API to associate the formation with the current user
-			fetch(`/api/formations/associate`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ formationId: formationToAssociate })
-			})
-				.then((response) => {
-					if (response.ok) {
-						toast.push('Formation successfully associated with your account!');
-					} else {
-						toast.push('Failed to associate formation.', {
-							theme: { '--toastBackground': '#F56565' }
-						});
-					}
-				})
-				.catch((err) => {
-					console.error('Association API error:', err);
-					toast.push('Error associating formation.', { theme: { '--toastBackground': '#F56565' } });
-				});
+                        apiFetch(`/api/formations/associate`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ formationId: formationToAssociate })
+                        })
+                                .then(() => {
+                                        toast.push('Formation successfully associated with your account!');
+                                })
+                                .catch((err) => {
+                                        console.error('Association API error:', err);
+                                        toast.push('Error associating formation.', { theme: { '--toastBackground': '#F56565' } });
+                                });
 			sessionStorage.removeItem('formationToAssociate');
 		}
 

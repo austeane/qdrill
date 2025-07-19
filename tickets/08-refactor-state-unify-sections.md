@@ -1,15 +1,16 @@
 # Ticket 08: Unify Practice Plan State Management (Eliminate Wizard Section Duplication)
 
 **Priority:** High
+**Status:** In Progress
 
-**Description:** There are two parallel systems for managing the core practice plan structure (sections, items, timelines): the main form uses [`sectionsStore.js`](/src/lib/stores/sectionsStore.js), while the wizard uses its own state within [`wizardStore.js`](/src/lib/stores/wizardStore.js). This duplication leads to confusion, maintenance overhead, and potential inconsistencies. The wizard currently copies state to/from the main stores during initialization and submission.
+**Description:** The code previously contained two parallel systems for managing the practice plan structure: the main form used [`sectionsStore.js`](/src/lib/stores/sectionsStore.js) while the wizard kept its own `sections` store in [`wizardStore.js`](/src/lib/stores/wizardStore.js). This duplication caused confusion and required copying state back and forth. Recent refactoring removed the duplicated store – the wizard now imports and mutates `sectionsStore` directly. A writable `timeline` store remains in `wizardStore.js` for arranging section durations, but it relies on `sectionsStore` for the actual section list.
 
 **Affected Files:**
 
-- [`src/lib/stores/wizardStore.js`](/src/lib/stores/wizardStore.js) (Manages duplicated `sections` state)
+- [`src/lib/stores/wizardStore.js`](/src/lib/stores/wizardStore.js) (Contains wizard-specific state like `timeline`; previously held a duplicated `sections` store)
 - [`src/lib/stores/sectionsStore.js`](/src/lib/stores/sectionsStore.js) (The primary store for the main form)
-- [`src/routes/practice-plans/wizard/**`](/src/routes/practice-plans/wizard/) (Wizard step components interacting with `wizardStore.sections`)
-- [`src/components/practice-plan/**`](/src/components/practice-plan/) (Shared components currently coupled to `sectionsStore`)
+- [`src/routes/practice-plans/wizard/**`](/src/routes/practice-plans/wizard/) (Wizard step components now import `sectionsStore` directly)
+- [`src/components/practice-plan/**`](/src/components/practice-plan/) (Shared components accept data and callbacks; previously coupled to `sectionsStore`)
 - [`src/routes/practice-plans/PracticePlanForm.svelte`](/src/routes/practice-plans/PracticePlanForm.svelte) (Uses `sectionsStore`)
 
 **Related Notes:**
@@ -21,11 +22,10 @@
 
 **Action Required:**
 
-1.  **Choose Single Source:** Decide to use `sectionsStore` as the single source of truth for the practice plan structure.
-2.  **Remove Duplication:**
-    - Remove the `sections` writable store and related manipulation logic from [`wizardStore.js`](/src/lib/stores/wizardStore.js).
-    - Remove the logic in `wizardStore` that copies section data between the wizard and `sectionsStore` during initialization and submission.
-3.  **Refactor Wizard Steps:** Modify the wizard step components ([`sections/+page.svelte`](/src/routes/practice-plans/wizard/sections/+page.svelte), [`timeline/+page.svelte`](/src/routes/practice-plans/wizard/timeline/+page.svelte), [`overview/+page.svelte`](/src/routes/practice-plans/wizard/overview/+page.svelte)) to directly read from and write to the main `sectionsStore`. They should use the functions exported by `sectionsStore` (e.g., `addSection`, `removeItem`, `createParallelBlock`) instead of any wizard-specific logic for manipulating sections.
-4.  **Decouple Shared Components:** Ensure shared components ([`SectionContainer`](/src/components/practice-plan/sections/SectionContainer.svelte), [`DrillItem`](/src/components/practice-plan/items/DrillItem.svelte), [`ParallelGroup`](/src/components/practice-plan/items/ParallelGroup.svelte), [`TimelineColumn`](/src/components/practice-plan/items/TimelineColumn.svelte)) are decoupled from direct `sectionsStore` imports (as per Ticket 15). They should accept data and action callbacks via props.
-5.  **Adapt Wizard Usage:** The wizard steps will need to pass the appropriate data (e.g., the relevant part of the `$sections` array) and action callbacks (wrapping `sectionsStore` functions) down to the shared components.
-6.  **Test Thoroughly:** Verify that the wizard flow correctly modifies the `sectionsStore` state and that the final submission process uses the state from `sectionsStore` as intended.
+1.  **[DONE] Choose Single Source:** `sectionsStore` is now the single source of truth for sections.
+2.  **[DONE] Remove Duplication:** The old `wizardStore.sections` writable store and related sync logic were removed.
+3.  **[DONE] Refactor Wizard Steps:** Wizard components (`sections`, `timeline`, `overview`) read from and update `sectionsStore` directly using its exported functions.
+4.  **[DONE] Decouple Shared Components:** `SectionContainer`, `DrillItem`, `ParallelGroup`, and `TimelineColumn` now accept data and callbacks via props instead of importing `sectionsStore`.
+5.  **[DONE] Adapt Wizard Usage:** Wizard steps pass the relevant section data and wrap `sectionsStore` functions when invoking shared components.
+6.  **Test Thoroughly:** Continue verifying that the wizard modifies `sectionsStore` correctly and that submission uses the updated state.
+7.  **Review Timeline Sync:** Ensure the `timeline` store in `wizardStore.js` stays synchronized with changes made to `sectionsStore` (e.g., added or renamed sections).

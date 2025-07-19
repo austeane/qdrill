@@ -9,7 +9,7 @@
 - [`src/routes/Counter.svelte`](src/routes/Counter.svelte) (removed in commit `b984680`)
 - [`src/lib/components/Cart.svelte`](src/lib/components/Cart.svelte) (removed in commit `2a7b3e5`)
 - [`src/lib/components/LoginButton.svelte`](src/lib/components/LoginButton.svelte) (removed in commit `2a7b3e5`)
-- [`src/lib/components/SkeletonLoader.svelte`](src/lib/components/SkeletonLoader.svelte) (removed in commit `2a7b3e5`)
+- [`src/lib/components/SkeletonLoader.svelte`](src/lib/components/SkeletonLoader.svelte) (kept - actively used by loading states feature)
 - [`src/lib/components/TitleWithTooltip.svelte`](src/lib/components/TitleWithTooltip.svelte) (removed in commit `2a7b3e5`)
 - [`src/lib/components/practice-plan/ParallelActivityCreator.svelte`](src/lib/components/practice-plan/ParallelActivityCreator.svelte) (removed in commit `2a7b3e5`)
 - [`src/lib/components/practice-plan/ParallelTimelineView.svelte`](src/lib/components/practice-plan/ParallelTimelineView.svelte) (removed in commit `2a7b3e5`)

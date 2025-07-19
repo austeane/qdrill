@@ -12,6 +12,7 @@
 	import { navigating } from '$app/stores';
 	import { FILTER_STATES } from '$lib/constants';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
 
 	// Import only necessary stores (filter/sort state)
 	import {
@@ -392,7 +393,17 @@
 
 	<!-- Loading and Empty States -->
 	{#if $navigating && !data.items}
-		<p class="text-center text-gray-500 py-10">Loading drills...</p>
+		<!-- Skeleton loaders for drills -->
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+			{#each Array(6) as _, i}
+				<SkeletonLoader 
+					lines={4} 
+					showCard={true}
+					showButton={true}
+					className="h-64"
+				/>
+			{/each}
+		</div>
 	{:else if !data.items || data.items.length === 0}
 		<p class="text-center text-gray-500 py-10">No drills match your criteria.</p>
 	{:else}
@@ -460,7 +471,11 @@
 										class="text-xl font-bold text-gray-800 overflow-hidden"
 										data-testid="drill-card-name"
 									>
-										<a href="/drills/{drill.id}" class="hover:text-blue-600 block overflow-hidden truncate" title={drill.name}>
+										<a
+											href="/drills/{drill.id}"
+											class="hover:text-blue-600 block overflow-hidden truncate"
+											title={drill.name}
+										>
 											{drill.name}
 										</a>
 									</h2>

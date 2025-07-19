@@ -73,17 +73,17 @@
 		const hour12 = hour % 12 || 12;
 		return `${hour12}:${minutes} ${ampm}`;
 	}
-	
+
 	// Helper functions for position badges
 	function getPositionColor(position) {
 		const colors = {
 			CHASERS: '#3B82F6', // Blue
 			BEATERS: '#EF4444', // Red
-			SEEKERS: '#10B981'  // Green
+			SEEKERS: '#10B981' // Green
 		};
 		return colors[position] || '#6B7280'; // Gray fallback
 	}
-	
+
 	function formatPositionName(position) {
 		if (!position) return '';
 		return position.charAt(0) + position.slice(1).toLowerCase();
@@ -122,8 +122,8 @@
 
 				<!-- Position Badge (only show when not in parallel group) -->
 				{#if item.parallel_timeline && !isInParallelGroup}
-					<span 
-						class="position-badge" 
+					<span
+						class="position-badge"
 						style="background-color: {getPositionColor(item.parallel_timeline)}"
 					>
 						{formatPositionName(item.parallel_timeline)}
@@ -267,14 +267,14 @@
 						{#if normalizedItem.drill?.diagrams?.[0]}
 							<ExcalidrawWrapper
 								data={normalizedItem.drill.diagrams[0]}
+								id={`preview-${index}`}
 								readonly={true}
-								showSaveButton={false}
 							/>
 						{:else if normalizedItem.diagrams?.[0]}
 							<ExcalidrawWrapper
 								data={normalizedItem.diagrams[0]}
+								id={`preview-${index}-alt`}
 								readonly={true}
-								showSaveButton={false}
 							/>
 						{/if}
 					</div>
@@ -348,7 +348,7 @@
 		gap: 0.5rem;
 		flex-grow: 1;
 	}
-	
+
 	.position-badge {
 		padding: 0.125rem 0.5rem;
 		border-radius: 9999px;

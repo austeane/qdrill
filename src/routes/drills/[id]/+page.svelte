@@ -6,6 +6,7 @@
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import { goto } from '$app/navigation';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
+	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import Comments from '$lib/components/Comments.svelte';
 	import { toast } from '@zerodevx/svelte-toast';
 	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
@@ -13,6 +14,9 @@
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let data;
+
+	// Track authentication for tooltip visibility
+	$: isAuthenticated = !!$page.data.session?.user;
 	console.log('[Page Component] Initial data:', data);
 
 	// Create a local writable store for the current drill data
@@ -288,12 +292,25 @@
 				>
 					Create New Drill
 				</a>
-				<button
-					on:click={addDrillToPlan}
-					class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
-				>
-					Add Drill to Plan
-				</button>
+				{#if !isAuthenticated}
+					<Tooltip text="Sign in to save private plans" position="top">
+						<button
+							on:click={addDrillToPlan}
+							class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+							aria-label="Add drill to plan"
+						>
+							Add Drill to Plan
+						</button>
+					</Tooltip>
+				{:else}
+					<button
+						on:click={addDrillToPlan}
+						class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"
+						aria-label="Add drill to plan"
+					>
+						Add Drill to Plan
+					</button>
+				{/if}
 				{#if dev || $drill.created_by === $page.data.session?.user?.id}
 					<button
 						on:click={handleDelete}

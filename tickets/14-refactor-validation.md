@@ -6,15 +6,16 @@
 
 **Description:** Validation logic for entities like drills and practice plans is currently duplicated across different parts of the application:
 
-- Client-side within components/stores (e.g., [`PracticePlanForm`](src/routes/practice-plans/PracticePlanForm.svelte)/[`practicePlanStore`](src/lib/stores/practicePlanStore.js), `wizardValidation`, [`bulk-upload/+page.svelte`](src/routes/drills/bulk-upload/+page.svelte)).
+- Client-side within components/stores (e.g., [`PracticePlanForm`](src/routes/practice-plans/PracticePlanForm.svelte), the legacy `practicePlanStore`, `wizardValidation`, [`bulk-upload/+page.svelte`](src/routes/drills/bulk-upload/+page.svelte)).
 - Server-side within API routes (e.g., [`/api/drills/bulk-upload`](src/routes/api/drills/bulk-upload/+server.js) uses Yup).
 - Potentially within service layer methods.
   This duplication makes it hard to maintain consistency and increases the risk of validation rules diverging.
 
 **Affected Files:**
 
-- ~~[`src/lib/stores/practicePlanStore.js`](src/lib/stores/practicePlanStore.js) (`validateForm`)~~ -> Restored using Zod (`practicePlanMetadataSchema`)
+- ~~[`src/lib/stores/practicePlanStore.js`](src/lib/stores/practicePlanStore.js) (`validateForm`)~~ -> Replaced by [`practicePlanMetadataStore.js`](src/lib/stores/practicePlanMetadataStore.js) using Zod (`practicePlanMetadataSchema`)
 - ~~[`src/lib/stores/wizardValidation.js`](src/lib/stores/wizardValidation.js) (All validation functions)~~ -> Removed (Needs Zod re-implementation)
+- [`src/lib/stores/wizardStore.js`](src/lib/stores/wizardStore.js) -> Uses Zod for basic info step (`practicePlanBasicInfoSchema`), other steps still TODO
 - ~~[`src/routes/drills/bulk-upload/+page.svelte`](src/routes/drills/bulk-upload/+page.svelte) (`validateDrill`)~~ -> Refactored using Zod (`bulkUploadDrillInputSchema`)
 - ~~[`src/routes/api/drills/bulk-upload/+server.js`](src/routes/api/drills/bulk-upload/+server.js) (Uses Yup `drillSchema`)~~ -> Refactored using Zod
 - ~~[`src/lib/server/services/practicePlanService.js`](src/lib/server/services/practicePlanService.js) (`validatePracticePlan`)~~ -> Restored using Zod (`practicePlanSchema`), but primary validation moved to API boundary.
@@ -44,12 +45,13 @@
 4.  **Refactor Client-Side Validation:**
     - ~~Update form components ([`PracticePlanForm`](src/routes/practice-plans/PracticePlanForm.svelte), wizard steps, [`bulk-upload/+page.svelte`](src/routes/drills/bulk-upload/+page.svelte)) and stores (`practicePlanMetadataStore`, `wizardStore`) to import and use the same shared schemas for client-side validation.~~
       - **Done** for `bulk-upload/+page.svelte` (uses `bulkUploadDrillInputSchema`).
-      - **Done** for `practicePlanStore.js` (`validateForm` uses `practicePlanMetadataSchema`).
-      - **TODO:** Update `PracticePlanForm.svelte` (or equivalent) to correctly display errors from `practicePlanStore` based on Zod's error structure.
+     - **Done** for `practicePlanMetadataStore.js` (`validateMetadataForm` uses `practicePlanMetadataSchema`).
+     - **TODO:** Update `PracticePlanForm.svelte` to correctly display errors from `practicePlanMetadataStore` based on Zod's error structure.
+     - **TODO:** Migrate `DrillForm.svelte` and `FormationForm.svelte` from custom `validateForm` functions to shared Zod schemas.
       - **TODO:** Re-implement validation in `wizardValidation.js` and wizard components using step-specific Zod schemas.
     - Consider using SvelteKit Form Actions, which integrate well with server-side validation using libraries like Zod/Yup, potentially simplifying client-side validation logic. -> **Deferred**
     - ~~Remove duplicated validation functions from components/stores (like `validateDrill` in `bulk-upload`, functions in [`wizardValidation.js`](src/lib/stores/wizardValidation.js)).~~
-      - **Done** for `bulk-upload`. `validateForm` in `practicePlanStore` was restored with Zod.
+      - **Done** for `bulk-upload`. Validation now uses `bulkUploadDrillInputSchema` and the legacy store has been replaced.
       - **Done** for `wizardValidation.js` (removed, needs reimplementation).
 5.  **Ensure Consistency:** ~~Verify that the same validation rules are enforced consistently across client-side feedback, server-side API request handling, and database constraints where applicable.~~ -> **Partially Done**
     - Shared Zod schemas enforce consistency between client/server logic where used.

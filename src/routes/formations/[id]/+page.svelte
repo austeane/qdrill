@@ -1,11 +1,12 @@
 <script>
 	// import { onMount } from 'svelte'; // Removed
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import { toast } from '@zerodevx/svelte-toast';
-	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
-	import { dev } from '$app/environment';
-	import { slide } from 'svelte/transition'; // Added for transitions
+        import { page } from '$app/stores';
+        import { goto } from '$app/navigation';
+        import { toast } from '@zerodevx/svelte-toast';
+        import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
+        import { dev } from '$app/environment';
+        import { slide } from 'svelte/transition'; // Added for transitions
+        import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let data;
 
@@ -26,16 +27,11 @@
 		if (!confirm('Are you sure you want to delete this formation? This action cannot be undone.')) {
 			return;
 		}
-		try {
-			const response = await fetch(`/api/formations/${formation.id}`, {
-				method: 'DELETE'
-			});
-			if (!response.ok) {
-				// Try to parse error message from response
-				const errorData = await response.json().catch(() => ({}));
-				throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
-			}
-			goto('/formations');
+                try {
+                        await apiFetch(`/api/formations/${formation.id}`, {
+                                method: 'DELETE'
+                        });
+                        goto('/formations');
 			// Optionally add a success toast notification here
 		} catch (err) {
 			console.error('Error deleting formation:', err);
@@ -45,19 +41,11 @@
 
 	// Function to handle formation duplication
 	async function handleDuplicate() {
-		try {
-			const response = await fetch(`/api/formations/${formation.id}/duplicate`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' }
-			});
-
-			if (!response.ok) {
-				// Try to parse error message from response
-				const errorData = await response.json().catch(() => ({}));
-				throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
-			}
-
-			const result = await response.json();
+                try {
+                        const result = await apiFetch(`/api/formations/${formation.id}/duplicate`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' }
+                        });
 
 			toast.push('Formation duplicated successfully', {
 				theme: {
@@ -105,7 +93,7 @@
 		</div>
 
 		<!-- Edit/Delete Buttons (Permission check remains) -->
-		{#if formation && $page.data.session && ((dev || $page.data.session.user.id === formation.created_by) || formation.is_editable_by_others)}
+		{#if formation && $page.data.session && (dev || $page.data.session.user.id === formation.created_by || formation.is_editable_by_others)}
 			<div class="flex space-x-4">
 				<button
 					class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"

@@ -223,7 +223,6 @@ export function updateTimelineColor(timeline, color) {
 
 // Helper function to format drill items
 export function formatDrillItem(item, sectionId) {
-
 	// Determine if this is a one-off drill
 	// One-off drills have either:
 	// 1. type 'drill' with null drill_id and no drill object, or
@@ -512,7 +511,7 @@ export function addOneOffDrill(sectionId, name = 'Quick Activity') {
 
 export function addDrillToPlan(drill, sectionId, options = {}) {
 	const { parallel_timeline = null, parallel_group_id = null } = options;
-	
+
 	addToHistory('ADD_DRILL', { drill, sectionId }, `Added "${drill.name}" to plan`);
 
 	sections.update((currentSections) => {
@@ -547,7 +546,11 @@ export function addDrillToPlan(drill, sectionId, options = {}) {
 }
 
 export function addFormationToPlan(formation, sectionId) {
-	addToHistory('ADD_FORMATION', { formation, sectionId }, `Added "${formation.name}" formation reference`);
+	addToHistory(
+		'ADD_FORMATION',
+		{ formation, sectionId },
+		`Added "${formation.name}" formation reference`
+	);
 
 	sections.update((currentSections) => {
 		const newSections = [...currentSections];
@@ -702,7 +705,7 @@ export function handleTimelineChange(sectionIndex, itemIndex, newTimeline) {
 	sections.update((currentSections) => {
 		const newSections = [...currentSections];
 		const section = newSections[sectionIndex];
-		
+
 		section.items[itemIndex] = {
 			...section.items[itemIndex],
 			parallel_timeline: newTimeline
@@ -716,13 +719,17 @@ export function handleTimelineChange(sectionIndex, itemIndex, newTimeline) {
 export function addParallelActivities(sectionId, activities) {
 	const groupId = `parallel-${Date.now()}`;
 	const timelines = Object.keys(activities);
-	
-	addToHistory('ADD_PARALLEL_ACTIVITIES', { sectionId, activities, groupId }, 'Added parallel activities');
-	
+
+	addToHistory(
+		'ADD_PARALLEL_ACTIVITIES',
+		{ sectionId, activities, groupId },
+		'Added parallel activities'
+	);
+
 	sections.update((currentSections) => {
 		const newSections = [...currentSections];
 		const targetSection = newSections.find((s) => s.id === sectionId);
-		
+
 		if (targetSection) {
 			// Add each position's activity
 			Object.entries(activities).forEach(([timeline, drill]) => {
@@ -741,7 +748,7 @@ export function addParallelActivities(sectionId, activities) {
 					targetSection.items.push(newItem);
 				}
 			});
-			
+
 			toast.push('Added parallel activities', {
 				theme: {
 					'--toastBackground': '#4CAF50',
@@ -749,7 +756,7 @@ export function addParallelActivities(sectionId, activities) {
 				}
 			});
 		}
-		
+
 		return newSections;
 	});
 }

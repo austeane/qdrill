@@ -104,11 +104,11 @@
 	function getSectionColor(index) {
 		return sectionColors[index % sectionColors.length];
 	}
-	
+
 	// Group items by timeline for parallel activities
 	function groupByTimeline(items) {
 		const groups = {};
-		items.forEach(item => {
+		items.forEach((item) => {
 			const timeline = item.parallel_timeline || 'default';
 			if (!groups[timeline]) {
 				groups[timeline] = [];
@@ -216,12 +216,21 @@
 									{#each Object.entries(timelineGroups) as [timeline, timelineItems]}
 										<div class="parallel-timeline">
 											{#each timelineItems as parallelItem, idx}
-												{@const totalTimelineDuration = timelineItems.reduce((sum, i) => sum + i.duration, 0)}
-												{@const cumulativeHeight = idx === 0 ? 0 : timelineItems.slice(0, idx).reduce((sum, i) => sum + i.duration, 0) / totalTimelineDuration * 100}
+												{@const totalTimelineDuration = timelineItems.reduce(
+													(sum, i) => sum + i.duration,
+													0
+												)}
+												{@const cumulativeHeight =
+													idx === 0
+														? 0
+														: (timelineItems.slice(0, idx).reduce((sum, i) => sum + i.duration, 0) /
+																totalTimelineDuration) *
+															100}
 												<div
 													role="tooltip"
 													class="parallel-item-wrapper"
-													style="height: {(parallelItem.duration / totalTimelineDuration) * 100}%; top: {cumulativeHeight}%"
+													style="height: {(parallelItem.duration / totalTimelineDuration) *
+														100}%; top: {cumulativeHeight}%"
 													on:mouseenter={(e) =>
 														showTooltip(
 															e,

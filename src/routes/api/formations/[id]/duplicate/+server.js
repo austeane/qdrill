@@ -19,4 +19,4 @@ export async function POST({ params, locals }) {
 	} catch (err) {
 		return handleApiError(err);
 	}
-} 
+}

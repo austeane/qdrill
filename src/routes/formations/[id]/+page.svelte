@@ -185,13 +185,11 @@
 										<h3 class="font-medium text-gray-700">Diagram {diagram.name || i + 1}</h3>
 									</div>
 									<div class="p-4 bg-gray-100">
-										<ExcalidrawWrapper
-											data={diagram}
-											id={`view-diagram-${formation.id}-${i}`}
-											readonly={true}
-											viewModeEnabled={true}
-											zenModeEnabled={false}
-										/>
+                                                                       <ExcalidrawWrapper
+                                                                               data={diagram}
+                                                                               id={`view-diagram-${formation.id}-${i}`}
+                                                                               readonly={true}
+                                                                               />
 									</div>
 								</div>
 							{/if}

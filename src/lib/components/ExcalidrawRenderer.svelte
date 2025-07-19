@@ -6,4 +6,4 @@
 	export let sceneData;
 </script>
 
-<ExcalidrawWrapper data={sceneData} readonly={true} showSaveButton={false} />
+<ExcalidrawWrapper data={sceneData} id="rendered-diagram" readonly={true} />

@@ -670,13 +670,12 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 							<div class="mb-4">
 								<h4 class="text-lg font-semibold mb-2">Diagrams:</h4>
 								{#each drill.diagrams as diagram, diagIndex (diagIndex)}
-									<ExcalidrawWrapper
-										data={diagram}
-										{index}
-										{diagIndex}
-										showSaveButton={drill.editableDiagramIndex === diagIndex}
-										on:save={(event) => saveDiagram(index, diagIndex, event)}
-									/>
+                                                                        <ExcalidrawWrapper
+                                                                               data={diagram}
+                                                                               id={`bulk-drill-${index}-diagram-${diagIndex}`}
+                                                                               readonly={drill.editableDiagramIndex !== diagIndex}
+                                                                               on:save={(event) => saveDiagram(index, diagIndex, event)}
+                                                                        />
 									{#if drill.editableDiagramIndex === diagIndex}
 										<button on:click={() => cancelEditDiagram(index)} class="text-gray-500 mt-2"
 											>Cancel</button
@@ -774,14 +773,13 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 
 							<div class="mb-4">
 								<h4 class="text-lg font-semibold mb-2">Diagrams:</h4>
-								{#each drill.diagrams as diagram, diagIndex (diagIndex)}
-									<ExcalidrawWrapper
-										data={diagram}
-										{index}
-										{diagIndex}
-										showSaveButton={drill.editableDiagramIndex === diagIndex}
-										on:save={(event) => saveDiagram(index, diagIndex, event)}
-									/>
+                                                                {#each drill.diagrams as diagram, diagIndex (diagIndex)}
+                                                                        <ExcalidrawWrapper
+                                                                               data={diagram}
+                                                                               id={`bulk-drill-${index}-diagram-${diagIndex}`}
+                                                                               readonly={drill.editableDiagramIndex !== diagIndex}
+                                                                               on:save={(event) => saveDiagram(index, diagIndex, event)}
+                                                                        />
 									{#if drill.editableDiagramIndex === diagIndex}
 										<button on:click={() => cancelEditDiagram(index)} class="text-gray-500 mt-2"
 											>Cancel</button

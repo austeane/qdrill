@@ -738,13 +738,12 @@
 											</button>
 										</div>
 									</div>
-									<ExcalidrawWrapper
-										data={diagram}
-										id={`diagram-${i}`}
-										index={i}
-										bind:this={diagramRefs[i]}
-										on:save={(event) => handleDiagramSave(event, i)}
-									/>
+                                                                       <ExcalidrawWrapper
+                                                                               data={diagram}
+                                                                               id={`diagram-${i}`}
+                                                                               bind:this={diagramRefs[i]}
+                                                                               on:save={(event) => handleDiagramSave(event, i)}
+                                                                        />
 								</div>
 							{/each}
 

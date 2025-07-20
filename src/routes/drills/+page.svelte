@@ -9,7 +9,8 @@
 	import { dev } from '$app/environment';
 	import { page } from '$app/stores';
 	import { goto, invalidate } from '$app/navigation';
-	import { navigating } from '$app/stores';
+import { navigating } from '$app/stores';
+import { onDestroy } from 'svelte';
 	import { FILTER_STATES } from '$lib/constants';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
@@ -36,7 +37,11 @@
 
 	import Pagination from '$lib/components/Pagination.svelte';
 
-	export let data;
+export let data;
+
+let isNavigating = false;
+const unsubNavigating = navigating.subscribe((v) => (isNavigating = !!v));
+onDestroy(unsubNavigating);
 
 	// Filter options from load
 	$: filterOptions = data.filterOptions || {};
@@ -392,7 +397,7 @@
 	</div>
 
 	<!-- Loading and Empty States -->
-	{#if $navigating && !data.items}
+       {#if isNavigating && !data.items}
 		<!-- Skeleton loaders for drills -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 			{#each Array(6) as _, i}

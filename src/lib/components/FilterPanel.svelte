@@ -87,13 +87,35 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 	// Set up variables for the sliders
 	let numberOfPeopleRange = [$selectedNumberOfPeopleMin, $selectedNumberOfPeopleMax];
 	let suggestedLengthsRange = [$selectedSuggestedLengthsMin, $selectedSuggestedLengthsMax];
-	let estimatedParticipantsRange = [1, 100];
+        let estimatedParticipantsRange = [1, 100];
 
 	// Variables for Contains Drill filter
 	let drillSearchTerm = '';
 	let drillSuggestions = [];
 	let drillLoading = false;
 	let drillError = null;
+
+        // Reactive checks for active filters
+        $: hasActiveDrillFilters =
+                Object.keys($selectedSkillLevels).length > 0 ||
+                Object.keys($selectedComplexities).length > 0 ||
+                Object.keys($selectedSkillsFocusedOn).length > 0 ||
+                Object.keys($selectedPositionsFocusedOn).length > 0 ||
+                $selectedNumberOfPeopleMin !== effectiveNumberOfPeopleOptions.min ||
+                $selectedNumberOfPeopleMax !== effectiveNumberOfPeopleOptions.max ||
+                $selectedSuggestedLengthsMin !== effectiveSuggestedLengths.min ||
+                $selectedSuggestedLengthsMax !== effectiveSuggestedLengths.max ||
+                $selectedHasVideo !== null ||
+                $selectedHasDiagrams !== null ||
+                $selectedHasImages !== null ||
+                Object.keys($selectedDrillTypes).length > 0;
+
+        $: hasActivePracticePlanFilters =
+                Object.keys($selectedPhaseOfSeason).length > 0 ||
+                Object.keys($selectedPracticeGoals).length > 0 ||
+                $selectedEstimatedParticipantsMin !== 1 ||
+                $selectedEstimatedParticipantsMax !== 100 ||
+                selectedDrills.length > 0;
 
 	let mounted = false;
 
@@ -773,14 +795,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 			</div>
 		{/if}
 
-		<!-- Reset Filters Button (Always visible) -->
-		<button
-			class="inline-flex items-center bg-red-500 text-white border border-red-600 rounded-full px-4 py-2 cursor-pointer hover:bg-red-600 transition-colors duration-300"
-			on:click={resetFilters}
-		>
-			Reset Filters
-		</button>
-	{/if}
+        {/if}
 
 	<!-- Practice Plans Filters -->
 	{#if filterType === 'practice-plans' && (phaseOfSeasonOptions.length || practiceGoalsOptions.length || selectedEstimatedParticipantsMin !== null || selectedEstimatedParticipantsMax !== null)}
@@ -980,14 +995,23 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 				</div>
 			{/if}
 		</div>
-	{/if}
+        {/if}
 
-	<!-- Overlay to close dropdown when clicking outside -->
-	{#if (filterType === 'drills' && (showSkillLevels || showDrillComplexity || showSkillsFocusedOn || showPositionsFocusedOn || showNumberOfPeople || showSuggestedLengths || showHasImages || showDrillTypes)) || (filterType === 'practice-plans' && (showPhaseOfSeason || showPracticeGoals || showEstimatedParticipants || showContainsDrill))}
-		<div
-			class="fixed inset-0 bg-transparent z-0"
-			on:click={closeAllFilters}
-			aria-label="Close filters"
+        {#if (filterType === 'drills' && hasActiveDrillFilters) || (filterType === 'practice-plans' && hasActivePracticePlanFilters)}
+                <button
+                        class="inline-flex items-center bg-red-500 text-white border border-red-600 rounded-full px-4 py-2 cursor-pointer hover:bg-red-600 transition-colors duration-300"
+                        on:click={resetFilters}
+                >
+                        Reset Filters
+                </button>
+        {/if}
+
+        <!-- Overlay to close dropdown when clicking outside -->
+        {#if (filterType === 'drills' && (showSkillLevels || showDrillComplexity || showSkillsFocusedOn || showPositionsFocusedOn || showNumberOfPeople || showSuggestedLengths || showHasImages || showDrillTypes)) || (filterType === 'practice-plans' && (showPhaseOfSeason || showPracticeGoals || showEstimatedParticipants || showContainsDrill))}
+                <div
+                        class="fixed inset-0 bg-transparent z-0"
+                        on:click={closeAllFilters}
+                        aria-label="Close filters"
 		></div>
 	{/if}
 </div>

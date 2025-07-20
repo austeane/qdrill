@@ -19,6 +19,7 @@ A comprehensive code review was recently conducted to assess the codebase and id
   - Database schema
 
 - **[Implementation](./implementation/)**: Technical details and implementation specifics
+
   - [Drag and Drop System](./implementation/drag-and-drop.md)
   - [Timeline Management](./implementation/timeline-management.md)
   - [Service Layer Architecture](./implementation/service-layer.md)

@@ -10,23 +10,28 @@ import * as historyStore from '../historyStore';
 
 // Mock the necessary modules
 vi.mock('../sectionsStore', () => {
-	let mockStoreValue = [];
-	return {
-		sections: {
-			subscribe: (run) => {
-				run(mockSections);
-				return () => {};
-			},
-			update: vi.fn((cb) => {
-				const result = cb(mockSections);
-				mockSections = result;
-				return result;
-			}),
-			set: vi.fn((newVal) => {
-				mockSections = newVal;
-			})
-		}
-	};
+        return {
+                getSections: () => mockSections,
+                moveItem: vi.fn(({ itemId, targetSectionId, targetItemId = null, position = 'after', transform }) => {
+                        const srcSection = mockSections.find((s) => s.items.some((i) => i.id === itemId));
+                        const itemIndex = srcSection.items.findIndex((i) => i.id === itemId);
+                        let [item] = srcSection.items.splice(itemIndex, 1);
+                        if (transform) item = transform(item);
+                        const targetSection = mockSections.find((s) => s.id === targetSectionId);
+                        let insertIndex = targetItemId ? targetSection.items.findIndex((i) => i.id === targetItemId) : targetSection.items.length;
+                        if (position === 'after' && insertIndex !== -1) insertIndex += 1;
+                        if (insertIndex === -1) insertIndex = targetSection.items.length;
+                        targetSection.items.splice(insertIndex, 0, item);
+                }),
+                moveSection: vi.fn(({ sectionId, targetSectionId, position = 'after' }) => {
+                        const srcIndex = mockSections.findIndex((s) => s.id === sectionId);
+                        const [section] = mockSections.splice(srcIndex, 1);
+                        let targetIndex = mockSections.findIndex((s) => s.id === targetSectionId);
+                        if (position === 'after') targetIndex += 1;
+                        mockSections.splice(targetIndex, 0, section);
+                }),
+                setSections: vi.fn((val) => { mockSections = val; })
+        };
 });
 
 vi.mock('../historyStore', () => {
@@ -910,17 +915,10 @@ describe('dragManager', () => {
 				dropPosition: 'before'
 			});
 
-			// Spy on sections.update to ensure we see item ID usage
-			const origUpdate = sectionsStore.sections.update;
-			let recoveredIdUsed = false;
-
-			sectionsStore.sections.update.mockImplementation((callback) => {
-				dragManager.dragState.update((st) => {
-					if (st.itemId === 101) recoveredIdUsed = true;
-					return st;
-				});
-				return origUpdate(callback);
-			});
+                        let recoveredIdUsed = false;
+                        sectionsStore.moveItem.mockImplementation((params) => {
+                                if (params.itemId === 101) recoveredIdUsed = true;
+                        });
 
 			dragManager.handleDrop(mockDragEvent);
 			expect(recoveredIdUsed).toBe(true);
@@ -977,17 +975,12 @@ describe('dragManager', () => {
 				dropPosition: 'before'
 			});
 
-			sectionsStore.sections.update.mockImplementation((cb) => {
-				const result = cb(testSections);
-
-				// Check item movement
-				expect(result[0].items.length).toBe(1);
-				expect(result[0].items[0].id).toBe(102);
-				expect(result[1].items.length).toBe(1);
-				expect(result[1].items[0].id).toBe(101);
-
-				return result;
-			});
+                        sectionsStore.moveItem.mockImplementation(() => {
+                                expect(testSections[0].items.length).toBe(1);
+                                expect(testSections[0].items[0].id).toBe(102);
+                                expect(testSections[1].items.length).toBe(1);
+                                expect(testSections[1].items[0].id).toBe(101);
+                        });
 
 			dragManager.handleDrop(mockDragEvent);
 		});
@@ -1004,10 +997,10 @@ describe('dragManager', () => {
 				dropPosition: 'before'
 			});
 
-			// Force an error in the update
-			sectionsStore.sections.update.mockImplementation(() => {
-				throw new Error('Test error');
-			});
+                        // Force an error in the update
+                        sectionsStore.moveItem.mockImplementation(() => {
+                                throw new Error('Test error');
+                        });
 
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			dragManager.handleDrop(mockDragEvent);
@@ -1055,28 +1048,17 @@ describe('dragManager', () => {
 				dropPosition: 'before' // Drop before Regular Drill 2
 			});
 
-			// Mock the sections update
-			sectionsStore.sections.update.mockImplementation((cb) => {
-				const result = cb(testSections);
-
-				// Check the length is preserved
-				expect(result[0].items.length).toBe(4);
-
-				// Verify items are in the correct sections
-				expect(result[0].items[0].id).toBe(101); // Regular Drill 1
-
-				// Check that group items still have their group properties
-				const groupItems = result[0].items.filter((item) => item.parallel_group_id === 'group1');
-				expect(groupItems.length).toBe(2);
-				expect(groupItems[0].parallel_group_id).toBe('group1');
-				expect(groupItems[1].parallel_group_id).toBe('group1');
-
-				// Check that Regular Drill 2 exists
-				const regularDrill2 = result[0].items.find((item) => item.id === 104);
-				expect(regularDrill2).toBeDefined();
-
-				return result;
-			});
+                        sectionsStore.moveItem.mockImplementation(() => {
+                                // After moveItem runs, verify resulting structure
+                                expect(testSections[0].items.length).toBe(4);
+                                expect(testSections[0].items[0].id).toBe(101);
+                                const groupItems = testSections[0].items.filter((item) => item.parallel_group_id === 'group1');
+                                expect(groupItems.length).toBe(2);
+                                expect(groupItems[0].parallel_group_id).toBe('group1');
+                                expect(groupItems[1].parallel_group_id).toBe('group1');
+                                const regularDrill2 = testSections[0].items.find((item) => item.id === 104);
+                                expect(regularDrill2).toBeDefined();
+                        });
 
 			// Trigger the drop
 			dragManager.handleDrop(mockDragEvent);

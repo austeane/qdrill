@@ -104,6 +104,7 @@
 		"svelte-forms-lib": "^2.0.1",
 		"svelte-range-slider-pips": "^3.1.4",
 		"svelte-routing": "^2.13.0",
+		"tabbable": "^6.2.0",
 		"uuid": "^11.0.3",
 		"yup": "^1.4.0",
 		"zod": "^3.24.3"

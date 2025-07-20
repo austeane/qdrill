@@ -31,19 +31,3 @@ export const sortedSkills = derived(allSkills, ($allSkills) =>
 	[...$allSkills].sort((a, b) => a.name.localeCompare(b.name))
 );
 
-// Optional: Helper function to reset all filter states
-export function resetDrillFilters() {
-	selectedSkillLevels.set({});
-	selectedComplexities.set({});
-	selectedSkillsFocusedOn.set({});
-	selectedPositionsFocusedOn.set({});
-	selectedNumberOfPeopleMin.set(null);
-	selectedNumberOfPeopleMax.set(null);
-	selectedSuggestedLengthsMin.set(null);
-	selectedSuggestedLengthsMax.set(null);
-	selectedHasVideo.set(null);
-	selectedHasDiagrams.set(null);
-	selectedHasImages.set(null);
-	searchQuery.set('');
-	selectedDrillTypes.set({});
-}

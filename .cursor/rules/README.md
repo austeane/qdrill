@@ -13,4 +13,4 @@ This directory contains project-specific rules for AI assistants working on the 
 3. Use `vercel build` for production builds
 4. Use `psql "$NEON_DB_URL"` for database queries
 
-These rules help ensure consistent development practices across all AI assistant sessions. 
+These rules help ensure consistent development practices across all AI assistant sessions.

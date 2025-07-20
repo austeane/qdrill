@@ -12,7 +12,7 @@ export function createLoadingState(initialState = false) {
 		subscribe,
 		start: () => set(true),
 		stop: () => set(false),
-		toggle: () => update(state => !state),
+		toggle: () => update((state) => !state),
 		/**
 		 * Wrap an async function with loading state management
 		 * @param {Function} asyncFn - Async function to wrap
@@ -39,14 +39,14 @@ export const globalLoadingStates = {
 	fetchingDrills: createLoadingState(),
 	fetchingPracticePlans: createLoadingState(),
 	fetchingFormations: createLoadingState(),
-	
+
 	// Form submissions
 	submittingForm: createLoadingState(),
 	deletingItem: createLoadingState(),
-	
+
 	// File operations
 	uploadingFile: createLoadingState(),
-	
+
 	// User actions
 	voting: createLoadingState(),
 	commenting: createLoadingState()
@@ -99,4 +99,4 @@ export function createMinDurationLoadingState(minDuration = 500) {
 			}
 		}
 	};
-} 
+}

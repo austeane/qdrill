@@ -154,6 +154,4 @@ describe('UserService', () => {
                         await expect(userService.getUserProfile('nonexistent')).rejects.toThrow(NotFoundError);
                 });
 	});
-
-
 });

@@ -6,7 +6,7 @@
 **Status**: Open
 
 ## Problem
-Users cannot easily clear applied filters on the **practice plans page**. While a reset mechanism exists for drills, it's missing for practice plans. Once filters are applied, there's no obvious way to reset them back to the default state, creating a frustrating user experience for practice plan filtering.
+The **Reset Filters** button is only rendered when `filterType` is `'drills'`. Practice plan filters share the same `resetFilters` function but lack a visible UI control. After applying practice plan filters there's no clear way to return to defaults, leading to confusion.
 
 ## Solution
 Add a "Clear Filters" or "Reset" button/link specifically for the practice plans filter section that allows users to quickly reset all applied practice plan filters. The existing `resetFilters` function in `FilterPanel.svelte` already handles resetting practice plan stores when `filterType` is 'practice-plans'. The main task is to ensure the button is displayed and correctly wired up for this `filterType`.
@@ -20,12 +20,23 @@ Add a "Clear Filters" or "Reset" button/link specifically for the practice plans
 ### Supporting Files
 - `src/lib/stores/practicePlanFilterStore.js` - Verify reset functionality (already handled by existing `resetFilters` in `FilterPanel.svelte`)
 
+## Current State Analysis
+
+### ✅ Already Implemented
+- `resetFilters` function resets both drill and practice plan filter stores.
+- Practice plan filter stores (`selectedPhaseOfSeason`, `selectedPracticeGoals`, etc.) are initialized from URL parameters in `+page.svelte`.
+
+### ❌ Missing Implementation
+- Reset button only renders for `filterType === 'drills'`.
+- `resetPracticePlanFilters` helper in `practicePlanFilterStore.js` is unused.
+
 ## Implementation Details
 
 ### FilterPanel.svelte Changes
-1. **Verify/Ensure "Reset Filters" button display for Practice Plans**: The existing `resetFilters` function in `FilterPanel.svelte` correctly resets practice plan stores. The key is to ensure a "Reset Filters" or "Clear All Filters" button is visible and active when `filterType` is `'practice-plans'` and filters are applied.
-2. Position it prominently in the filter section for practice plans.
-3. Ensure clear visual indication when practice plan filters are active.
+1. Move the existing Reset button so it is not inside the `filterType === 'drills'` block.
+2. Show the button whenever filters are active for drills **or** practice plans (consider a reactive `hasActivePracticePlanFilters` check).
+3. Clicking the button should call `resetFilters()`, which already resets both sets of stores and dispatches `filterChange` for URL updates.
+4. Optionally remove or repurpose the unused `resetPracticePlanFilters` helper in the store.
 
 ### Current `resetFilters` in `FilterPanel.svelte`
 ```javascript
@@ -47,13 +58,13 @@ function resetFilters() {
 
 ### Suggested UI (if a separate button is needed or to ensure visibility)
 ```svelte
-<!-- In FilterPanel.svelte, ensure a Reset button is shown for practice plans -->
-{#if filterType === 'practice-plans' && hasActivePracticePlanFilters}
-  <button 
-    class="inline-flex items-center bg-red-500 text-white border border-red-600 rounded-full px-4 py-2 cursor-pointer hover:bg-red-600 transition-colors duration-300 ml-4"
-    on:click={handleResetPracticePlanFilters}
+<!-- In FilterPanel.svelte -->
+{#if (filterType === 'drills' && hasActiveDrillFilters) || (filterType === 'practice-plans' && hasActivePracticePlanFilters)}
+  <button
+    class="inline-flex items-center bg-red-500 text-white border border-red-600 rounded-full px-4 py-2 cursor-pointer hover:bg-red-600 transition-colors duration-300"
+    on:click={resetFilters}
   >
-    Reset Practice Plan Filters
+    Reset Filters
   </button>
 {/if}
 ```
@@ -70,11 +81,8 @@ $: hasActivePracticePlanFilters = (
 );
 
 function handleResetPracticePlanFilters() {
-  // Explicitly call resetFilters, ensuring filterType is correctly scoped or rely on existing logic.
-  // The current resetFilters function already has logic for filterType === 'practice-plans'
-  resetFilters(); 
-  // Navigate to clean URL without filter params, specific to practice plans page context
-  goto('/practice-plans'); // Or current path if on practice plans page
+  // Simply call resetFilters(); the page listens for the `filterChange` event to update the URL
+  resetFilters();
 }
 ```
 

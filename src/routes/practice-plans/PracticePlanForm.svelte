@@ -20,9 +20,8 @@
 		isEditableByOthers,
 		startTime,
 		errors as metadataErrors, // Rename to avoid conflict with form errors
-		initializeForm, // Keep initializeForm for setting initial state
-		resetForm, // Add resetForm if needed (e.g., on successful create)
-		addPracticeGoal,
+                initializeForm, // Keep initializeForm for setting initial state
+                addPracticeGoal,
 		removePracticeGoal,
 		updatePracticeGoal,
 		validateMetadataForm
@@ -31,17 +30,8 @@
 
 	import {
 		sections,
-		selectedSectionId,
-		addSection,
 		initializeSections,
-		totalPlanDuration, // Moved here
-		formatDrillItem,
 		initializeTimelinesFromPlan,
-		removeSection,
-		removeItem,
-		handleDurationChange,
-		handleTimelineChange,
-		handleUngroup,
 		getTimelineName,
 		getTimelineColor,
 		customTimelineNames,
@@ -53,23 +43,24 @@
 		addParallelActivities,
 		updateTimelineColor,
 		updateTimelineName,
-		handleTimelineSave
-		// handleDrillMove // Dnd logic likely uses this, ensure it's available if needed
+		handleTimelineSave,
+		handleTimelineSelect,
+		PARALLEL_TIMELINES,
+		TIMELINE_COLORS
 	} from '$lib/stores/sectionsStore';
 
 	// Import component modules
 	import EnhancedAddItemModal from '$lib/components/practice-plan/modals/EnhancedAddItemModal.svelte';
 	import TimelineSelectorModal from '$lib/components/practice-plan/modals/TimelineSelectorModal.svelte';
-	import SectionContainer from '$lib/components/practice-plan/sections/SectionContainer.svelte';
-	import PlanMetadataFields from '$lib/components/practice-plan/PlanMetadataFields.svelte';
-	import { Button } from '$lib/components/ui/button'; // Restore the original button import
-	import SimpleButton from './components/SimpleButton.svelte'; // Import the new simple button
-	import Spinner from '$lib/components/Spinner.svelte'; // Assuming Spinner is top-level
-
-	// Import TinyMCE editor
 	let Editor;
 
 	// Add proper prop definitions with defaults
+import PlanMetadataFields from "$lib/components/practice-plan/PlanMetadataFields.svelte";
+import PracticePlanActions from "$lib/components/practice-plan/PracticePlanActions.svelte";
+import PracticePlanSectionsEditor from "$lib/components/practice-plan/PracticePlanSectionsEditor.svelte";
+import { Button } from "$lib/components/ui/button";
+import Spinner from "$lib/components/Spinner.svelte";
+import { practicePlanAuthHandler } from "$lib/utils/actions/practicePlanAuthHandler.js";
 	export let practicePlan = null;
 	export let mode = practicePlan ? 'edit' : 'create';
 	export let skillOptions = [];
@@ -94,8 +85,7 @@
 			initializeHistory(); // Initialize history for existing plan too
 		} else {
 			// If creating a new plan (practicePlan is null), ensure form is reset
-			// This might happen if navigating back/forth
-			// resetForm(); // Consider if a full reset is needed or if stores default correctly
+                       // This might happen if navigating back/forth
 		}
 	}
 
@@ -113,9 +103,12 @@
 		showDrillSearch = true;
 	}
 
-	function handleOpenTimelineSelector() {
-		showTimelineSelector = true;
-	}
+       function handleOpenTimelineSelector(event) {
+               const { sectionId, parallelGroupId } = event.detail;
+               if (handleTimelineSelect(sectionId, parallelGroupId)) {
+                       showTimelineSelector = true;
+               }
+       }
 
 	function handleAddDrillEvent(event) {
 		const { drill, sectionId } = event.detail;
@@ -260,46 +253,23 @@
 		}
 		// Clean up event listener on component destruction
 		return () => {
-			window.removeEventListener('keydown', handleKeydown);
-			// Consider resetting form state if navigating away?
-			// resetForm();
+                       window.removeEventListener('keydown', handleKeydown);
 		};
 	});
 
-	function addSectionAction() {
-		console.log('[PracticePlanForm.svelte] Add Section button clicked');
-		addSection(); // Call the imported addSection function from the store
-	}
-
-	function onRemoveSection(sectionId) {
-		removeSection(sectionId);
-	}
-
-	function onRemoveItem(sectionIndex, itemIndex) {
-		removeItem(sectionIndex, itemIndex);
-	}
-
-	function onDurationChange(sectionIndex, itemIndex, newDuration) {
-		handleDurationChange(sectionIndex, itemIndex, newDuration);
-	}
-
-	function onUngroup(groupId) {
-		handleUngroup(groupId);
-	}
-	
 	// Modal event handlers
 	// handleAddDrillEvent is already defined above
-	
+
 	function handleAddFormationEvent(event) {
 		const { formation, sectionId } = event.detail;
 		addFormationToPlan(formation, sectionId);
 	}
-	
+
 	function handleAddParallelActivitiesEvent(event) {
 		const { activities, sectionId } = event.detail;
 		addParallelActivities(sectionId, activities);
 	}
-	
+
 	// handleAddBreakEvent is already defined above
 	// handleAddOneOffEvent is already defined above
 	// handleUpdateTimelineNameEvent is already defined above
@@ -309,6 +279,7 @@
 
 <!-- Wrap form in <form> tag and apply enhance -->
 <form
+        use:practicePlanAuthHandler
 	method="POST"
 	action="?"
 	use:enhance={({ formElement, formData, action, cancel, submitter }) => {
@@ -326,9 +297,9 @@
 		const sectionsValueForSubmission = get(sections);
 
 		// Clean up sections to remove circular references and unnecessary data
-		const cleanedSections = sectionsValueForSubmission.map(section => ({
+		const cleanedSections = sectionsValueForSubmission.map((section) => ({
 			...section,
-			items: section.items.map(item => {
+			items: section.items.map((item) => {
 				// Create a clean copy without the full formation object
 				const cleanItem = { ...item };
 				// Remove the formation object but keep formation_id
@@ -400,104 +371,22 @@
 	</h1>
 
 	<!-- Duration Summary -->
-	<div class="bg-blue-50 p-4 rounded-lg shadow-sm flex justify-between items-center">
-		<div>
-			<h2 class="font-semibold text-blue-800">Practice Duration</h2>
-			<p class="text-blue-600">
-				Start: {formatTime($startTime)} • Total: {$totalPlanDuration} minutes
-			</p>
-			<p class="text-xs text-blue-500 mt-1">
-				Keyboard shortcuts: Ctrl+Z (Undo), Ctrl+Shift+Z (Redo)
-			</p>
-		</div>
-		<div class="flex items-center gap-4">
-			<Button variant="outline" size="icon" on:click={undo} disabled={!$canUndo} title="Undo">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke-width="1.5"
-					stroke="currentColor"
-					class="w-5 h-5"
-					><path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"
-					/></svg
-				>
-			</Button>
-			<Button variant="outline" size="icon" on:click={redo} disabled={!$canRedo} title="Redo">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke-width="1.5"
-					stroke="currentColor"
-					class="w-5 h-5"
-					><path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"
-					/></svg
-				>
-			</Button>
-			<div class="text-3xl font-bold text-blue-700">{$totalPlanDuration}m</div>
-		</div>
-	</div>
+        <PracticePlanActions />
 
 	<!-- Metadata Fields -->
 	<PlanMetadataFields {skillOptions} {focusAreaOptions} />
 
-	<!-- Practice Plan Sections -->
-	<div class="practice-plan-sections space-y-4">
-		<h2 class="text-xl font-semibold">Plan Sections & Items</h2>
-		{#each $sections as section, sectionIndex}
-			<SectionContainer
-				{section}
-				{sectionIndex}
-				on:openDrillSearch={handleOpenDrillSearch}
-				on:openTimelineSelector={handleOpenTimelineSelector}
-				{onRemoveSection}
-				{onRemoveItem}
-				{onDurationChange}
-				onTimelineChange={handleTimelineChange}
-				{onUngroup}
-				timelineNameGetter={getTimelineName}
-				customTimelineNamesData={$customTimelineNames}
-			/>
-		{/each}
-
-		<div class="flex gap-2 mt-4">
-			{#if true}
-				{#if false}
-					// Keep native button commented out for now /* <button
-						type="button"
-						class="flex-1 p-2 border rounded"
-						on:click={() =>
-							console.log('[PracticePlanForm.svelte] Native Add Section button clicked!')}
-					>
-						+ Add Section (Native HTML Test)
-					</button> */
-				{/if}
-			{/if}
-		</div>
-	</div>
+        <PracticePlanSectionsEditor
+            on:openDrillSearch={handleOpenDrillSearch}
+            on:openTimelineSelector={handleOpenTimelineSelector}
+        />
 
 	<!-- Visibility controls are handled within PlanMetadataFields -->
 
-	<div class="my-4">
-		<!-- Wrapper for the moved button -->
-		<SimpleButton on:click={addSectionAction} class="flex-1">+ Add Section</SimpleButton>
-	</div>
 
 	<!-- Submit button -->
 	<div class="flex justify-end mt-8">
-		<Button 
-			type="submit" 
-			variant="default" 
-			class="min-w-[120px]" 
-			disabled={submitting}
-		>
+		<Button type="submit" variant="default" class="min-w-[120px]" disabled={submitting}>
 			{#if submitting}
 				<Spinner class="inline-block w-4 h-4 mr-2" />
 			{/if}
@@ -523,14 +412,16 @@
 	on:addOneOff={handleAddOneOffEvent}
 />
 <TimelineSelectorModal
-	bind:show={showTimelineSelector}
-	{selectedTimelines}
-	{getTimelineColor}
-	{getTimelineName}
-	{customTimelineNames}
-	on:updateTimelineName={handleUpdateTimelineNameEvent}
-	on:updateTimelineColor={handleUpdateTimelineColorEvent}
-	on:saveTimelines={handleSaveTimelinesEvent}
+        bind:show={showTimelineSelector}
+        {selectedTimelines}
+        {getTimelineColor}
+        {getTimelineName}
+        {customTimelineNames}
+        parallelTimelines={PARALLEL_TIMELINES}
+        timelineColors={TIMELINE_COLORS}
+        on:updateTimelineName={handleUpdateTimelineNameEvent}
+        on:updateTimelineColor={handleUpdateTimelineColorEvent}
+        on:saveTimelines={handleSaveTimelinesEvent}
 />
 
 <!-- Display general form errors from server action -->

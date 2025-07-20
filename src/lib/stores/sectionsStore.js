@@ -1349,3 +1349,216 @@ export function removeFromParallelGroup(itemId, items) {
 		return item;
 	});
 }
+
+// ------------------------------------------------------
+// Drag-and-drop helper APIs used by dragManager
+// ------------------------------------------------------
+
+/**
+ * Get the current sections value.
+ * @returns {Array}
+ */
+export function getSections() {
+        return get(sections);
+}
+
+/**
+ * Move an item to a new location referenced by stable IDs.
+ *
+ * @param {object} params
+ * @param {string|number} params.itemId - Item ID to move
+ * @param {string} params.targetSectionId - ID of section receiving the item
+ * @param {string|number|null} [params.targetItemId] - ID of item to position relative to
+ * @param {'before'|'after'} [params.position='after'] - Insert position
+ * @param {(item:object)=>object} [params.transform] - Optional transform applied to the item
+ */
+export function moveItem({ itemId, targetSectionId, targetItemId = null, position = 'after', transform }) {
+        // Create backup before operation
+        const backup = get(sections);
+        
+        try {
+                // Validate input parameters
+                if (!itemId) {
+                        console.error('moveItem: itemId is required');
+                        return false;
+                }
+                if (!targetSectionId) {
+                        console.error('moveItem: targetSectionId is required');
+                        return false;
+                }
+                if (position && !['before', 'after'].includes(position)) {
+                        console.error('moveItem: position must be "before" or "after"');
+                        return false;
+                }
+                
+                sections.update((secs) => {
+                        const newSecs = [...secs];
+
+                        // Locate the item and its current section
+                        const srcSectionIndex = newSecs.findIndex((s) => s.items.some((i) => i.id === itemId));
+                        if (srcSectionIndex === -1) {
+                                console.error(`moveItem: Item with id ${itemId} not found`);
+                                throw new Error(`Item with id ${itemId} not found`);
+                        }
+
+                        const srcItems = [...newSecs[srcSectionIndex].items];
+                        const itemIndex = srcItems.findIndex((i) => i.id === itemId);
+                        if (itemIndex === -1) {
+                                console.error(`moveItem: Item with id ${itemId} not found in section`);
+                                throw new Error(`Item with id ${itemId} not found in section`);
+                        }
+
+                        const [item] = srcItems.splice(itemIndex, 1);
+
+                        newSecs[srcSectionIndex] = { ...newSecs[srcSectionIndex], items: srcItems };
+
+                        // Optionally transform the item before inserting
+                        let finalItem;
+                        try {
+                                finalItem = transform ? transform(item) : item;
+                        } catch (transformError) {
+                                console.error('moveItem: Error in transform function:', transformError);
+                                throw transformError;
+                        }
+
+                        const targetSectionIndex = newSecs.findIndex((s) => s.id === targetSectionId);
+                        if (targetSectionIndex === -1) {
+                                console.error(`moveItem: Target section with id ${targetSectionId} not found`);
+                                throw new Error(`Target section with id ${targetSectionId} not found`);
+                        }
+
+                        const targetItems = [...newSecs[targetSectionIndex].items];
+
+                        let insertIndex = targetItems.length;
+                        if (targetItemId !== null && targetItemId !== undefined) {
+                                const idx = targetItems.findIndex((i) => i.id === targetItemId);
+                                if (idx === -1) {
+                                        console.warn(`moveItem: Target item with id ${targetItemId} not found, adding to end`);
+                                } else {
+                                        insertIndex = position === 'before' ? idx : idx + 1;
+                                }
+                        }
+
+                        targetItems.splice(Math.min(insertIndex, targetItems.length), 0, finalItem);
+                        newSecs[targetSectionIndex] = { ...newSecs[targetSectionIndex], items: targetItems };
+
+                        return newSecs;
+                });
+
+                addToHistory('MOVE_ITEM', { itemId, targetSectionId, targetItemId, position }, 'Moved item');
+                return true;
+        } catch (error) {
+                console.error('moveItem failed:', error);
+                // Restore backup on error
+                sections.set(backup);
+                toast.push('Failed to move item: ' + error.message, {
+                        theme: {
+                                '--toastBackground': '#f44336',
+                                '--toastColor': 'white'
+                        }
+                });
+                return false;
+        }
+}
+
+/**
+ * Update a single item's properties.
+ *
+ * @param {string|number} itemId
+ * @param {(item:object)=>object} updater
+ */
+export function updateItem(itemId, updater) {
+        sections.update((secs) =>
+                secs.map((section) => {
+                        const idx = section.items.findIndex((i) => i.id === itemId);
+                        if (idx === -1) return section;
+                        const items = [...section.items];
+                        items[idx] = updater(items[idx]);
+                        return { ...section, items };
+                })
+        );
+}
+
+/**
+ * Move a section before or after another section.
+ *
+ * @param {object} params
+ * @param {string} params.sectionId
+ * @param {string} params.targetSectionId
+ * @param {'before'|'after'} [params.position='after']
+ */
+export function moveSection({ sectionId, targetSectionId, position = 'after' }) {
+        // Create backup before operation
+        const backup = get(sections);
+        
+        try {
+                // Validate input parameters
+                if (!sectionId) {
+                        console.error('moveSection: sectionId is required');
+                        return false;
+                }
+                if (!targetSectionId) {
+                        console.error('moveSection: targetSectionId is required');
+                        return false;
+                }
+                if (sectionId === targetSectionId) {
+                        console.error('moveSection: Cannot move section to itself');
+                        return false;
+                }
+                if (position && !['before', 'after'].includes(position)) {
+                        console.error('moveSection: position must be "before" or "after"');
+                        return false;
+                }
+                
+                sections.update((secs) => {
+                        const newSecs = [...secs];
+                        const srcIndex = newSecs.findIndex((s) => s.id === sectionId);
+                        const targetIndex = newSecs.findIndex((s) => s.id === targetSectionId);
+                        
+                        if (srcIndex === -1) {
+                                console.error(`moveSection: Section with id ${sectionId} not found`);
+                                throw new Error(`Section with id ${sectionId} not found`);
+                        }
+                        if (targetIndex === -1) {
+                                console.error(`moveSection: Target section with id ${targetSectionId} not found`);
+                                throw new Error(`Target section with id ${targetSectionId} not found`);
+                        }
+
+                        const [section] = newSecs.splice(srcIndex, 1);
+
+                        let insertIndex = targetIndex;
+                        if (position === 'after') {
+                                insertIndex = srcIndex < targetIndex ? targetIndex : targetIndex + 1;
+                        } else {
+                                insertIndex = srcIndex < targetIndex ? targetIndex - 1 : targetIndex;
+                        }
+
+                        insertIndex = Math.max(0, Math.min(insertIndex, newSecs.length));
+                        newSecs.splice(insertIndex, 0, section);
+
+                        return newSecs.map((s, i) => ({ ...s, order: i }));
+                });
+
+                addToHistory('MOVE_SECTION', { sectionId, targetSectionId, position }, 'Moved section');
+                return true;
+        } catch (error) {
+                console.error('moveSection failed:', error);
+                // Restore backup on error
+                sections.set(backup);
+                toast.push('Failed to move section: ' + error.message, {
+                        theme: {
+                                '--toastBackground': '#f44336',
+                                '--toastColor': 'white'
+                        }
+                });
+                return false;
+        }
+}
+
+/**
+ * Replace the entire sections array.
+ * @param {Array} newSections
+ */
+export function setSections(newSections) {
+        sections.set(newSections);
+}

@@ -46,7 +46,11 @@ export const PUT = authGuard(async ({ params, request, locals }) => {
 			return json({ error: 'Authentication required' }, { status: 401 });
 		}
 
-		const updatedFormation = await formationService.updateFormation(formationId, formationData, userId);
+		const updatedFormation = await formationService.updateFormation(
+			formationId,
+			formationData,
+			userId
+		);
 		return json(updatedFormation);
 	} catch (err) {
 		return handleApiError(err);
@@ -80,7 +84,9 @@ export const DELETE = authGuard(async ({ params, locals }) => {
 				throw new ForbiddenError('Only the creator can delete this formation');
 			}
 		} else {
-			console.log(`[DEV MODE] Bypassing permission check for deleting formation ${formationId} by user ${userId}`);
+			console.log(
+				`[DEV MODE] Bypassing permission check for deleting formation ${formationId} by user ${userId}`
+			);
 		}
 
 		await formationService.delete(formationId);

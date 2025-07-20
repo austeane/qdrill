@@ -62,10 +62,10 @@
 		skill_level: item.drill?.skill_level || item.skill_level || [],
 		skills_focused_on: item.drill?.skills_focused_on || item.skills_focused_on || []
 	}));
-	
+
 	// Separate formations from regular items
-	$: formations = normalizedItems?.filter(item => item.type === 'formation') || [];
-	$: drillItems = normalizedItems?.filter(item => item.type !== 'formation') || [];
+	$: formations = normalizedItems?.filter((item) => item.type === 'formation') || [];
+	$: drillItems = normalizedItems?.filter((item) => item.type !== 'formation') || [];
 
 	$: {
 		console.log('[Section] Normalized items:', normalizedItems);
@@ -226,7 +226,7 @@
 		<div class="section-content" transition:slide>
 			<!-- Display formation references if any -->
 			<FormationReference {formations} />
-			
+
 			<!-- Render drill items in their original order -->
 			{#each drillItems as item, itemIndex (item.id)}
 				{#if item.parallel_group_id}

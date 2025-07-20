@@ -6,10 +6,10 @@
 
 **Affected Files:**
 
-- [`src/routes/api/drills/+server.js`](src/routes/api/drills/+server.js): Contains non-functional DELETE and an unconventional PUT handler (should be on `[id]/+server.js`).
-- [`src/routes/api/drills/associate/+server.js`](src/routes/api/drills/associate/+server.js): Functionally duplicates [`src/routes/api/drills/[id]/associate/+server.js`](src/routes/api/drills/[id]/associate/+server.js). The `[id]` version is more conventional.
-- [`src/routes/api/drills/names/+server.js`](src/routes/api/drills/names/+server.js): Functionally overlaps significantly with [`src/routes/api/drills/search/+server.js`](src/routes/api/drills/search/+server.js) (when query is empty). Has a hardcoded limit of 1000.
-- [`src/routes/api/drills/search/+server.js`](src/routes/api/drills/search/+server.js): Serves two purposes (search vs. get-all-names) based on query param presence. Has an arbitrary limit (50) when getting all names.
+- [`src/routes/api/drills/+server.js`](src/routes/api/drills/+server.js): Implements `GET`, `POST`, `PUT`, and `DELETE` on the collection route. The `PUT` and `DELETE` handlers accept a drill ID from the request body or params but duplicate the more conventional handlers found in [`src/routes/api/drills/[id]/+server.js`](src/routes/api/drills/[id]/+server.js).
+- [`src/routes/api/drills/associate/+server.js`](src/routes/api/drills/associate/+server.js): Posts a `drillId` in the request body to associate the drill with the current user. Duplicates [`src/routes/api/drills/[id]/associate/+server.js`](src/routes/api/drills/[id]/associate/+server.js), which expects the ID in the URL.
+- [`src/routes/api/drills/names/+server.js`](src/routes/api/drills/names/+server.js): Returns `{ id, name }` for drills visible to the user using `drillService.getFilteredDrills` with `limit: 10000`.
+- [`src/routes/api/drills/search/+server.js`](src/routes/api/drills/search/+server.js): Uses `drillService.getFilteredDrills` for searching by name. Default pagination limit is 10; no longer enforces an arbitrary 50-name cap.
 
 **Related Notes:**
 
@@ -18,11 +18,9 @@
 
 **Action Required:**
 
-1.  **Refactor `api/drills/+server.js`:** Remove the non-functional DELETE handler. Move the PUT logic to `api/drills/[id]/+server.js` if it isn't already duplicated there, or remove it if redundant.
-2.  **Remove Redundant Association Endpoint:** Choose one association endpoint (preferably [`api/drills/[id]/associate/+server.js`](api/drills/[id]/associate/+server.js)) and remove the other ([`api/drills/associate/+server.js`](api/drills/associate/+server.js)). Update any client-side code calling the removed endpoint.
+1.  **Refactor `api/drills/+server.js`:** Decide whether the collection-level `PUT` and `DELETE` handlers are needed. If not, remove them and rely solely on the `[id]` route. Otherwise ensure both routes behave consistently.
+2.  **Remove Redundant Association Endpoint:** Choose one association endpoint (the `[id]` version is preferred) and remove the other. Update any client-side calls accordingly.
 3.  **Consolidate Name/Search Endpoints:**
-    - Decide on a single endpoint for fetching drill names/searching.
-    - If keeping `/search`, remove the arbitrary limit (50) when no query is present and ensure it correctly handles fetching all names (perhaps via a specific parameter like `?fetchAllNames=true` or relying on pagination with a large default limit if appropriate, avoiding hardcoded limits).
-    - If keeping `/names`, remove the hardcoded limit (1000) and implement proper pagination or clarify its intended use case (e.g., only for small-scale typeaheads).
-    - Remove the unused endpoint.
+    - Pick a single endpoint for retrieving drill names and performing search. `/search` with pagination may be sufficient.
+    - Eliminate the hardcoded `limit: 10000` in `/names` if that endpoint remains, or remove `/names` entirely.
     - Ensure consistent filtering behavior (e.g., passing `userId` for visibility) in the chosen endpoint.

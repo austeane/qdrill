@@ -28,16 +28,31 @@ export const handle = sequence(Sentry.sentryHandle(), async function _handle({ e
 		});
 
 		if (sessionResult && sessionResult.user) {
-			// Ensure user object exists
-			// merge user into session for backward compatibility
-			event.locals.session = {
-				...sessionResult.session,
-				user: sessionResult.user
-			};
-			event.locals.user = sessionResult.user;
-
 			// Ensure the user exists in our database
 			await userService.ensureUserExists(sessionResult.user);
+			
+			// Fetch user with role from database
+			try {
+				const dbUser = await userService.getById(sessionResult.user.id, ['id', 'name', 'email', 'image', 'role']);
+				
+				// Merge user data with role into session
+				event.locals.session = {
+					...sessionResult.session,
+					user: {
+						...sessionResult.user,
+						role: dbUser.role || 'user'
+					}
+				};
+				event.locals.user = event.locals.session.user;
+			} catch (err) {
+				// If we can't fetch the user, use the session data without role
+				console.warn('Could not fetch user role:', err);
+				event.locals.session = {
+					...sessionResult.session,
+					user: sessionResult.user
+				};
+				event.locals.user = sessionResult.user;
+			}
 		} else {
 			// console.info('No active session found for request');
 		}

@@ -4,7 +4,8 @@ import {
 	NotFoundError,
 	DatabaseError,
 	ForbiddenError,
-	InternalServerError
+	InternalServerError,
+	ValidationError
 } from '$lib/server/errors';
 
 /**
@@ -16,7 +17,7 @@ export class UserService extends BaseEntityService {
 	 * Creates a new UserService
 	 */
 	constructor() {
-		super('users', 'id', ['*'], ['id', 'name', 'email', 'image', 'email_verified']);
+		super('users', 'id', ['*'], ['id', 'name', 'email', 'image', 'email_verified', 'role']);
 	}
 
 	/**
@@ -57,7 +58,7 @@ export class UserService extends BaseEntityService {
 	 * @throws {NotFoundError} If user not found
 	 * @throws {DatabaseError} On database error
 	 */
-	async getUserProfile(userId) {
+        async getUserProfile(userId, { limit = 10, offset = 0 } = {}) {
 		try {
 			// Get user basic data using base method
 			// getById will throw NotFoundError if user doesn't exist.
@@ -75,47 +76,50 @@ export class UserService extends BaseEntityService {
 			// Now start transaction for related data
 			return this.withTransaction(async (client) => {
 				// Get drills created by user
-				const drillsQuery = `
-          SELECT id, name, brief_description, date_created, 
+                                const drillsQuery = `
+          SELECT id, name, brief_description, date_created,
                  visibility, is_editable_by_others,
                  (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
           FROM drills d
           WHERE created_by = $1
           ORDER BY date_created DESC
+          LIMIT $2 OFFSET $3
         `;
-				const drillsResult = await client.query(drillsQuery, [userId]);
+                                const drillsResult = await client.query(drillsQuery, [userId, limit, offset]);
 
 				// Get practice plans created by user
-				const plansQuery = `
-          SELECT id, name, description, created_at, 
+                                const plansQuery = `
+          SELECT id, name, description, created_at,
                  visibility, is_editable_by_others
-          FROM practice_plans 
+          FROM practice_plans
           WHERE created_by = $1
           ORDER BY created_at DESC
+          LIMIT $2 OFFSET $3
         `;
-				const plansResult = await client.query(plansQuery, [userId]);
+                                const plansResult = await client.query(plansQuery, [userId, limit, offset]);
 
 				// Get formations created by user
-				const formationsQuery = `
+                                const formationsQuery = `
           SELECT id, name, brief_description, created_at,
                  visibility, is_editable_by_others
           FROM formations
           WHERE created_by = $1
           ORDER BY created_at DESC
+          LIMIT $2 OFFSET $3
         `;
-				const formationsResult = await client.query(formationsQuery, [userId]);
+                                const formationsResult = await client.query(formationsQuery, [userId, limit, offset]);
 
 				// Get votes by user
-				const votesQuery = `
-          SELECT 
+                                const votesQuery = `
+          SELECT
             v.id,
             v.drill_id,
             v.practice_plan_id,
             v.vote,
             v.created_at,
-            CASE 
-              WHEN v.drill_id IS NOT NULL THEN 'drill' 
-              WHEN v.practice_plan_id IS NOT NULL THEN 'practice_plan' 
+            CASE
+              WHEN v.drill_id IS NOT NULL THEN 'drill'
+              WHEN v.practice_plan_id IS NOT NULL THEN 'practice_plan'
             END AS type,
             COALESCE(d.name, pp.name) AS item_name
           FROM votes v
@@ -123,25 +127,27 @@ export class UserService extends BaseEntityService {
           LEFT JOIN practice_plans pp ON v.practice_plan_id = pp.id
           WHERE v.user_id = $1
           ORDER BY v.created_at DESC
+          LIMIT $2 OFFSET $3
         `;
-				const votesResult = await client.query(votesQuery, [userId]);
+                                const votesResult = await client.query(votesQuery, [userId, limit, offset]);
 
 				// Get comments by user
-				const commentsQuery = `
-          SELECT c.*, 
-            CASE 
-              WHEN c.drill_id IS NOT NULL THEN 'drill' 
-              WHEN c.practice_plan_id IS NOT NULL THEN 'practice_plan' 
+                                const commentsQuery = `
+          SELECT c.*,
+            CASE
+              WHEN c.drill_id IS NOT NULL THEN 'drill'
+              WHEN c.practice_plan_id IS NOT NULL THEN 'practice_plan'
             END AS type,
             d.name AS drill_name,
             pp.name AS practice_plan_name
-          FROM comments c 
-          LEFT JOIN drills d ON c.drill_id = d.id 
-          LEFT JOIN practice_plans pp ON c.practice_plan_id = pp.id 
+          FROM comments c
+          LEFT JOIN drills d ON c.drill_id = d.id
+          LEFT JOIN practice_plans pp ON c.practice_plan_id = pp.id
           WHERE c.user_id = $1
           ORDER BY c.created_at DESC
+          LIMIT $2 OFFSET $3
         `;
-				const commentsResult = await client.query(commentsQuery, [userId]);
+                                const commentsResult = await client.query(commentsQuery, [userId, limit, offset]);
 
 				return {
 					user: profileUser, // Use the adjusted user object
@@ -165,38 +171,57 @@ export class UserService extends BaseEntityService {
 
 	/**
 	 * Check if user has admin role
-	 * @param {string} userRole - User role from session (Currently NOT populated - see auth.js callbacks)
+	 * @param {string} userId - User ID to check
 	 * @returns {Promise<boolean>} - True if user is admin
 	 */
-	async isAdmin(userRole) {
-		// TODO: Implement proper Role-Based Access Control (RBAC)
-		// This requires:
-		// 1. Adding a 'role' column to the 'users' table.
-		// 2. Updating the session callback in 'src/lib/auth.js' to fetch and include the user's role.
-		// 3. Updating this function to check session.user.role === 'admin'.
-		// For now, disabling admin functionality by always returning false.
-		return false;
-		/*
-    // Original implementation kept for reference:
-    // Checks if the role provided (presumably from the session) is 'admin'
-    // Assumes the role column exists in the users table and is populated in the session
-    // return userRole === 'admin';
-    */
-		/*
-    // Older hardcoded implementation:
-    // try {
-    //   const userExists = await this.exists(userId);
-    //   if (!userExists) return false;
-    //   const query = `SELECT email FROM users WHERE id = $1`;
-    //   const result = await db.query(query, [userId]);
-    //   if (result.rows.length === 0) return false;
-    //   const adminEmails = ['admin@example.com']; // Hardcoded list
-    //   return adminEmails.includes(result.rows[0].email);
-    // } catch (error) {
-    //   console.error('Error in isAdmin:', error);
-    //   return false;
-    // }
-    */
+	async isAdmin(userId) {
+		try {
+			const user = await this.getById(userId, ['role']);
+			return user.role === 'admin';
+		} catch (error) {
+			// If user not found or error, they're not admin
+			return false;
+		}
+	}
+
+	/**
+	 * Set user role
+	 * @param {string} userId - User ID
+	 * @param {string} role - New role (user or admin)
+	 * @returns {Promise<Object>} - Updated user object
+	 * @throws {ValidationError} If role is invalid
+	 * @throws {NotFoundError} If user not found
+	 * @throws {DatabaseError} On database error
+	 */
+	async setUserRole(userId, role) {
+		// Validate role
+		const validRoles = ['user', 'admin'];
+		if (!validRoles.includes(role)) {
+			throw new ValidationError(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
+		}
+
+		try {
+			const query = `
+				UPDATE users 
+				SET role = $1 
+				WHERE id = $2 
+				RETURNING id, name, email, role
+			`;
+			const result = await db.query(query, [role, userId]);
+
+			if (result.rows.length === 0) {
+				throw new NotFoundError(`User with ID ${userId} not found`);
+			}
+
+			console.info(`User ${userId} role updated to ${role}`);
+			return result.rows[0];
+		} catch (error) {
+			if (error instanceof NotFoundError) {
+				throw error;
+			}
+			console.error('Error setting user role:', error);
+			throw new DatabaseError('Failed to update user role', error);
+		}
 	}
 
 	/**
@@ -207,7 +232,7 @@ export class UserService extends BaseEntityService {
 	async ensureUserExists(userObj) {
 		if (!userObj?.id) return;
 
-		const { id, name, email, image, emailVerified } = userObj;
+                const { id, name, email, image, emailVerified, role = 'user' } = userObj;
 
 		// Quick existence check
 		const exists = await this.exists(id);
@@ -215,8 +240,8 @@ export class UserService extends BaseEntityService {
 
 		// Insert minimal row
 		const insertQuery = `
-      INSERT INTO users (id, name, email, image, email_verified)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO users (id, name, email, image, email_verified, role)
+      VALUES ($1, $2, $3, $4, $5, $6)
       ON CONFLICT (id) DO NOTHING
     `;
 
@@ -226,8 +251,9 @@ export class UserService extends BaseEntityService {
 				name ?? null,
 				email ?? null,
 				image ?? null,
-				emailVerified ? new Date() : null
-			]);
+                                emailVerified ? new Date() : null,
+                                role
+                        ]);
 			console.info('Inserted new user row for Better‑Auth id', id);
 		} catch (err) {
 			console.error('Failed to insert user row for', id, err);

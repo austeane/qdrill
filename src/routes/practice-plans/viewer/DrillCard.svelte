@@ -1,7 +1,8 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-	import { slide } from 'svelte/transition';
-	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
+import { createEventDispatcher } from 'svelte';
+import { slide } from 'svelte/transition';
+import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
+import { getGroupColor } from '$lib/utils/groupColors.js';
 
 	export let item;
 	export let isInParallelGroup = false;
@@ -73,20 +74,12 @@
 		const hour12 = hour % 12 || 12;
 		return `${hour12}:${minutes} ${ampm}`;
 	}
+	
+	// Helper functions for group badges
 
-	// Helper functions for position badges
-	function getPositionColor(position) {
-		const colors = {
-			CHASERS: '#3B82F6', // Blue
-			BEATERS: '#EF4444', // Red
-			SEEKERS: '#10B981' // Green
-		};
-		return colors[position] || '#6B7280'; // Gray fallback
-	}
-
-	function formatPositionName(position) {
-		if (!position) return '';
-		return position.charAt(0) + position.slice(1).toLowerCase();
+	function formatGroupName(name) {
+		if (!name) return '';
+		return name.charAt(0) + name.slice(1).toLowerCase();
 	}
 </script>
 
@@ -124,9 +117,9 @@
 				{#if item.parallel_timeline && !isInParallelGroup}
 					<span
 						class="position-badge"
-						style="background-color: {getPositionColor(item.parallel_timeline)}"
+						style="background-color: {getGroupColor(item.parallel_timeline)}"
 					>
-						{formatPositionName(item.parallel_timeline)}
+						{formatGroupName(item.parallel_timeline)}
 					</span>
 				{/if}
 

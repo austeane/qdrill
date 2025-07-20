@@ -4,7 +4,8 @@ import {
 	NotFoundError,
 	DatabaseError,
 	ForbiddenError,
-	InternalServerError
+	InternalServerError,
+	ValidationError
 } from '$lib/server/errors';
 
 /**
@@ -16,7 +17,7 @@ export class UserService extends BaseEntityService {
 	 * Creates a new UserService
 	 */
 	constructor() {
-		super('users', 'id', ['*'], ['id', 'name', 'email', 'image', 'email_verified']);
+		super('users', 'id', ['*'], ['id', 'name', 'email', 'image', 'email_verified', 'role']);
 	}
 
 	/**
@@ -170,12 +171,58 @@ export class UserService extends BaseEntityService {
 
 	/**
 	 * Check if user has admin role
-	 * @param {string} userRole - User role from session (Currently NOT populated - see auth.js callbacks)
+	 * @param {string} userId - User ID to check
 	 * @returns {Promise<boolean>} - True if user is admin
 	 */
-        async isAdmin(userRole) {
-                return userRole === 'admin';
-        }
+	async isAdmin(userId) {
+		try {
+			const user = await this.getById(userId, ['role']);
+			return user.role === 'admin';
+		} catch (error) {
+			// If user not found or error, they're not admin
+			return false;
+		}
+	}
+
+	/**
+	 * Set user role
+	 * @param {string} userId - User ID
+	 * @param {string} role - New role (user or admin)
+	 * @returns {Promise<Object>} - Updated user object
+	 * @throws {ValidationError} If role is invalid
+	 * @throws {NotFoundError} If user not found
+	 * @throws {DatabaseError} On database error
+	 */
+	async setUserRole(userId, role) {
+		// Validate role
+		const validRoles = ['user', 'admin'];
+		if (!validRoles.includes(role)) {
+			throw new ValidationError(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
+		}
+
+		try {
+			const query = `
+				UPDATE users 
+				SET role = $1 
+				WHERE id = $2 
+				RETURNING id, name, email, role
+			`;
+			const result = await db.query(query, [role, userId]);
+
+			if (result.rows.length === 0) {
+				throw new NotFoundError(`User with ID ${userId} not found`);
+			}
+
+			console.info(`User ${userId} role updated to ${role}`);
+			return result.rows[0];
+		} catch (error) {
+			if (error instanceof NotFoundError) {
+				throw error;
+			}
+			console.error('Error setting user role:', error);
+			throw new DatabaseError('Failed to update user role', error);
+		}
+	}
 
 	/**
 	 * Ensure a user row exists in the users table. If it doesn't, insert it using data

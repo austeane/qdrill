@@ -113,7 +113,20 @@
 </svelte:head>
 
 <div class="container mx-auto px-4 py-8">
-	<h1 class="text-3xl font-bold mb-8">Admin - Diagram Migration</h1>
+	<h1 class="text-3xl font-bold mb-8">Admin Dashboard</h1>
+
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+		<a href="/admin/users" class="bg-white shadow rounded-lg p-6 hover:shadow-lg transition-shadow">
+			<h2 class="text-xl font-semibold mb-2">User Management</h2>
+			<p class="text-gray-600">Manage user roles and permissions</p>
+		</a>
+		<div class="bg-white shadow rounded-lg p-6">
+			<h2 class="text-xl font-semibold mb-2">Diagram Migration</h2>
+			<p class="text-gray-600">Migrate diagrams from Fabric.js to Excalidraw</p>
+		</div>
+	</div>
+
+	<h2 class="text-2xl font-bold mb-4">Diagram Migration</h2>
 
 	<div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
 		<div class="flex">

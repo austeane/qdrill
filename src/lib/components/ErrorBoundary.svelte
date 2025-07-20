@@ -1,5 +1,5 @@
 <script>
-	import { onErrorCaptured } from 'svelte';
+	import { onMount } from 'svelte';
 	import { createEventDispatcher } from 'svelte';
 
 	export let fallback = null;
@@ -10,18 +10,34 @@
 	let hasError = false;
 	let error = null;
 
-	onErrorCaptured((err, errorInfo) => {
-		hasError = true;
-		error = err;
+	// Error boundaries in Svelte are not yet fully supported like in React
+	// This is a simplified version that can catch some errors
+	onMount(() => {
+		// Set up global error handler for this component tree
+		const handleError = (event) => {
+			hasError = true;
+			error = event.error || event.reason || new Error('Unknown error');
 
-		if (onError) {
-			onError(err, errorInfo);
-		}
+			if (onError) {
+				onError(error, { componentStack: 'ErrorBoundary' });
+			}
 
-		dispatch('error', { error: err, errorInfo });
+			dispatch('error', { error, errorInfo: { componentStack: 'ErrorBoundary' } });
 
-		// Log to monitoring service
-		console.error('Error boundary caught error:', err, errorInfo);
+			// Log to monitoring service
+			console.error('Error boundary caught error:', error);
+			
+			// Prevent default error handling
+			event.preventDefault();
+		};
+
+		window.addEventListener('error', handleError);
+		window.addEventListener('unhandledrejection', handleError);
+
+		return () => {
+			window.removeEventListener('error', handleError);
+			window.removeEventListener('unhandledrejection', handleError);
+		};
 	});
 
 	function retry() {

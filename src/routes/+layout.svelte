@@ -2,12 +2,14 @@
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
 	import { navigating } from '$app/stores';
+	import { onDestroy } from 'svelte';
 	import Header from './Header.svelte';
 	import './styles.css';
-        import { SvelteToast, toast } from '@zerodevx/svelte-toast';
-        import FeedbackButton from '$lib/components/FeedbackButton.svelte';
-        import Spinner from '$lib/components/Spinner.svelte';
-        import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
+	import FeedbackButton from '$lib/components/FeedbackButton.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
+	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import ErrorBoundary from '$lib/components/ErrorBoundary.svelte';
 	import { inject } from '@vercel/analytics';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { dev } from '$app/environment';
@@ -18,7 +20,11 @@
 	injectSpeedInsights();
 
 	// Get session using Better Auth
-	const session = useSession();
+const session = useSession();
+
+let isNavigating = false;
+const unsubNavigating = navigating.subscribe((v) => (isNavigating = !!v));
+onDestroy(unsubNavigating);
 
 	/** @type {import('./$types').LayoutData} */
 	export let data;
@@ -76,17 +82,19 @@
         <Header />
 
 	<!-- Global Navigation Loading Indicator -->
-	{#if $navigating}
-		<div
-			class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 animate-pulse"
-		>
-			<div class="h-full bg-blue-400 animate-pulse opacity-75"></div>
-		</div>
-	{/if}
+       {#if isNavigating}
+               <div
+                       class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 animate-pulse"
+               >
+                       <div class="h-full bg-blue-400 animate-pulse opacity-75"></div>
+               </div>
+       {/if}
 
         <main id="main-content" tabindex="-1" class="flex-1">
 		<div class="container mx-auto px-4 py-8">
-			<slot />
+			<ErrorBoundary>
+				<slot />
+			</ErrorBoundary>
 		</div>
 	</main>
 

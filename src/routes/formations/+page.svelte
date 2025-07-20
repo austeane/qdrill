@@ -2,7 +2,8 @@
 	// import { onMount } from 'svelte'; // Removed
 	import { applyAction, enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
-	import { navigating } from '$app/stores';
+import { navigating } from '$app/stores';
+import { onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import {
 		formations,
@@ -36,7 +37,10 @@
 
 	// --- Navigation Logic ---
 
-	let debounceTimer;
+let debounceTimer;
+let isNavigating = false;
+const unsubNavigating = navigating.subscribe((v) => (isNavigating = !!v));
+onDestroy(unsubNavigating);
 	function debounce(func, delay = 300) {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(func, delay);
@@ -319,10 +323,10 @@
 	</div>
 
 	<!-- Loading State -->
-	{#if $navigating}
-		<div class="flex justify-center py-12">
-			<div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-		</div>
+       {#if isNavigating}
+               <div class="flex justify-center py-12">
+                       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+               </div>
 		<!-- Empty State -->
 	{:else if !$formations || $formations.length === 0}
 		<div class="bg-white rounded-lg shadow-sm p-8 text-center">
@@ -405,7 +409,7 @@
 			>
 				<button
 					on:click={prevPage}
-					disabled={$currentPage === 1 || $navigating}
+                               disabled={$currentPage === 1 || isNavigating}
 					class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors duration-300"
 					data-testid="pagination-prev-button"
 				>
@@ -416,7 +420,7 @@
 				>
 				<button
 					on:click={nextPage}
-					disabled={$currentPage === $totalPages || $navigating}
+                               disabled={$currentPage === $totalPages || isNavigating}
 					class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors duration-300"
 					data-testid="pagination-next-button"
 				>

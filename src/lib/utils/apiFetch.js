@@ -10,15 +10,20 @@
  * @returns {Promise<T>} A promise that resolves with the JSON body on success.
  * @throws {Error} Throws an error with a formatted message on network errors or non-ok responses.
  */
+import { APIError } from './errorHandling.js';
+
 export async function apiFetch(url, opts = {}, fetchInstance = fetch) {
-	let response;
-	try {
-		response = await fetchInstance(url, opts);
-	} catch (networkError) {
-		// Handle network errors (e.g., DNS resolution failure, refused connection)
-		console.error('Network error in apiFetch:', networkError);
-		throw new Error(`Network error: ${networkError.message || 'Failed to connect to server'}`);
-	}
+       let response;
+       try {
+               response = await fetchInstance(url, opts);
+       } catch (networkError) {
+               console.error('Network error in apiFetch:', networkError);
+               throw new APIError(
+                       `Network error: ${networkError.message || 'Failed to connect to server'}`,
+                       0,
+                       'NETWORK_ERROR'
+               );
+       }
 
 	let body = null;
 	const contentType = response.headers.get('content-type');
@@ -50,8 +55,9 @@ export async function apiFetch(url, opts = {}, fetchInstance = fetch) {
 			message = `${response.status} ${response.statusText}`;
 		}
 
-		console.error(`API Fetch Error (${url}): ${message}`, { status: response.status, body });
-		throw new Error(message);
+               console.error(`API Fetch Error (${url}): ${message}`, { status: response.status, body });
+               const code = typeof body === 'object' && body?.error?.code ? body.error.code : 'HTTP_ERROR';
+               throw new APIError(message, response.status, code);
 	}
 
 	// Response is OK

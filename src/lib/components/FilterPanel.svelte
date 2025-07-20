@@ -1,5 +1,7 @@
 <script>
-	import RangeSlider from 'svelte-range-slider-pips';
+import RangeSlider from 'svelte-range-slider-pips';
+import RangeFilter from '$lib/components/RangeFilter.svelte';
+import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 	import {
 		selectedSkillLevels,
 		selectedComplexities,
@@ -11,9 +13,8 @@
 		selectedSuggestedLengthsMax,
 		selectedHasVideo,
 		selectedHasDiagrams,
-		selectedHasImages,
-		searchQuery,
-		selectedDrillTypes
+               selectedHasImages,
+               selectedDrillTypes
 	} from '$lib/stores/drillsStore';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
@@ -28,8 +29,6 @@
 		selectedEstimatedParticipantsMax,
 		updateFilterState as updatePracticePlanFilterState
 	} from '$lib/stores/practicePlanFilterStore';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import debounce from 'lodash/debounce';
 	import { Plus, Minus, Search } from 'lucide-svelte';
@@ -88,11 +87,35 @@
 	// Set up variables for the sliders
 	let numberOfPeopleRange = [$selectedNumberOfPeopleMin, $selectedNumberOfPeopleMax];
 	let suggestedLengthsRange = [$selectedSuggestedLengthsMin, $selectedSuggestedLengthsMax];
-	let estimatedParticipantsRange = [1, 100];
+        let estimatedParticipantsRange = [1, 100];
 
 	// Variables for Contains Drill filter
 	let drillSearchTerm = '';
 	let drillSuggestions = [];
+	let drillLoading = false;
+	let drillError = null;
+
+        // Reactive checks for active filters
+        $: hasActiveDrillFilters =
+                Object.keys($selectedSkillLevels).length > 0 ||
+                Object.keys($selectedComplexities).length > 0 ||
+                Object.keys($selectedSkillsFocusedOn).length > 0 ||
+                Object.keys($selectedPositionsFocusedOn).length > 0 ||
+                $selectedNumberOfPeopleMin !== effectiveNumberOfPeopleOptions.min ||
+                $selectedNumberOfPeopleMax !== effectiveNumberOfPeopleOptions.max ||
+                $selectedSuggestedLengthsMin !== effectiveSuggestedLengths.min ||
+                $selectedSuggestedLengthsMax !== effectiveSuggestedLengths.max ||
+                $selectedHasVideo !== null ||
+                $selectedHasDiagrams !== null ||
+                $selectedHasImages !== null ||
+                Object.keys($selectedDrillTypes).length > 0;
+
+        $: hasActivePracticePlanFilters =
+                Object.keys($selectedPhaseOfSeason).length > 0 ||
+                Object.keys($selectedPracticeGoals).length > 0 ||
+                $selectedEstimatedParticipantsMin !== 1 ||
+                $selectedEstimatedParticipantsMax !== 100 ||
+                selectedDrills.length > 0;
 
 	let mounted = false;
 
@@ -141,7 +164,6 @@
 
 	// Function to handle toggling filters
 	function toggleFilter(filterName) {
-		console.log(`[FilterPanel] toggleFilter called with: ${filterName}`);
 
 		let isCurrentlyOpen = false;
 		// Check the current state of the filter being toggled
@@ -184,12 +206,8 @@
 				break;
 		}
 
-		console.log(
-			`[FilterPanel] isCurrentlyOpen before: ${isCurrentlyOpen}, showSkillLevels before: ${showSkillLevels}`
-		);
 		// Always close all filters first
 		closeAllFilters();
-		console.log(`[FilterPanel] After closeAllFilters, showSkillLevels: ${showSkillLevels}`);
 
 		// If the target filter wasn't the one that was open, open it now.
 		if (!isCurrentlyOpen) {
@@ -232,7 +250,6 @@
 					break;
 			}
 		}
-		console.log(`[FilterPanel] At end of toggleFilter, showSkillLevels: ${showSkillLevels}`);
 		// If it *was* open, closeAllFilters() already handled closing it.
 	}
 
@@ -285,13 +302,18 @@
 	// Fetch drill suggestions
 	async function fetchDrillSuggestions() {
 		if (!mounted) return; // Ensure client-side execution
+		drillLoading = true;
+		drillError = null;
 		try {
 			const queryParam =
 				drillSearchTerm.trim() === '' ? '' : `?query=${encodeURIComponent(drillSearchTerm)}`;
 			const drills = await apiFetch(`/api/drills/search${queryParam}`);
 			drillSuggestions = drills.filter((drill) => !selectedDrills.some((d) => d.id === drill.id));
 		} catch (error) {
+			drillError = 'Failed to fetch drills';
 			console.error(error);
+		} finally {
+			drillLoading = false;
 		}
 	}
 
@@ -773,14 +795,7 @@
 			</div>
 		{/if}
 
-		<!-- Reset Filters Button (Always visible) -->
-		<button
-			class="inline-flex items-center bg-red-500 text-white border border-red-600 rounded-full px-4 py-2 cursor-pointer hover:bg-red-600 transition-colors duration-300"
-			on:click={resetFilters}
-		>
-			Reset Filters
-		</button>
-	{/if}
+        {/if}
 
 	<!-- Practice Plans Filters -->
 	{#if filterType === 'practice-plans' && (phaseOfSeasonOptions.length || practiceGoalsOptions.length || selectedEstimatedParticipantsMin !== null || selectedEstimatedParticipantsMax !== null)}
@@ -943,7 +958,11 @@
 						bind:value={drillSearchTerm}
 						on:input={debouncedFetchDrillSuggestions}
 					/>
-					{#if drillSuggestions.length > 0}
+					{#if drillLoading}
+						<p class="text-gray-500">Loading...</p>
+					{:else if drillError}
+						<p class="text-red-500">{drillError}</p>
+					{:else if drillSuggestions.length > 0}
 						<ul class="max-h-48 overflow-y-auto">
 							{#each drillSuggestions as drill}
 								<li
@@ -954,8 +973,7 @@
 								</li>
 							{/each}
 						</ul>
-					{/if}
-					{#if drillSuggestions.length === 0 && drillSearchTerm.trim() !== ''}
+					{:else if drillSearchTerm.trim() !== ''}
 						<p class="text-gray-500">No drills found.</p>
 					{/if}
 					{#if selectedDrills.length > 0}
@@ -977,14 +995,23 @@
 				</div>
 			{/if}
 		</div>
-	{/if}
+        {/if}
 
-	<!-- Overlay to close dropdown when clicking outside -->
-	{#if (filterType === 'drills' && (showSkillLevels || showDrillComplexity || showSkillsFocusedOn || showPositionsFocusedOn || showNumberOfPeople || showSuggestedLengths || showHasImages || showDrillTypes)) || (filterType === 'practice-plans' && (showPhaseOfSeason || showPracticeGoals || showEstimatedParticipants || showContainsDrill))}
-		<div
-			class="fixed inset-0 bg-transparent z-0"
-			on:click={closeAllFilters}
-			aria-label="Close filters"
+        {#if (filterType === 'drills' && hasActiveDrillFilters) || (filterType === 'practice-plans' && hasActivePracticePlanFilters)}
+                <button
+                        class="inline-flex items-center bg-red-500 text-white border border-red-600 rounded-full px-4 py-2 cursor-pointer hover:bg-red-600 transition-colors duration-300"
+                        on:click={resetFilters}
+                >
+                        Reset Filters
+                </button>
+        {/if}
+
+        <!-- Overlay to close dropdown when clicking outside -->
+        {#if (filterType === 'drills' && (showSkillLevels || showDrillComplexity || showSkillsFocusedOn || showPositionsFocusedOn || showNumberOfPeople || showSuggestedLengths || showHasImages || showDrillTypes)) || (filterType === 'practice-plans' && (showPhaseOfSeason || showPracticeGoals || showEstimatedParticipants || showContainsDrill))}
+                <div
+                        class="fixed inset-0 bg-transparent z-0"
+                        on:click={closeAllFilters}
+                        aria-label="Close filters"
 		></div>
 	{/if}
 </div>

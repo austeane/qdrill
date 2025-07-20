@@ -1,6 +1,5 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-	import { handleTimelineSelect } from '$lib/stores/sectionsStore';
+       import { createEventDispatcher } from 'svelte';
 
 	export let section;
 	export let onRemove;
@@ -11,16 +10,10 @@
 		dispatch('openDrillSearch', section.id);
 	}
 
-	function openTimelineSelector() {
-		if (
-			handleTimelineSelect(
-				section.id,
-				section.items.find((i) => i.parallel_group_id)?.parallel_group_id
-			)
-		) {
-			dispatch('openTimelineSelector');
-		}
-	}
+       function openTimelineSelector() {
+               const parallelGroupId = section.items.find((i) => i.parallel_group_id)?.parallel_group_id;
+               dispatch('openTimelineSelector', { sectionId: section.id, parallelGroupId });
+       }
 </script>
 
 <div class="section-header flex items-center gap-4 mb-4">

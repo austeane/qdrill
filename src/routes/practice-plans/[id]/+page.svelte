@@ -21,8 +21,8 @@
 	// Store for tracking the current section
 	const currentSectionId = writable(null);
 	
-       // Group filter state
-       let selectedGroupFilter = 'All Groups';
+	// Group filter state
+	let selectedGroupFilter = 'All Groups';
 
 	// Calculate total duration considering parallel activities
 	$: totalDuration = practicePlan.sections.reduce((sum, section) => sum + section.duration, 0);
@@ -91,13 +91,13 @@
 		);
 	}
 	
-       // Handle group filter change
-       function handleGroupFilterChange(event) {
-               selectedGroupFilter = event.detail.filter;
-       }
+	// Handle group filter change
+	function handleGroupFilterChange(event) {
+		selectedGroupFilter = event.detail.filter;
+	}
 
-       // Filter sections based on selected group
-       $: filteredSections = filterSectionsByGroup(practicePlan.sections, selectedGroupFilter);
+	// Filter sections based on selected group
+	$: filteredSections = filterSectionsByGroup(practicePlan.sections, selectedGroupFilter);
 
 	// Calculate section start times
 	function calculateSectionStartTime(sections, sectionIndex) {
@@ -271,12 +271,12 @@
 		</div>
 	{/if}
 
-       <!-- Group Filter -->
-       <GroupFilter
-               sections={practicePlan.sections}
-               bind:selectedFilter={selectedGroupFilter}
-               on:filterChange={handleGroupFilterChange}
-       />
+	<!-- Group Filter -->
+	<GroupFilter
+		sections={practicePlan.sections}
+		bind:selectedFilter={selectedGroupFilter}
+		on:filterChange={handleGroupFilterChange}
+	/>
 
 	<!-- Main Content -->
 	<div class="flex gap-6">

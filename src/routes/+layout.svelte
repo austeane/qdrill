@@ -2,11 +2,14 @@
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
 	import { navigating } from '$app/stores';
+	import { onDestroy } from 'svelte';
 	import Header from './Header.svelte';
 	import './styles.css';
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
 	import FeedbackButton from '$lib/components/FeedbackButton.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
+	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import ErrorBoundary from '$lib/components/ErrorBoundary.svelte';
 	import { inject } from '@vercel/analytics';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { dev } from '$app/environment';
@@ -17,7 +20,11 @@
 	injectSpeedInsights();
 
 	// Get session using Better Auth
-	const session = useSession();
+const session = useSession();
+
+let isNavigating = false;
+const unsubNavigating = navigating.subscribe((v) => (isNavigating = !!v));
+onDestroy(unsubNavigating);
 
 	/** @type {import('./$types').LayoutData} */
 	export let data;
@@ -35,34 +42,21 @@
 		for (const item of itemsToAssociate) {
 			const entityId = sessionStorage.getItem(item.key);
 			if (entityId) {
-				try {
-					console.log(`Found ${item.key} with ID ${entityId}, attempting to associate...`);
-					const response = await fetch(`${item.endpoint}/${entityId}/associate`, {
-						method: 'POST'
-					});
-					if (response.ok) {
-						console.log(`${item.key} ${entityId} associated successfully.`);
-						// Optional: Show success toast
-						// toast.push(`Successfully claimed your ${item.key.replace('ToAssociate', '')}.`);
-					} else {
-						const errorData = await response.json();
-						console.error(
-							`Failed to associate ${item.key} ${entityId}:`,
-							response.status,
-							errorData
-						);
-						// Optional: Show error toast
-						// toast.push(`Could not claim ${item.key.replace('ToAssociate', '')}. It might already be owned.`, { theme: { '--toastBackground': '#F56565', '--toastColor': 'white' } });
-					}
-				} catch (error) {
-					console.error(`Error during association call for ${item.key} ${entityId}:`, error);
-					// Optional: Show error toast
-					// toast.push('An error occurred while claiming your item.', { theme: { '--toastBackground': '#F56565', '--toastColor': 'white' } });
-				} finally {
-					// Remove the item from sessionStorage regardless of success/failure
-					sessionStorage.removeItem(item.key);
-					console.log(`Removed ${item.key} from sessionStorage.`);
-				}
+                                try {
+                                        console.log(`Found ${item.key} with ID ${entityId}, attempting to associate...`);
+                                        await apiFetch(`${item.endpoint}/${entityId}/associate`, { method: 'POST' });
+                                        console.log(`${item.key} ${entityId} associated successfully.`);
+                                        // Optional: Show success toast
+                                        // toast.push(`Successfully claimed your ${item.key.replace('ToAssociate', '')}.`);
+                                } catch (error) {
+                                        console.error(`Error during association call for ${item.key} ${entityId}:`, error);
+                                        // Optional: Show error toast
+                                        // toast.push('An error occurred while claiming your item.', { theme: { '--toastBackground': '#F56565', '--toastColor': 'white' } });
+                                } finally {
+                                        // Remove the item from sessionStorage regardless of success/failure
+                                        sessionStorage.removeItem(item.key);
+                                        console.log(`Removed ${item.key} from sessionStorage.`);
+                                }
 			}
 		}
 	}
@@ -84,18 +78,23 @@
 </script>
 
 <div class="flex flex-col min-h-screen">
-	<Header />
+        <a href="#main-content" class="skip-to-content">Skip to main content</a>
+        <Header />
 
 	<!-- Global Navigation Loading Indicator -->
-	{#if $navigating}
-		<div class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 animate-pulse">
-			<div class="h-full bg-blue-400 animate-pulse opacity-75"></div>
-		</div>
-	{/if}
+       {#if isNavigating}
+               <div
+                       class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 animate-pulse"
+               >
+                       <div class="h-full bg-blue-400 animate-pulse opacity-75"></div>
+               </div>
+       {/if}
 
-	<main class="flex-1">
+        <main id="main-content" tabindex="-1" class="flex-1">
 		<div class="container mx-auto px-4 py-8">
-			<slot />
+			<ErrorBoundary>
+				<slot />
+			</ErrorBoundary>
 		</div>
 	</main>
 

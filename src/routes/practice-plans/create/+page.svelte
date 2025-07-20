@@ -1,13 +1,13 @@
 <script>
 	import PracticePlanForm from '../PracticePlanForm.svelte';
 	export let data; // Receive data from load function
-	$: ({ pendingPlanData } = data); // Extract pendingPlanData
+	$: ({ pendingPlanData, skillOptions = [], focusAreaOptions = [] } = data); // Extract pendingPlanData and options
 </script>
 
 {#if pendingPlanData}
 	<!-- Pass pendingPlanData if it exists -->
-	<PracticePlanForm {pendingPlanData} />
+	<PracticePlanForm {pendingPlanData} {skillOptions} {focusAreaOptions} />
 {:else}
 	<!-- Otherwise, render normally (for non-redirect cases) -->
-	<PracticePlanForm />
+	<PracticePlanForm {skillOptions} {focusAreaOptions} />
 {/if}

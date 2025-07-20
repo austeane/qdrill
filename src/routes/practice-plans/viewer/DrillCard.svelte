@@ -75,12 +75,12 @@ import { getGroupColor } from '$lib/utils/groupColors.js';
 		return `${hour12}:${minutes} ${ampm}`;
 	}
 	
-        // Helper functions for group badges
+	// Helper functions for group badges
 
-        function formatGroupName(name) {
-                if (!name) return '';
-                return name.charAt(0) + name.slice(1).toLowerCase();
-        }
+	function formatGroupName(name) {
+		if (!name) return '';
+		return name.charAt(0) + name.slice(1).toLowerCase();
+	}
 </script>
 
 <div
@@ -114,14 +114,14 @@ import { getGroupColor } from '$lib/utils/groupColors.js';
 				</h3>
 
 				<!-- Position Badge (only show when not in parallel group) -->
-                                {#if item.parallel_timeline && !isInParallelGroup}
-                                        <span
-                                                class="position-badge"
-                                                style="background-color: {getGroupColor(item.parallel_timeline)}"
-                                        >
-                                                {formatGroupName(item.parallel_timeline)}
-                                        </span>
-                                {/if}
+				{#if item.parallel_timeline && !isInParallelGroup}
+					<span
+						class="position-badge"
+						style="background-color: {getGroupColor(item.parallel_timeline)}"
+					>
+						{formatGroupName(item.parallel_timeline)}
+					</span>
+				{/if}
 
 				<!-- Indicators -->
 				<div class="indicators">
@@ -341,7 +341,7 @@ import { getGroupColor } from '$lib/utils/groupColors.js';
 		gap: 0.5rem;
 		flex-grow: 1;
 	}
-	
+
 	.position-badge {
 		padding: 0.125rem 0.5rem;
 		border-radius: 9999px;

@@ -1,5 +1,4 @@
 <script>
-	// import { feedbackList } from '$lib/stores/feedbackStore'; // Store not used directly for list
 	import { onMount } from 'svelte';
 	import { invalidate } from '$app/navigation'; // Import invalidate
 	import { apiFetch } from '$lib/utils/apiFetch.js';

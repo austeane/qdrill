@@ -269,7 +269,9 @@ export class FormationService extends BaseEntityService {
 				throw new DatabaseError('Failed to check edit permission', error);
 			}
 		} else {
-			console.log(`[DEV MODE] Bypassing permission check for editing formation ${id} by user ${userId}`);
+			console.log(
+				`[DEV MODE] Bypassing permission check for editing formation ${id} by user ${userId}`
+			);
 		}
 
 		// Normalize formation data
@@ -428,7 +430,9 @@ export class FormationService extends BaseEntityService {
 				name: `${originalFormation.name} (Copy)`,
 				brief_description: originalFormation.brief_description,
 				detailed_description: originalFormation.detailed_description,
-				diagrams: originalFormation.diagrams ? JSON.parse(JSON.stringify(originalFormation.diagrams)) : [],
+				diagrams: originalFormation.diagrams
+					? JSON.parse(JSON.stringify(originalFormation.diagrams))
+					: [],
 				tags: [...(originalFormation.tags || [])],
 				formation_type: originalFormation.formation_type,
 				created_by: userId,

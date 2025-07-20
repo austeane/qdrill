@@ -2,22 +2,22 @@
 
 The drag and drop system in QDrill provides a sophisticated, intuitive interface for organizing drills within practice plans. This document details the technical implementation and design patterns used.
 
-_(Note: A [recent code review](../code-review/holistic-summary.md) identified the `dragManager.js` store as the core of this system and noted its high complexity and tight coupling to `sectionsStore`. The reliance on mixed identifiers (indices, IDs, data attributes) and potential state synchronization issues (indicated by `window.__dragManager` usage in `TimelineColumn.svelte`) were also highlighted. Refactoring for simplification and decoupling is recommended. The `dragStore.js` file appears unused.)_
+_(Note: A [recent code review](../code-review/holistic-summary.md) identified the `dragManager.js` store as the core of this system and noted its high complexity and tight coupling to `sectionsStore`. The reliance on mixed identifiers (indices, IDs, data attributes) and potential state synchronization issues (indicated by `window.__dragManager` usage in `TimelineColumn.svelte`) were also highlighted. Refactoring for simplification and decoupling is recommended. The old `dragStore.js` file was unused and has been removed.)_
 
 ## Architecture Overview
 
 The drag and drop system is built on several coordinated components:
 
 ```
-┌─────────────────────┐      ┌─────────────────────┐
-│                     │      │                     │
-│     dragStore       │◄────►│    dragManager      │
-│                     │      │                     │
-└─────────────────────┘      └─────────────────────┘
-          ▲                            ▲
-          │                            │
-          │                            │
-          ▼                            ▼
+┌─────────────────────┐
+│                     │
+│    dragManager      │
+│                     │
+└─────────────────────┘
+          ▲
+          │
+          │
+          ▼
 ┌─────────────────────┐      ┌─────────────────────┐
 │                     │      │                     │
 │  Drag Components    │◄────►│   Drop Zones        │
@@ -48,40 +48,6 @@ The drag and drop system is built on several coordinated components:
 - **`styles.css`** (`/src/routes/styles.css`) - Visual indicator styles
 
 ### 2. Store Implementation
-
-#### dragStore.js
-
-The central state store for drag operations with these key properties:
-
-```javascript
-{
-  isDragging: false,         // Active drag operation flag
-  dragType: "item",          // 'item', 'group', or 'section'
-
-  // Source information
-  sourceSection: 0,
-  sourceIndex: 3,
-  sourceGroupId: "group_1234567890",
-  sourceTimeline: "BEATERS",
-
-  // Item tracking (stable identifiers)
-  itemId: 123,
-  itemName: "Boston Beater Drill",
-
-  // Target information
-  targetSection: 0,
-  targetIndex: 5,
-  targetGroupId: "group_1234567890",
-  targetTimeline: "CHASERS",
-
-  // Position
-  dropPosition: "inside",    // 'before', 'after', or 'inside'
-
-  // Element tracking
-  draggedElementId: "item-0-3",
-  dropTargetElementId: "timeline-0-group_1234567890-CHASERS"
-}
-```
 
 #### dragManager.js
 

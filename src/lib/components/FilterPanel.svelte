@@ -428,9 +428,9 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 <!-- Filter Buttons -->
 <div class={`flex flex-wrap gap-2 mb-4 relative ${customClass}`} on:keydown={handleKeydown}>
 	<!-- Drills Filters -->
-	{#if filterType === 'drills' && (skillLevels.length || complexities.length || skillsFocusedOn.length || positionsFocusedOn.length || numberOfPeopleOptions.min !== null || numberOfPeopleOptions.max !== null || suggestedLengths.min !== null || suggestedLengths.max !== null || $selectedHasVideo || $selectedHasDiagrams || $selectedHasImages)}
+    {#if filterType === 'drills' && ((skillLevels?.length || 0) || (complexities?.length || 0) || (skillsFocusedOn?.length || 0) || (positionsFocusedOn?.length || 0) || numberOfPeopleOptions.min !== null || numberOfPeopleOptions.max !== null || suggestedLengths.min !== null || suggestedLengths.max !== null || $selectedHasVideo || $selectedHasDiagrams || $selectedHasImages)}
 		<!-- Skill Levels Filter -->
-		{#if skillLevels.length}
+                {#if skillLevels?.length}
 			<div class="relative">
 				<button
 					class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${showSkillLevels ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
@@ -472,7 +472,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 		{/if}
 
 		<!-- Complexity Filter -->
-		{#if complexities.length}
+                {#if complexities?.length}
 			<div class="relative">
 				<button
 					class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${showDrillComplexity ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
@@ -513,7 +513,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 		{/if}
 
 		<!-- Skills Focused On Filter -->
-		{#if skillsFocusedOn.length}
+                {#if skillsFocusedOn?.length}
 			<div class="relative">
 				<button
 					class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${showSkillsFocusedOn ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
@@ -561,7 +561,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 		{/if}
 
 		<!-- Positions Focused On Filter -->
-		{#if positionsFocusedOn.length}
+                {#if positionsFocusedOn?.length}
 			<div class="relative">
 				<button
 					class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${showPositionsFocusedOn ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
@@ -798,9 +798,9 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
         {/if}
 
 	<!-- Practice Plans Filters -->
-	{#if filterType === 'practice-plans' && (phaseOfSeasonOptions.length || practiceGoalsOptions.length || selectedEstimatedParticipantsMin !== null || selectedEstimatedParticipantsMax !== null)}
+        {#if filterType === 'practice-plans' && ((phaseOfSeasonOptions?.length || 0) || (practiceGoalsOptions?.length || 0) || selectedEstimatedParticipantsMin !== null || selectedEstimatedParticipantsMax !== null)}
 		<!-- Phase of Season Filter -->
-		{#if phaseOfSeasonOptions.length}
+                {#if phaseOfSeasonOptions?.length}
 			<div class="relative">
 				<button
 					class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${showPhaseOfSeason ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
@@ -840,7 +840,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 		{/if}
 
 		<!-- Practice Goals Filter -->
-		{#if practiceGoalsOptions.length}
+                {#if practiceGoalsOptions?.length}
 			<div class="relative">
 				<button
 					class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${showPracticeGoals ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
@@ -849,11 +849,11 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 					aria-controls="practiceGoals-content"
 				>
 					Practice Goals
-					{#if selectedPracticeGoals.length > 0}
+                                        {#if Object.keys($selectedPracticeGoals).length > 0}
 						<span
 							class="absolute top-0 right-0 bg-blue-500 text-white text-xs rounded-full px-1 transform translate-x-1/2 -translate-y-1/2"
 						>
-							({selectedPracticeGoals.length})
+                                                        ({Object.keys($selectedPracticeGoals).length})
 						</span>
 					{/if}
 				</button>
@@ -934,11 +934,11 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 				aria-controls="containsDrill-content"
 			>
 				Contains Drill
-				{#if selectedDrills.length > 0}
+                                {#if (selectedDrills?.length || 0) > 0}
 					<span
 						class="absolute top-0 right-0 bg-blue-500 text-white text-xs rounded-full px-1 transform translate-x-1/2 -translate-y-1/2"
 					>
-						({selectedDrills.length})
+                                                ({(selectedDrills?.length || 0)})
 					</span>
 				{/if}
 			</button>
@@ -962,7 +962,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 						<p class="text-gray-500">Loading...</p>
 					{:else if drillError}
 						<p class="text-red-500">{drillError}</p>
-					{:else if drillSuggestions.length > 0}
+                                        {:else if drillSuggestions?.length > 0}
 						<ul class="max-h-48 overflow-y-auto">
 							{#each drillSuggestions as drill}
 								<li
@@ -976,7 +976,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 					{:else if drillSearchTerm.trim() !== ''}
 						<p class="text-gray-500">No drills found.</p>
 					{/if}
-					{#if selectedDrills.length > 0}
+                                        {#if (selectedDrills?.length || 0) > 0}
 						<div class="mt-2">
 							<h4 class="font-semibold mb-1">Selected Drills:</h4>
 							{#each selectedDrills as drill}

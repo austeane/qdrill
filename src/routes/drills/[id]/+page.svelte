@@ -18,20 +18,45 @@
 	// Create a local writable store for the current drill data
 	const drill = writable(data.drill || {});
 
+	// Track the last drill ID to prevent unnecessary updates
+	let lastDrillId = data.drill?.id;
+
 	// Reactively update the local store if the data prop changes
-	$: if (data.drill && $drill !== data.drill) {
+	// Only update if it's a different drill (comparing IDs)
+	$: if (data.drill && data.drill.id !== lastDrillId) {
+		console.log('[Page Component] Updating drill store with new data:', data.drill.id);
 		drill.set(data.drill);
+		lastDrillId = data.drill.id;
 	}
 
 	let allVariants = writable({});
 
-	$: if ($drill && $drill.variations) {
-		const drillMap = {};
-		drillMap[$drill.id] = {
-			...$drill,
-			variations: $drill.variations
-		};
-		allVariants.set(drillMap);
+	// Update allVariants when drill changes, but prevent circular updates
+	$: if ($drill && $drill.variations && $drill.id) {
+		// Use structuredClone to break any circular references
+		try {
+			console.log('[Page Component] Updating allVariants for drill:', $drill.id);
+			const drillMap = {};
+			drillMap[$drill.id] = {
+				id: $drill.id,
+				name: $drill.name,
+				brief_description: $drill.brief_description,
+				variations: $drill.variations ? $drill.variations.map(v => ({
+					id: v.id,
+					name: v.name,
+					brief_description: v.brief_description,
+					created_by: v.created_by,
+					creator_name: v.creator_name,
+					date_created: v.date_created,
+					variation_count: v.variation_count
+				})) : []
+			};
+			allVariants.set(drillMap);
+		} catch (e) {
+			console.error('Error updating allVariants:', e);
+			// Fallback: set empty object if there's an error
+			allVariants.set({});
+		}
 	}
 
 	console.log('[Page Component] Initial drill store value:', $drill);

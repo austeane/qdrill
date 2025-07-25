@@ -50,16 +50,25 @@ onDestroy(unsubNavigating);
 	let buttonStates = {};
 
 	// Reactive set of drill IDs currently in the cart
-	$: drillsInCart = new Set($cart.map((d) => d.id));
+	$: drillsInCart = new Set(($cart || []).map((d) => d.id));
 
 	// Initialize buttonStates based on data.items
 	$: {
 		if (data && data.items) {
-			buttonStates = data.items.reduce((acc, drill) => {
-				// Keep existing state if present, otherwise initialize
-				acc[drill.id] = buttonStates[drill.id] ?? (drillsInCart.has(drill.id) ? 'in-cart' : null);
-				return acc;
-			}, {});
+			// Create a new buttonStates object without reading from the existing one
+			const newButtonStates = {};
+			data.items.forEach(drill => {
+				// Check if we already have a temporary state (added/removed)
+				const existingState = buttonStates[drill.id];
+				if (existingState === 'added' || existingState === 'removed') {
+					// Keep temporary states
+					newButtonStates[drill.id] = existingState;
+				} else {
+					// Set state based on cart contents
+					newButtonStates[drill.id] = drillsInCart.has(drill.id) ? 'in-cart' : null;
+				}
+			});
+			buttonStates = newButtonStates;
 		}
 	}
 
@@ -240,7 +249,7 @@ onDestroy(unsubNavigating);
 			// Update state based on actual cart status after timeout
 			buttonStates = {
 				...buttonStates,
-				[drill.id]: $cart.some((d) => d.id === drill.id) ? 'in-cart' : null
+				[drill.id]: ($cart || []).some((d) => d.id === drill.id) ? 'in-cart' : null
 			};
 		}, 500);
 	}
@@ -325,7 +334,7 @@ onDestroy(unsubNavigating);
 				href="/practice-plans/create"
 				class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-300"
 			>
-				Create Practice Plan with {$cart.length} Drill{$cart.length !== 1 ? 's' : ''}
+				Create Practice Plan with {($cart || []).length} Drill{($cart || []).length !== 1 ? 's' : ''}
 			</a>
 		</div>
 	</div>

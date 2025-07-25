@@ -80,8 +80,8 @@ export async function load({ fetch, url, locals }) {
 
 		return {
 			// Follow the structure { items: [], pagination: {} } for consistency
-			items: drillsData.items,
-			pagination: drillsData.pagination,
+			items: drillsData.items || [],
+			pagination: drillsData.pagination || { page: 1, limit: 10, totalItems: 0, totalPages: 1 },
 			filterOptions // Pass filter options to the page component
 		};
 	} catch (error) {

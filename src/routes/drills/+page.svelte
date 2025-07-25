@@ -199,7 +199,14 @@ onDestroy(unsubNavigating);
 		// Pass null for searchQuery if it's empty to avoid adding '?q='
 		updateSimpleParam('q', $searchQuery === '' ? null : $searchQuery);
 
-		goto(`/drills?${params.toString()}`, { keepFocus: true, noScroll: true });
+		// 🚩 Guard: Avoid redundant navigations that can cause infinite loops
+		const newSearch = params.toString();
+		const currentSearch = $page.url.searchParams.toString();
+		if (newSearch === currentSearch) {
+			return; // Nothing changed – skip navigation
+		}
+
+		goto(`/drills?${newSearch}`, { keepFocus: true, noScroll: true });
 	}
 
 	function handlePageChange(event) {

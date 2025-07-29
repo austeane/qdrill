@@ -1,0 +1,27 @@
+QDrill - AI-Developed Sports Practice Planning Platform
+
+Duration: 1+ year (538 commits) | Tech Stack: SvelteKit, PostgreSQL, Tailwind CSS, Auth.js | 100% AI-Coded
+
+A comprehensive web application for sports drill management and practice planning, developed entirely through AI pair programming without prior SvelteKit or full-stack experience. This project demonstrates the potential of AI-assisted development for complex applications.
+
+Technical Achievements:
+• Built 77 Svelte components and 14 API endpoints comprising ~100K lines of code
+• Implemented sophisticated drag-and-drop system with timeline-based practice planning using custom Svelte stores
+• Designed normalized PostgreSQL database schema with transaction support
+• Integrated Google OAuth authentication with role-based permissions
+• Created real-time collaborative features including voting, commenting, and drill variations
+
+Complex Features Developed:
+• Multi-section practice plan editor with parallel timeline visualization
+• Advanced filtering system with performance optimization for large datasets
+• Undo/redo functionality with full history tracking
+• Wizard-based practice creation with duration management
+• Responsive drag-and-drop interface with visual feedback
+
+AI Development Highlights:
+• Successfully architected modular component system without prior Svelte knowledge
+• Implemented complex state management patterns using reactive stores
+• Built production-ready API with proper error handling and SQL injection prevention
+• Deployed on Vercel with CI/CD pipeline integration
+
+This project showcases how AI tools can enable developers to build production-quality applications in unfamiliar technologies, managing complexity through iterative development and continuous learning.

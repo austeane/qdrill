@@ -173,6 +173,7 @@ import { getGroupColor } from '$lib/utils/groupColors.js';
 				<!-- Detailed Description -->
 				<div class="detailed-description">
 					<h4 class="info-subtitle">Detailed Description</h4>
+					<!-- svelte-ignore svelte/no-at-html-tags -->
 					<div class="description-text prose prose-sm">
 						{@html normalizedItem.detailedDescription}
 					</div>

@@ -456,6 +456,7 @@
 
 			<div class="mb-6">
 				<h2 class="text-lg font-semibold mb-2">Detailed Description</h2>
+				<!-- svelte-ignore svelte/no-at-html-tags -->
 				<div class="prose prose-sm sm:prose lg:prose-lg">
 					{@html $drill.detailed_description}
 				</div>

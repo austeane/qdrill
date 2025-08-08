@@ -2,11 +2,13 @@ import { json } from '@sveltejs/kit';
 import { deleteFeedback } from '$lib/server/feedback.js';
 import { handleApiError } from '../../../utils/handleApiError.js';
 import { NotFoundError } from '$lib/server/errors.js';
+import { authGuard } from '$lib/server/authGuard.js';
+import { requireAdmin } from '$lib/server/auth/permissions.js';
 
-export async function DELETE({ params }) {
-	// TODO: Implement proper authentication and authorization
-	// For now, allowing deletion based on ID
-	const { id } = params;
+export const DELETE = authGuard(async (event) => {
+	// Require admin role
+	await requireAdmin({ locals: event.locals });
+	const { id } = event.params;
 	try {
 		// Assuming deleteFeedback might throw NotFoundError if the ID doesn't exist
 		await deleteFeedback(id);
@@ -15,4 +17,4 @@ export async function DELETE({ params }) {
 	} catch (error) {
 		return handleApiError(error);
 	}
-}
+});

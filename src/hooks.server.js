@@ -4,11 +4,15 @@ import { auth } from '$lib/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 // import { cleanup } from '@vercel/postgres'; // Commented out if not used
 import { userService } from '$lib/server/services/userService';
+import { SENTRY_DSN } from '$env/static/private';
+import { dev } from '$app/environment';
 
-Sentry.init({
-	dsn: 'https://f20c97c5f330ac4e17cc678ded5b49da@o4509308595208192.ingest.us.sentry.io/4509308596715520',
-	tracesSampleRate: 1
-});
+if (SENTRY_DSN) {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    tracesSampleRate: dev ? 1.0 : 0.1
+  });
+}
 
 export const handleError = Sentry.handleErrorWithSentry(async function _handleError({ error }) {
 	console.error('Uncaught error:', error);
@@ -19,7 +23,20 @@ export const handleError = Sentry.handleErrorWithSentry(async function _handleEr
 	};
 });
 
-export const handle = sequence(Sentry.sentryHandle(), async function _handle({ event, resolve }) {
+async function withSecurityHeaders({ event, resolve }) {
+  const response = await resolve(event, {
+    filterSerializedResponseHeaders: (name) => name.toLowerCase() === 'content-type'
+  });
+  const csp = "default-src 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; script-src 'self' 'unsafe-inline' https://*.vercel-insights.com https://*.sentry.io; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.vercel-insights.com https://*.sentry.io";
+  response.headers.set('Content-Security-Policy', csp);
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  return response;
+}
+
+export const handle = sequence(Sentry.sentryHandle(), withSecurityHeaders, async function _handle({ event, resolve }) {
 	// Retrieve the current session (if any) and expose it on event.locals so that
 	// downstream load functions, endpoints and `authGuard` can access it.
 	try {

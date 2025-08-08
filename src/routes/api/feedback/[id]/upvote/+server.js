@@ -1,14 +1,14 @@
 import { json } from '@sveltejs/kit';
 import { upvoteFeedback } from '$lib/server/feedback.js';
 import { handleApiError } from '../../../utils/handleApiError.js';
-import { NotFoundError } from '$lib/server/errors.js';
+import { authGuard } from '$lib/server/authGuard.js';
 
-export async function POST({ params }) {
-	const { id } = params;
+export const POST = authGuard(async ({ params }) => {
 	try {
-		const updatedFeedback = await upvoteFeedback(id);
-		return json(updatedFeedback);
+		const { id } = params;
+		const result = await upvoteFeedback(id);
+		return json(result);
 	} catch (error) {
 		return handleApiError(error);
 	}
-}
+});

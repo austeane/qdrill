@@ -1,5 +1,6 @@
 import { drillService } from '$lib/server/services/drillService.js';
 import { apiFetch } from '$lib/utils/apiFetch.js';
+import { sanitizeHtml } from '$lib/utils/sanitizeHtml.js';
 
 export async function load({ fetch, url, locals }) {
 	try {
@@ -78,9 +79,15 @@ export async function load({ fetch, url, locals }) {
                 const drillsData = drillsResult; // Service returns { items, pagination }
                 const filterOptions = filterOptionsResponse || {}; // Default to empty object if null/error
 
+                // Sanitize HTML fields before returning to the client
+                const sanitizedItems = (drillsData.items || []).map((d) => ({
+                  ...d,
+                  brief_description: sanitizeHtml(d.brief_description)
+                }));
+
 		return {
 			// Follow the structure { items: [], pagination: {} } for consistency
-			items: drillsData.items || [],
+			items: sanitizedItems,
 			pagination: drillsData.pagination || { page: 1, limit: 10, totalItems: 0, totalPages: 1 },
 			filterOptions // Pass filter options to the page component
 		};

@@ -18,6 +18,12 @@ QDrill is a web-based application designed to be a sports drill bank and practic
 - **CSS**: Tailwind CSS
 - **Testing**: Vitest (unit), Playwright and Cypress (end-to-end)
 
+## Security
+
+- **Sentry**: Configure DSNs via environment variables `SENTRY_DSN` (server) and `PUBLIC_SENTRY_DSN` (client). Sampling is reduced in production.
+- **HTML Sanitization**: All rich text HTML is sanitized server-side via DOMPurify (see `src/lib/utils/sanitizeHtml.js`). Do not render untrusted HTML without sanitizing.
+- **CSP**: Basic Content Security Policy headers are applied in `src/hooks.server.js`. Adjust as needed per hosting.
+
 ## Core Features
 
 ### 1. Drill and Formation Management

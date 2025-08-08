@@ -10,6 +10,7 @@ import {
 	ValidationError,
 	DatabaseError
 } from '$lib/server/errors';
+import { sanitizeHtml } from '$lib/utils/sanitizeHtml.js';
 
 const ERROR_MESSAGES = {
 	NOT_FOUND: (id) => `Drill with ID ${id} not found`,
@@ -102,6 +103,10 @@ export async function GET({ params, locals, url }) {
 				}
 			}
 		}
+
+		// Sanitize HTML fields before sending to client
+		drill.brief_description = sanitizeHtml(drill.brief_description);
+		drill.detailed_description = sanitizeHtml(drill.detailed_description);
 
 		return json(drill);
 	} catch (err) {

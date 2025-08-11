@@ -1,4 +1,4 @@
-exports.up = (pgm) => {
+export const up = (pgm) => {
   // Extend existing teams table
   pgm.addColumns('teams', {
     slug: { type: 'varchar(255)', unique: true, notNull: true },
@@ -25,7 +25,7 @@ exports.up = (pgm) => {
   });
 };
 
-exports.down = (pgm) => {
+export const down = (pgm) => {
   pgm.dropTable('team_members');
   pgm.dropColumns('teams', ['slug', 'default_start_time', 'timezone', 'created_by']);
 };

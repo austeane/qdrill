@@ -116,6 +116,7 @@
         {markers}
         isAdmin={data.userRole === 'admin'}
         isPublicView={false}
+        teamId={$page.params.teamId}
       />
     </div>
     
@@ -139,7 +140,7 @@
             </a>
             <a
               href="/teams/{$page.params.teamId}/season/markers"
-              class="block px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 text-center"
+              class="block px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 text-center"
             >
               Manage Events
             </a>

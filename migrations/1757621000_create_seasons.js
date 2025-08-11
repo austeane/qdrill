@@ -1,4 +1,4 @@
-exports.up = (pgm) => {
+export const up = (pgm) => {
   // Create seasons table
   pgm.createTable('seasons', {
     id: { type: 'uuid', primaryKey: true, default: pgm.func('gen_random_uuid()') },
@@ -34,7 +34,7 @@ exports.up = (pgm) => {
   pgm.createIndex('practice_plans', ['team_id', 'is_template']);
 };
 
-exports.down = (pgm) => {
+export const down = (pgm) => {
   pgm.dropColumns('practice_plans', ['is_template', 'team_id']);
   pgm.dropTable('seasons');
 };

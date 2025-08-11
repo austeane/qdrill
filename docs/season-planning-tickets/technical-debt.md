@@ -103,6 +103,20 @@ BETTER_AUTH_URL="http://localhost:3000"
 - **P3**: Performance and optimization (items 9-10)
 - **P4**: Nice to have improvements (items 11-13)
 
+## Phase 5 Implementation Notes
+
+### New Issues Discovered
+1. **Migration file format inconsistency** - Some migrations use CommonJS, others ES modules
+2. **Practice plan ID type mismatch** - practice_plans uses INTEGER id, newer tables expect UUID
+3. **Missing error boundaries** - UI components should handle API failures gracefully
+4. **Recurrence pattern validation** - Need client-side validation matching server rules
+
+### Completed During Implementation
+- ✅ Fixed BaseEntityService null primaryKey bug
+- ✅ Added proper indexes for all new foreign keys
+- ✅ Implemented comprehensive test coverage for new services
+- ✅ Created integration tests for season planning features
+
 ## Notes
 - Update this document as new technical debt is discovered
 - Consider dedicated tech debt sprints between major feature releases

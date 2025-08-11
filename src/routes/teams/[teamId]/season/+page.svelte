@@ -142,6 +142,12 @@
             >
               Manage Events
             </a>
+            <a
+              href="/teams/{$page.params.teamId}/season/recurrences"
+              class="block px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 text-center"
+            >
+              Recurring Practices
+            </a>
           </div>
         {/if}
       </div>

@@ -313,9 +313,10 @@
       </div>
       
       <!-- Today line -->
-      {@const today = new Date()}
-      {#if today >= new Date(season.start_date) && today <= new Date(season.end_date)}
-        {@const todayPosition = getDatePosition(today)}
+      {#if true}
+        {@const today = new Date()}
+        {#if today >= new Date(season.start_date) && today <= new Date(season.end_date)}
+          {@const todayPosition = getDatePosition(today)}
         <div 
           class="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30"
           style="left: {todayPosition}px;"
@@ -324,6 +325,7 @@
             Today
           </div>
         </div>
+        {/if}
       {/if}
     </div>
   </div>

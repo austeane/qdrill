@@ -1315,7 +1315,7 @@ PracticePlanService.prototype.getByIdWithContent = async function(planId) {
 PracticePlanService.prototype.createWithContent = async function(data, userId) {
   return await this.withTransaction(async (client) => {
     // Create the practice plan
-    const planData = {
+  const planData = {
       name: data.name,
       description: data.description,
       practice_goals: data.practice_goals || [],
@@ -1328,7 +1328,7 @@ PracticePlanService.prototype.createWithContent = async function(data, userId) {
       team_id: data.team_id,
       season_id: data.season_id,
       scheduled_date: data.scheduled_date,
-      status: data.status || 'draft',
+      is_published: data.is_published === true,
       is_template: data.is_template || false,
       template_plan_id: data.template_plan_id,
       is_edited: data.is_edited || false
@@ -1339,7 +1339,7 @@ PracticePlanService.prototype.createWithContent = async function(data, userId) {
         name, description, practice_goals, phase_of_season,
         estimated_number_of_participants, created_by, visibility,
         is_editable_by_others, start_time, team_id, season_id,
-        scheduled_date, status, is_template, template_plan_id, is_edited
+        scheduled_date, is_published, is_template, template_plan_id, is_edited
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
       ) RETURNING *
@@ -1358,7 +1358,7 @@ PracticePlanService.prototype.createWithContent = async function(data, userId) {
       planData.team_id,
       planData.season_id,
       planData.scheduled_date,
-      planData.status,
+      planData.is_published,
       planData.is_template,
       planData.template_plan_id,
       planData.is_edited
@@ -1425,18 +1425,18 @@ PracticePlanService.prototype.publishPracticePlan = async function(planId, userI
   const { teamMemberService } = await import('./teamMemberService.js');
   if (plan.team_id) {
     const member = await teamMemberService.getMember(plan.team_id, userId);
-    if (\!member || (member.role \!== 'admin' && plan.created_by \!== userId)) {
+    if (!member || (member.role !== 'admin' && plan.created_by !== userId)) {
       throw new ForbiddenError('Only team admins or the creator can publish plans');
     }
-  } else if (plan.created_by \!== userId) {
+  } else if (plan.created_by !== userId) {
     throw new ForbiddenError('Only the creator can publish this plan');
   }
   
-  // Update status to published
+  // Update published flag
   return await this.withTransaction(async (client) => {
     const query = `
       UPDATE practice_plans 
-      SET status = 'published', 
+      SET is_published = true,
           published_at = NOW(),
           updated_at = NOW()
       WHERE id = $1
@@ -1455,18 +1455,18 @@ PracticePlanService.prototype.unpublishPracticePlan = async function(planId, use
   const { teamMemberService } = await import('./teamMemberService.js');
   if (plan.team_id) {
     const member = await teamMemberService.getMember(plan.team_id, userId);
-    if (\!member || (member.role \!== 'admin' && plan.created_by \!== userId)) {
+    if (!member || (member.role !== 'admin' && plan.created_by !== userId)) {
       throw new ForbiddenError('Only team admins or the creator can unpublish plans');
     }
-  } else if (plan.created_by \!== userId) {
+  } else if (plan.created_by !== userId) {
     throw new ForbiddenError('Only the creator can unpublish this plan');
   }
   
-  // Update status back to draft
+  // Update published flag back to false
   return await this.withTransaction(async (client) => {
     const query = `
       UPDATE practice_plans 
-      SET status = 'draft',
+      SET is_published = false,
           updated_at = NOW()
       WHERE id = $1
       RETURNING *

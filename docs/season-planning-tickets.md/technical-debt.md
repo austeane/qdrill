@@ -5,14 +5,15 @@ This document tracks technical debt discovered during the season planning featur
 
 ## Database Schema Issues
 
-### 1. Missing 'role' column in users table
+### 1. ✅ Missing 'role' column in users table [COMPLETED]
 - **Issue**: The application expects a 'role' column on the users table but it doesn't exist
 - **Impact**: Non-critical - gracefully falls back to 'user' role
 - **Location**: `/src/hooks.server.js:36` and `/src/lib/auth.js:31`
 - **Error**: `error: column "role" does not exist`
 - **Fix**: Add migration to create role column with default value 'user'
+- **Resolution**: Applied migration on 2025-08-11
 ```sql
-ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'user';
+ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user';
 ```
 
 ## Code Quality Issues

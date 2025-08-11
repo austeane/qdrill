@@ -43,7 +43,8 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 
 ## Development Commands
 
-- `vercel dev` - Start development server
+- `vercel dev --listen 3000 > /tmp/vercel-dev.log 2>&1 & echo $!` - Start development server with logging (always use this)
+- Check logs: `tail -f /tmp/vercel-dev.log` or `cat /tmp/vercel-dev.log`
 - `pnpm run check` - Check TypeScript + SvelteKit sync
 
 ## Package Management

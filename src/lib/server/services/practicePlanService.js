@@ -1257,3 +1257,222 @@ export class PracticePlanService extends BaseEntityService {
 
 // Create and export an instance of the service
 export const practicePlanService = new PracticePlanService();
+
+// Additional methods for Season Planning (Phase 4)
+
+PracticePlanService.prototype.getByTeamAndDate = async function(teamId, scheduledDate) {
+  const result = await this.getAll({
+    filters: { 
+      team_id: teamId,
+      scheduled_date: scheduledDate
+    },
+    limit: 1
+  });
+  return result.items[0] || null;
+};
+
+PracticePlanService.prototype.getByIdWithContent = async function(planId) {
+  return await this.withTransaction(async (client) => {
+    // Get plan
+    const planQuery = 'SELECT * FROM practice_plans WHERE id = $1';
+    const planResult = await client.query(planQuery, [planId]);
+    if (planResult.rows.length === 0) return null;
+    
+    const plan = planResult.rows[0];
+    
+    // Get sections
+    const sectionsQuery = `
+      SELECT * FROM practice_plan_sections 
+      WHERE practice_plan_id = $1 
+      ORDER BY "order"
+    `;
+    const sectionsResult = await client.query(sectionsQuery, [planId]);
+    plan.sections = sectionsResult.rows;
+    
+    // Get drills with details
+    const drillsQuery = `
+      SELECT 
+        ppd.*,
+        d.name as drill_name,
+        d.brief_description as drill_description,
+        f.name as formation_name,
+        f.brief_description as formation_description,
+        pps.name as section_name
+      FROM practice_plan_drills ppd
+      LEFT JOIN drills d ON ppd.drill_id = d.id
+      LEFT JOIN formations f ON ppd.formation_id = f.id
+      LEFT JOIN practice_plan_sections pps ON ppd.section_id = pps.id
+      WHERE ppd.practice_plan_id = $1
+      ORDER BY ppd.order_in_plan
+    `;
+    const drillsResult = await client.query(drillsQuery, [planId]);
+    plan.drills = drillsResult.rows;
+    
+    return plan;
+  });
+};
+
+PracticePlanService.prototype.createWithContent = async function(data, userId) {
+  return await this.withTransaction(async (client) => {
+    // Create the practice plan
+    const planData = {
+      name: data.name,
+      description: data.description,
+      practice_goals: data.practice_goals || [],
+      phase_of_season: data.phase_of_season,
+      estimated_number_of_participants: data.estimated_number_of_participants,
+      created_by: userId,
+      visibility: data.visibility || 'private',
+      is_editable_by_others: false,
+      start_time: data.start_time,
+      team_id: data.team_id,
+      season_id: data.season_id,
+      scheduled_date: data.scheduled_date,
+      status: data.status || 'draft',
+      is_template: data.is_template || false,
+      template_plan_id: data.template_plan_id,
+      is_edited: data.is_edited || false
+    };
+    
+    const planQuery = `
+      INSERT INTO practice_plans (
+        name, description, practice_goals, phase_of_season,
+        estimated_number_of_participants, created_by, visibility,
+        is_editable_by_others, start_time, team_id, season_id,
+        scheduled_date, status, is_template, template_plan_id, is_edited
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+      ) RETURNING *
+    `;
+    
+    const planResult = await client.query(planQuery, [
+      planData.name,
+      planData.description,
+      JSON.stringify(planData.practice_goals),
+      planData.phase_of_season,
+      planData.estimated_number_of_participants,
+      planData.created_by,
+      planData.visibility,
+      planData.is_editable_by_others,
+      planData.start_time,
+      planData.team_id,
+      planData.season_id,
+      planData.scheduled_date,
+      planData.status,
+      planData.is_template,
+      planData.template_plan_id,
+      planData.is_edited
+    ]);
+    
+    const plan = planResult.rows[0];
+    
+    // Create sections
+    const sectionMap = {};
+    for (const section of data.sections || []) {
+      const sectionQuery = `
+        INSERT INTO practice_plan_sections (
+          practice_plan_id, name, "order", goals, notes
+        ) VALUES ($1, $2, $3, $4, $5)
+        RETURNING *
+      `;
+      
+      const sectionResult = await client.query(sectionQuery, [
+        plan.id,
+        section.name,
+        section.order || 0,
+        JSON.stringify(section.goals || []),
+        section.notes
+      ]);
+      
+      sectionMap[section.name] = sectionResult.rows[0].id;
+    }
+    
+    // Create drills
+    for (const drill of data.drills || []) {
+      const sectionId = drill.section_name ? sectionMap[drill.section_name] : drill.section_id;
+      
+      const drillQuery = `
+        INSERT INTO practice_plan_drills (
+          practice_plan_id, drill_id, formation_id, type, name,
+          selected_duration, order_in_plan, section_id, parallel_group_id,
+          parallel_timeline, group_timelines
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `;
+      
+      await client.query(drillQuery, [
+        plan.id,
+        drill.drill_id,
+        drill.formation_id,
+        drill.type || 'drill',
+        drill.name,
+        drill.duration || 30,
+        drill.order_in_plan || 0,
+        sectionId,
+        drill.parallel_group_id,
+        drill.parallel_timeline,
+        JSON.stringify(drill.group_timelines || [])
+      ]);
+    }
+    
+    return await this.getByIdWithContent(plan.id);
+  });
+};
+
+PracticePlanService.prototype.publishPracticePlan = async function(planId, userId) {
+  const plan = await this.getById(planId);
+  
+  // Check permissions
+  const { teamMemberService } = await import('./teamMemberService.js');
+  if (plan.team_id) {
+    const member = await teamMemberService.getMember(plan.team_id, userId);
+    if (\!member || (member.role \!== 'admin' && plan.created_by \!== userId)) {
+      throw new ForbiddenError('Only team admins or the creator can publish plans');
+    }
+  } else if (plan.created_by \!== userId) {
+    throw new ForbiddenError('Only the creator can publish this plan');
+  }
+  
+  // Update status to published
+  return await this.withTransaction(async (client) => {
+    const query = `
+      UPDATE practice_plans 
+      SET status = 'published', 
+          published_at = NOW(),
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `;
+    
+    const result = await client.query(query, [planId]);
+    return result.rows[0];
+  });
+};
+
+PracticePlanService.prototype.unpublishPracticePlan = async function(planId, userId) {
+  const plan = await this.getById(planId);
+  
+  // Check permissions
+  const { teamMemberService } = await import('./teamMemberService.js');
+  if (plan.team_id) {
+    const member = await teamMemberService.getMember(plan.team_id, userId);
+    if (\!member || (member.role \!== 'admin' && plan.created_by \!== userId)) {
+      throw new ForbiddenError('Only team admins or the creator can unpublish plans');
+    }
+  } else if (plan.created_by \!== userId) {
+    throw new ForbiddenError('Only the creator can unpublish this plan');
+  }
+  
+  // Update status back to draft
+  return await this.withTransaction(async (client) => {
+    const query = `
+      UPDATE practice_plans 
+      SET status = 'draft',
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `;
+    
+    const result = await client.query(query, [planId]);
+    return result.rows[0];
+  });
+};

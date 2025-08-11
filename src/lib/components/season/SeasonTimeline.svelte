@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   
   export let season;
   export let sections = [];
@@ -8,6 +9,7 @@
   export let isAdmin = false;
   export let isPublicView = false;
   export let onDateClick = null;
+  export let existingPractices = [];
   
   let timelineElement;
   let containerWidth = 0;
@@ -94,10 +96,59 @@
     return daysDiff * DAY_WIDTH;
   }
   
-  function handleDateClick(date) {
-    if (isAdmin && onDateClick) {
-      onDateClick(date);
+  // Default click handler for creating practices
+  async function defaultDateClickHandler(date) {
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // Check if practice already exists for this date
+    const existing = existingPractices.find(p => p.scheduled_date === dateStr);
+    
+    if (existing) {
+      // Navigate to existing practice
+      goto(`/practice-plans/${existing.id}/edit`);
+    } else {
+      // Create new practice
+      try {
+        const response = await fetch(`/api/seasons/${season.id}/instantiate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scheduled_date: dateStr })
+        });
+        
+        if (response.ok) {
+          const plan = await response.json();
+          goto(`/practice-plans/${plan.id}/edit`);
+        } else {
+          const error = await response.json();
+          alert(`Failed to create practice: ${error.error}`);
+        }
+      } catch (error) {
+        console.error('Error creating practice:', error);
+        alert('Failed to create practice plan');
+      }
     }
+  }
+  
+  function handleDateClick(date) {
+    if (!isAdmin) return;
+    
+    if (onDateClick) {
+      onDateClick(date);
+    } else {
+      defaultDateClickHandler(date);
+    }
+  }
+  
+  // Helper functions for practice indicators
+  function hasExistingPractice(date) {
+    const dateStr = date.toISOString().split('T')[0];
+    return existingPractices.some(p => p.scheduled_date === dateStr);
+  }
+  
+  function getPracticeStatus(date) {
+    const dateStr = date.toISOString().split('T')[0];
+    const practice = existingPractices.find(p => p.scheduled_date === dateStr);
+    return practice?.status || null;
   }
   
   function formatDate(date) {
@@ -183,16 +234,25 @@
           {#each dateRange as date, i}
             {@const isWeekend = date.getDay() === 0 || date.getDay() === 6}
             {@const isToday = date.toDateString() === new Date().toDateString()}
+            {@const hasPractice = hasExistingPractice(date)}
+            {@const practiceStatus = getPracticeStatus(date)}
             <button
-              class="absolute border-r border-gray-200 text-xs flex items-center justify-center
+              class="absolute border-r border-gray-200 text-xs flex items-center justify-center relative
                      {isWeekend ? 'bg-gray-100' : 'bg-white'}
                      {isToday ? 'ring-2 ring-blue-500 z-10' : ''}
-                     {isAdmin && onDateClick ? 'hover:bg-blue-50 cursor-pointer' : ''}"
+                     {hasPractice ? (practiceStatus === 'published' ? 'bg-green-50' : 'bg-yellow-50') : ''}
+                     {isAdmin ? 'hover:bg-blue-50 cursor-pointer' : ''}"
               style="left: {i * DAY_WIDTH}px; width: {DAY_WIDTH}px; height: 30px;"
               on:click={() => handleDateClick(date)}
-              disabled={!isAdmin || !onDateClick}
+              disabled={!isAdmin}
+              title={hasPractice ? `Practice (${practiceStatus})` : (isAdmin ? 'Click to create practice' : '')}
             >
               {date.getDate()}
+              {#if hasPractice}
+                <span class="absolute bottom-0 left-0 right-0 h-1 
+                           {practiceStatus === 'published' ? 'bg-green-500' : 'bg-yellow-500'}">
+                </span>
+              {/if}
             </button>
           {/each}
         </div>

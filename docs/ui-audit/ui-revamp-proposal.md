@@ -129,6 +129,7 @@ This document proposes a wholesale UI/UX revamp for QDrill to improve aesthetics
 - **Bulk actions**: Add checkbox selection for adding multiple drills to practice plan at once
 - **Save filter presets**: Allow coaches to save common filter combinations
 - **Grid density options**: Provide compact/comfortable/spacious view options
+- **Shareable filters (URL-sync)**: Sync filter state to URLSearchParams so filtered lists can be bookmarked and shared; restore on reload and support Back/Forward history
 
 #### 3. Practice Plan Editor
 - **Inline editing**: Consider making drill durations and notes editable inline without modal
@@ -281,6 +282,7 @@ pnpm add bits-ui lucide-svelte sveltekit-superforms zod cmdk-sv
 - Changes
   - Refactor tinted `bg-*-50` blocks in viewer and other long pages to border/rail treatment using tokens
   - Ensure all drill renderings (cards/list items) are `<a href="/drills/[id]">`
+- Add automated audit and e2e coverage to enforce anchor semantics (middle-click, context menu, right-click) and remove JS-only navigation
 - Acceptance
   - Visual audit shows reduced large tinted blocks; middle-click open on drill links works everywhere
 

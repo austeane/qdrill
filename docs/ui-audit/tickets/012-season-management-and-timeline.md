@@ -48,14 +48,20 @@ UI Components Needed
 - ShareSettings panel
 
 Milestones
-- M1: Merge settings pages; flat markers API; toasts
-- M2: Inline create/edit for markers and sections
-- M3: Drag/resize interactions and keyboard access
-- M4: Context menus and Week view deep links
-- M5: Polish and a11y QA
+- M1: Merge settings pages; flat markers API; toasts; basic SSR of timeline with skeletons
+- M2: Inline create/edit for markers and sections; optimistic updates with conflict resolution
+- M3: Drag/resize interactions and keyboard access; larger hit targets and snapping
+- M4: Context menus and Week view deep links; recurrence preview (ghost chips) with skip markers
+- M5: Polish, print styles, a11y QA, e2e flows (create season, add section, add marker, open week)
 
 Risks
 - Date math edge cases; SSR vs client interactions; permission edge cases on shared links
+
+Acceptance Criteria (high-level)
+- Keyboard-only timeline editing supported (arrow to move focus, Shift+Arrow to extend range, Enter to confirm, Esc to cancel)
+- Admin-only actions gated with visible cues; non-admins see read-only affordances
+- Creating a practice from timeline shows non-blocking feedback with actions to open existing or view week
+- Share settings panel saves and reflects state inline with clear success/error toasts
 
 References
 

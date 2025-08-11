@@ -879,5 +879,12 @@ export {
 - Replace existing modals with Dialog component
 - Use consistent icon imports from icons.ts
 
+## Adoption and Deprecation Plan
+
+- Establish a short-lived migration layer: create wrapper exports that re-export the new components under legacy import paths to keep diffs smaller during rollout. Remove after migration is complete.
+- Add ESLint rule or codemod notes to flag legacy component usage (e.g., `SimpleButton.svelte`, ad-hoc modals) and suggest replacements.
+- Maintain a Components Usage Guide in `docs/ui-audit/README.md` linking to Button/Input/Select/Dialog/Card/Skeleton/Tabs with examples and do/don'ts.
+- Gate new UI contributions: PRs must use components from `src/lib/components/ui/` unless exceptions are justified.
+
 ## Next Steps
 After completing this ticket, proceed to Ticket 004 (Drills Library Revamp) which will use these components to rebuild the drills page.

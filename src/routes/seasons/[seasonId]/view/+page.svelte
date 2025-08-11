@@ -61,10 +61,10 @@
     <h2 class="text-xl font-semibold mb-4">Season Overview</h2>
     <SeasonTimeline
       {season}
-      {practices}
+      existingPractices={practices}
       {markers}
       {sections}
-      readOnly={true}
+      isPublicView={true}
     />
   </div>
   

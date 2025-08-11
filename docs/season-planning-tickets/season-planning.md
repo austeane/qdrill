@@ -189,8 +189,8 @@ Drag and timeline UX
 - Phase 4: ✅ Instantiation (click), union algorithm; draft plans; publish flow. [COMPLETED]
 - Phase 5: ✅ Recurrence and batch generation; deletion by date. [COMPLETED]
 - Phase 6: ✅ Week View - Quick practice overview and management [COMPLETED]
-- Phase 7: Sharing - ICS feed, public share links, member read-only access
-- Phase 8: Season sections management UI - Full CRUD for sections and markers
+- Phase 7: ✅ Sharing - ICS feed, public share links, member read-only access [COMPLETED]
+- Phase 8: ✅ Season sections management UI - Full CRUD for sections and markers [COMPLETED]
 
 - Data model: added `teams`, `team_members`, `seasons`, `season_sections`, `season_section_default_sections`, `season_section_drills`, `season_markers`; extended `practice_plans` for team/season binding and scheduling.
 - Behavior: union rules, propagation, recurrence, drag re-eval, publishing/privacy, ICS with markers, AI augment.

@@ -269,17 +269,27 @@ export class BaseEntityService {
 		let orderBy;
 		if (sortBy && this.isColumnAllowed(sortBy)) {
 			const sanitizedSortOrder = this.validateSortOrder(sortOrder);
-			orderBy = `ORDER BY ${sortBy} ${sanitizedSortOrder}, ${this.primaryKey} ${sanitizedSortOrder}`;
-		} else {
+			if (this.primaryKey) {
+				orderBy = `ORDER BY ${sortBy} ${sanitizedSortOrder}, ${this.primaryKey} ${sanitizedSortOrder}`;
+			} else {
+				orderBy = `ORDER BY ${sortBy} ${sanitizedSortOrder}`;
+			}
+		} else if (this.primaryKey) {
 			orderBy = `ORDER BY ${this.primaryKey} DESC`;
+		} else {
+			orderBy = ''; // No ordering if no primary key
 		}
 
 		// Validate columns to return
 		const validColumns = columns.filter((col) => col === '*' || this.isColumnAllowed(col));
 
-		// If no valid columns, default to primary key
+		// If no valid columns, default to primary key (if it exists) or all allowed columns
 		if (validColumns.length === 0) {
-			validColumns.push(this.primaryKey);
+			if (this.primaryKey) {
+				validColumns.push(this.primaryKey);
+			} else {
+				validColumns.push('*');
+			}
 		}
 
 		try {

@@ -36,11 +36,11 @@
 				Easily find, create, and share drills and practice plans. Focus on coaching, QDrill makes
 				planning easy.
 			</p>
-			<div class="space-y-4">
+			<div class="flex flex-col sm:flex-row sm:flex-wrap gap-4">
 				<button
 					on:click={navigateToWizard}
 					disabled={isNavigating}
-					class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto text-center relative"
+					class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto text-center relative"
 				>
 					{#if isNavigating}
 						<div class="absolute inset-0 flex items-center justify-center">
@@ -51,12 +51,20 @@
 						Create Practice Plan
 					{/if}
 				</button>
-				<a
-					href="/drills"
-					class="inline-block bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto text-center"
-				>
-					Browse Drills
-				</a>
+				<div class="flex flex-row gap-4 w-full sm:w-auto">
+					<a
+						href="/drills"
+						class="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg text-center"
+					>
+						Browse Drills
+					</a>
+					<a
+						href="/practice-plans/browse"
+						class="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg text-center"
+					>
+						Browse Plans
+					</a>
+				</div>
 			</div>
 		</div>
 		<!-- Right Side: Image -->

@@ -3,8 +3,8 @@
 	import { page } from '$app/stores';
 	import { navigating } from '$app/stores';
 	import { onDestroy } from 'svelte';
-	import Header from './Header.svelte';
-	import './styles.css';
+    import Header from './Header.svelte';
+    import '../app.css';
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
 	import FeedbackButton from '$lib/components/FeedbackButton.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
@@ -13,8 +13,9 @@
 	import { inject } from '@vercel/analytics';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { dev } from '$app/environment';
-	import { onMount } from 'svelte';
+    import { onMount } from 'svelte';
 	import { useSession } from '$lib/auth-client';
+    import { theme } from '$lib/stores/themeStore';
 
 	inject({ mode: dev ? 'development' : 'production' });
 	injectSpeedInsights();
@@ -61,12 +62,13 @@ onDestroy(unsubNavigating);
 		}
 	}
 
-	// Check on initial load (in case user was already logged in but association failed before)
-	onMount(() => {
-		if ($session.data) {
-			checkAndAssociateEntities($session.data);
-		}
-	});
+    // Initialize theme and check for any pending entity associations
+    onMount(() => {
+        theme.init();
+        if ($session.data) {
+            checkAndAssociateEntities($session.data);
+        }
+    });
 
 	// Check whenever the session data changes (e.g., after login)
 	$: {

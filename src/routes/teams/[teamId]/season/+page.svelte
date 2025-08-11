@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import SeasonTimeline from '$lib/components/season/SeasonTimeline.svelte';
+  import ShareSettings from '$lib/components/season/ShareSettings.svelte';
   
   export let data;
   
@@ -158,6 +159,16 @@
         {/if}
       </div>
     </div>
+    
+    <!-- Share Settings -->
+    {#if data.userRole === 'admin'}
+      <div class="mt-8">
+        <ShareSettings 
+          seasonId={activeSeason.id}
+          isAdmin={true}
+        />
+      </div>
+    {/if}
   {:else}
     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
       <p class="text-yellow-800">No active season. Create or activate a season to get started.</p>

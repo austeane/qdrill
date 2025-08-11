@@ -32,7 +32,7 @@ export async function load({ params, url }) {
     // Get published practices only
     const practicesResult = await query(
       `SELECT * FROM practice_plans 
-       WHERE season_id = $1 AND is_published = true 
+       WHERE season_id = $1 AND status = 'published' 
        ORDER BY scheduled_date, start_time`,
       [seasonId]
     );

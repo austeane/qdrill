@@ -1,4 +1,5 @@
 import { BaseEntityService } from './baseEntityService.js';
+import * as db from '$lib/server/db.js';
 import { seasonUnionService } from './seasonUnionService.js';
 import { practicePlanService } from './practicePlanService.js';
 import { seasonMarkerService } from './seasonMarkerService.js';
@@ -8,7 +9,20 @@ import { seasonMarkerService } from './seasonMarkerService.js';
  */
 class RecurrenceService extends BaseEntityService {
   constructor() {
-    super('season_recurrences');
+    super(
+      'season_recurrences',
+      'id',
+      [
+        'id', 'season_id', 'team_id', 'name', 'pattern', 'day_of_week',
+        'day_of_month', 'time_of_day', 'duration_minutes', 'template_plan_id',
+        'skip_dates', 'skip_markers', 'is_active', 'created_by', 'created_at', 'updated_at'
+      ],
+      [
+        'id', 'season_id', 'team_id', 'name', 'pattern', 'day_of_week',
+        'day_of_month', 'time_of_day', 'duration_minutes', 'template_plan_id',
+        'skip_dates', 'skip_markers', 'is_active', 'created_by', 'created_at', 'updated_at'
+      ]
+    );
   }
 
   /**
@@ -36,7 +50,7 @@ class RecurrenceService extends BaseEntityService {
       WHERE r.season_id = $1
       ORDER BY r.created_at DESC
     `;
-    const result = await this.db.query(query, [seasonId]);
+    const result = await db.query(query, [seasonId]);
     return result.rows;
   }
 
@@ -117,7 +131,7 @@ class RecurrenceService extends BaseEntityService {
         AND scheduled_date >= $2 
         AND scheduled_date <= $3
     `;
-    const existingResult = await this.db.query(existingQuery, [
+    const existingResult = await db.query(existingQuery, [
       recurrence.season_id,
       startDate,
       endDate
@@ -127,7 +141,7 @@ class RecurrenceService extends BaseEntityService {
     // Check for markers if skip_markers is true
     let markerDates = new Set();
     if (recurrence.skip_markers) {
-      const markers = await seasonMarkerService.getBySeason(recurrence.season_id);
+      const markers = await seasonMarkerService.getSeasonMarkers(recurrence.season_id);
       markers.forEach(marker => {
         const start = new Date(marker.start_date);
         const end = marker.end_date ? new Date(marker.end_date) : start;
@@ -213,7 +227,7 @@ class RecurrenceService extends BaseEntityService {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `;
-    const logResult = await this.db.query(logQuery, [
+    const logResult = await db.query(logQuery, [
       recurrenceId,
       generatedPlanIds.length,
       Object.keys(skipReasons).length,

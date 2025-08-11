@@ -10,6 +10,7 @@
   export let isPublicView = false;
   export let onDateClick = null;
   export let existingPractices = [];
+  export let teamId = null;
   
   let timelineElement;
   let containerWidth = 0;
@@ -292,22 +293,24 @@
       <div class="absolute" style="top: {HEADER_HEIGHT + 20 + (sectionRows.length * (SECTION_HEIGHT + 5)) + 20}px; left: 0; right: 0;">
         <div class="text-xs font-semibold text-gray-600 mb-2">Events & Milestones</div>
         
-        {#each markers.all || [] as marker}
-          {@const left = getDatePosition(marker.start_date)}
-          {@const width = getDateWidth(marker.start_date, marker.end_date)}
+        {#each markers as marker}
+          {@const left = getDatePosition(marker.date)}
           
           <div
-            class="absolute rounded px-2 py-1 text-xs font-medium
-                   {markerColors[marker.color] || markerColors.red}"
-            style="left: {left}px; width: {width}px; height: {MARKER_HEIGHT}px; margin-bottom: 5px;"
-            title="{marker.title}: {marker.notes || 'No notes'}"
+            class="absolute rounded px-2 py-1 text-xs font-medium text-white"
+            style="left: {left}px; width: 2px; background-color: {marker.color || '#EF4444'}; height: 20px; margin-bottom: 5px;"
+            title="{marker.name}"
           >
-            <span class="truncate block">
-              {#if marker.type === 'tournament'}🏆{/if}
-              {#if marker.type === 'break'}🏖️{/if}
-              {#if marker.type === 'scrimmage'}⚔️{/if}
-              {marker.title}
-            </span>
+          </div>
+          <div
+            class="absolute rounded px-2 py-1 text-xs font-medium whitespace-nowrap"
+            style="left: {left + 4}px; top: 0; color: {marker.color || '#EF4444'};"
+          >
+            {#if marker.type === 'tournament'}🏆{/if}
+            {#if marker.type === 'break'}🏖️{/if}
+            {#if marker.type === 'milestone'}📍{/if}
+            {#if marker.type === 'deadline'}⏰{/if}
+            {marker.name}
           </div>
         {/each}
       </div>
@@ -330,17 +333,17 @@
     </div>
   </div>
   
-  {#if isAdmin && !isPublicView}
+  {#if isAdmin && !isPublicView && teamId}
     <div class="p-4 border-t bg-gray-50">
       <div class="flex space-x-2">
         <a 
-          href="/teams/{$page.params.teamId}/season/sections"
+          href="/teams/{teamId}/season/sections"
           class="text-blue-500 hover:underline text-sm"
         >
           Manage Sections
         </a>
         <a 
-          href="/teams/{$page.params.teamId}/season/markers"
+          href="/teams/{teamId}/season/markers"
           class="text-blue-500 hover:underline text-sm"
         >
           Manage Events

@@ -3,6 +3,8 @@ import { sql } from '@vercel/postgres';
 import { dev } from '$app/environment';
 import { handleApiError } from '../../utils/handleApiError.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '$lib/server/errors.js';
+import { authGuard } from '$lib/server/authGuard.js';
+import { requireAdmin } from '$lib/server/auth/permissions.js';
 
 // Get all poll options
 export async function GET() {
@@ -37,15 +39,11 @@ export async function POST({ request }) {
 	}
 }
 
-// Update a poll option (for admin to add drill link)
-export async function PUT({ request }) {
-	// Replace dev check with proper role-based authorization if available
-	if (!dev) {
-		throw new ForbiddenError('Unauthorized access to update poll option');
-	}
-
+// Update a poll option (admin only)
+export const PUT = authGuard(async (event) => {
+	await requireAdmin({ locals: event.locals });
 	try {
-		const { id, drill_link } = await request.json();
+		const { id, drill_link } = await event.request.json();
 
 		if (!id || !drill_link) {
 			throw new ValidationError('Missing id or drill_link in request body');
@@ -69,18 +67,14 @@ export async function PUT({ request }) {
 	} catch (error) {
 		return handleApiError(error);
 	}
-}
+});
 
 // Delete a poll option (admin only)
-export async function DELETE({ request }) {
-	// Replace dev check with proper role-based authorization if available
-	if (!dev) {
-		throw new ForbiddenError('Unauthorized access to delete poll option');
-	}
-
+export const DELETE = authGuard(async (event) => {
+	await requireAdmin({ locals: event.locals });
 	try {
 		// Assuming ID comes from request body, but should ideally be a URL parameter
-		const { id } = await request.json();
+		const { id } = await event.request.json();
 
 		if (!id) {
 			throw new ValidationError('Missing id in request body');
@@ -98,4 +92,4 @@ export async function DELETE({ request }) {
 	} catch (error) {
 		return handleApiError(error);
 	}
-}
+});

@@ -3,6 +3,7 @@ import { formationService } from '$lib/server/services/formationService.js';
 import { authGuard } from '$lib/server/authGuard';
 import { dev } from '$app/environment';
 import { handleApiError } from '../utils/handleApiError.js';
+import { sanitizeHtml } from '$lib/utils/sanitizeHtml.js';
 
 /**
  * GET handler for formations
@@ -50,7 +51,15 @@ export async function GET({ url, locals }) {
 			filters
 		});
 
-		return json(result);
+		const sanitized = {
+			...result,
+			items: (result.items || []).map((f) => ({
+				...f,
+				detailed_description: sanitizeHtml(f.detailed_description)
+			}))
+		};
+
+		return json(sanitized);
 	} catch (err) {
 		// Use the centralized error handler
 		return handleApiError(err);

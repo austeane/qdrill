@@ -162,12 +162,13 @@
 								</button>
 							</div>
 						{/if}
-						<div
-							class="text-gray-600 prose prose-sm sm:prose lg:prose-lg"
-							class:truncate={!$isDescriptionExpanded}
-						>
-							{@html practicePlan.description}
-						</div>
+											<!-- svelte-ignore svelte/no-at-html-tags -->
+					<div
+						class="text-gray-600 prose prose-sm sm:prose lg:prose-lg"
+						class:truncate={!$isDescriptionExpanded}
+					>
+						{@html practicePlan.description}
+					</div>
 						<div class="flex justify-end mt-1">
 							{#if $isDescriptionExpanded}
 								<button

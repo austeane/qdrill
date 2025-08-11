@@ -154,6 +154,7 @@
 			{#if formation.detailed_description}
 				<div class="border-t border-gray-200 pt-6 mb-8">
 					<h2 class="text-xl font-semibold mb-4">Description</h2>
+					<!-- svelte-ignore svelte/no-at-html-tags -->
 					<div class="prose max-w-none prose-indigo">
 						{@html formation.detailed_description}
 					</div>

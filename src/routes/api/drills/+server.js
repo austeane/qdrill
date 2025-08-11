@@ -4,6 +4,7 @@ import { drillService } from '$lib/server/services/drillService';
 import { AppError, DatabaseError, ValidationError, NotFoundError } from '$lib/server/errors'; // Import NotFoundError
 import { z } from 'zod'; // Import zod
 import { createDrillSchema, updateDrillSchema } from '$lib/validation/drillSchema'; // Import Zod schemas
+import { sanitizeHtml } from '$lib/utils/sanitizeHtml.js';
 
 // Helper function to convert AppError to SvelteKit error response
 function handleApiError(err) {
@@ -117,8 +118,17 @@ export const GET = async ({ url, locals }) => {
 		// Call the enhanced getFilteredDrills method
 		const result = await drillService.getFilteredDrills(filters, options);
 
+		// Sanitize brief descriptions in the list
+		const sanitized = {
+			...result,
+			items: (result.items || []).map((d) => ({
+				...d,
+				brief_description: sanitizeHtml(d.brief_description)
+			}))
+		};
+
 		// Return structure matches the frontend expectation from Phase 2 plan
-		return json(result);
+		return json(sanitized);
 	} catch (err) {
 		// Renamed variable to err
 		// Use the helper function

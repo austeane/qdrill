@@ -493,7 +493,8 @@ onDestroy(unsubNavigating);
 											{drill.name}
 										</a>
 									</h2>
-									<div class="prose prose-sm mt-2 text-gray-600 max-h-24 overflow-hidden">
+																	<!-- svelte-ignore svelte/no-at-html-tags -->
+								<div class="prose prose-sm mt-2 text-gray-600 max-h-24 overflow-hidden">
 										{@html drill.brief_description}
 									</div>
 								</div>

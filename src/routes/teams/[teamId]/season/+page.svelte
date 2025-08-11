@@ -148,6 +148,12 @@
             >
               Recurring Practices
             </a>
+            <a
+              href="/teams/{$page.params.teamId}/season/week"
+              class="block px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 text-center"
+            >
+              Week View
+            </a>
           </div>
         {/if}
       </div>

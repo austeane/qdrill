@@ -1,11 +1,11 @@
-import * as db from '$lib/server/db';
+import * as db from '$lib/server/db.js';
 import {
 	NotFoundError,
 	ValidationError,
 	DatabaseError,
 	InternalServerError,
 	ForbiddenError
-} from '$lib/server/errors';
+} from '$lib/server/errors.js';
 import { sql } from 'kysely'; // Ensure sql is imported from Kysely
 
 /**

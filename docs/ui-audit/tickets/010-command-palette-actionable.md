@@ -678,5 +678,12 @@ export function registerGlobalCommands() {
 - Integrates with theme system from Ticket 001
 - Uses logger from Ticket 009
 
+## Enhancements Based on Review
+
+- Register a theme toggle command that calls `themeStore.toggleTheme()` instead of directly changing `data-theme`, to keep a single source of truth and persist preference.
+- Add “recent destinations” by persisting selected items to `localStorage` (`command-palette-recent`). Display these when the query is empty.
+- Support “>” prefix to filter only commands (hide content search groups) and “#” prefix for tag search (future: drills by tag).
+- Add quick navigation chords (G+D, G+P, G+T) when palette is closed, avoiding interference with inputs.
+
 ## Next Steps
 After completing this ticket, proceed to Ticket 011 (Reduce Tints and Anchor Links).

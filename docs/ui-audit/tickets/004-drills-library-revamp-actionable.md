@@ -129,6 +129,87 @@ export const activeFilterCount = derived(drillFilters, $filters => {
 });
 ```
 
+### Step 1.1: URL-Sync Filter State (Shareable, Back/Forward-Friendly)
+
+Make filters shareable and restore on reload/navigation by syncing with URLSearchParams. This augments the localStorage persistence and greatly improves UX.
+
+```typescript
+// src/lib/stores/drillFilterStore.ts (ADD BELOW existing code)
+import { browser } from '$app/environment';
+
+function serializeToSearchParams(filters: FilterState): URLSearchParams {
+  const params = new URLSearchParams();
+  if (filters.search) params.set('q', filters.search);
+  if (filters.positions.length) params.set('pos', filters.positions.join(','));
+  if (filters.skills.length) params.set('skills', filters.skills.join(','));
+  if (filters.difficulty.length) params.set('diff', filters.difficulty.join(','));
+  if (filters.tags.length) params.set('tags', filters.tags.join(','));
+  if (filters.duration.min > 0) params.set('min', String(filters.duration.min));
+  if (filters.duration.max < 120) params.set('max', String(filters.duration.max));
+  if (filters.sortBy !== 'created') params.set('sort', filters.sortBy);
+  if (filters.sortOrder !== 'desc') params.set('order', filters.sortOrder);
+  if (filters.view !== 'grid') params.set('view', filters.view);
+  if (filters.density !== 'comfortable') params.set('density', filters.density);
+  return params;
+}
+
+function parseFromSearchParams(params: URLSearchParams): Partial<FilterState> {
+  const getList = (key: string) => (params.get(key)?.split(',').filter(Boolean)) || [];
+  const toNum = (key: string, fallback: number) => Number(params.get(key) ?? fallback) || fallback;
+  const sortBy = (params.get('sort') as FilterState['sortBy']) || 'created';
+  const sortOrder = (params.get('order') as FilterState['sortOrder']) || 'desc';
+  const view = (params.get('view') as FilterState['view']) || 'grid';
+  const density = (params.get('density') as FilterState['density']) || 'comfortable';
+  return {
+    search: params.get('q') || '',
+    positions: getList('pos'),
+    skills: getList('skills'),
+    difficulty: getList('diff'),
+    tags: getList('tags'),
+    duration: { min: toNum('min', 0), max: toNum('max', 120) },
+    sortBy,
+    sortOrder,
+    view,
+    density
+  };
+}
+
+export function enableURLSync(store = drillFilters) {
+  if (!browser) return;
+
+  // 1) Initialize from URL (does not clobber localStorage defaults unless present)
+  const initial = parseFromSearchParams(new URLSearchParams(window.location.search));
+  if (Object.keys(initial).length) {
+    // Merge: preserve defaults for missing keys
+    store.update((s) => ({ ...s, ...initial }));
+  }
+
+  // 2) Write changes to URL without full navigation
+  let block = false; // prevent feedback loop on popstate
+  store.subscribe((filters) => {
+    if (block) return;
+    const url = new URL(window.location.href);
+    const params = serializeToSearchParams(filters);
+    // Keep existing unrelated params
+    // Clear managed params first
+    ['q','pos','skills','diff','tags','min','max','sort','order','view','density'].forEach((k) => url.searchParams.delete(k));
+    params.forEach((value, key) => url.searchParams.set(key, value));
+    window.history.replaceState(window.history.state, '', url);
+  });
+
+  // 3) Support Back/Forward buttons
+  window.addEventListener('popstate', () => {
+    block = true;
+    const next = parseFromSearchParams(new URLSearchParams(window.location.search));
+    store.update((s) => ({ ...s, ...next }));
+    // Allow outgoing writes again
+    queueMicrotask(() => (block = false));
+  });
+}
+```
+
+Usage: call `enableURLSync()` once in the drills page on mount (see Step 5 below).
+
 ### Step 2: Create Drill Search Bar (`src/lib/components/drills/DrillSearchBar.svelte`)
 
 ```svelte
@@ -961,6 +1042,9 @@ export const activeFilterCount = derived(drillFilters, $filters => {
   let filtersOpen = false;
   
   onMount(async () => {
+    // Enable shareable, URL-synced filters
+    const { enableURLSync } = await import('$lib/stores/drillFilterStore');
+    enableURLSync();
     await loadDrills();
   });
   
@@ -1203,6 +1287,10 @@ export const activeFilterCount = derived(drillFilters, $filters => {
 - [ ] Cards link to drill detail pages
 - [ ] Add to plan button functions (or shows appropriate state)
 - [ ] Mobile responsive layout works
+- [ ] URL reflects current filters (q, pos, skills, diff, tags, min, max, sort, order, view, density)
+- [ ] Reloading the page restores filters from the URL
+- [ ] Copy/paste URL shares the same filtered view
+- [ ] Browser Back/Forward restores prior filter states without full reload
 
 ## API Integration Notes
 
@@ -1210,6 +1298,7 @@ export const activeFilterCount = derived(drillFilters, $filters => {
 - Add endpoints for filter options: `/api/drills/filter-options`
 - Implement server-side pagination for large datasets
 - Add search indexing for better performance
+- Optional: have the `+page.server.js`/`load` function parse URL params and pass initial filters for SSR; client store still syncs URL thereafter
 
 ## Performance Optimizations
 

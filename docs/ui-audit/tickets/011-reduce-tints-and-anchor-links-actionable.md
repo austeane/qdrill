@@ -482,6 +482,8 @@ auditDrillLinks();
 - [ ] Links work without JavaScript
 - [ ] SEO crawlers can follow links
 - [ ] Cmd/Ctrl+click opens new tab
+- [ ] Cypress test asserts real `<a href="/drills/[id]">` presence and behavior across pages
+- [ ] Audit script `scripts/audit-links.js` returns zero issues
 
 ### Accessibility
 - [ ] Links have proper title attributes
@@ -540,3 +542,4 @@ auditDrillLinks();
 - [ ] Visual regression tests pass
 - [ ] SEO audit shows improvement
 - [ ] Accessibility audit passes
+- [ ] Cypress e2e coverage added for link semantics and middle-click behavior

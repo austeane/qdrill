@@ -1,5 +1,7 @@
 # Ticket 001: Design Tokens, Typography, and Theme (Light/Dark) - ACTIONABLE
 
+> Progress note (2025-08-11): Implemented global token import, early theme application to prevent FOUC, and theme-aware background polish. See details below.
+
 ## Overview
 Establish a comprehensive design system foundation with CSS variables, typography scale, and theme switching.
 
@@ -340,68 +342,26 @@ a:hover {
 }
 ```
 
+Notes:
+- `tokens.css` is imported globally from `src/routes/+layout.svelte` via `../app.css`, ensuring tokens and Tailwind utilities are available app-wide.
+
 ### Step 4: Update Layout (`src/routes/+layout.svelte`)
 
-Add theme initialization and toggle button to the existing layout:
+Ensure theme initialization and global styles are applied. A theme toggle can be added in header/topbar later.
 
 ```svelte
+```svelte
 <script>
+  import '../app.css';
   import { onMount } from 'svelte';
-  import { themeStore } from '$lib/stores/themeStore';
-  import { Sun, Moon, Monitor } from 'lucide-svelte';
+  import { theme } from '$lib/stores/themeStore';
   // ... existing imports ...
 
-  let currentTheme = 'system';
-  
   onMount(() => {
-    themeStore.init();
-    themeStore.subscribe(value => {
-      currentTheme = value;
-    });
+    theme.init();
   });
-
-  function cycleTheme() {
-    const themes = ['light', 'dark', 'system'];
-    const currentIndex = themes.indexOf(currentTheme);
-    const nextIndex = (currentIndex + 1) % themes.length;
-    themeStore.setTheme(themes[nextIndex]);
-  }
 </script>
-
-<!-- Add theme toggle button to Header component or in the layout -->
-<button
-  on:click={cycleTheme}
-  class="theme-toggle"
-  aria-label="Toggle theme"
->
-  {#if currentTheme === 'light'}
-    <Sun size={20} />
-  {:else if currentTheme === 'dark'}
-    <Moon size={20} />
-  {:else}
-    <Monitor size={20} />
-  {/if}
-</button>
-
-<style>
-  .theme-toggle {
-    position: fixed;
-    top: var(--space-4);
-    right: var(--space-4);
-    padding: var(--space-2);
-    background: var(--color-surface-2);
-    border: 1px solid var(--color-border-default);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    z-index: 50;
-  }
-  
-  .theme-toggle:hover {
-    background: var(--color-surface-3);
-    border-color: var(--color-border-strong);
-  }
-</style>
+```
 ```
 
 ## Testing Checklist
@@ -429,6 +389,8 @@ Add theme initialization and toggle button to the existing layout:
   }
 </script>
 ```
+
+2. We also implemented a theme-aware, subtle background gradient in `tokens.css` for both light and dark modes to elevate visual polish while keeping contrast compliant.
 
 2. **Icons not appearing**: Ensure lucide-svelte is imported correctly
 3. **Theme not persisting**: Check localStorage permissions in browser

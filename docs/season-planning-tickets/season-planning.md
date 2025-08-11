@@ -183,15 +183,14 @@ Drag and timeline UX
 - E2E (Cypress): create season, sections, instantiate, drag-reschedule, template update propagation, member vs admin visibility.
 
 ### Rollout phases
-- Phase 1: Teams and permissions; team settings (timezone, default start time).
-- Phase 2: Seasons + one active constraint; template selection.
-- Phase 3: Sections, markers; season timeline read-only.
-- Phase 4: Instantiation (click), union algorithm; draft plans; publish flow.
-- Phase 5: Recurrence and batch generation; deletion by date.
-- Phase 6: Propagation (template/section/time changes) and drag re-evaluation.
-- Phase 7: ICS + share link; member read-only timeline.
-- Phase 8: AI augment/replace integrated with season context.
-- Phase 9: Polish, docs, analytics.
+- Phase 1: ✅ Teams and permissions; team settings (timezone, default start time). [COMPLETED]
+- Phase 2: ✅ Seasons + one active constraint; template selection. [COMPLETED]
+- Phase 3: ✅ Sections, markers; season timeline read-only. [COMPLETED]
+- Phase 4: ✅ Instantiation (click), union algorithm; draft plans; publish flow. [COMPLETED]
+- Phase 5: ✅ Recurrence and batch generation; deletion by date. [COMPLETED]
+- Phase 6: Week View - Quick practice overview and management
+- Phase 7: Sharing - ICS feed, public share links, member read-only access
+- Phase 8: Season sections management UI - Full CRUD for sections and markers
 
 - Data model: added `teams`, `team_members`, `seasons`, `season_sections`, `season_section_default_sections`, `season_section_drills`, `season_markers`; extended `practice_plans` for team/season binding and scheduling.
 - Behavior: union rules, propagation, recurrence, drag re-eval, publishing/privacy, ICS with markers, AI augment.

@@ -18,8 +18,10 @@
 	// Create a local writable store for the current drill data
 	const drill = writable(data.drill || {});
 
-	// Reactively update the local store if the data prop changes
-	$: if (data.drill && $drill !== data.drill) {
+	// Reactively update the local store only when the incoming `data.drill` changes
+	$: if (data.drill) {
+		// We intentionally avoid referencing `$drill` here to prevent an infinite
+		// reactive loop that can lead to a "Maximum call stack size exceeded" error.
 		drill.set(data.drill);
 	}
 

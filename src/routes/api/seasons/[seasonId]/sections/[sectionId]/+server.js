@@ -27,7 +27,7 @@ export async function PATCH({ locals, params, request }) {
       validated,
       locals.user.id
     );
-    return json(section);
+    return json({ success: true, section });
   } catch (error) {
     if (error.name === 'ZodError') {
       return json({ error: 'Invalid input', details: error.errors }, { status: 400 });

@@ -1,0 +1,36 @@
+{
+  "output": {
+    "filePath": "git-changes.md",
+    "style": "markdown",
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "topFilesLength": 20,
+    "showLineNumbers": true
+  },
+  "include": [
+    "docs/teams-ui-redesign-notes.md",
+    "src/lib/components/season/SeasonTimeline.svelte",
+    "src/lib/components/season/SeasonTimelineEnhanced.svelte",
+    "src/lib/server/services/seasonUnionService.js",
+    "src/routes/api/seasons/[seasonId]/markers/+server.js",
+    "src/routes/api/seasons/[seasonId]/markers/[markerId]/+server.js",
+    "src/routes/api/seasons/[seasonId]/sections/+server.js",
+    "src/routes/api/seasons/[seasonId]/sections/[sectionId]/+server.js",
+    "src/routes/teams/[teamId]/season/+page.svelte"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "**/node_modules/**",
+      "**/.svelte-kit/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/coverage/**",
+      "**/.vercel/**"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  }
+}

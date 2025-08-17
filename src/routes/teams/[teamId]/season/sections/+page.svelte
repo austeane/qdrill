@@ -2,21 +2,33 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
+	import { apiFetch } from '$lib/utils/apiFetch';
+	import Card from '$lib/components/ui/Card.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import Input from '$lib/components/ui/Input.svelte';
+	import Dialog from '$lib/components/ui/Dialog.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 
 	export let data;
 
 	let newSection = { name: '', color: '#3B82F6' };
 	let editingSection = null;
-	let showAddForm = false;
+	let showAddDialog = false;
+	let isSubmitting = false;
+	let addError = '';
+	let editError = '';
 
 	async function addSection() {
 		if (!newSection.name.trim()) {
-			toast.push('Section name is required', { theme: { '--toastBackground': '#ef4444' } });
+			addError = 'Section name is required';
 			return;
 		}
 
+		isSubmitting = true;
+		addError = '';
+
 		try {
-			const response = await fetch(`/api/seasons/${data.season.id}/sections`, {
+			const section = await apiFetch(`/api/seasons/${data.season.id}/sections`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -26,32 +38,32 @@
 				})
 			});
 
-			if (!response.ok) throw new Error('Failed to add section');
-
-			const section = await response.json();
 			data.sections = [...data.sections, section];
 			newSection = { name: '', color: '#3B82F6' };
-			showAddForm = false;
+			showAddDialog = false;
 			toast.push('Section added successfully', { theme: { '--toastBackground': '#10b981' } });
 		} catch (error) {
-			toast.push('Failed to add section', { theme: { '--toastBackground': '#ef4444' } });
+			addError = error.message || 'Failed to add section';
+			toast.push(addError, { theme: { '--toastBackground': '#ef4444' } });
+		} finally {
+			isSubmitting = false;
 		}
 	}
 
 	async function updateSection(section) {
+		editError = '';
 		try {
-			const response = await fetch(`/api/seasons/${data.season.id}/sections/${section.id}`, {
+			await apiFetch(`/api/seasons/${data.season.id}/sections/${section.id}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(section)
 			});
 
-			if (!response.ok) throw new Error('Failed to update section');
-
 			editingSection = null;
 			toast.push('Section updated successfully', { theme: { '--toastBackground': '#10b981' } });
 		} catch (error) {
-			toast.push('Failed to update section', { theme: { '--toastBackground': '#ef4444' } });
+			editError = error.message || 'Failed to update section';
+			toast.push(editError, { theme: { '--toastBackground': '#ef4444' } });
 		}
 	}
 
@@ -59,16 +71,15 @@
 		if (!confirm('Are you sure you want to delete this section?')) return;
 
 		try {
-			const response = await fetch(`/api/seasons/${data.season.id}/sections/${sectionId}`, {
+			await apiFetch(`/api/seasons/${data.season.id}/sections/${sectionId}`, {
 				method: 'DELETE'
 			});
-
-			if (!response.ok) throw new Error('Failed to delete section');
 
 			data.sections = data.sections.filter(s => s.id !== sectionId);
 			toast.push('Section deleted successfully', { theme: { '--toastBackground': '#10b981' } });
 		} catch (error) {
-			toast.push('Failed to delete section', { theme: { '--toastBackground': '#ef4444' } });
+			const errorMsg = error.message || 'Failed to delete section';
+			toast.push(errorMsg, { theme: { '--toastBackground': '#ef4444' } });
 		}
 	}
 
@@ -93,138 +104,140 @@
 	<div class="mb-6 flex items-center justify-between">
 		<div>
 			<h1 class="text-3xl font-bold">Season Sections</h1>
-			<p class="text-gray-600 mt-1">{data.season.name}</p>
+			<p class="text-gray-600 dark:text-gray-400 mt-1">{data.season.name}</p>
 		</div>
-		<button
-			onclick={() => goto(`/teams/${data.team.id}/season`)}
-			class="btn btn-ghost"
-		>
+		<Button variant="ghost" on:click={() => goto(`/teams/${data.team.id}/season`)}>
 			← Back to Season
-		</button>
+		</Button>
 	</div>
 
 	{#if data.canEdit}
 		<div class="mb-6">
-			{#if showAddForm}
-				<div class="card bg-base-100 shadow-xl p-6">
-					<h3 class="text-lg font-semibold mb-4">Add New Section</h3>
-					<div class="grid gap-4">
-						<div>
-							<label class="label">
-								<span class="label-text">Section Name</span>
-							</label>
-							<input
-								type="text"
-								bind:value={newSection.name}
-								class="input input-bordered w-full"
-								placeholder="e.g., Pre-season, Regular Season"
-							/>
-						</div>
-						<div>
-							<label class="label">
-								<span class="label-text">Color</span>
-							</label>
-							<input
-								type="color"
-								bind:value={newSection.color}
-								class="input input-bordered w-32"
-							/>
-						</div>
-						<div class="flex gap-2">
-							<button onclick={addSection} class="btn btn-primary">
-								Add Section
-							</button>
-							<button onclick={() => showAddForm = false} class="btn btn-ghost">
-								Cancel
-							</button>
-						</div>
-					</div>
-				</div>
-			{:else}
-				<button onclick={() => showAddForm = true} class="btn btn-primary">
-					+ Add Section
-				</button>
-			{/if}
+			<Button variant="primary" on:click={() => showAddDialog = true}>
+				+ Add Section
+			</Button>
 		</div>
+		
+		<Dialog bind:open={showAddDialog} title="Add New Section">
+			<div class="grid gap-4">
+				<Input
+					label="Section Name"
+					bind:value={newSection.name}
+					placeholder="e.g., Pre-season, Regular Season"
+					error={addError}
+					required
+				/>
+				<div>
+					<label class="block text-sm font-medium mb-2">Color</label>
+					<input
+						type="color"
+						bind:value={newSection.color}
+						class="h-10 w-32 rounded-md border border-input bg-background px-2 cursor-pointer"
+					/>
+				</div>
+			</div>
+			<div slot="footer" class="flex gap-2">
+				<Button 
+					variant="primary" 
+					on:click={addSection}
+					disabled={isSubmitting || !newSection.name.trim()}
+				>
+					{isSubmitting ? 'Adding...' : 'Add Section'}
+				</Button>
+				<Button variant="ghost" on:click={() => { showAddDialog = false; addError = ''; }}>
+					Cancel
+				</Button>
+			</div>
+		</Dialog>
 	{/if}
 
 	<div class="space-y-4">
 		{#each data.sections as section, index}
-			<div class="card bg-base-100 shadow-xl">
-				<div class="card-body">
-					{#if editingSection === section.id}
-						<div class="grid gap-4">
-							<input
-								type="text"
-								bind:value={section.name}
-								class="input input-bordered"
-							/>
+			<Card>
+				{#if editingSection === section.id}
+					<div class="grid gap-4">
+						<Input
+							bind:value={section.name}
+							label="Section Name"
+							error={editError}
+						/>
+						<div>
+							<label class="block text-sm font-medium mb-2">Color</label>
 							<input
 								type="color"
 								bind:value={section.color}
-								class="input input-bordered w-32"
+								class="h-10 w-32 rounded-md border border-input bg-background px-2 cursor-pointer"
 							/>
+						</div>
+						<div class="flex gap-2">
+							<Button size="sm" variant="primary" on:click={() => updateSection(section)}>
+								Save
+							</Button>
+							<Button size="sm" variant="ghost" on:click={() => { editingSection = null; editError = ''; }}>
+								Cancel
+							</Button>
+						</div>
+					</div>
+				{:else}
+					<div class="flex items-center justify-between">
+						<div class="flex items-center gap-3">
+							<div 
+								class="w-6 h-6 rounded border border-gray-200 dark:border-gray-700"
+								style="background-color: {section.color}"
+								aria-label="Section color"
+							></div>
+							<h3 class="text-xl font-semibold">{section.name}</h3>
+						</div>
+						{#if data.canEdit}
 							<div class="flex gap-2">
-								<button onclick={() => updateSection(section)} class="btn btn-primary btn-sm">
-									Save
-								</button>
-								<button onclick={() => editingSection = null} class="btn btn-ghost btn-sm">
-									Cancel
-								</button>
+								<Button
+									size="sm"
+									variant="ghost"
+									on:click={() => moveSection(index, -1)}
+									disabled={index === 0}
+									aria-label="Move section up"
+								>
+									↑
+								</Button>
+								<Button
+									size="sm"
+									variant="ghost"
+									on:click={() => moveSection(index, 1)}
+									disabled={index === data.sections.length - 1}
+									aria-label="Move section down"
+								>
+									↓
+								</Button>
+								<Button
+									size="sm"
+									variant="ghost"
+									on:click={() => editingSection = section.id}
+								>
+									Edit
+								</Button>
+								<Button
+									size="sm"
+									variant="destructive"
+									on:click={() => deleteSection(section.id)}
+								>
+									Delete
+								</Button>
 							</div>
-						</div>
-					{:else}
-						<div class="flex items-center justify-between">
-							<div class="flex items-center gap-3">
-								<div 
-									class="w-6 h-6 rounded"
-									style="background-color: {section.color}"
-								></div>
-								<h3 class="text-xl font-semibold">{section.name}</h3>
-							</div>
-							{#if data.canEdit}
-								<div class="flex gap-2">
-									<button
-										onclick={() => moveSection(index, -1)}
-										disabled={index === 0}
-										class="btn btn-ghost btn-sm"
-									>
-										↑
-									</button>
-									<button
-										onclick={() => moveSection(index, 1)}
-										disabled={index === data.sections.length - 1}
-										class="btn btn-ghost btn-sm"
-									>
-										↓
-									</button>
-									<button
-										onclick={() => editingSection = section.id}
-										class="btn btn-ghost btn-sm"
-									>
-										Edit
-									</button>
-									<button
-										onclick={() => deleteSection(section.id)}
-										class="btn btn-error btn-sm"
-									>
-										Delete
-									</button>
-								</div>
-							{/if}
-						</div>
-					{/if}
-				</div>
-			</div>
+						{/if}
+					</div>
+				{/if}
+			</Card>
 		{/each}
 
 		{#if data.sections.length === 0}
-			<div class="card bg-base-100 shadow-xl p-8 text-center">
-				<p class="text-gray-500">No sections defined for this season yet.</p>
-				{#if data.canEdit}
-					<p class="text-gray-500 mt-2">Click "Add Section" to get started.</p>
-				{/if}
-			</div>
+			<Card>
+				<div class="text-center py-8">
+					<p class="text-gray-500 dark:text-gray-400">No sections defined for this season yet.</p>
+					{#if data.canEdit}
+						<p class="text-gray-500 dark:text-gray-400 mt-2">Click "Add Section" to get started.</p>
+					{/if}
+				</div>
+			</Card>
 		{/if}
 	</div>
 </div>

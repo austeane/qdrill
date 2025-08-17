@@ -27,7 +27,7 @@
 		"@eslint/js": "^8.44.0",
 		"@fontsource/fira-mono": "^5.1.0",
 		"@neoconfetti/svelte": "^2.2.1",
-		"@playwright/test": "^1.49.0",
+		"@playwright/test": "^1.54.2",
 		"@sveltejs/adapter-vercel": "^5.4.8",
 		"@sveltejs/kit": "^2.8.4",
 		"@tailwindcss/typography": "^0.5.16",

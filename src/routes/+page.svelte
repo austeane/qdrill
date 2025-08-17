@@ -59,7 +59,7 @@
 						Browse Drills
 					</a>
 					<a
-						href="/practice-plans/browse"
+						href="/practice-plans"
 						class="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg text-center"
 					>
 						Browse Plans

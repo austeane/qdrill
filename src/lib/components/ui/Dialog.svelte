@@ -1,10 +1,41 @@
 <script>
   import { Dialog as DialogPrimitive } from 'bits-ui';
   import { X } from 'lucide-svelte';
+  import { onMount } from 'svelte';
   
   export let open = false;
   export let title = '';
   export let description = '';
+  
+  let scrollPosition = 0;
+  
+  $: if (typeof window !== 'undefined') {
+    if (open) {
+      scrollPosition = window.pageYOffset;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollPosition}px`;
+      document.body.style.width = '100%';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      window.scrollTo(0, scrollPosition);
+    }
+  }
+  
+  onMount(() => {
+    return () => {
+      // Cleanup on unmount
+      if (typeof window !== 'undefined') {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+      }
+    };
+  });
 </script>
 
 <DialogPrimitive.Root bind:open>

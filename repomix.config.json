@@ -1,0 +1,43 @@
+{
+  "output": {
+    "filePath": "season-management-context.md",
+    "style": "markdown",
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "topFilesLength": 20,
+    "showLineNumbers": false
+  },
+  "include": [
+    "src/routes/teams/[teamId]/season/**/*.{svelte,js,ts}",
+    "src/routes/teams/[teamId]/settings/**/*.{svelte,js,ts}",
+    "src/routes/api/teams/[teamId]/**/*.{js,ts}",
+    "src/routes/api/seasons/**/*.{js,ts}",
+    "src/lib/server/services/team*.{js,ts}",
+    "src/lib/server/services/season*.{js,ts}",
+    "src/lib/server/auth/teamPermissions.{js,ts}",
+    "src/lib/validation/teamSchema.{js,ts}",
+    "src/lib/validation/seasonSchema.{js,ts}",
+    "src/lib/components/ui/**/*.svelte",
+    "src/lib/utils/apiFetch.{js,ts}",
+    "docs/teams-ui-redesign-notes.md",
+    "CLAUDE.md"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/.svelte-kit/**",
+      "**/coverage/**",
+      "**/.vercel/**",
+      "**/tests/**",
+      "**/*.test.*",
+      "**/*.spec.*"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  }
+}

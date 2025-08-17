@@ -2,6 +2,7 @@ import { redirect, error } from '@sveltejs/kit';
 import { teamService } from '$lib/server/services/teamService';
 import { teamMemberService } from '$lib/server/services/teamMemberService';
 import { getTeamRole } from '$lib/server/auth/teamPermissions';
+import { vercelPool } from '$lib/server/db';
 
 export async function load({ locals, params }) {
   if (!locals.user) {
@@ -24,9 +25,30 @@ export async function load({ locals, params }) {
   
   const members = await teamMemberService.getTeamMembers(params.teamId);
   
+  // Fetch user details for all members
+  const userIds = members.map(m => m.user_id);
+  const usersResult = await vercelPool.query(
+    'SELECT id, name, email, image FROM users WHERE id = ANY($1)',
+    [userIds]
+  );
+  
+  // Create a map for quick lookup
+  const usersMap = new Map(usersResult.rows.map(u => [u.id, u]));
+  
+  // Enhance members with user info
+  const membersWithInfo = members.map(member => ({
+    ...member,
+    user: usersMap.get(member.user_id) || { 
+      id: member.user_id, 
+      name: 'Unknown User', 
+      email: null, 
+      image: null 
+    }
+  }));
+  
   return {
     team,
-    members,
+    members: membersWithInfo,
     userRole: role
   };
 }

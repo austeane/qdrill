@@ -28,7 +28,7 @@ export {
   Info,
   HelpCircle,
   AlertCircle,
-  CheckCircle,
+  CheckCircle2 as CheckCircle,
   XCircle,
   
   // User

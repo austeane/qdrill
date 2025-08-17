@@ -1,5 +1,5 @@
 <script>
-  import Button from '$lib/components/ui/Button.svelte';
+  import { Button } from '$lib/components/ui/button';
   import Input from '$lib/components/ui/Input.svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import Textarea from '$lib/components/ui/Textarea.svelte';
@@ -77,7 +77,7 @@
     <div class="grid">
       <Button disabled>Disabled</Button>
       <Button loading={loadingButton} on:click={handleButtonClick}>
-        Click for Loading
+        {loadingButton ? 'Loading...' : 'Click for Loading'}
       </Button>
       <Button href="/ui-demo">Link Button</Button>
     </div>

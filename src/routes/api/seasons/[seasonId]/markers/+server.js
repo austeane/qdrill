@@ -43,7 +43,21 @@ export async function POST({ locals, params, request }) {
     const validated = createSeasonMarkerSchema.parse(normalized);
     
     const marker = await seasonMarkerService.create(validated, locals.user.id);
-    return json(marker, { status: 201 });
+    
+    // Return in UI shape expected by timeline
+    const result = {
+      id: marker.id,
+      type: marker.type,
+      name: marker.title,
+      title: marker.title,
+      date: marker.start_date,
+      start_date: marker.start_date,
+      end_date: marker.end_date,
+      color: marker.color,
+      visible_to_members: marker.visible_to_members
+    };
+    
+    return json({ success: true, marker: result }, { status: 201 });
   } catch (error) {
     if (error.name === 'ZodError') {
       return json({ error: 'Invalid input', details: error.errors }, { status: 400 });

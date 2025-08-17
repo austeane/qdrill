@@ -1,26 +1,102 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, createEventDispatcher } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
+  import { apiFetch } from '$lib/utils/apiFetch';
+  import Card from '$lib/components/ui/Card.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import Dialog from '$lib/components/ui/Dialog.svelte';
+  import Input from '$lib/components/ui/Input.svelte';
+  import Select from '$lib/components/ui/Select.svelte';
+  import Badge from '$lib/components/ui/Badge.svelte';
+  import Spinner from '$lib/components/Spinner.svelte';
+  import { toast } from '$lib/stores/toastStore';
   
   export let season;
   export let sections = [];
   export let markers = [];
+  export let practices = [];
   export let isAdmin = false;
   export let isPublicView = false;
   export let onDateClick = null;
   export let existingPractices = [];
   export let teamId = null;
   
+  const dispatch = createEventDispatcher();
+  
+  let loading = false;
   let timelineElement;
+  let dayWidth = 30;
+  let rowHeight = 40;
+  let headerHeight = 60;
   let containerWidth = 0;
   let dateRange = [];
   let monthHeaders = [];
   
-  const DAY_WIDTH = 30;
-  const HEADER_HEIGHT = 60;
-  const SECTION_HEIGHT = 40;
-  const MARKER_HEIGHT = 30;
+  // Interaction states
+  let mode = 'select'; // 'select', 'add-section', 'add-marker'
+  let isDragging = false;
+  let dragStart = null;
+  let dragEnd = null;
+  let dragType = null;
+  let hoveredSection = null;
+  let hoveredMarker = null;
+  let selectedElement = null;
+  
+  // Dialog states
+  let showSectionDialog = false;
+  let showMarkerDialog = false;
+  let showPracticeConfirm = false;
+  let editingSection = null;
+  let editingMarker = null;
+  let selectedDate = null;
+  
+  // Form data
+  let sectionForm = {
+    name: '',
+    color: '#3B82F6',
+    seedDefaults: true,
+    startDate: '',
+    endDate: ''
+  };
+  
+  let markerForm = {
+    type: 'tournament',
+    name: '',
+    color: '#8B5CF6',
+    date: '',
+    endDate: ''
+  };
+  
+  // Predefined colors
+  const colors = [
+    '#3B82F6', // Blue
+    '#10B981', // Green
+    '#F59E0B', // Amber
+    '#EF4444', // Red
+    '#8B5CF6', // Purple
+    '#EC4899', // Pink
+    '#14B8A6', // Teal
+    '#F97316'  // Orange
+  ];
+  
+  const markerTypes = [
+    { value: 'tournament', label: 'Tournament' },
+    { value: 'break', label: 'Break' },
+    { value: 'deadline', label: 'Deadline' },
+    { value: 'milestone', label: 'Milestone' },
+    { value: 'other', label: 'Other' }
+  ]
+  
+  // Calculate timeline dimensions
+  $: seasonStart = season ? new Date(season.start_date) : new Date();
+  $: seasonEnd = season ? new Date(season.end_date) : new Date();
+  $: totalDays = Math.ceil((seasonEnd - seasonStart) / (1000 * 60 * 60 * 24)) + 1;
+  $: timelineWidth = totalDays * dayWidth;
+  
+  // Group sections by overlapping rows for stacking
+  $: stackedSections = stackSections(sections);
+  $: sectionsHeight = (stackedSections.length || 1) * rowHeight;
   
   $: if (season) {
     generateDateRange();

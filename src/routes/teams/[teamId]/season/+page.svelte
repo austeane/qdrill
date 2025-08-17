@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import SeasonTimeline from '$lib/components/season/SeasonTimeline.svelte';
+  import SeasonTimelineEnhanced from '$lib/components/season/SeasonTimelineEnhanced.svelte';
   import ShareSettings from '$lib/components/season/ShareSettings.svelte';
   import { Button } from '$lib/components/ui/button';
   import Input from '$lib/components/ui/Input.svelte';
@@ -15,7 +15,8 @@
   let seasons = data.seasons || [];
   let activeSeason = seasons.find(s => s.is_active);
   let sections = [];
-  let markers = {};
+  let markers = [];
+  let practices = [];
   let showCreateModal = false;
   let isCreating = false;
   let createError = '';
@@ -44,6 +45,11 @@
     try {
       const markersRes = await apiFetch(`/api/seasons/${activeSeason.id}/markers`);
       markers = markersRes;
+    } catch {}
+    
+    try {
+      const practicesRes = await apiFetch(`/api/teams/${$page.params.teamId}/practice-plans`);
+      practices = practicesRes.filter(p => p.season_id === activeSeason.id);
     } catch {}
   }
   
@@ -110,13 +116,15 @@
   
   {#if activeSeason}
     <div class="mb-8">
-      <SeasonTimeline 
+      <SeasonTimelineEnhanced 
         season={activeSeason}
-        {sections}
-        {markers}
+        bind:sections
+        bind:markers
+        {practices}
         isAdmin={data.userRole === 'admin'}
-        isPublicView={false}
         teamId={$page.params.teamId}
+        on:change={loadTimelineData}
+        on:practiceCreated={(e) => practices = [...practices, e.detail]}
       />
     </div>
     

@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   
   export let id = '';
   export let label = '';
@@ -12,6 +12,14 @@
   export let readonly = false;
   export let rows = 4;
   
+  let uid = id;
+  
+  onMount(() => {
+    if (!uid && typeof crypto !== 'undefined') {
+      uid = 'textarea-' + crypto.randomUUID();
+    }
+  });
+  
   const dispatch = createEventDispatcher();
   
   function handleInput(e) {
@@ -22,7 +30,7 @@
 
 <div class="textarea-wrapper">
   {#if label}
-    <label for={id} class="label">
+    <label for={uid} class="label">
       {label}
       {#if required}
         <span class="required">*</span>
@@ -35,7 +43,7 @@
   {/if}
   
   <textarea
-    {id}
+    id={uid}
     {value}
     {placeholder}
     {required}
@@ -45,7 +53,7 @@
     class="textarea"
     class:error={error}
     aria-invalid={!!error}
-    aria-describedby={error ? `${id}-error` : description ? `${id}-description` : undefined}
+    aria-describedby={error ? `${uid}-error` : description ? `${uid}-description` : undefined}
     on:input={handleInput}
     on:change
     on:blur
@@ -54,7 +62,7 @@
   ></textarea>
   
   {#if error}
-    <p id="{id}-error" class="error-message" role="alert">
+    <p id="{uid}-error" class="error-message" role="alert">
       {error}
     </p>
   {/if}

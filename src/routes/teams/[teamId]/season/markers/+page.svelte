@@ -2,6 +2,13 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
+	import { apiFetch } from '$lib/utils/apiFetch';
+	import Card from '$lib/components/ui/Card.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import Input from '$lib/components/ui/Input.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
+	import Dialog from '$lib/components/ui/Dialog.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 
 	export let data;
 
@@ -12,7 +19,10 @@
 		color: '#EF4444'
 	};
 	let editingMarker = null;
-	let showAddForm = false;
+	let showAddDialog = false;
+	let isSubmitting = false;
+	let addError = '';
+	let editError = '';
 
 	const markerTypes = [
 		{ value: 'milestone', label: 'Milestone', color: '#EF4444' },
@@ -23,20 +33,20 @@
 
 	async function addMarker() {
 		if (!newMarker.name.trim() || !newMarker.date) {
-			toast.push('Name and date are required', { theme: { '--toastBackground': '#ef4444' } });
+			addError = 'Name and date are required';
 			return;
 		}
 
+		isSubmitting = true;
+		addError = '';
+
 		try {
-			const response = await fetch(`/api/seasons/${data.season.id}/markers`, {
+			const marker = await apiFetch(`/api/seasons/${data.season.id}/markers`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(newMarker)
 			});
 
-			if (!response.ok) throw new Error('Failed to add marker');
-
-			const marker = await response.json();
 			data.markers = [...data.markers, marker].sort((a, b) => 
 				new Date(a.date) - new Date(b.date)
 			);
@@ -46,22 +56,24 @@
 				date: '',
 				color: '#EF4444'
 			};
-			showAddForm = false;
+			showAddDialog = false;
 			toast.push('Marker added successfully', { theme: { '--toastBackground': '#10b981' } });
 		} catch (error) {
-			toast.push('Failed to add marker', { theme: { '--toastBackground': '#ef4444' } });
+			addError = error.message || 'Failed to add marker';
+			toast.push(addError, { theme: { '--toastBackground': '#ef4444' } });
+		} finally {
+			isSubmitting = false;
 		}
 	}
 
 	async function updateMarker(marker) {
+		editError = '';
 		try {
-			const response = await fetch(`/api/seasons/${data.season.id}/markers/${marker.id}`, {
+			await apiFetch(`/api/seasons/${data.season.id}/markers/${marker.id}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(marker)
 			});
-
-			if (!response.ok) throw new Error('Failed to update marker');
 
 			editingMarker = null;
 			data.markers = data.markers.sort((a, b) => 
@@ -69,7 +81,8 @@
 			);
 			toast.push('Marker updated successfully', { theme: { '--toastBackground': '#10b981' } });
 		} catch (error) {
-			toast.push('Failed to update marker', { theme: { '--toastBackground': '#ef4444' } });
+			editError = error.message || 'Failed to update marker';
+			toast.push(editError, { theme: { '--toastBackground': '#ef4444' } });
 		}
 	}
 
@@ -77,16 +90,15 @@
 		if (!confirm('Are you sure you want to delete this marker?')) return;
 
 		try {
-			const response = await fetch(`/api/seasons/${data.season.id}/markers/${markerId}`, {
+			await apiFetch(`/api/seasons/${data.season.id}/markers/${markerId}`, {
 				method: 'DELETE'
 			});
-
-			if (!response.ok) throw new Error('Failed to delete marker');
 
 			data.markers = data.markers.filter(m => m.id !== markerId);
 			toast.push('Marker deleted successfully', { theme: { '--toastBackground': '#10b981' } });
 		} catch (error) {
-			toast.push('Failed to delete marker', { theme: { '--toastBackground': '#ef4444' } });
+			const errorMsg = error.message || 'Failed to delete marker';
+			toast.push(errorMsg, { theme: { '--toastBackground': '#ef4444' } });
 		}
 	}
 
@@ -110,171 +122,159 @@
 	<div class="mb-6 flex items-center justify-between">
 		<div>
 			<h1 class="text-3xl font-bold">Season Markers</h1>
-			<p class="text-gray-600 mt-1">{data.season.name}</p>
+			<p class="text-gray-600 dark:text-gray-400 mt-1">{data.season.name}</p>
 		</div>
-		<button
-			onclick={() => goto(`/teams/${data.team.id}/season`)}
-			class="btn btn-ghost"
-		>
+		<Button variant="ghost" on:click={() => goto(`/teams/${data.team.id}/season`)}>
 			← Back to Season
-		</button>
+		</Button>
 	</div>
 
 	{#if data.canEdit}
 		<div class="mb-6">
-			{#if showAddForm}
-				<div class="card bg-base-100 shadow-xl p-6">
-					<h3 class="text-lg font-semibold mb-4">Add New Marker</h3>
-					<div class="grid gap-4">
-						<div>
-							<label class="label">
-								<span class="label-text">Marker Type</span>
-							</label>
-							<select
-								bind:value={newMarker.type}
-								onchange={onTypeChange}
-								class="select select-bordered w-full"
-							>
-								{#each markerTypes as type}
-									<option value={type.value}>{type.label}</option>
-								{/each}
-							</select>
-						</div>
-						<div>
-							<label class="label">
-								<span class="label-text">Name</span>
-							</label>
-							<input
-								type="text"
-								bind:value={newMarker.name}
-								class="input input-bordered w-full"
-								placeholder="e.g., Regional Tournament"
-							/>
-						</div>
-						<div>
-							<label class="label">
-								<span class="label-text">Date</span>
-							</label>
-							<input
-								type="date"
-								bind:value={newMarker.date}
-								class="input input-bordered w-full"
-								min={data.season.start_date}
-								max={data.season.end_date}
-							/>
-						</div>
-						<div>
-							<label class="label">
-								<span class="label-text">Color</span>
-							</label>
-							<input
-								type="color"
-								bind:value={newMarker.color}
-								class="input input-bordered w-32"
-							/>
-						</div>
-						<div class="flex gap-2">
-							<button onclick={addMarker} class="btn btn-primary">
-								Add Marker
-							</button>
-							<button onclick={() => showAddForm = false} class="btn btn-ghost">
-								Cancel
-							</button>
-						</div>
-					</div>
-				</div>
-			{:else}
-				<button onclick={() => showAddForm = true} class="btn btn-primary">
-					+ Add Marker
-				</button>
-			{/if}
+			<Button variant="primary" on:click={() => showAddDialog = true}>
+				+ Add Marker
+			</Button>
 		</div>
+		
+		<Dialog bind:open={showAddDialog} title="Add New Marker">
+			<div class="grid gap-4">
+				<Select
+					label="Marker Type"
+					bind:value={newMarker.type}
+					on:change={onTypeChange}
+					options={markerTypes.map(t => ({ value: t.value, label: t.label }))}
+				/>
+				<Input
+					label="Name"
+					bind:value={newMarker.name}
+					placeholder="e.g., Regional Tournament"
+					error={addError && !newMarker.name.trim() ? 'Name is required' : ''}
+					required
+				/>
+				<Input
+					label="Date"
+					type="date"
+					bind:value={newMarker.date}
+					min={data.season.start_date}
+					max={data.season.end_date}
+					error={addError && !newMarker.date ? 'Date is required' : ''}
+					required
+				/>
+				<div>
+					<label class="block text-sm font-medium mb-2">Color</label>
+					<input
+						type="color"
+						bind:value={newMarker.color}
+						class="h-10 w-32 rounded-md border border-input bg-background px-2 cursor-pointer"
+					/>
+				</div>
+			</div>
+			<div slot="footer" class="flex gap-2">
+				<Button 
+					variant="primary" 
+					on:click={addMarker}
+					disabled={isSubmitting || !newMarker.name.trim() || !newMarker.date}
+				>
+					{isSubmitting ? 'Adding...' : 'Add Marker'}
+				</Button>
+				<Button variant="ghost" on:click={() => { showAddDialog = false; addError = ''; }}>
+					Cancel
+				</Button>
+			</div>
+		</Dialog>
 	{/if}
 
 	<div class="space-y-4">
 		{#each data.markers as marker}
-			<div class="card bg-base-100 shadow-xl">
-				<div class="card-body">
-					{#if editingMarker === marker.id}
-						<div class="grid gap-4">
-							<select
-								bind:value={marker.type}
-								class="select select-bordered"
-							>
-								{#each markerTypes as type}
-									<option value={type.value}>{type.label}</option>
-								{/each}
-							</select>
-							<input
-								type="text"
-								bind:value={marker.name}
-								class="input input-bordered"
-							/>
-							<input
-								type="date"
-								bind:value={marker.date}
-								class="input input-bordered"
-								min={data.season.start_date}
-								max={data.season.end_date}
-							/>
+			<Card>
+				{#if editingMarker === marker.id}
+					<div class="grid gap-4">
+						<Select
+							label="Marker Type"
+							bind:value={marker.type}
+							options={markerTypes.map(t => ({ value: t.value, label: t.label }))}
+							error={editError}
+						/>
+						<Input
+							label="Name"
+							bind:value={marker.name}
+							error={editError}
+						/>
+						<Input
+							label="Date"
+							type="date"
+							bind:value={marker.date}
+							min={data.season.start_date}
+							max={data.season.end_date}
+							error={editError}
+						/>
+						<div>
+							<label class="block text-sm font-medium mb-2">Color</label>
 							<input
 								type="color"
 								bind:value={marker.color}
-								class="input input-bordered w-32"
+								class="h-10 w-32 rounded-md border border-input bg-background px-2 cursor-pointer"
 							/>
+						</div>
+						<div class="flex gap-2">
+							<Button size="sm" variant="primary" on:click={() => updateMarker(marker)}>
+								Save
+							</Button>
+							<Button size="sm" variant="ghost" on:click={() => { editingMarker = null; editError = ''; }}>
+								Cancel
+							</Button>
+						</div>
+					</div>
+				{:else}
+					<div class="flex items-center justify-between">
+						<div class="flex items-center gap-3">
+							<div 
+								class="w-2 h-8 rounded"
+								style="background-color: {marker.color}"
+								aria-label="Marker color"
+							></div>
+							<div>
+								<h3 class="text-xl font-semibold">{marker.name}</h3>
+								<div class="flex items-center gap-2 mt-1">
+									<span class="text-sm text-gray-500 dark:text-gray-400">
+										{formatDate(marker.date)}
+									</span>
+									<Badge variant="secondary">{marker.type}</Badge>
+								</div>
+							</div>
+						</div>
+						{#if data.canEdit}
 							<div class="flex gap-2">
-								<button onclick={() => updateMarker(marker)} class="btn btn-primary btn-sm">
-									Save
-								</button>
-								<button onclick={() => editingMarker = null} class="btn btn-ghost btn-sm">
-									Cancel
-								</button>
+								<Button
+									size="sm"
+									variant="ghost"
+									on:click={() => editingMarker = marker.id}
+								>
+									Edit
+								</Button>
+								<Button
+									size="sm"
+									variant="destructive"
+									on:click={() => deleteMarker(marker.id)}
+								>
+									Delete
+								</Button>
 							</div>
-						</div>
-					{:else}
-						<div class="flex items-center justify-between">
-							<div class="flex items-center gap-3">
-								<div 
-									class="w-2 h-8 rounded"
-									style="background-color: {marker.color}"
-								></div>
-								<div>
-									<h3 class="text-xl font-semibold">{marker.name}</h3>
-									<p class="text-sm text-gray-500">
-										{formatDate(marker.date)} • 
-										<span class="badge badge-sm">{marker.type}</span>
-									</p>
-								</div>
-							</div>
-							{#if data.canEdit}
-								<div class="flex gap-2">
-									<button
-										onclick={() => editingMarker = marker.id}
-										class="btn btn-ghost btn-sm"
-									>
-										Edit
-									</button>
-									<button
-										onclick={() => deleteMarker(marker.id)}
-										class="btn btn-error btn-sm"
-									>
-										Delete
-									</button>
-								</div>
-							{/if}
-						</div>
-					{/if}
-				</div>
-			</div>
+						{/if}
+					</div>
+				{/if}
+			</Card>
 		{/each}
 
 		{#if data.markers.length === 0}
-			<div class="card bg-base-100 shadow-xl p-8 text-center">
-				<p class="text-gray-500">No markers defined for this season yet.</p>
-				{#if data.canEdit}
-					<p class="text-gray-500 mt-2">Click "Add Marker" to add important dates and milestones.</p>
-				{/if}
-			</div>
+			<Card>
+				<div class="text-center py-8">
+					<p class="text-gray-500 dark:text-gray-400">No markers defined for this season yet.</p>
+					{#if data.canEdit}
+						<p class="text-gray-500 dark:text-gray-400 mt-2">Click "Add Marker" to add important dates and milestones.</p>
+					{/if}
+				</div>
+			</Card>
 		{/if}
 	</div>
 </div>

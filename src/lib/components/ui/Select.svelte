@@ -1,4 +1,6 @@
 <script>
+  import { onMount } from 'svelte';
+  
   export let id = '';
   export let label = '';
   export let value = '';
@@ -7,11 +9,19 @@
   export let error = '';
   export let required = false;
   export let disabled = false;
+  
+  let uid = id;
+  
+  onMount(() => {
+    if (!uid && typeof crypto !== 'undefined') {
+      uid = 'select-' + crypto.randomUUID();
+    }
+  });
 </script>
 
 <div class="select-wrapper">
   {#if label}
-    <label for={id} class="label">
+    <label for={uid} class="label">
       {label}
       {#if required}
         <span class="required">*</span>
@@ -20,13 +30,14 @@
   {/if}
   
   <select
-    {id}
+    id={uid}
     bind:value
     {required}
     {disabled}
     class="select"
     class:error={error}
     aria-invalid={!!error}
+    aria-describedby={error ? `${uid}-error` : undefined}
     on:change
     on:blur
     {...$$restProps}
@@ -42,7 +53,7 @@
   </select>
   
   {#if error}
-    <p class="error-message" role="alert">
+    <p id="{uid}-error" class="error-message" role="alert">
       {error}
     </p>
   {/if}
@@ -70,7 +81,7 @@
     padding: var(--space-2) var(--space-3);
     padding-right: var(--space-8);
     background: var(--color-surface-1);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20'%3E%3Cpath fill='%23999' d='M5.5 7.5L10 12l4.5-4.5'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right var(--space-3) center;
     border: 1px solid var(--color-border-default);

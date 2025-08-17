@@ -3,8 +3,8 @@
 	import { page } from '$app/stores';
 	import { navigating } from '$app/stores';
 	import { onDestroy } from 'svelte';
-    import Header from './Header.svelte';
     import '../app.css';
+    import AppShell from '$lib/components/AppShell.svelte';
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
 	import FeedbackButton from '$lib/components/FeedbackButton.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
@@ -80,38 +80,31 @@ onDestroy(unsubNavigating);
 </script>
 
 <div class="flex flex-col min-h-screen">
-        <a href="#main-content" class="skip-to-content">Skip to main content</a>
-        <Header />
+  <a href="#main-content" class="skip-to-content">Skip to main content</a>
 
-	<!-- Global Navigation Loading Indicator -->
-       {#if isNavigating}
-               <div
-                       class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 animate-pulse"
-               >
-                       <div class="h-full bg-blue-400 animate-pulse opacity-75"></div>
-               </div>
-       {/if}
+  {#if isNavigating}
+    <div class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 animate-pulse">
+      <div class="h-full bg-blue-400 animate-pulse opacity-75"></div>
+    </div>
+  {/if}
 
-        <main id="main-content" tabindex="-1" class="flex-1">
-		<div class="container mx-auto px-4 py-8">
-			<ErrorBoundary>
-				<slot />
-			</ErrorBoundary>
-		</div>
-	</main>
+  <AppShell>
+    <ErrorBoundary>
+      <slot />
+    </ErrorBoundary>
+  </AppShell>
 
-	<FeedbackButton />
+  <FeedbackButton />
+  <SvelteToast />
 
-	<SvelteToast />
-
-	{#if $page.url.pathname === '/'}
-		<footer class="py-4 bg-gray-100">
-			<div class="container mx-auto text-center">
-				<a href="/privacy-policy" class="text-blue-500 hover:text-blue-700 mr-4">Privacy Policy</a>
-				<a href="/terms-of-service" class="text-blue-500 hover:text-blue-700">Terms of Service</a>
-			</div>
-		</footer>
-	{/if}
+  {#if $page.url.pathname === '/'}
+    <footer class="py-4 bg-gray-100">
+      <div class="container mx-auto text-center">
+        <a href="/privacy-policy" class="text-blue-500 hover:text-blue-700 mr-4">Privacy Policy</a>
+        <a href="/terms-of-service" class="text-blue-500 hover:text-blue-700">Terms of Service</a>
+      </div>
+    </footer>
+  {/if}
 </div>
 
 <style>
@@ -127,13 +120,5 @@ onDestroy(unsubNavigating);
 	.flex-1 {
 		flex: 1;
 	}
-	main {
-		display: flex;
-		flex-direction: column;
-		padding: 1rem;
-		width: 100%;
-		max-width: 64rem;
-		margin: 0 auto;
-		box-sizing: border-box;
-	}
+    main { display: contents; }
 </style>

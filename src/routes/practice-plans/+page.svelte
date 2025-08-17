@@ -219,6 +219,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Practice Plans - QDrill</title>
+</svelte:head>
+
 <div class="max-w-7xl mx-auto p-4">
 	<div class="flex justify-between items-center mb-6">
 		<h1 class="text-2xl font-bold">Practice Plans</h1>
@@ -263,7 +267,7 @@
 				{/if}
 			{:else}
 				<a
-					href="/signin"
+					href="/login"
 					class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
 				>
 					Sign in to Create Plans

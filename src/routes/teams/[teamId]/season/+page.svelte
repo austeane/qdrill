@@ -1,7 +1,10 @@
 <script>
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import SeasonTimelineEnhanced from '$lib/components/season/SeasonTimelineEnhanced.svelte';
+  import SeasonShell from '$lib/components/season/SeasonShell.svelte';
+  import Overview from '$lib/components/season/views/Overview.svelte';
+  import Schedule from '$lib/components/season/views/Schedule.svelte';
+  import Manage from '$lib/components/season/views/Manage.svelte';
   import ShareSettings from '$lib/components/season/ShareSettings.svelte';
   import { Button } from '$lib/components/ui/button';
   import Input from '$lib/components/ui/Input.svelte';
@@ -20,6 +23,7 @@
   let showCreateModal = false;
   let isCreating = false;
   let createError = '';
+  let activeTab = 'overview'; // For tab navigation
   
   let newSeason = {
     name: '',
@@ -100,88 +104,130 @@
     };
     createError = '';
   }
+  
+  // Event handlers
+  function handleTabChange(event) {
+    activeTab = event.detail;
+  }
+  
+  function handleSectionChange() {
+    loadTimelineData();
+  }
+  
+  function handleMarkerChange() {
+    loadTimelineData();
+  }
+  
+  function handlePracticeCreated(event) {
+    practices = [...practices, event.detail.plan || event.detail];
+    loadTimelineData();
+  }
+  
+  function handleCreatePractice(event) {
+    // Navigate to practice creation with prefilled data
+    const { date, sectionId } = event.detail;
+    // This could open a modal or navigate to practice creation page
+    console.log('Create practice for date:', date, 'section:', sectionId);
+  }
 </script>
 
-<div class="container mx-auto p-6">
-  <div class="mb-4">
-    <Button href="/teams" variant="ghost">← Back to Teams</Button>
-  </div>
-  
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold">Season Management</h1>
-    {#if data.userRole === 'admin'}
-      <Button variant="primary" on:click={() => (showCreateModal = true)}>Create Season</Button>
-    {/if}
-  </div>
-  
-  {#if activeSeason}
-    <div class="mb-8">
-      <SeasonTimelineEnhanced 
+{#if activeSeason}
+  <SeasonShell
+    season={activeSeason}
+    {sections}
+    {markers}
+    {practices}
+    isAdmin={data.userRole === 'admin'}
+    teamId={$page.params.teamId}
+    bind:activeTab
+    on:tabChange={handleTabChange}
+  >
+    {#if activeTab === 'overview'}
+      <Overview
         season={activeSeason}
         bind:sections
         bind:markers
-        {practices}
+        bind:practices
         isAdmin={data.userRole === 'admin'}
         teamId={$page.params.teamId}
-        on:change={loadTimelineData}
-        on:practiceCreated={(e) => practices = [...practices, e.detail]}
+        on:sectionChange={handleSectionChange}
+        on:markerChange={handleMarkerChange}
+        on:createPractice={handleCreatePractice}
       />
-    </div>
-    
-    <Card class="mb-6">
-      <h2 slot="header" class="text-xl font-semibold">Active Season</h2>
-      <div class="flex justify-between items-start">
-        <div>
-          <p class="text-2xl font-bold">{activeSeason.name}</p>
-          <p class="text-gray-600 mt-1">
-            {new Date(activeSeason.start_date).toLocaleDateString()} - {new Date(activeSeason.end_date).toLocaleDateString()}
-          </p>
+    {:else if activeTab === 'schedule'}
+      <Schedule
+        season={activeSeason}
+        bind:sections
+        bind:markers
+        bind:practices
+        isAdmin={data.userRole === 'admin'}
+        teamId={$page.params.teamId}
+        on:practiceCreated={handlePracticeCreated}
+        on:markerChange={handleMarkerChange}
+      />
+    {:else if activeTab === 'manage'}
+      <Manage
+        season={activeSeason}
+        bind:sections
+        bind:markers
+        teamId={$page.params.teamId}
+        on:change={loadTimelineData}
+        on:sectionChange={handleSectionChange}
+        on:markerChange={handleMarkerChange}
+      />
+    {/if}
+  </SeasonShell>
+{:else}
+  <!-- No Active Season -->
+  <div class="no-season-container">
+    <Card>
+      <div class="no-season-content">
+        <Button href="/teams" variant="ghost" size="sm" class="mb-4">
+          ← Back to Teams
+        </Button>
+        
+        <h1 class="text-2xl font-bold mb-6">Season Management</h1>
+        
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <p class="text-yellow-800">No active season. Create or activate a season to get started.</p>
         </div>
+        
         {#if data.userRole === 'admin'}
-          <div class="flex flex-col gap-2">
-            <Button href={`/teams/${$page.params.teamId}/season/sections`} size="sm">Manage Sections</Button>
-            <Button href={`/teams/${$page.params.teamId}/season/markers`} size="sm">Manage Events</Button>
-            <Button href={`/teams/${$page.params.teamId}/season/recurrences`} size="sm">Recurring Practices</Button>
-            <Button href={`/teams/${$page.params.teamId}/season/week`} size="sm">Week View</Button>
+          <Button 
+            variant="primary"
+            on:click={() => showCreateModal = true}
+            class="w-full sm:w-auto"
+          >
+            Create Season
+          </Button>
+        {/if}
+        
+        {#if seasons.length > 0}
+          <h2 class="text-lg font-semibold mt-8 mb-4">All Seasons</h2>
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {#each seasons as season}
+              <Card>
+                <h3 slot="header" class="font-semibold">{season.name}</h3>
+                <p class="text-sm text-gray-600 mt-1">
+                  {new Date(season.start_date).toLocaleDateString()} - {new Date(season.end_date).toLocaleDateString()}
+                </p>
+                <div slot="footer">
+                  {#if data.userRole === 'admin'}
+                    <Button variant="ghost" size="sm" on:click={() => setActive(season.id)}>
+                      Set Active
+                    </Button>
+                  {/if}
+                </div>
+              </Card>
+            {/each}
           </div>
         {/if}
       </div>
     </Card>
-    
-    <!-- Share Settings -->
-    {#if data.userRole === 'admin'}
-      <div class="mt-8">
-        <ShareSettings 
-          seasonId={activeSeason.id}
-          isAdmin={true}
-        />
-      </div>
-    {/if}
-  {:else}
-    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-      <p class="text-yellow-800">No active season. Create or activate a season to get started.</p>
-    </div>
-  {/if}
-  
-  <h2 class="text-xl font-semibold mb-4">All Seasons</h2>
-  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-    {#each seasons.filter(s => !s.is_active) as season}
-      <Card>
-        <h3 slot="header" class="font-semibold">{season.name}</h3>
-        <p class="text-sm text-gray-600 mt-1">
-          {new Date(season.start_date).toLocaleDateString()} - {new Date(season.end_date).toLocaleDateString()}
-        </p>
-        <div slot="footer">
-          {#if data.userRole === 'admin'}
-            <Button variant="ghost" size="sm" on:click={() => setActive(season.id)}>Set Active</Button>
-          {/if}
-        </div>
-      </Card>
-    {/each}
   </div>
-</div>
+{/if}
 
-<!-- Create Season Modal -->
+<!-- Create Season Modal for both mobile and desktop -->
 <Dialog bind:open={showCreateModal} title="Create Season" description="Define the dates and optionally set it active.">
   <div class="grid gap-4">
     <Input label="Season Name" placeholder="Season Name (e.g., Spring 2024)" bind:value={newSeason.name} required />
@@ -200,3 +246,25 @@
     </Button>
   </div>
 </Dialog>
+
+<style>
+  .no-season-container {
+    padding: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .no-season-content {
+    padding: 24px;
+  }
+  
+  @media (min-width: 640px) {
+    .no-season-container {
+      padding: 24px;
+    }
+    
+    .no-season-content {
+      padding: 32px;
+    }
+  }
+</style>

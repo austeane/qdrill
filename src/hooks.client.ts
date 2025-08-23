@@ -15,7 +15,27 @@ Sentry.init({
 	replaysOnErrorSampleRate: 1.0,
 
 	// If you don't want to use Session Replay, just remove the line below:
-	integrations: [replayIntegration()]
+	integrations: [replayIntegration()],
+
+	// Filter out dynamic import errors - these are typically version mismatch issues
+	beforeSend(event, hint) {
+		const error = hint.originalException;
+		
+		// Check if it's a dynamic import error
+		if (error && error instanceof Error) {
+			const message = error.message || '';
+			if (message.includes('Failed to fetch dynamically imported module') ||
+				message.includes('Failed to import') ||
+				message.includes('Failed to fetch')) {
+				// Don't send to Sentry, but reload the page to get fresh assets
+				console.warn('Dynamic import error detected, reloading page to fetch latest version...');
+				window.location.reload();
+				return null; // Don't send to Sentry
+			}
+		}
+		
+		return event;
+	}
 });
 
 // If you have a custom error handler, pass it to `handleErrorWithSentry`

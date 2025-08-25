@@ -113,7 +113,7 @@
               <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg mr-3">
                 <Calendar size={20} class="text-green-600 dark:text-green-400" />
               </div>
-              <h3 class="font-semibold">Season Management</h3>
+              <h3 class="font-semibold dark:text-white">Season Management</h3>
             </div>
             <p class="text-sm text-gray-600 dark:text-gray-400">
               Organize your entire season with sections, markers, and milestones. Track progress from pre-season through playoffs with timeline visualization and coordinate practice schedules across multiple coaches.
@@ -126,7 +126,7 @@
               <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mr-3">
                 <Users size={20} class="text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 class="font-semibold">Shared Resources</h3>
+              <h3 class="font-semibold dark:text-white">Shared Resources</h3>
             </div>
             <p class="text-sm text-gray-600 dark:text-gray-400">
               Team practice plans automatically become available to all team members. Build a collaborative library of proven drills, formations, and strategies that your entire coaching staff can access and contribute to.
@@ -139,7 +139,7 @@
               <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg mr-3">
                 <Shield size={20} class="text-purple-600 dark:text-purple-400" />
               </div>
-              <h3 class="font-semibold">Role-Based Access</h3>
+              <h3 class="font-semibold dark:text-white">Role-Based Access</h3>
             </div>
             <p class="text-sm text-gray-600 dark:text-gray-400">
               Control who can edit plans and manage the team. Assign admin or member roles to maintain organization while enabling collaboration across your coaching staff.

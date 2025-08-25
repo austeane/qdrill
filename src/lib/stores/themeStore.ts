@@ -6,12 +6,24 @@ type Theme = 'light' | 'dark' | 'system';
 function applyTheme(theme: Theme) {
   if (!browser) return;
   const root = document.documentElement;
+  
+  // Determine if dark mode should be active
+  let isDark = false;
   if (theme === 'system') {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+    isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   } else {
-    root.setAttribute('data-theme', theme);
+    isDark = theme === 'dark';
   }
+  
+  // Apply or remove the dark class for Tailwind
+  if (isDark) {
+    root.classList.add('dark');
+  } else {
+    root.classList.remove('dark');
+  }
+  
+  // Also set data-theme attribute for any custom CSS that might use it
+  root.setAttribute('data-theme', isDark ? 'dark' : 'light');
 }
 
 function createThemeStore() {

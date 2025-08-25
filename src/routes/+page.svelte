@@ -32,7 +32,7 @@
 				loading="eager"
 				decoding="async"
 			/>
-			<p class="text-lg mb-6 text-gray-700 dark:text-gray-300">
+			<p class="text-lg mb-6 dark:text-gray-300">
 				Easily find, create, and share drills and practice plans. Focus on coaching, QDrill makes
 				planning easy.
 			</p>

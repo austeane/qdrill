@@ -328,11 +328,11 @@
 			<!-- Use practicePlans directly (already paginated and sorted by server) -->
 			{#each practicePlans as plan (plan.id)}
 				<div
-					class="border border-gray-200 p-6 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1"
+					class="border border-gray-200 p-6 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 overflow-hidden"
 				>
 					<!-- Header section with title and voting -->
 					<div class="relative flex justify-between items-start mb-4">
-						<div class="flex-1 pr-12">
+						<div class="flex-1 pr-12 min-w-0">
 							<h2 class="text-xl font-bold">
 								<a
 									href="/practice-plans/{plan.id}"
@@ -363,9 +363,11 @@
 						</p>
 					{/if}
 					{#if plan.practice_goals && plan.practice_goals.length > 0}
-						<p class="text-sm text-gray-500 mb-1">
+						<p class="text-sm text-gray-500 mb-1 overflow-hidden">
 							<strong>Practice Goals:</strong>
-							{plan.practice_goals.join(', ')}
+							<span class="inline-block truncate align-bottom max-w-full">
+								{plan.practice_goals.join(', ')}
+							</span>
 						</p>
 					{/if}
 

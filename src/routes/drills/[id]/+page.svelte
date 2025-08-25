@@ -275,11 +275,11 @@
 <Breadcrumb customSegments={[{ name: 'Drills', url: '/drills' }, { name: $drill.name }]} />
 
 <section class="max-w-4xl mx-auto px-4 py-8">
-	<div class="relative bg-white p-6 rounded-lg shadow-md">
+	<div class="relative bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
 		<div class="absolute top-4 right-4">
 			<UpvoteDownvote drillId={$drill.id} />
 		</div>
-		<h1 class="text-3xl font-bold mb-6">{$drill.name}</h1>
+		<h1 class="text-3xl font-bold mb-6 dark:text-white">{$drill.name}</h1>
 		<div class="flex justify-between items-center mb-6">
 			<div class="flex space-x-4">
 				<a
@@ -305,8 +305,8 @@
 			</div>
 		</div>
 
-		<div class="bg-white shadow-md rounded-lg p-6 mb-8">
-			<p class="text-xl mb-4">{$drill.brief_description}</p>
+		<div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 mb-8">
+			<p class="text-xl mb-4 dark:text-gray-200">{$drill.brief_description}</p>
 
 			<div class="flex justify-center space-x-4 mb-6">
 				{#if $page.data.session?.user?.id === $drill.created_by}
@@ -354,8 +354,8 @@
 			</div>
 
 			{#if ($drill.variations?.length > 0 || $drill.parent_drill_id) && ($allVariants[$drill.parent_drill_id || $drill.id] || $drill.related_variations)}
-				<div class="mb-8 bg-gray-50 rounded-lg p-4">
-					<h3 class="text-lg font-semibold mb-3">Drill Variations</h3>
+				<div class="mb-8 bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+					<h3 class="text-lg font-semibold mb-3 dark:text-white">Drill Variations</h3>
 					<div class="flex flex-wrap gap-2">
 						{#if $drill.parent_drill_id && $drill.related_variations}
 							<!-- Show variations when viewing a child drill -->
@@ -364,7 +364,7 @@
 									on:click={() => switchVariant(variation.id)}
 									class="px-4 py-2 rounded-full {currentDrillId === variation.id
 										? 'bg-blue-500 text-white'
-										: 'bg-white border hover:bg-gray-50'}"
+										: 'bg-white dark:bg-gray-600 border dark:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-500 dark:text-gray-200'}"
 								>
 									{variation.name}
 									{#if variation.relationship === 'parent'}
@@ -383,7 +383,7 @@
 								class="px-4 py-2 rounded-full {currentDrillId ===
 								($drill.parent_drill_id || $drill.id)
 									? 'bg-blue-500 text-white'
-									: 'bg-white border hover:bg-gray-50'}"
+									: 'bg-white dark:bg-gray-600 border dark:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-500 dark:text-gray-200'}"
 							>
 								{$drill.parent_drill_name || $drill.name} (Parent)
 							</button>
@@ -394,7 +394,7 @@
 									on:click={() => switchVariant(variation.id)}
 									class="px-4 py-2 rounded-full {currentDrillId === variation.id
 										? 'bg-blue-500 text-white'
-										: 'bg-white border hover:bg-gray-50'}"
+										: 'bg-white dark:bg-gray-600 border dark:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-500 dark:text-gray-200'}"
 								>
 									{variation.name} (Variant)
 								</button>
@@ -406,10 +406,10 @@
 
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
 				<div>
-					<h2 class="text-lg font-semibold mb-2">Drill Details</h2>
-					<p><strong>Skill Levels:</strong> {$drill.skill_level?.join(', ')}</p>
-					<p><strong>Complexity:</strong> {$drill.complexity}</p>
-					<p>
+					<h2 class="text-lg font-semibold mb-2 dark:text-white">Drill Details</h2>
+					<p class="dark:text-gray-200"><strong>Skill Levels:</strong> {$drill.skill_level?.join(', ')}</p>
+					<p class="dark:text-gray-200"><strong>Complexity:</strong> {$drill.complexity}</p>
+					<p class="dark:text-gray-200">
 						<strong>Suggested Length:</strong>
 						{#if $drill.suggested_length_min !== null && $drill.suggested_length_min !== undefined}
 							{#if $drill.suggested_length_max !== null && $drill.suggested_length_max !== undefined && $drill.suggested_length_max > $drill.suggested_length_min}
@@ -421,7 +421,7 @@
 							N/A
 						{/if}
 					</p>
-					<p>
+					<p class="dark:text-gray-200">
 						<strong>Number of People:</strong>
 						{$drill.number_of_people_min} - {$drill.number_of_people_max &&
 						$drill.number_of_people_max !== 0
@@ -430,8 +430,8 @@
 					</p>
 				</div>
 				<div>
-					<h2 class="text-lg font-semibold mb-2">Focus Areas</h2>
-					<p>
+					<h2 class="text-lg font-semibold mb-2 dark:text-white">Focus Areas</h2>
+					<p class="dark:text-gray-200">
 						<strong>Skills:</strong>
 						{Array.isArray($drill.skills_focused_on)
 							? $drill.skills_focused_on.join(', ')
@@ -439,7 +439,7 @@
 								? $drill.skills_focused_on.split(', ').join(', ')
 								: ''}
 					</p>
-					<p>
+					<p class="dark:text-gray-200">
 						<strong>Positions:</strong>
 						{Array.isArray($drill.positions_focused_on)
 							? $drill.positions_focused_on.join(', ')
@@ -449,21 +449,21 @@
 					</p>
 				</div>
 				<div>
-					<h2 class="text-lg font-semibold mb-2">Drill Types</h2>
-					<p>{Array.isArray($drill.drill_type) ? $drill.drill_type.join(', ') : 'N/A'}</p>
+					<h2 class="text-lg font-semibold mb-2 dark:text-white">Drill Types</h2>
+					<p class="dark:text-gray-200">{Array.isArray($drill.drill_type) ? $drill.drill_type.join(', ') : 'N/A'}</p>
 				</div>
 			</div>
 
 			<div class="mb-6">
-				<h2 class="text-lg font-semibold mb-2">Detailed Description</h2>
-				<div class="prose prose-sm sm:prose lg:prose-lg">
+				<h2 class="text-lg font-semibold mb-2 dark:text-white">Detailed Description</h2>
+				<div class="prose prose-sm sm:prose lg:prose-lg dark:prose-invert">
 					{@html $drill.detailed_description}
 				</div>
 			</div>
 
 			{#if $drill.video_link}
 				<div class="mb-6">
-					<h2 class="text-lg font-semibold mb-2">Video</h2>
+					<h2 class="text-lg font-semibold mb-2 dark:text-white">Video</h2>
 					<a
 						href={$drill.video_link}
 						target="_blank"
@@ -474,7 +474,7 @@
 
 			{#if $drill.images && $drill.images.length > 0}
 				<div class="mb-6">
-					<h2 class="text-lg font-semibold mb-2">Images</h2>
+					<h2 class="text-lg font-semibold mb-2 dark:text-white">Images</h2>
 					<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
 						{#each Array.isArray($drill.images) ? $drill.images : [] as image}
 							<img src={image} alt="Drill Image" class="w-full h-48 object-cover rounded-lg" />
@@ -485,13 +485,13 @@
 
 			{#if $drill.diagrams && $drill.diagrams.length > 0}
 				<div>
-					<h2 class="text-lg font-semibold mb-2">Diagrams</h2>
+					<h2 class="text-lg font-semibold mb-2 dark:text-white">Diagrams</h2>
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 						{#if $drill.diagrams?.length > 0}
 							{#each $drill.diagrams as diagramData, index}
 								<!-- Removed unused 'key' directive -->
 								<div class="border rounded-lg p-2">
-									<h3 class="text-center font-medium mb-2">Diagram {index + 1}</h3>
+									<h3 class="text-center font-medium mb-2 dark:text-gray-200">Diagram {index + 1}</h3>
 									<ExcalidrawWrapper
 										data={diagramData}
 										id={`diagram-${$drill.id}-${index}`}
@@ -517,7 +517,7 @@
 			{/if}
 
 			<div class="mb-6">
-				<h2 class="text-lg font-semibold mb-2">Comments</h2>
+				<h2 class="text-lg font-semibold mb-2 dark:text-white">Comments</h2>
 				<Comments drillId={$page.params.id} />
 			</div>
 		</div>
@@ -525,21 +525,21 @@
 
 	{#if showVariantModal}
 		<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-			<div class="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full">
-				<h2 class="text-xl font-bold mb-4">Manage Variants</h2>
+			<div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl max-w-lg w-full">
+				<h2 class="text-xl font-bold mb-4 dark:text-white">Manage Variants</h2>
 
-				<p class="text-gray-600 mb-6">
+				<p class="text-gray-600 dark:text-gray-300 mb-6">
 					Mark this drill as a variant if it's a modified version of another drill. This helps group
 					related drills together, making them easier to find.
 				</p>
 
 				{#if $drill.variation_count > 0}
 					<div class="mb-6">
-						<h3 class="font-semibold mb-2">Variant Drills:</h3>
+						<h3 class="font-semibold mb-2 dark:text-white">Variant Drills:</h3>
 						<div class="space-y-2">
 							{#each $drill.variations as variation}
 								<div class="flex items-center justify-between p-2 bg-gray-50 rounded">
-									<span>{variation.name}</span>
+									<span class="dark:text-gray-200">{variation.name}</span>
 									<button
 										on:click={() => removeVariantRelationship(variation.id)}
 										class="text-red-500 hover:text-red-700"
@@ -553,8 +553,8 @@
 				{/if}
 
 				{#if $drill.parent_drill_id}
-					<div class="mt-4 p-4 bg-gray-50 rounded">
-						<h3 class="font-semibold mb-2">Current Parent Drill:</h3>
+					<div class="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded">
+						<h3 class="font-semibold mb-2 dark:text-white">Current Parent Drill:</h3>
 						<p>{$drill.parent_drill_name}</p>
 						<button
 							on:click={removeVariant}
@@ -571,7 +571,7 @@
 						bind:value={searchQuery}
 						on:input={handleSearchInput}
 						placeholder="Search for a new parent drill..."
-						class="w-full p-2 border rounded"
+						class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
 					/>
 				</div>
 
@@ -586,7 +586,7 @@
 									? 'bg-blue-100'
 									: ''}"
 							>
-								<span>{searchedDrill.name}</span>
+								<span class="dark:text-gray-200">{searchedDrill.name}</span>
 								<button
 									on:click={() => {
 										selectedDrill = searchedDrill;
@@ -604,8 +604,8 @@
 				{/if}
 
 				{#if selectedDrill}
-					<div class="mt-4 p-4 bg-gray-50 rounded">
-						<h3 class="font-semibold mb-2">Make "{$drill.name}" the:</h3>
+					<div class="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded">
+						<h3 class="font-semibold mb-2 dark:text-white">Make "{$drill.name}" the:</h3>
 						<div class="space-y-2">
 							<button
 								on:click={() => (relationshipType = 'current-as-parent')}

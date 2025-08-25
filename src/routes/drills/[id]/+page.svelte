@@ -17,6 +17,10 @@
 
 	// Create a local writable store for the current drill data
 	const drill = writable(data.drill || {});
+	
+	// Check if user is admin or owner
+	$: isAdmin = $page.data.session?.user?.role === 'admin';
+	$: canEdit = isAdmin || $drill.created_by === $page.data.session?.user?.id;
 
 	// Reactively update the local store if the data prop changes
 	$: if (data.drill && $drill !== data.drill) {
@@ -294,7 +298,7 @@
 				>
 					Add Drill to Plan
 				</button>
-				{#if dev || $drill.created_by === $page.data.session?.user?.id}
+				{#if dev || canEdit}
 					<button
 						on:click={handleDelete}
 						class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300"
@@ -309,7 +313,7 @@
 			<p class="text-xl mb-4 dark:text-gray-200">{$drill.brief_description}</p>
 
 			<div class="flex justify-center space-x-4 mb-6">
-				{#if $page.data.session?.user?.id === $drill.created_by}
+				{#if canEdit}
 					<a
 						href="/drills/{$page.params.id}/edit"
 						class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300"

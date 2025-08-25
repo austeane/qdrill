@@ -28,7 +28,9 @@
 	$: totalDuration = practicePlan.sections.reduce((sum, section) => sum + section.duration, 0);
 
 	// Check edit permissions
+	$: isAdmin = $page.data.session?.user?.role === 'admin';
 	$: userCanEdit =
+		isAdmin ||
 		$page.data.session?.user?.id === practicePlan.created_by ||
 		($page.data.session?.user?.id && practicePlan.is_editable_by_others);
 

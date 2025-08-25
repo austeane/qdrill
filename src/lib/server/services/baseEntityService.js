@@ -756,6 +756,14 @@ export class BaseEntityService {
 		// Use the provided client or the default db connection
 		const dbInterface = client || db;
 
+		// Check if user is admin
+		if (userId) {
+			const userResult = await dbInterface.query('SELECT role FROM users WHERE id = $1', [userId]);
+			if (userResult.rows.length > 0 && userResult.rows[0].role === 'admin') {
+				return true; // Admins can edit anything
+			}
+		}
+
 		if (!this.useStandardPermissions) {
 			// If permissions aren't configured, default to allowing (or throw error?)
 			// console.warn(`Standard permissions not enabled for ${this.tableName} service - allowing edit by default`);
@@ -787,6 +795,7 @@ export class BaseEntityService {
 			// 1. User created the entity (and userId is not null)
 			// 2. Entity is editable by others
 			// 3. Entity has no creator (creator column is null)
+			// 4. User is admin (already checked above)
 			const isCreator = userId !== null && entity[userIdColumn] === userId;
 			const isEditable = entity[editableByOthersColumn] === true;
 			const isUnowned = entity[userIdColumn] === null;

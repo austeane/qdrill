@@ -9,7 +9,8 @@
 	export let createdBy = null;
 	export let onDelete = () => {};
 
-	$: canDelete = $page.data.session?.user?.id === createdBy || dev;
+	$: isAdmin = $page.data.session?.user?.role === 'admin';
+	$: canDelete = isAdmin || $page.data.session?.user?.id === createdBy || dev;
 
 	async function deletePlan() {
 		if (

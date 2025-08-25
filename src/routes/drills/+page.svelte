@@ -45,6 +45,9 @@ onDestroy(unsubNavigating);
 
 	// Filter options from load
 	$: filterOptions = data.filterOptions || {};
+	
+	// Check if user is admin
+	$: isAdmin = $page.data.session?.user?.role === 'admin';
 
 	// Object to hold temporary button states ('added', 'removed', or null)
 	let buttonStates = {};
@@ -435,7 +438,7 @@ onDestroy(unsubNavigating);
 							<UpvoteDownvote drillId={drill.id} />
 
 							<!-- Conditional Delete Button -->
-							{#if dev || drill.created_by === $page.data.session?.user?.id}
+							{#if dev || isAdmin || drill.created_by === $page.data.session?.user?.id}
 								<button
 									on:click={(e) => deleteDrill(drill.id, e)}
 									class="text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors duration-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"

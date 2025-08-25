@@ -12,6 +12,9 @@
 
 	// Use formation data directly from the load function
 	$: formation = data.formation;
+	
+	// Check if user is admin
+	$: isAdmin = $page.data.session?.user?.role === 'admin';
 
 	// REMOVED: State for associated drills (isLoadingDrills, loadDrillsError)
 	// REMOVED: isLoading state
@@ -93,7 +96,7 @@
 		</div>
 
 		<!-- Edit/Delete Buttons (Permission check remains) -->
-		{#if formation && $page.data.session && (dev || $page.data.session.user.id === formation.created_by || formation.is_editable_by_others)}
+		{#if formation && $page.data.session && (dev || isAdmin || $page.data.session.user.id === formation.created_by || formation.is_editable_by_others)}
 			<div class="flex space-x-4">
 				<button
 					class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -107,7 +110,7 @@
 				>
 					Duplicate
 				</button>
-				{#if dev || $page.data.session.user.id === formation.created_by}
+				{#if dev || isAdmin || $page.data.session.user.id === formation.created_by}
 					<button
 						class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
 						on:click={handleDelete}

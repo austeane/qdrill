@@ -1,6 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { device } from '$lib/stores/deviceStore';
+  import { Layers, Calendar, Settings } from 'lucide-svelte';
   
   export let activeTab = 'overview';
   export let season = null;
@@ -17,19 +18,19 @@
     {
       id: 'overview',
       label: 'Overview',
-      icon: 'layers',
+      icon: Layers,
       adminOnly: false
     },
     {
       id: 'schedule',
       label: 'Schedule', 
-      icon: 'calendar',
+      icon: Calendar,
       adminOnly: false
     },
     {
       id: 'manage',
       label: 'Manage',
-      icon: 'settings',
+      icon: Settings,
       adminOnly: true
     }
   ];
@@ -73,25 +74,7 @@
           aria-current={activeTab === tab.id ? 'page' : undefined}
         >
           <div class="nav-icon">
-            {#if tab.icon === 'layers'}
-              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="6" rx="1" />
-                <rect x="3" y="11" width="18" height="6" rx="1" />
-                <rect x="3" y="19" width="18" height="2" rx="1" />
-              </svg>
-            {:else if tab.icon === 'calendar'}
-              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-              </svg>
-            {:else if tab.icon === 'settings'}
-              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M12 1v6m0 6v6m4.22-13.22l-3.39 3.39m-1.66 1.66l-3.39 3.39M21 12h-6m-6 0H3m16.22 4.22l-3.39-3.39m-1.66-1.66l-3.39-3.39" />
-              </svg>
-            {/if}
+            <svelte:component this={tab.icon} size={24} />
           </div>
           <span class="nav-label">{tab.label}</span>
         </button>
@@ -120,25 +103,7 @@
               on:click={() => handleTabChange(tab.id)}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
-              {#if tab.icon === 'layers'}
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="14" height="4" rx="1" />
-                  <rect x="3" y="9" width="14" height="4" rx="1" />
-                  <rect x="3" y="15" width="14" height="2" rx="1" />
-                </svg>
-              {:else if tab.icon === 'calendar'}
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="4" width="14" height="14" rx="2" />
-                  <line x1="13" y1="2" x2="13" y2="6" />
-                  <line x1="7" y1="2" x2="7" y2="6" />
-                  <line x1="3" y1="9" x2="17" y2="9" />
-                </svg>
-              {:else if tab.icon === 'settings'}
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="10" cy="10" r="2.5" />
-                  <path d="M10 1v5m0 4v5m3.5-11.5l-2.5 2.5m-2 2l-2.5 2.5M19 10h-5m-4 0H1m15.5 3.5l-2.5-2.5m-2-2l-2.5-2.5" />
-                </svg>
-              {/if}
+              <svelte:component this={tab.icon} size={20} />
               <span>{tab.label}</span>
             </button>
           {/each}

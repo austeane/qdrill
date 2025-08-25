@@ -1,5 +1,6 @@
 <script>
 	import { FILTER_STATES } from '$lib/constants';
+	import { Check, X } from 'lucide-svelte';
 
 	export let value;
 	export let state = FILTER_STATES.NEUTRAL;
@@ -41,18 +42,9 @@
 		on:keydown={(e) => (e.key === ' ' || e.key === 'Enter') && (e.preventDefault(), toggleState())}
 	>
 		{#if state === FILTER_STATES.REQUIRED}
-			<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-			</svg>
+			<Check size={16} class="text-white" />
 		{:else if state === FILTER_STATES.EXCLUDED}
-			<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M6 18L18 6M6 6l12 12"
-				/>
-			</svg>
+			<X size={16} class="text-white" />
 		{/if}
 	</div>
 	<span>{label}</span>

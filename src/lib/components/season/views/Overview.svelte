@@ -8,6 +8,7 @@
   import EditSectionSheet from '../mobile/EditSectionSheet.svelte';
   import EditMarkerSheet from '../mobile/EditMarkerSheet.svelte';
   import Dialog from '$lib/components/ui/Dialog.svelte';
+  import { Layers, Edit2, ChevronRight, Plus } from 'lucide-svelte';
   
   export let season = null;
   export let sections = [];
@@ -146,11 +147,7 @@
   <div class="action-bar">
     <h2 class="section-title">Season Overview</h2>
     <Button on:click={viewTimeline} variant="outline" size="sm">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="mr-2">
-        <rect x="2" y="3" width="12" height="4" rx="1" />
-        <rect x="2" y="9" width="12" height="4" rx="1" />
-        <rect x="2" y="15" width="12" height="2" rx="1" />
-      </svg>
+      <Layers size={16} class="mr-2" />
       View Timeline
     </Button>
   </div>
@@ -179,9 +176,7 @@
               on:click={() => handleEditSection(section)}
               aria-label="Edit section"
             >
-              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
+              <Edit2 size={20} />
             </button>
           {/if}
         </div>
@@ -212,9 +207,7 @@
                     day: 'numeric' 
                   })}
                 </span>
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M5 12l7-7-7-7" />
-                </svg>
+                <ChevronRight size={16} />
               </button>
             {/if}
             
@@ -224,10 +217,7 @@
                 variant={nextPractice ? "ghost" : "default"}
                 on:click={() => handleAddPractice(section)}
               >
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="mr-1">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                <Plus size={16} class="mr-1" />
                 Add Practice
               </Button>
             {/if}
@@ -238,10 +228,7 @@
     
     {#if isAdmin}
       <button class="add-section-button" on:click={handleAddSection}>
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
+        <Plus size={20} />
         Add Section
       </button>
     {/if}
@@ -254,10 +241,7 @@
         <h2 class="section-title">Events & Milestones</h2>
         {#if isAdmin}
           <Button size="sm" variant="outline" on:click={handleAddMarker}>
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="mr-1">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
+            <Plus size={16} class="mr-1" />
             Add Event
           </Button>
         {/if}

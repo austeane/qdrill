@@ -3,6 +3,7 @@
   import { scale, fade } from 'svelte/transition';
   import { portal } from '$lib/actions/portal.js';
   import { getSafeAreaInsets } from '$lib/utils/mobile.js';
+  import { X } from 'lucide-svelte';
   
   export let open = false;
   export let title = '';
@@ -204,9 +205,7 @@
             on:click={handleClose}
             aria-label="Close"
           >
-            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 6l12 12M6 18L18 6" />
-            </svg>
+            <X size={24} />
           </button>
         </div>
       {/if}

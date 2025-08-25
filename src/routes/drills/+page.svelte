@@ -343,13 +343,13 @@ onDestroy(unsubNavigating);
 	<FilterPanel
 		customClass="mb-6"
 		filterType="drills"
-		skillLevels={filterOptions.skillLevels}
-		complexities={filterOptions.complexities}
-		skillsFocusedOn={filterOptions.skillsFocusedOn}
-		positionsFocusedOn={filterOptions.positionsFocusedOn}
-		numberOfPeopleOptions={filterOptions.numberOfPeopleOptions}
-		suggestedLengths={filterOptions.suggestedLengths}
-		drillTypes={filterOptions.drillTypes}
+		skillLevels={filterOptions.skillLevels || []}
+		complexities={filterOptions.complexities || []}
+		skillsFocusedOn={filterOptions.skillsFocusedOn || []}
+		positionsFocusedOn={filterOptions.positionsFocusedOn || []}
+		numberOfPeopleOptions={filterOptions.numberOfPeopleOptions || { min: 0, max: 100 }}
+		suggestedLengths={filterOptions.suggestedLengths || { min: 0, max: 120 }}
+		drillTypes={filterOptions.drillTypes || []}
 		on:filterChange={() => applyFiltersAndNavigate({ resetPage: true })}
 	/>
 

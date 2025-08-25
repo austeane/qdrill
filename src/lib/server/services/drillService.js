@@ -520,9 +520,9 @@ export class DrillService extends BaseEntityService {
 			if (filters.hasVideo === false)
 				qb = qb.where((eb) => eb.or([eb('video_link', 'is', null), eb('video_link', '=', '')]));
 			if (filters.hasDiagrams === true)
-				qb = qb.where(sql`jsonb_typeof(diagrams) = 'array' AND jsonb_array_length(diagrams) > 0`);
+				qb = qb.where(sql`array_length(diagrams, 1) > 0`);
 			if (filters.hasDiagrams === false)
-				qb = qb.where(sql`jsonb_typeof(diagrams) != 'array' OR jsonb_array_length(diagrams) = 0`);
+				qb = qb.where(sql`diagrams IS NULL OR array_length(diagrams, 1) IS NULL OR array_length(diagrams, 1) = 0`);
 			if (filters.hasImages === true) qb = qb.where(sql`array_length(images, 1) > 0`);
 			if (filters.hasImages === false)
 				qb = qb.where((eb) =>
@@ -622,11 +622,11 @@ export class DrillService extends BaseEntityService {
 			);
 		if (filters.hasDiagrams === true)
 			countQuery = countQuery.where(
-				sql`jsonb_typeof(diagrams) = 'array' AND jsonb_array_length(diagrams) > 0`
+				sql`array_length(diagrams, 1) > 0`
 			);
 		if (filters.hasDiagrams === false)
 			countQuery = countQuery.where(
-				sql`jsonb_typeof(diagrams) != 'array' OR jsonb_array_length(diagrams) = 0`
+				sql`diagrams IS NULL OR array_length(diagrams, 1) IS NULL OR array_length(diagrams, 1) = 0`
 			);
 		if (filters.hasImages === true) countQuery = countQuery.where(sql`array_length(images, 1) > 0`);
 		if (filters.hasImages === false)

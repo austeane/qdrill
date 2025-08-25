@@ -1,6 +1,6 @@
 <script>
   import { page } from '$app/stores';
-  import SeasonTimeline from '$lib/components/season/SeasonTimeline.svelte';
+  import SeasonTimelineViewer from '$lib/components/season/SeasonTimelineViewer.svelte';
   
   export let data;
   
@@ -59,12 +59,11 @@
   <!-- Season timeline -->
   <div class="bg-white rounded-lg shadow-lg p-6">
     <h2 class="text-xl font-semibold mb-4">Season Overview</h2>
-    <SeasonTimeline
+    <SeasonTimelineViewer
       {season}
-      existingPractices={practices}
-      {markers}
       {sections}
-      isPublicView={true}
+      {markers}
+      {practices}
     />
   </div>
   

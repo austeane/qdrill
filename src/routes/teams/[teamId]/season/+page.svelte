@@ -1,16 +1,29 @@
 <script>
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import SeasonTimeline from '$lib/components/season/SeasonTimeline.svelte';
+  import SeasonShell from '$lib/components/season/SeasonShell.svelte';
+  import Overview from '$lib/components/season/views/Overview.svelte';
+  import Schedule from '$lib/components/season/views/Schedule.svelte';
+  import Manage from '$lib/components/season/views/Manage.svelte';
   import ShareSettings from '$lib/components/season/ShareSettings.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import Input from '$lib/components/ui/Input.svelte';
+  import Dialog from '$lib/components/ui/Dialog.svelte';
+  import Checkbox from '$lib/components/ui/Checkbox.svelte';
+  import Card from '$lib/components/ui/Card.svelte';
+  import { apiFetch } from '$lib/utils/apiFetch.js';
   
   export let data;
   
   let seasons = data.seasons || [];
   let activeSeason = seasons.find(s => s.is_active);
   let sections = [];
-  let markers = {};
+  let markers = [];
+  let practices = [];
   let showCreateModal = false;
+  let isCreating = false;
+  let createError = '';
+  let activeTab = 'overview'; // For tab navigation
   
   let newSeason = {
     name: '',
@@ -28,57 +41,58 @@
   async function loadTimelineData() {
     if (!activeSeason) return;
     
-    // Load sections
-    const sectionsRes = await fetch(`/api/seasons/${activeSeason.id}/sections`);
-    if (sectionsRes.ok) {
-      sections = await sectionsRes.json();
-    }
+    try {
+      const sectionsRes = await apiFetch(`/api/seasons/${activeSeason.id}/sections`);
+      sections = sectionsRes;
+    } catch {}
     
-    // Load markers
-    const markersRes = await fetch(`/api/seasons/${activeSeason.id}/markers`);
-    if (markersRes.ok) {
-      markers = await markersRes.json();
-    }
+    try {
+      const markersRes = await apiFetch(`/api/seasons/${activeSeason.id}/markers`);
+      markers = markersRes;
+    } catch {}
+    
+    try {
+      const practicesRes = await apiFetch(`/api/teams/${$page.params.teamId}/practice-plans`);
+      practices = practicesRes.filter(p => p.season_id === activeSeason.id);
+    } catch {}
   }
   
   async function createSeason() {
-    const response = await fetch(`/api/teams/${$page.params.teamId}/seasons`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newSeason)
-    });
-    
-    if (response.ok) {
-      const season = await response.json();
+    if (!newSeason.name || !newSeason.start_date || !newSeason.end_date) return;
+    isCreating = true;
+    createError = '';
+    try {
+      const season = await apiFetch(`/api/teams/${$page.params.teamId}/seasons`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSeason)
+      });
       seasons = [...seasons, season];
       if (season.is_active) {
         activeSeason = season;
-        seasons = seasons.map(s => ({
-          ...s,
-          is_active: s.id === season.id
-        }));
+        seasons = seasons.map(s => ({ ...s, is_active: s.id === season.id }));
         await loadTimelineData();
       }
       showCreateModal = false;
       resetForm();
+    } catch (err) {
+      createError = err?.message || 'Failed to create season';
+    } finally {
+      isCreating = false;
     }
   }
   
   async function setActive(seasonId) {
-    const response = await fetch(`/api/seasons/${seasonId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_active: true })
-    });
-    
-    if (response.ok) {
-      seasons = seasons.map(s => ({
-        ...s,
-        is_active: s.id === seasonId
-      }));
+    try {
+      await apiFetch(`/api/seasons/${seasonId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: true })
+      });
+      seasons = seasons.map(s => ({ ...s, is_active: s.id === seasonId }));
       activeSeason = seasons.find(s => s.id === seasonId);
       await loadTimelineData();
-    }
+    } catch {}
   }
   
   function resetForm() {
@@ -88,175 +102,169 @@
       end_date: '',
       is_active: false
     };
+    createError = '';
+  }
+  
+  // Event handlers
+  function handleTabChange(event) {
+    activeTab = event.detail;
+  }
+  
+  function handleSectionChange() {
+    loadTimelineData();
+  }
+  
+  function handleMarkerChange() {
+    loadTimelineData();
+  }
+  
+  function handlePracticeCreated(event) {
+    practices = [...practices, event.detail.plan || event.detail];
+    loadTimelineData();
+  }
+  
+  function handleCreatePractice(event) {
+    // Navigate to practice creation with prefilled data
+    const { date, sectionId } = event.detail;
+    // This could open a modal or navigate to practice creation page
+    console.log('Create practice for date:', date, 'section:', sectionId);
   }
 </script>
 
-<div class="container mx-auto p-6">
-  <div class="mb-4">
-    <a href="/teams" class="text-blue-500 hover:underline">← Back to Teams</a>
-  </div>
-  
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold">Season Management</h1>
-    {#if data.userRole === 'admin'}
-      <button
-        on:click={() => showCreateModal = true}
-        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-      >
-        Create Season
-      </button>
-    {/if}
-  </div>
-  
-  {#if activeSeason}
-    <div class="mb-8">
-      <SeasonTimeline 
+{#if activeSeason}
+  <SeasonShell
+    season={activeSeason}
+    {sections}
+    {markers}
+    {practices}
+    isAdmin={data.userRole === 'admin'}
+    teamId={$page.params.teamId}
+    bind:activeTab
+    on:tabChange={handleTabChange}
+  >
+    {#if activeTab === 'overview'}
+      <Overview
         season={activeSeason}
-        {sections}
-        {markers}
+        bind:sections
+        bind:markers
+        bind:practices
         isAdmin={data.userRole === 'admin'}
-        isPublicView={false}
         teamId={$page.params.teamId}
+        on:sectionChange={handleSectionChange}
+        on:markerChange={handleMarkerChange}
+        on:createPractice={handleCreatePractice}
       />
-    </div>
-    
-    <div class="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-      <div class="flex justify-between items-start">
-        <div>
-          <h2 class="text-xl font-semibold text-green-800">Active Season</h2>
-          <p class="text-2xl font-bold mt-2">{activeSeason.name}</p>
-          <p class="text-gray-600 mt-1">
-            {new Date(activeSeason.start_date).toLocaleDateString()} - 
-            {new Date(activeSeason.end_date).toLocaleDateString()}
-          </p>
-        </div>
-        {#if data.userRole === 'admin'}
-          <div class="space-y-2">
-            <a
-              href="/teams/{$page.params.teamId}/season/sections"
-              class="block px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 text-center"
-            >
-              Manage Sections
-            </a>
-            <a
-              href="/teams/{$page.params.teamId}/season/markers"
-              class="block px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 text-center"
-            >
-              Manage Events
-            </a>
-            <a
-              href="/teams/{$page.params.teamId}/season/recurrences"
-              class="block px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 text-center"
-            >
-              Recurring Practices
-            </a>
-            <a
-              href="/teams/{$page.params.teamId}/season/week"
-              class="block px-3 py-1 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 text-center"
-            >
-              Week View
-            </a>
-          </div>
-        {/if}
-      </div>
-    </div>
-    
-    <!-- Share Settings -->
-    {#if data.userRole === 'admin'}
-      <div class="mt-8">
-        <ShareSettings 
-          seasonId={activeSeason.id}
-          isAdmin={true}
-        />
-      </div>
+    {:else if activeTab === 'schedule'}
+      <Schedule
+        season={activeSeason}
+        bind:sections
+        bind:markers
+        bind:practices
+        isAdmin={data.userRole === 'admin'}
+        teamId={$page.params.teamId}
+        on:practiceCreated={handlePracticeCreated}
+        on:markerChange={handleMarkerChange}
+      />
+    {:else if activeTab === 'manage'}
+      <Manage
+        season={activeSeason}
+        bind:sections
+        bind:markers
+        teamId={$page.params.teamId}
+        on:change={loadTimelineData}
+        on:sectionChange={handleSectionChange}
+        on:markerChange={handleMarkerChange}
+      />
     {/if}
-  {:else}
-    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-      <p class="text-yellow-800">No active season. Create or activate a season to get started.</p>
-    </div>
-  {/if}
-  
-  <h2 class="text-xl font-semibold mb-4">All Seasons</h2>
-  <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-    {#each seasons.filter(s => !s.is_active) as season}
-      <div class="border rounded-lg p-4">
-        <h3 class="font-semibold">{season.name}</h3>
-        <p class="text-sm text-gray-600 mt-1">
-          {new Date(season.start_date).toLocaleDateString()} - 
-          {new Date(season.end_date).toLocaleDateString()}
-        </p>
+  </SeasonShell>
+{:else}
+  <!-- No Active Season -->
+  <div class="no-season-container">
+    <Card>
+      <div class="no-season-content">
+        <Button href="/teams" variant="ghost" size="sm" class="mb-4">
+          ← Back to Teams
+        </Button>
+        
+        <h1 class="text-2xl font-bold mb-6">Season Management</h1>
+        
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <p class="text-yellow-800">No active season. Create or activate a season to get started.</p>
+        </div>
+        
         {#if data.userRole === 'admin'}
-          <div class="mt-4">
-            <button
-              on:click={() => setActive(season.id)}
-              class="text-blue-500 hover:underline text-sm"
-            >
-              Set Active
-            </button>
+          <Button 
+            variant="primary"
+            on:click={() => showCreateModal = true}
+            class="w-full sm:w-auto"
+          >
+            Create Season
+          </Button>
+        {/if}
+        
+        {#if seasons.length > 0}
+          <h2 class="text-lg font-semibold mt-8 mb-4">All Seasons</h2>
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {#each seasons as season}
+              <Card>
+                <h3 slot="header" class="font-semibold">{season.name}</h3>
+                <p class="text-sm text-gray-600 mt-1">
+                  {new Date(season.start_date).toLocaleDateString()} - {new Date(season.end_date).toLocaleDateString()}
+                </p>
+                <div slot="footer">
+                  {#if data.userRole === 'admin'}
+                    <Button variant="ghost" size="sm" on:click={() => setActive(season.id)}>
+                      Set Active
+                    </Button>
+                  {/if}
+                </div>
+              </Card>
+            {/each}
           </div>
         {/if}
       </div>
-    {/each}
-  </div>
-</div>
-
-<!-- Create Season Modal -->
-{#if showCreateModal}
-  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 max-w-md w-full">
-      <h2 class="text-2xl font-bold mb-4">Create Season</h2>
-      
-      <input
-        bind:value={newSeason.name}
-        placeholder="Season Name (e.g., Spring 2024)"
-        class="w-full p-2 border rounded mb-3"
-      />
-      
-      <label class="block mb-3">
-        <span class="text-gray-700">Start Date</span>
-        <input
-          type="date"
-          bind:value={newSeason.start_date}
-          class="mt-1 block w-full p-2 border rounded"
-        />
-      </label>
-      
-      <label class="block mb-3">
-        <span class="text-gray-700">End Date</span>
-        <input
-          type="date"
-          bind:value={newSeason.end_date}
-          class="mt-1 block w-full p-2 border rounded"
-        />
-      </label>
-      
-      <label class="flex items-center mb-4">
-        <input
-          type="checkbox"
-          bind:checked={newSeason.is_active}
-          class="mr-2"
-        />
-        <span>Set as active season</span>
-      </label>
-      
-      <div class="flex justify-end space-x-2">
-        <button
-          on:click={() => {
-            showCreateModal = false;
-            resetForm();
-          }}
-          class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
-        >
-          Cancel
-        </button>
-        <button
-          on:click={createSeason}
-          disabled={!newSeason.name || !newSeason.start_date || !newSeason.end_date}
-          class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-        >
-          Create
-        </button>
-      </div>
-    </div>
+    </Card>
   </div>
 {/if}
+
+<!-- Create Season Modal for both mobile and desktop -->
+<Dialog bind:open={showCreateModal} title="Create Season" description="Define the dates and optionally set it active.">
+  <div class="grid gap-4">
+    <Input label="Season Name" placeholder="Season Name (e.g., Spring 2024)" bind:value={newSeason.name} required />
+    <Input label="Start Date" type="date" bind:value={newSeason.start_date} required />
+    <Input label="End Date" type="date" bind:value={newSeason.end_date} required />
+    <Checkbox label="Set as active season" bind:checked={newSeason.is_active} />
+    {#if createError}
+      <p class="text-sm text-red-600">{createError}</p>
+    {/if}
+  </div>
+
+  <div slot="footer" class="flex justify-end gap-2">
+    <Button variant="ghost" on:click={() => { showCreateModal = false; resetForm(); }} disabled={isCreating}>Cancel</Button>
+    <Button variant="primary" on:click={createSeason} disabled={!newSeason.name || !newSeason.start_date || !newSeason.end_date || isCreating}>
+      {isCreating ? 'Creating...' : 'Create'}
+    </Button>
+  </div>
+</Dialog>
+
+<style>
+  .no-season-container {
+    padding: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .no-season-content {
+    padding: 24px;
+  }
+  
+  @media (min-width: 640px) {
+    .no-season-container {
+      padding: 24px;
+    }
+    
+    .no-season-content {
+      padding: 32px;
+    }
+  }
+</style>

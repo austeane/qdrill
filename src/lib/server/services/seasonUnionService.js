@@ -70,6 +70,10 @@ class SeasonUnionService {
    * Build the union structure combining template and section data
    */
   async buildUnionStructure(season, overlappingSections, scheduledDate, teamId) {
+    // Get team default start time
+    const { teamService } = await import('./teamService.js');
+    const team = await teamService.getById(teamId);
+    
     const unionData = {
       team_id: teamId,
       season_id: season.id,
@@ -80,7 +84,7 @@ class SeasonUnionService {
       is_edited: false,
       name: `Practice - ${new Date(scheduledDate).toLocaleDateString()}`,
       description: `Generated practice plan for ${new Date(scheduledDate).toLocaleDateString()}`,
-      start_time: season.default_start_time || '09:00:00',
+      start_time: team?.default_start_time || '09:00:00',
       visibility: 'private', // Team practices are private by default
       sections: [],
       drills: []
@@ -104,8 +108,12 @@ class SeasonUnionService {
     }
     
     // Step 2: Add/merge default sections from overlapping season sections
+    // Keep track of default sections for drill assignment
+    const defaultSectionsBySection = new Map();
+    
     for (const section of overlappingSections) {
       const defaultSections = await seasonSectionService.getDefaultSections(section.id);
+      defaultSectionsBySection.set(section.id, defaultSections);
       
       for (const defaultSection of defaultSections) {
         // Check if section already exists (by name)
@@ -143,6 +151,7 @@ class SeasonUnionService {
     
     for (const section of overlappingSections) {
       const linkedDrills = await seasonSectionService.getLinkedDrills(section.id);
+      const defaultSections = defaultSectionsBySection.get(section.id) || [];
       
       for (const linkedDrill of linkedDrills) {
         const drillData = {

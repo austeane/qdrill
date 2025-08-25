@@ -1,1 +1,7 @@
-/* This file should be empty or contain only app-specific styles not related to drag and drop */
+/* Import design tokens and base styles */
+@import './lib/styles/tokens.css';
+
+/* Tailwind directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

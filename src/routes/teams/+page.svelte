@@ -7,6 +7,7 @@
   import Card from '$lib/components/ui/Card.svelte';
   import Dialog from '$lib/components/ui/Dialog.svelte';
   import { apiFetch } from '$lib/utils/apiFetch.js';
+  import { Users, Calendar, Shield, UserPlus } from 'lucide-svelte';
 
   export let data;
 
@@ -74,15 +75,89 @@
 </svelte:head>
 
 <div class="container mx-auto p-6">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-3xl font-bold">{data.isAuthenticated ? 'My Teams' : 'Teams'}</h1>
-    {#if data.isAuthenticated}
-      <Button variant="primary" on:click={() => (showCreateModal = true)}>Create Team</Button>
-    {:else}
-      <Button href="/login" variant="primary">Sign in</Button>
+  <!-- Hero Section -->
+  <div class="mb-12">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <div class="flex items-center gap-3 mb-2">
+          <h1 class="text-3xl font-bold">{data.isAuthenticated ? 'My Teams' : 'Teams'}</h1>
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
+            BETA
+          </span>
+        </div>
+        <p class="text-gray-600 dark:text-gray-300">Streamline your coaching with collaborative team management</p>
+      </div>
+      {#if data.isAuthenticated}
+        <Button variant="primary" on:click={() => (showCreateModal = true)}>
+          <UserPlus size={16} class="mr-2" />
+          Create Team
+        </Button>
+      {:else}
+        <Button href="/login" variant="primary">Sign in to Get Started</Button>
+      {/if}
+    </div>
+
+    <!-- Feature Overview Section -->
+    {#if !data.isAuthenticated || teams.length === 0}
+      <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl p-8 mb-8">
+        <h2 class="text-2xl font-semibold mb-6">Empower Your Coaching Staff</h2>
+        <p class="text-gray-700 dark:text-gray-300 mb-8 text-lg">
+          QDrill Teams brings your entire coaching staff together in one centralized platform. 
+          Collaborate on practice plans, track season progress, and ensure everyone is aligned on your team's development goals.
+        </p>
+        
+        <div class="grid md:grid-cols-3 gap-6">
+          <!-- Feature 1: Season Management -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <div class="flex items-center mb-3">
+              <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg mr-3">
+                <Calendar size={20} class="text-green-600 dark:text-green-400" />
+              </div>
+              <h3 class="font-semibold">Season Management</h3>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Organize your entire season with sections, markers, and milestones. Track progress from pre-season through playoffs with timeline visualization and coordinate practice schedules across multiple coaches.
+            </p>
+          </div>
+
+          <!-- Feature 2: Shared Resources -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <div class="flex items-center mb-3">
+              <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mr-3">
+                <Users size={20} class="text-blue-600 dark:text-blue-400" />
+              </div>
+              <h3 class="font-semibold">Shared Resources</h3>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Team practice plans automatically become available to all team members. Build a collaborative library of proven drills, formations, and strategies that your entire coaching staff can access and contribute to.
+            </p>
+          </div>
+
+          <!-- Feature 3: Role-Based Access -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+            <div class="flex items-center mb-3">
+              <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg mr-3">
+                <Shield size={20} class="text-purple-600 dark:text-purple-400" />
+              </div>
+              <h3 class="font-semibold">Role-Based Access</h3>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Control who can edit plans and manage the team. Assign admin or member roles to maintain organization while enabling collaboration across your coaching staff.
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-8 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <p class="text-sm text-yellow-800 dark:text-yellow-200">
+            <strong>🚀 Beta Feature:</strong> Teams is actively being developed based on coach feedback. 
+            Join now to help shape the future of collaborative sports planning.
+          </p>
+        </div>
+      </div>
     {/if}
   </div>
 
+  <!-- Teams Grid -->
   <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
     {#each teams as team}
       <Card variant="elevated">
@@ -115,17 +190,19 @@
     {/each}
   </div>
 
-  {#if teams.length === 0}
-    <div class="text-center py-12">
-      {#if data.isAuthenticated}
-        <p class="text-gray-500 mb-4">You're not a member of any teams yet.</p>
-        <Button variant="primary" on:click={() => (showCreateModal = true)}>
+  {#if teams.length === 0 && data.isAuthenticated}
+    <div class="col-span-full text-center py-12">
+      <div class="max-w-md mx-auto">
+        <Users size={48} class="mx-auto mb-4 text-gray-400" />
+        <h3 class="text-lg font-semibold mb-2">Start Your Team Journey</h3>
+        <p class="text-gray-500 mb-6">
+          Create your first team to unlock collaborative practice planning, season management, and shared resources for your coaching staff.
+        </p>
+        <Button variant="primary" size="lg" on:click={() => (showCreateModal = true)}>
+          <UserPlus size={20} class="mr-2" />
           Create Your First Team
         </Button>
-      {:else}
-        <p class="text-gray-500 mb-4">No teams to show yet. Sign in to create or join a team.</p>
-        <Button href="/login" variant="primary">Sign in</Button>
-      {/if}
+      </div>
     </div>
   {/if}
 </div>

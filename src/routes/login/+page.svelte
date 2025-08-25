@@ -11,9 +11,9 @@
 </script>
 
 <div class="min-h-[60vh] flex items-center justify-center">
-  <div class="w-full max-w-md border rounded-lg p-6 bg-white shadow-sm">
+  <div class="w-full max-w-md border rounded-lg p-6 bg-white dark:bg-gray-800 shadow-sm">
     <h1 class="text-2xl font-bold mb-2">Sign in</h1>
-    <p class="text-gray-600 mb-6">Access your team and season planning tools.</p>
+    <p class="text-gray-600 dark:text-gray-300 mb-6">Access your team and season planning tools.</p>
 
     {#if $session.data?.user}
       <div class="bg-green-50 border border-green-200 text-green-800 p-4 rounded mb-4">

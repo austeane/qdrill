@@ -76,7 +76,7 @@
 			</button>
 		</div>
 	{:else}
-		<p class="mb-4 text-gray-600">You must be logged in to add comments.</p>
+		<p class="mb-4 text-gray-600 dark:text-gray-300">You must be logged in to add comments.</p>
 	{/if}
 
 	<ul>
@@ -94,7 +94,7 @@
 					{/if}
 				</div>
 				<p class="mt-2 text-gray-700">{comment.content}</p>
-				<span class="text-sm text-gray-500">{new Date(comment.created_at).toLocaleString()}</span>
+				<span class="text-sm text-gray-500 dark:text-gray-400">{new Date(comment.created_at).toLocaleString()}</span>
 			</li>
 		{/each}
 	</ul>

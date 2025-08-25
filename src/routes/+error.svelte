@@ -123,10 +123,10 @@
 		<!-- Error Content -->
 		<div class="text-center">
 			<h1 class="text-3xl font-bold text-gray-900 mb-4">{errorConfig.title}</h1>
-			<p class="text-gray-600 mb-8">{errorConfig.description}</p>
+			<p class="text-gray-600 dark:text-gray-300 mb-8">{errorConfig.description}</p>
 
 			{#if status}
-				<p class="text-sm text-gray-500 mb-6">Error {status}</p>
+				<p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Error {status}</p>
 			{/if}
 
 			<!-- Actions -->
@@ -165,7 +165,7 @@
 			<!-- Search (for 404s) -->
 			{#if errorConfig.showSearch}
 				<div class="mt-8 pt-6 border-t border-gray-200">
-					<p class="text-sm text-gray-500 mb-3">Looking for something specific?</p>
+					<p class="text-sm text-gray-500 dark:text-gray-400 mb-3">Looking for something specific?</p>
 					<div class="flex">
 						<input
 							type="text"

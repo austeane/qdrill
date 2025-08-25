@@ -145,7 +145,7 @@
 
 <div class="container mx-auto p-4 sm:p-6">
 	<!-- Header Section -->
-	<header class="bg-white shadow-md rounded-lg p-4 sm:p-6 mb-6">
+	<header class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-4 sm:p-6 mb-6">
 		<div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
 			<!-- Title and Description -->
 			<div class="w-full sm:w-auto order-last sm:order-first">
@@ -163,7 +163,7 @@
 							</div>
 						{/if}
 						<div
-							class="text-gray-600 prose prose-sm sm:prose lg:prose-lg"
+							class="text-gray-600 dark:text-gray-300 prose prose-sm sm:prose lg:prose-lg dark:prose-invert"
 							class:truncate={!$isDescriptionExpanded}
 						>
 							{@html practicePlan.description}
@@ -258,7 +258,7 @@
 
 	<!-- Practice Goals Section -->
 	{#if practicePlan.practice_goals?.length}
-		<div class="bg-white shadow-md rounded-lg p-6 mb-6">
+		<div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 mb-6">
 			<h2 class="text-xl font-semibold mb-4">Practice Goals</h2>
 			<ul class="space-y-2">
 				{#each practicePlan.practice_goals as goal}
@@ -312,13 +312,17 @@
 
 <style>
 	.stat-card {
-		background-color: white;
+		background-color: rgb(249 250 251);
 		padding: 1rem;
 		border-radius: 0.5rem;
 		box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
+	}
+	
+	:global(.dark) .stat-card {
+		background-color: rgb(55 65 81);
 	}
 
 	.stat-icon {
@@ -336,10 +340,18 @@
 		line-height: 1.25rem;
 		color: rgb(107, 114, 128);
 	}
+	
+	:global(.dark) .stat-label {
+		color: rgb(209, 213, 219);
+	}
 
 	.stat-value {
 		font-weight: 600;
 		color: rgb(17, 24, 39);
+	}
+	
+	:global(.dark) .stat-value {
+		color: rgb(243, 244, 246);
 	}
 
 	@media (max-width: 768px) {

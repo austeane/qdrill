@@ -247,7 +247,7 @@ onDestroy(unsubNavigating);
 					>
 						<div class="flex flex-col space-y-2">
 							<select
-								class="p-2 border border-gray-300 rounded-md bg-white w-full"
+								class="p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-gray-200 w-full"
 								on:change={handleSortChange}
 								value={$selectedSortOption}
 								aria-label="Sort by"
@@ -258,7 +258,7 @@ onDestroy(unsubNavigating);
 								{/each}
 							</select>
 							<button
-								class="px-4 py-2 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors duration-300 w-full"
+								class="px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-300 w-full dark:text-gray-200"
 								on:click={toggleSortOrder}
 								aria-label="Toggle sort order"
 								data-testid="sort-order-toggle"

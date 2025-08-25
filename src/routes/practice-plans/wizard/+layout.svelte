@@ -39,7 +39,7 @@
 
 <div class="wizard-container min-h-screen bg-gray-50">
 	<!-- Progress Bar -->
-	<div class="bg-white shadow">
+	<div class="bg-white dark:bg-gray-800 shadow">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="py-4">
 				<nav class="flex items-center justify-between">
@@ -80,7 +80,7 @@
 
 	<!-- Content Area -->
 	<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-		<div class="bg-white shadow sm:rounded-lg">
+		<div class="bg-white dark:bg-gray-800 shadow sm:rounded-lg">
 			<div class="px-4 py-5 sm:p-6">
 				<slot></slot>
 			</div>
@@ -88,11 +88,11 @@
 	</main>
 
 	<!-- Navigation Buttons -->
-	<div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
+	<div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-10">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
 			<div class="flex justify-between">
 				<button
-					class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50
+					class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700
                            {$currentStep === 1 ? 'opacity-50 cursor-not-allowed' : ''}"
 					on:click={prevStep}
 					disabled={$currentStep === 1}

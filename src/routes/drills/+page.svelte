@@ -357,7 +357,7 @@ onDestroy(unsubNavigating);
 	<div class="mb-6 flex items-center space-x-4">
 		<div class="relative">
 			<button
-				class="px-4 py-2 bg-gray-100 rounded-lg shadow-sm hover:bg-gray-200 transition-colors duration-300 flex items-center"
+				class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg shadow-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-300 flex items-center"
 				on:click={toggleSortOptions}
 			>
 				<span class="font-semibold mr-2">Sort</span>
@@ -369,11 +369,11 @@ onDestroy(unsubNavigating);
 				<div
 					bind:this={sortOptionsRef}
 					transition:slide={{ duration: 300 }}
-					class="absolute left-0 mt-2 p-4 bg-white border border-gray-200 rounded-lg shadow-sm z-10"
+					class="absolute left-0 mt-2 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm z-10"
 				>
 					<div class="flex flex-col space-y-2">
 						<select
-							class="p-2 border border-gray-300 rounded-md bg-white"
+							class="p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-gray-200"
 							on:change={handleSortChange}
 							value={$selectedSortOption}
 							data-testid="sort-select"
@@ -383,7 +383,7 @@ onDestroy(unsubNavigating);
 							{/each}
 						</select>
 						<button
-							class="px-4 py-2 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors duration-300"
+							class="px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-300 dark:text-gray-200"
 							on:click={toggleSortOrder}
 							data-testid="sort-order-toggle"
 						>
@@ -397,7 +397,7 @@ onDestroy(unsubNavigating);
 		<input
 			type="text"
 			placeholder="Search drills..."
-			class="flex-grow p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+			class="flex-grow p-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-gray-200"
 			bind:value={$searchQuery}
 			on:input={handleSearchInput}
 			aria-label="Search drills"
@@ -419,13 +419,13 @@ onDestroy(unsubNavigating);
 			{/each}
 		</div>
 	{:else if !data.items || data.items.length === 0}
-		<p class="text-center text-gray-500 py-10">No drills match your criteria.</p>
+		<p class="text-center text-gray-500 dark:text-gray-400 py-10">No drills match your criteria.</p>
 	{:else}
 		<!-- Drills Grid -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 			{#each data.items as drill (drill.id)}
 				<div
-					class="border border-gray-200 bg-white rounded-lg shadow-md transition-transform transform hover:-translate-y-1 hover:shadow-lg flex flex-col"
+					class="border border-gray-200 bg-white dark:bg-gray-800 rounded-lg shadow-md transition-transform transform hover:-translate-y-1 hover:shadow-lg flex flex-col"
 					data-testid="drill-card"
 				>
 					<div class="p-6 flex flex-col h-full relative">
@@ -438,7 +438,7 @@ onDestroy(unsubNavigating);
 							{#if dev || drill.created_by === $page.data.session?.user?.id}
 								<button
 									on:click={(e) => deleteDrill(drill.id, e)}
-									class="text-gray-500 hover:text-red-500 transition-colors duration-300 p-1 rounded-full hover:bg-gray-100"
+									class="text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors duration-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
 									title="Delete drill"
 									aria-label="Delete drill"
 								>
@@ -482,7 +482,7 @@ onDestroy(unsubNavigating);
 								<div class="flex-grow mr-16 min-w-0">
 									<!-- Added mr-16 to give space for top-right actions -->
 									<h2
-										class="text-xl font-bold text-gray-800 overflow-hidden"
+										class="text-xl font-bold text-gray-800 dark:text-gray-200 overflow-hidden"
 										data-testid="drill-card-name"
 									>
 										<a
@@ -493,7 +493,7 @@ onDestroy(unsubNavigating);
 											{drill.name}
 										</a>
 									</h2>
-									<div class="prose prose-sm mt-2 text-gray-600 max-h-24 overflow-hidden">
+									<div class="prose prose-sm dark:prose-invert mt-2 text-gray-600 dark:text-gray-300 max-h-24 overflow-hidden">
 										{@html drill.brief_description}
 									</div>
 								</div>
@@ -501,19 +501,19 @@ onDestroy(unsubNavigating);
 
 							<!-- Drill details -->
 							{#if drill.skill_level && drill.skill_level.length > 0}
-								<p class="text-sm text-gray-500 mt-2">
+								<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
 									<span class="font-medium">Skill:</span>
 									{drill.skill_level.join(', ')}
 								</p>
 							{/if}
 							{#if drill.complexity}
-								<p class="text-sm text-gray-500 mt-1">
+								<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
 									<span class="font-medium">Complexity:</span>
 									{drill.complexity}
 								</p>
 							{/if}
 							{#if drill.suggested_length_min !== null && drill.suggested_length_min !== undefined}
-								<p class="text-sm text-gray-500 mt-1" data-testid="drill-card-duration">
+								<p class="text-sm text-gray-500 dark:text-gray-400 mt-1" data-testid="drill-card-duration">
 									<span class="font-medium">Duration:</span>
 									{#if drill.suggested_length_max !== null && drill.suggested_length_max !== undefined && drill.suggested_length_max > drill.suggested_length_min}
 										{drill.suggested_length_min} - {drill.suggested_length_max} mins
@@ -523,7 +523,7 @@ onDestroy(unsubNavigating);
 								</p>
 							{/if}
 							{#if drill.number_of_people_min !== undefined && drill.number_of_people_min !== null}
-								<p class="text-sm text-gray-500 mt-1">
+								<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
 									<span class="font-medium">People:</span>
 									{drill.number_of_people_min}
 									{#if drill.number_of_people_max && drill.number_of_people_max !== drill.number_of_people_min}

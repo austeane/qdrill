@@ -10,7 +10,7 @@
     { href: '/practice-plans', label: 'Practice Plans', icon: Calendar },
     { href: '/formations', label: 'Formations', icon: Users },
     { href: '/whiteboard', label: 'Whiteboard', icon: PenTool },
-    { href: '/teams', label: 'Teams', icon: Users }
+    { href: '/teams', label: 'Teams', icon: Users, isBeta: true }
   ];
 
   function isActive(href: string) {
@@ -30,7 +30,12 @@
           <a href={item.href} class="nav__item" class:active={isActive(item.href)} title={collapsed ? item.label : undefined}>
             <svelte:component this={item.icon} size={18} />
             {#if !collapsed}
-              <span>{item.label}</span>
+              <span class="nav__label">
+                {item.label}
+                {#if item.isBeta}
+                  <span class="beta-tag">Beta</span>
+                {/if}
+              </span>
             {/if}
           </a>
         </li>
@@ -91,5 +96,22 @@
     border-radius: var(--radius-md);
   }
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: var(--z-modal-backdrop); }
+  
+  .nav__label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  
+  .beta-tag {
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: var(--radius-sm);
+    letter-spacing: 0.025em;
+  }
 </style>
 

@@ -60,20 +60,20 @@
 
 <div class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
 	<!-- User Profile Header -->
-	<header class="flex flex-col sm:flex-row items-center gap-4 p-6 bg-white rounded-lg shadow-sm">
+	<header class="flex flex-col sm:flex-row items-center gap-4 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
 		<img src={userImage} alt={userName} class="w-24 h-24 rounded-full shadow-md" />
 		<div class="text-center sm:text-left">
 			<h1 class="text-2xl sm:text-3xl font-bold">{userName}</h1>
-			<p class="text-gray-600">{userEmail}</p>
+			<p class="text-gray-600 dark:text-gray-300">{userEmail}</p>
 		</div>
 	</header>
 
 	<!-- Stats Overview -->
 	<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
 		{#each [{ label: 'Drills Created', value: userData.drills.length }, { label: 'Practice Plans', value: userData.practicePlans.length }, { label: 'Likes Given', value: userData.votes.length }, { label: 'Comments Made', value: userData.comments.length }] as stat}
-			<div class="bg-white p-4 rounded-lg shadow-sm text-center">
+			<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm text-center">
 				<p class="text-2xl font-bold" style="color: var(--color-theme-1)">{stat.value}</p>
-				<p class="text-gray-600">{stat.label}</p>
+				<p class="text-gray-600 dark:text-gray-300">{stat.label}</p>
 			</div>
 		{/each}
 	</div>
@@ -83,7 +83,7 @@
 		<!-- Left Column -->
 		<div class="space-y-6">
 			<!-- Drills Created -->
-			<section class="bg-white rounded-lg shadow-sm p-6">
+			<section class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
 				<h2 class="text-xl font-semibold mb-4">Drills I've Created</h2>
 				{#if userData.drills.length > 0}
 					<ul class="divide-y">
@@ -94,7 +94,7 @@
 										>{drill.name}</a
 									>
 								</h3>
-								<p class="text-gray-600 text-sm mt-1">{drill.brief_description}</p>
+								<p class="text-gray-600 dark:text-gray-300 text-sm mt-1">{drill.brief_description}</p>
 								<div class="mt-2">
 									<!-- <UpvoteDownvote drillId={drill.id} /> -->
 									<EntityScore drillId={drill.id} />
@@ -122,12 +122,12 @@
 						</div>
 					{/if}
 				{:else}
-					<p class="text-gray-500 italic">You haven't created any drills yet.</p>
+					<p class="text-gray-500 dark:text-gray-400 italic">You haven't created any drills yet.</p>
 				{/if}
 			</section>
 
 			<!-- Practice Plans Created -->
-			<section class="bg-white rounded-lg shadow-sm p-6">
+			<section class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
 				<h2 class="text-xl font-semibold mb-4">Practice Plans I've Created</h2>
 				{#if userData.practicePlans.length > 0}
 					<ul class="divide-y">
@@ -138,7 +138,7 @@
 										>{plan.name}</a
 									>
 								</h3>
-								<p class="text-gray-600 text-sm mt-1">{plan.description}</p>
+								<p class="text-gray-600 dark:text-gray-300 text-sm mt-1">{plan.description}</p>
 								<!-- Optional: Add Upvote/Downvote or other relevant info here if needed -->
 							</li>
 						{/each}
@@ -163,7 +163,7 @@
 						</div>
 					{/if}
 				{:else}
-					<p class="text-gray-500 italic">You haven't created any practice plans yet.</p>
+					<p class="text-gray-500 dark:text-gray-400 italic">You haven't created any practice plans yet.</p>
 				{/if}
 			</section>
 		</div>
@@ -171,7 +171,7 @@
 		<!-- Right Column -->
 		<div class="space-y-6">
 			<!-- Liked Content -->
-			<section class="bg-white rounded-lg shadow-sm p-6">
+			<section class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
 				<h2 class="text-xl font-semibold mb-4">Content I've Liked</h2>
 				<div class="space-y-4">
 					<!-- Liked Drills -->
@@ -190,7 +190,7 @@
 								{/each}
 							</ul>
 						{:else}
-							<p class="text-gray-500 italic">No liked drills yet</p>
+							<p class="text-gray-500 dark:text-gray-400 italic">No liked drills yet</p>
 						{/if}
 					</div>
 
@@ -211,21 +211,21 @@
 								{/each}
 							</ul>
 						{:else}
-							<p class="text-gray-500 italic">No liked practice plans yet</p>
+							<p class="text-gray-500 dark:text-gray-400 italic">No liked practice plans yet</p>
 						{/if}
 					</div>
 				</div>
 			</section>
 
 			<!-- Comments -->
-			<section class="bg-white rounded-lg shadow-sm p-6">
+			<section class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
 				<h2 class="text-xl font-semibold mb-4">Recent Comments</h2>
 				{#if userData.comments.length > 0}
 					<ul class="divide-y">
 						{#each userData.comments as comment}
 							<li class="py-4 first:pt-0 last:pb-0">
 								<p class="text-gray-800">{comment.content}</p>
-								<div class="mt-2 text-sm text-gray-500 flex flex-wrap gap-2">
+								<div class="mt-2 text-sm text-gray-500 dark:text-gray-400 flex flex-wrap gap-2">
 									<span>On {comment.type === 'drill' ? 'Drill' : 'Practice Plan'}:</span>
 									{#if comment.type === 'drill'}
 										<a href={`/drills/${comment.drill_id}`} class="text-theme-1 hover:underline"
@@ -243,7 +243,7 @@
 						{/each}
 					</ul>
 				{:else}
-					<p class="text-gray-500 italic">No comments yet</p>
+					<p class="text-gray-500 dark:text-gray-400 italic">No comments yet</p>
 				{/if}
 			</section>
 		</div>

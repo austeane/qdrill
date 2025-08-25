@@ -37,7 +37,7 @@
 			/>
 		</ErrorBoundary>
 	{:else if excalidrawError}
-		<div class="flex items-center justify-center h-full bg-gray-50">
+		<div class="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900">
 			<div class="text-center max-w-md">
 				<div class="w-16 h-16 mx-auto mb-4 text-gray-400">
 					<svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,8 +49,8 @@
 						/>
 					</svg>
 				</div>
-				<h2 class="text-xl font-bold text-gray-900 mb-2">Whiteboard Loading Error</h2>
-				<p class="text-gray-600 mb-6">
+				<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Whiteboard Loading Error</h2>
+				<p class="text-gray-600 dark:text-gray-400 mb-6">
 					The whiteboard failed to load. This might be due to a browser compatibility issue or
 					network problem.
 				</p>
@@ -64,12 +64,12 @@
 					</button>
 					<a
 						href="/"
-						class="block w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+						class="block w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600"
 					>
 						Go Home
 					</a>
 				</div>
-				<div class="mt-6 p-4 bg-blue-50 rounded-lg text-sm text-blue-800">
+				<div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-blue-800 dark:text-blue-300">
 					<p class="font-medium mb-1">Troubleshooting tips:</p>
 					<ul class="text-left space-y-1">
 						<li>&bull; Try refreshing the page</li>
@@ -82,7 +82,7 @@
 		</div>
 	{:else}
 		<div class="flex items-center justify-center h-full">
-			<p class="text-gray-500">Loading whiteboard...</p>
+			<p class="text-gray-500 dark:text-gray-400">Loading whiteboard...</p>
 		</div>
 	{/if}
 </div>

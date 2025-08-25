@@ -63,7 +63,7 @@
 		tabindex="-1"
 		on:keydown={(e) => e.key === 'Escape' && closeModal()}
 	>
-		<div class="bg-white p-6 rounded shadow-lg max-w-md w-full">
+		<div class="bg-white dark:bg-gray-800 p-6 rounded shadow-lg max-w-md w-full">
 			<h2 id="feedback-title" class="text-xl font-semibold mb-4">Quick Feedback</h2>
 			<select bind:value={feedbackType} class="w-full border rounded p-2 mb-2">
 				<option value="bug">Bug</option>
@@ -94,7 +94,7 @@
 					Submit
 				</button>
 			</div>
-			<div class="mt-4 text-sm text-gray-600 text-center">
+			<div class="mt-4 text-sm text-gray-600 dark:text-gray-300 text-center">
 				<a href="#" on:click|preventDefault={goToFeedbackPage}>Give and see detailed feedback</a>
 			</div>
 		</div>

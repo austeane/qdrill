@@ -32,7 +32,7 @@
 				loading="eager"
 				decoding="async"
 			/>
-			<p class="text-lg mb-6">
+			<p class="text-lg mb-6 text-gray-700 dark:text-gray-300">
 				Easily find, create, and share drills and practice plans. Focus on coaching, QDrill makes
 				planning easy.
 			</p>
@@ -86,14 +86,14 @@
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 			<!-- Wizard Feature (now AI Feature) -->
 			<div
-				class="bg-white shadow-lg rounded-lg p-6 text-center flex flex-col h-full border-t-4 border-blue-500"
+				class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 text-center flex flex-col h-full border-t-4 border-blue-500"
 			>
 				<div class="flex-grow">
 					<div
-						class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4"
+						class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mx-auto mb-4"
 					>
 						<svg
-							class="w-6 h-6 text-blue-600"
+							class="w-6 h-6 text-blue-600 dark:text-blue-400"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -107,8 +107,8 @@
 							/>
 						</svg>
 					</div>
-					<h3 class="text-xl font-semibold mb-2">AI Plan Generator</h3>
-					<p class="text-gray-600 mb-4">Have AI generate you a personalized practice plan.</p>
+					<h3 class="text-xl font-semibold mb-2 dark:text-white">AI Plan Generator</h3>
+					<p class="text-gray-600 dark:text-gray-300 mb-4">Have AI generate you a personalized practice plan.</p>
 				</div>
 				<div class="mt-auto">
 					<a
@@ -122,14 +122,14 @@
 
 			<!-- Drills Library -->
 			<div
-				class="bg-white shadow-lg rounded-lg p-6 text-center flex flex-col h-full border-t-4 border-green-500"
+				class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 text-center flex flex-col h-full border-t-4 border-green-500"
 			>
 				<div class="flex-grow">
 					<div
-						class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4"
+						class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mx-auto mb-4"
 					>
 						<svg
-							class="w-6 h-6 text-green-600"
+							class="w-6 h-6 text-green-600 dark:text-green-400"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -142,8 +142,8 @@
 							/>
 						</svg>
 					</div>
-					<h3 class="text-xl font-semibold mb-2">Drills Library</h3>
-					<p class="text-gray-600 mb-4">
+					<h3 class="text-xl font-semibold mb-2 dark:text-white">Drills Library</h3>
+					<p class="text-gray-600 dark:text-gray-300 mb-4">
 						Browse and search our growing collection of quadball drills.
 					</p>
 				</div>
@@ -159,14 +159,14 @@
 
 			<!-- Community -->
 			<div
-				class="bg-white shadow-lg rounded-lg p-6 text-center flex flex-col h-full border-t-4 border-purple-500"
+				class="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 text-center flex flex-col h-full border-t-4 border-purple-500"
 			>
 				<div class="flex-grow">
 					<div
-						class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4"
+						class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mx-auto mb-4"
 					>
 						<svg
-							class="w-6 h-6 text-purple-600"
+							class="w-6 h-6 text-purple-600 dark:text-purple-400"
 							fill="none"
 							stroke="currentColor"
 							viewBox="0 0 24 24"
@@ -179,8 +179,8 @@
 							/>
 						</svg>
 					</div>
-					<h3 class="text-xl font-semibold mb-2">Community</h3>
-					<p class="text-gray-600 mb-4">
+					<h3 class="text-xl font-semibold mb-2 dark:text-white">Community</h3>
+					<p class="text-gray-600 dark:text-gray-300 mb-4">
 						Share drills and practice plans with the quadball community.
 					</p>
 				</div>

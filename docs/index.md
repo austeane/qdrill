@@ -25,6 +25,7 @@ A comprehensive code review was recently conducted to assess the codebase and id
   - [Service Layer Architecture](./implementation/service-layer.md)
   - [Converting Markdown Practice Plans](./implementation/converting-markdown-practice-plans.md)
   - [Parallel Timeline Improvements](./implementation/parallel-timeline-improvements.md)
+  - Teams feature work: see `docs/teams-feature-technical-debt.md`
   - Frontend implementation
   - Backend implementation
   - Testing strategy

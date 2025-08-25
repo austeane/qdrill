@@ -161,30 +161,54 @@
   <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
     {#each teams as team}
       <Card variant="elevated">
-        <h3 slot="header">
-          {#if data.isAuthenticated}
-            <a href={`/teams/${team.id}/season`} class="hover:underline">{team.name}</a>
-          {:else}
-            <a href={`/login?next=${encodeURIComponent(`/teams/${team.id}/season`)}`}>{team.name}</a>
-          {/if}
-        </h3>
-        <p>{team.description || 'No description'}</p>
-        <p class="text-sm text-gray-500 mt-2">
-          {#if data.isAuthenticated && team.role}
-            Role: <span class="font-medium capitalize">{team.role}</span>
-          {:else}
-            Read-only preview
-          {/if}
-        </p>
-        <div slot="footer" class="flex gap-2">
-          {#if data.isAuthenticated}
-            <Button href={`/teams/${team.id}/season`} size="sm">View Season</Button>
-            {#if team.role === 'admin'}
-              <Button href={`/teams/${team.id}/settings`} variant="ghost" size="sm">Settings</Button>
+        <div slot="header" class="flex items-start justify-between">
+          <h3>
+            {#if data.isAuthenticated}
+              <a href={`/teams/${team.id}/season`} class="hover:underline font-semibold">{team.name}</a>
+            {:else}
+              <a href={`/login?next=${encodeURIComponent(`/teams/${team.id}/season`)}`} class="font-semibold">{team.name}</a>
             {/if}
-          {:else}
-            <Button href={`/login?next=${encodeURIComponent(`/teams/${team.id}/season`)}`} size="sm">View Season</Button>
+          </h3>
+          {#if data.isAuthenticated && team.role}
+            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium {team.role === 'admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' : team.role === 'coach' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}">
+              {#if team.role === 'admin'}
+                <Shield size={12} class="mr-1" />
+                Admin
+              {:else if team.role === 'coach'}
+                <Users size={12} class="mr-1" />
+                Coach
+              {:else}
+                <Users size={12} class="mr-1" />
+                Member
+              {/if}
+            </span>
           {/if}
+        </div>
+        <p class="text-gray-600 dark:text-gray-400">{team.description || 'No description'}</p>
+        {#if !data.isAuthenticated}
+          <p class="text-sm text-amber-600 dark:text-amber-500 mt-2 flex items-center">
+            <Shield size={14} class="mr-1" />
+            Sign in to join or edit
+          </p>
+        {:else if team.role === 'member'}
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            View-only access • Contact admin for edit permissions
+          </p>
+        {/if}
+        <div slot="footer" class="flex items-center justify-between">
+          <div class="flex gap-2">
+            {#if data.isAuthenticated}
+              <Button href={`/teams/${team.id}/season`} size="sm">View Season</Button>
+              {#if team.role === 'admin'}
+                <Button href={`/teams/${team.id}/settings`} variant="ghost" size="sm">
+                  <Shield size={14} class="mr-1" />
+                  Settings
+                </Button>
+              {/if}
+            {:else}
+              <Button href={`/login?next=${encodeURIComponent(`/teams/${team.id}/season`)}`} size="sm">View Season</Button>
+            {/if}
+          </div>
         </div>
       </Card>
     {/each}

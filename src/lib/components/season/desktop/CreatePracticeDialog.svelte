@@ -1,5 +1,6 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
+  import { dev } from '$app/environment';
   import { goto } from '$app/navigation';
   import { apiFetch } from '$lib/utils/apiFetch.js';
   import { toast } from '@zerodevx/svelte-toast';
@@ -132,6 +133,12 @@
     const end = new Date(section.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     return `${section.name} (${start} - ${end})`;
   }
+
+  onMount(() => {
+    if (dev) {
+      console.log('[CreatePracticeDialog] mounted', { open, date, seasonId: season?.id });
+    }
+  });
 </script>
 
 <Dialog 

@@ -2,7 +2,6 @@
 	import { page } from '$app/stores';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import { goto } from '$app/navigation';
-	import { formatDate } from '$lib/utils/dateUtils.js';
 
 	export let data;
 	const { team, practicePlans, userRole } = data;

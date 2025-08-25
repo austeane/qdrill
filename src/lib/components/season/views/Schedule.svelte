@@ -260,21 +260,25 @@
       {#if isAdmin}
         <div class="divider" />
         <Button 
-          size="sm" 
-          variant="outline" 
-          on:click={() => handleAddPractice()}
+          variant="outline"
+          size="sm"
+          on:click={handleAddPractice}
         >
           <Plus size={16} class="mr-1" />
           Practice
         </Button>
         <Button 
-          size="sm" 
-          variant="outline" 
-          on:click={() => handleAddMarker()}
+          variant="outline"
+          size="sm"
+          on:click={handleAddMarker}
         >
           <Sparkles size={16} class="mr-1" />
           Event
         </Button>
+      {:else}
+        <div class="permission-note" role="note" aria-live="polite">
+          View only — ask an admin to add practices or events
+        </div>
       {/if}
     </div>
   </div>
@@ -306,6 +310,13 @@
             </div>
             
             <div class="day-content">
+              {#if daySections.length > 0}
+                <div class="section-badges" title={daySections.map(s => s.name).join(', ')}>
+                  {#each daySections as s}
+                    <span class="section-badge">{s.name}</span>
+                  {/each}
+                </div>
+              {/if}
               {#if dayPractices.length > 0}
                 {#each dayPractices as practice}
                   <button
@@ -367,6 +378,7 @@
         {#each currentMonth as { date, isCurrentMonth }}
           {@const dayPractices = getDayPractices(date)}
           {@const dayMarkers = getDayMarkers(date)}
+          {@const daySections = getDaySections(date)}
           {@const isPast = isPastDate(date)}
           
           <button
@@ -380,6 +392,9 @@
             disabled={!isCurrentMonth || isPast || !isAdmin}
           >
             <span class="month-day-number">{date.getDate()}</span>
+            {#if daySections.length > 0}
+              <div class="month-section-indicator" aria-hidden="true" />
+            {/if}
             
             {#if dayPractices.length > 0}
               <div class="day-indicators">
@@ -403,51 +418,45 @@
 </div>
 
 <!-- Practice Dialog/Sheet -->
-{#if showPracticeDialog}
-  {#if $device.isMobile}
-    <CreatePracticeSheet
-      {season}
-      {sections}
-      date={selectedDate}
-      {teamId}
-      on:save={handlePracticeCreated}
-      on:close={() => showPracticeDialog = false}
-    />
-  {:else}
-    <CreatePracticeDialog
-      bind:open={showPracticeDialog}
-      {season}
-      {sections}
-      date={selectedDate}
-      {teamId}
-      on:save={handlePracticeCreated}
-      on:close={() => showPracticeDialog = false}
-    />
-  {/if}
+{#if $device.isMobile && showPracticeDialog}
+  <CreatePracticeSheet
+    {season}
+    {sections}
+    date={selectedDate}
+    {teamId}
+    on:save={handlePracticeCreated}
+    on:close={() => showPracticeDialog = false}
+  />
 {/if}
+<CreatePracticeDialog
+  bind:open={showPracticeDialog}
+  {season}
+  {sections}
+  date={selectedDate}
+  {teamId}
+  on:save={handlePracticeCreated}
+  on:close={() => showPracticeDialog = false}
+/>
 
 <!-- Marker Dialog/Sheet -->
-{#if showMarkerDialog}
-  {#if $device.isMobile}
-    <EditMarkerSheet
-      {season}
-      marker={editingMarker}
-      defaultDate={selectedDate}
-      on:save={handleMarkerSaved}
-      on:close={() => showMarkerDialog = false}
-    />
-  {:else}
-    <CreateMarkerDialog
-      bind:open={showMarkerDialog}
-      {season}
-      marker={editingMarker}
-      defaultDate={selectedDate}
-      on:save={handleMarkerSaved}
-      on:delete={handleMarkerSaved}
-      on:close={() => showMarkerDialog = false}
-    />
-  {/if}
+{#if $device.isMobile && showMarkerDialog}
+  <EditMarkerSheet
+    {season}
+    marker={editingMarker}
+    defaultDate={selectedDate}
+    on:save={handleMarkerSaved}
+    on:close={() => showMarkerDialog = false}
+  />
 {/if}
+<CreateMarkerDialog
+  bind:open={showMarkerDialog}
+  {season}
+  marker={editingMarker}
+  defaultDate={selectedDate}
+  on:save={handleMarkerSaved}
+  on:delete={handleMarkerSaved}
+  on:close={() => showMarkerDialog = false}
+/>
 
 <style>
   .schedule-container {
@@ -522,6 +531,15 @@
     height: 24px;
     background: #e5e7eb;
     margin: 0 8px;
+  }
+
+  .permission-note {
+    font-size: 12px;
+    color: #6b7280;
+    padding: 4px 8px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
   }
   
   /* Week View */
@@ -606,6 +624,28 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+
+  .section-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  .section-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 500;
+    color: #1f2937;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 9999px;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
   .practice-item {
@@ -725,6 +765,17 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+  }
+
+  .month-section-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #c7d2fe; /* soft indigo to denote section */
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
   }
   
   .month-day:not(:disabled):hover {

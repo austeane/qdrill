@@ -1,5 +1,6 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
+  import { dev } from '$app/environment';
   import { apiFetch } from '$lib/utils/apiFetch.js';
   import { toast } from '@zerodevx/svelte-toast';
   import { Button } from '$lib/components/ui/button';
@@ -190,6 +191,12 @@
   function handleColorSelect(color) {
     formData.color = color;
   }
+
+  onMount(() => {
+    if (dev) {
+      console.log('[CreateMarkerDialog] mounted', { open, isEditing, defaultDate });
+    }
+  });
 </script>
 
 <Dialog 

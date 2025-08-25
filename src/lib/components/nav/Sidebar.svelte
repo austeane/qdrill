@@ -95,7 +95,13 @@
     border: 1px solid var(--color-border-default);
     border-radius: var(--radius-md);
   }
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: var(--z-modal-backdrop); }
+  .overlay { 
+    position: fixed; 
+    inset: 0; 
+    background: rgba(0,0,0,0.3); 
+    z-index: calc(var(--z-fixed) - 1); 
+    pointer-events: auto;
+  }
   
   .nav__label {
     display: flex;

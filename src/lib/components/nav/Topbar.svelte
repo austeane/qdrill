@@ -30,13 +30,17 @@
       <span class="brand__text">QDrill</span>
     </a>
 
-    <div class="search">
+    <div class="search desktop-only">
       <button class="search__trigger" on:click={openCommandPalette} aria-label="Open search (⌘K)">
         <Search size={16} />
         <span>Search…</span>
         <kbd>⌘K</kbd>
       </button>
     </div>
+
+    <button class="icon-btn mobile-only" on:click={openCommandPalette} aria-label="Open search">
+      <Search size={18} />
+    </button>
 
     <div class="spacer" />
 
@@ -85,6 +89,10 @@
   .brand__text { display: none; }
   @media (min-width: 640px) { .brand__text { display: inline; } }
   .search { flex: 1; max-width: 640px; margin: 0 auto; }
+  .desktop-only { display: none; }
+  @media (min-width: 640px) { 
+    .desktop-only { display: flex; }
+  }
   .search__trigger {
     width: 100%;
     display: flex;

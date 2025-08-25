@@ -40,9 +40,14 @@
 <CommandPalette bind:open={cmdOpen} onClose={() => (cmdOpen = false)} />
 
 <style>
-  .appshell { display: grid; grid-template-columns: 0 1fr; }
+  .appshell { display: grid; grid-template-columns: 1fr; }
   @media (min-width: 768px) { .appshell { grid-template-columns: 240px 1fr; } }
-  :global(.appshell .collapsed) ~ .appshell__content { grid-column: 2; }
+  @media (min-width: 768px) {
+    :global(.appshell .sidebar.collapsed) ~ .appshell__content { margin-left: -176px; }
+  }
   .appshell__content { padding: var(--space-6) var(--space-4); }
+  @media (max-width: 767px) {
+    .appshell__content { padding: var(--space-4) var(--space-3); }
+  }
 </style>
 

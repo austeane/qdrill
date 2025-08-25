@@ -12,8 +12,12 @@
 	export let showSaveButton = false;
 	export let index;
 	export let readonly = false;
+	export let viewOnly = false; // Support both viewOnly and readonly props
 	export let template = 'blank';
 	export let startFullscreen = false;
+	
+	// Use either viewOnly or readonly to determine if the diagram is read-only
+	$: isReadOnly = viewOnly || readonly;
 
 	const dispatch = createEventDispatcher();
 	let excalidrawAPI;
@@ -153,7 +157,7 @@
 					}
 				},
 				initialData: initialSceneData,
-				viewModeEnabled: readonly,
+				viewModeEnabled: isReadOnly,
 				onChange: handleChange,
 				gridModeEnabled: false,
 				theme: 'light',
@@ -221,7 +225,7 @@
 	}
 
 	function handleChange(elements, appState, files) {
-		if (!readonly) {
+		if (!isReadOnly) {
 			const sceneData = {
 				elements,
 				appState: {
@@ -349,32 +353,43 @@
 			}
 
 			// Use initialSceneData in both places:
-			const createExcalidrawProps = (isFullscreenVersion = false) => ({
-				excalidrawAPI: (api) => {
-					if (isFullscreenVersion) {
-						fullscreenExcalidrawAPI = api;
-					} else {
-						excalidrawAPI = api;
-						if (!isFullscreen) {
-							setTimeout(() => centerAndZoomToGuideRectangle(api), 100);
+			const createExcalidrawProps = (isFullscreenVersion = false) => {
+				const props = {
+					excalidrawAPI: (api) => {
+						if (isFullscreenVersion) {
+							fullscreenExcalidrawAPI = api;
+						} else {
+							excalidrawAPI = api;
+							if (!isFullscreen) {
+								setTimeout(() => centerAndZoomToGuideRectangle(api), 100);
+							}
+						}
+					},
+					initialData: initialSceneData,
+					viewModeEnabled: isReadOnly,
+					onChange: handleChange,
+					gridModeEnabled: false,
+					theme: 'light',
+					name: isFullscreenVersion ? `${id}-fullscreen` : id,
+					UIOptions: {
+						canvasActions: {
+							export: false,
+							loadScene: false,
+							saveAsImage: false,
+							theme: false
 						}
 					}
-				},
-				initialData: initialSceneData,
-				viewModeEnabled: readonly,
-				onChange: handleChange,
-				gridModeEnabled: false,
-				theme: 'light',
-				name: isFullscreenVersion ? `${id}-fullscreen` : id,
-				UIOptions: {
-					canvasActions: {
-						export: false,
-						loadScene: false,
-						saveAsImage: false,
-						theme: false
-					}
+				};
+				
+				// Hide all UI elements when in read-only mode
+				if (isReadOnly) {
+					// Hide the toolbar by providing empty render functions
+					props.renderTopRightUI = () => null;
+					props.renderSidebar = () => null;
 				}
-			});
+				
+				return props;
+			};
 
 			// Mount the normal Excalidraw component
 			ExcalidrawComponent = {
@@ -438,30 +453,32 @@
 	{#if browser && ExcalidrawComponent}
 		<div class="excalidraw-container" style="height: 600px;">
 			<div class="excalidraw-mount-point relative w-full h-full">
-				<button
-					type="button"
-					class="absolute top-2 right-2 z-10 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md flex items-center gap-1"
-					on:click={() => {
-						toggleFullscreen();
-					}}
-					disabled={!excalidrawAPI}
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
+				{#if !isReadOnly}
+					<button
+						type="button"
+						class="absolute top-2 right-2 z-10 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md flex items-center gap-1"
+						on:click={() => {
+							toggleFullscreen();
+						}}
+						disabled={!excalidrawAPI}
 					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"
-						/>
-					</svg>
-					<span class="text-sm">Fullscreen</span>
-				</button>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"
+							/>
+						</svg>
+						<span class="text-sm">Fullscreen</span>
+					</button>
+				{/if}
 				<div use:ExcalidrawComponent.render></div>
 			</div>
 		</div>

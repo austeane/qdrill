@@ -525,13 +525,7 @@ export class DrillService extends BaseEntityService {
 				qb = qb.where(sql`diagrams IS NULL OR array_length(diagrams, 1) IS NULL OR array_length(diagrams, 1) = 0`);
 			if (filters.hasImages === true) qb = qb.where(sql`array_length(images, 1) > 0`);
 			if (filters.hasImages === false)
-				qb = qb.where((eb) =>
-					eb.or([
-						eb('images', 'is', null),
-						eb(sql`array_length(images, 1) IS NULL`),
-						eb(sql`array_length(images, 1) = 0`)
-					])
-				);
+				qb = qb.where(sql`images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0`);
 
 			return qb;
 		};
@@ -630,13 +624,7 @@ export class DrillService extends BaseEntityService {
 			);
 		if (filters.hasImages === true) countQuery = countQuery.where(sql`array_length(images, 1) > 0`);
 		if (filters.hasImages === false)
-			countQuery = countQuery.where((eb) =>
-				eb.or([
-					eb('images', 'is', null),
-					eb(sql`array_length(images, 1) IS NULL`),
-					eb(sql`array_length(images, 1) = 0`)
-				])
-			);
+			countQuery = countQuery.where(sql`images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0`);
 
 		if (filters.searchQuery) {
 			const cleanedSearchTerm = filters.searchQuery.trim();

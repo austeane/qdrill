@@ -33,7 +33,7 @@
               <span class="nav__label">
                 {item.label}
                 {#if item.isBeta}
-                  <span class="beta-tag">Beta</span>
+                  <span class="beta-tag">Alpha</span>
                 {/if}
               </span>
             {/if}

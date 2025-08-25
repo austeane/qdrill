@@ -7,7 +7,10 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import CreatePracticeSheet from '../mobile/CreatePracticeSheet.svelte';
   import EditMarkerSheet from '../mobile/EditMarkerSheet.svelte';
+  import CreatePracticeDialog from '../desktop/CreatePracticeDialog.svelte';
+  import CreateMarkerDialog from '../desktop/CreateMarkerDialog.svelte';
   import Dialog from '$lib/components/ui/Dialog.svelte';
+  import { Plus, Sparkles, ChevronLeft, ChevronRight } from 'lucide-svelte';
   
   export let season = null;
   export let sections = [];
@@ -175,15 +178,19 @@
   }
   
   function handleAddPractice() {
+    console.log('handleAddPractice called');
     const today = new Date();
     selectedDate = getDateString(today);
     showPracticeDialog = true;
+    console.log('showPracticeDialog set to:', showPracticeDialog);
   }
   
   function handleAddMarker() {
+    console.log('handleAddMarker called');
     editingMarker = null;
     selectedDate = getDateString(new Date());
     showMarkerDialog = true;
+    console.log('showMarkerDialog set to:', showMarkerDialog);
   }
   
   // Format headers
@@ -218,9 +225,7 @@
         on:click={() => navigate(-1)}
         aria-label={viewMode === 'week' ? 'Previous week' : 'Previous month'}
       >
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M15 18l-7-6 7-6" />
-        </svg>
+        <ChevronLeft size={20} />
       </button>
       
       <h2 class="date-header">
@@ -232,9 +237,7 @@
         on:click={() => navigate(1)}
         aria-label={viewMode === 'week' ? 'Next week' : 'Next month'}
       >
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 18l7-6-7-6" />
-        </svg>
+        <ChevronRight size={20} />
       </button>
     </div>
     
@@ -256,17 +259,20 @@
       
       {#if isAdmin}
         <div class="divider" />
-        <Button size="sm" variant="outline" on:click={handleAddPractice}>
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="mr-1">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          on:click={() => handleAddPractice()}
+        >
+          <Plus size={16} class="mr-1" />
           Practice
         </Button>
-        <Button size="sm" variant="outline" on:click={handleAddMarker}>
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="mr-1">
-            <path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-          </svg>
+        <Button 
+          size="sm" 
+          variant="outline" 
+          on:click={() => handleAddMarker()}
+        >
+          <Sparkles size={16} class="mr-1" />
           Event
         </Button>
       {/if}
@@ -340,10 +346,7 @@
                   class="add-practice-hint"
                   on:click={() => handleDayClick(date)}
                 >
-                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="8" y1="3" x2="8" y2="13" />
-                    <line x1="3" y1="8" x2="13" y2="8" />
-                  </svg>
+                  <Plus size={16} />
                 </button>
               {/if}
             </div>
@@ -411,15 +414,15 @@
       on:close={() => showPracticeDialog = false}
     />
   {:else}
-    <Dialog
-      open={showPracticeDialog}
-      title="Create Practice"
+    <CreatePracticeDialog
+      bind:open={showPracticeDialog}
+      {season}
+      {sections}
+      date={selectedDate}
+      {teamId}
+      on:save={handlePracticeCreated}
       on:close={() => showPracticeDialog = false}
-    >
-      <!-- Desktop form content would go here -->
-      <p>Desktop practice form coming soon...</p>
-      <p>Selected date: {selectedDate}</p>
-    </Dialog>
+    />
   {/if}
 {/if}
 
@@ -434,14 +437,15 @@
       on:close={() => showMarkerDialog = false}
     />
   {:else}
-    <Dialog
-      open={showMarkerDialog}
-      title={editingMarker ? 'Edit Event' : 'Create Event'}
+    <CreateMarkerDialog
+      bind:open={showMarkerDialog}
+      {season}
+      marker={editingMarker}
+      defaultDate={selectedDate}
+      on:save={handleMarkerSaved}
+      on:delete={handleMarkerSaved}
       on:close={() => showMarkerDialog = false}
-    >
-      <!-- Desktop form content would go here -->
-      <p>Desktop event form coming soon...</p>
-    </Dialog>
+    />
   {/if}
 {/if}
 

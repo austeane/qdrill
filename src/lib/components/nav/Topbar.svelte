@@ -8,6 +8,12 @@
   const session = useSession();
 
   export let sidebarOpen = false;
+  
+  // Subscribe to the rendered theme to get the actual light/dark state
+  let renderedTheme = 'light';
+  theme.rendered.subscribe(value => {
+    renderedTheme = value;
+  });
 
   function toggleSidebar() {
     sidebarOpen = !sidebarOpen;
@@ -44,8 +50,23 @@
 
     <div class="spacer" />
 
+    <a
+      href="https://discord.gg/yuXBkACYE3"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="icon-btn"
+      aria-label="Join our Discord"
+    >
+      <img
+        src={renderedTheme === 'light' ? '/images/icons/discord-black.svg' : '/images/icons/discord-white.svg'}
+        alt="Discord"
+        width="20"
+        height="20"
+      />
+    </a>
+
     <button class="icon-btn" on:click={() => theme.toggle()} aria-label="Toggle theme">
-      {#if $theme === 'light'}
+      {#if renderedTheme === 'light'}
         <Sun size={18} />
       {:else}
         <Moon size={18} />

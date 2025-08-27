@@ -1,7 +1,7 @@
 packages:
   - .
-
 ignoredBuiltDependencies:
+  - '@sentry/cli'
   - '@sveltejs/kit'
   - '@vercel/speed-insights'
   - aws-sdk

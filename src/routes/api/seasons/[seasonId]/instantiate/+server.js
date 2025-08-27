@@ -5,7 +5,10 @@ import { seasonService } from '$lib/server/services/seasonService.js';
 import { z } from 'zod';
 
 const instantiatePlanSchema = z.object({
-  scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+  scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  start_time: z.string().optional(),
+  seed_default_sections: z.boolean().optional(),
+  practice_type: z.enum(['regular', 'scrimmage', 'tournament', 'training']).optional()
 });
 
 export async function POST({ locals, params, request }) {
@@ -34,8 +37,15 @@ export async function POST({ locals, params, request }) {
       params.seasonId,
       validated.scheduled_date,
       locals.user.id,
-      season.team_id
+      season.team_id,
+      {
+        startTime: validated.start_time,
+        seedDefaultSections: validated.seed_default_sections,
+        practiceType: validated.practice_type
+      }
     );
+    
+    console.log('Created practice plan:', practicePlan?.id ? `ID: ${practicePlan.id}` : 'NO ID', JSON.stringify(practicePlan).substring(0, 200));
     
     return json(practicePlan, { status: 201 });
   } catch (error) {

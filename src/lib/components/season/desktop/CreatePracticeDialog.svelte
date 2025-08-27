@@ -46,8 +46,8 @@
   }
   
   async function handleCreate() {
-    if (!selectedDate) {
-      toast.push('Please select a date', {
+    if (!selectedDate || !startTime) {
+      toast.push('Please fill in all required fields', {
         theme: {
           '--toastBackground': '#ef4444',
           '--toastColor': 'white'
@@ -59,17 +59,19 @@
     loading = true;
     
     try {
+      // Check for existing practices on this date
       const existingPractices = await apiFetch(
         `/api/teams/${teamId}/practice-plans?date=${selectedDate}`
       );
       
-      if (existingPractices.length > 0) {
+      if (existingPractices && existingPractices.length > 0) {
         if (!confirm(`A practice already exists on ${formatDate(selectedDate)}. Create another?`)) {
           loading = false;
           return;
         }
       }
       
+      // Call the instantiate endpoint to create the practice plan
       const response = await apiFetch(`/api/seasons/${season.id}/instantiate`, {
         method: 'POST',
         body: JSON.stringify({
@@ -80,6 +82,10 @@
         })
       });
       
+      if (!response || !response.id) {
+        throw new Error('Failed to create practice - no ID returned');
+      }
+      
       toast.push('Practice created successfully', {
         theme: {
           '--toastBackground': '#10b981',
@@ -87,11 +93,14 @@
         }
       });
       
-      if (createAndEdit && response.id) {
-        goto(`/teams/${teamId}/plans/${response.id}`);
+      if (createAndEdit) {
+        // Navigate to the practice plan editor
+        goto(`/practice-plans/${response.id}/edit`);
       } else {
         dispatch('save', response);
         handleClose();
+        // Refresh the page to show the new practice
+        window.location.reload();
       }
     } catch (error) {
       console.error('Failed to create practice:', error);

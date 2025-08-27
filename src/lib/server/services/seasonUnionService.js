@@ -16,9 +16,10 @@ class SeasonUnionService {
    * @param {string} scheduledDate - Date for the practice (YYYY-MM-DD)
    * @param {string} userId - User creating the plan
    * @param {string} teamId - Team ID
+   * @param {Object} options - Additional options for practice creation
    * @returns {Object} Created practice plan with sections and drills
    */
-  async instantiatePracticePlan(seasonId, scheduledDate, userId, teamId) {
+  async instantiatePracticePlan(seasonId, scheduledDate, userId, teamId, options = {}) {
     // Validate date is within season
     const season = await seasonService.getById(seasonId);
     const practiceDate = new Date(scheduledDate);
@@ -42,7 +43,8 @@ class SeasonUnionService {
       season,
       overlappingSections,
       scheduledDate,
-      teamId
+      teamId,
+      options
     );
     
     // Create the practice plan with all content
@@ -69,10 +71,14 @@ class SeasonUnionService {
   /**
    * Build the union structure combining template and section data
    */
-  async buildUnionStructure(season, overlappingSections, scheduledDate, teamId) {
+  async buildUnionStructure(season, overlappingSections, scheduledDate, teamId, options = {}) {
     // Get team default start time
     const { teamService } = await import('./teamService.js');
     const team = await teamService.getById(teamId);
+    
+    const practiceTypeName = options.practiceType === 'scrimmage' ? 'Scrimmage' :
+                             options.practiceType === 'tournament' ? 'Tournament' :
+                             options.practiceType === 'training' ? 'Training' : 'Practice';
     
     const unionData = {
       team_id: teamId,
@@ -82,10 +88,11 @@ class SeasonUnionService {
       is_template: false,
       template_plan_id: season.template_practice_plan_id,
       is_edited: false,
-      name: `Practice - ${new Date(scheduledDate).toLocaleDateString()}`,
-      description: `Generated practice plan for ${new Date(scheduledDate).toLocaleDateString()}`,
-      start_time: team?.default_start_time || '09:00:00',
+      name: `${practiceTypeName} - ${new Date(scheduledDate).toLocaleDateString()}`,
+      description: `Generated ${practiceTypeName.toLowerCase()} plan for ${new Date(scheduledDate).toLocaleDateString()}`,
+      start_time: options.startTime || team?.default_start_time || '18:00:00',
       visibility: 'private', // Team practices are private by default
+      practice_type: options.practiceType || 'regular',
       sections: [],
       drills: []
     };
@@ -108,10 +115,14 @@ class SeasonUnionService {
     }
     
     // Step 2: Add/merge default sections from overlapping season sections
+    // Only if seedDefaultSections is true (or undefined for backward compatibility)
     // Keep track of default sections for drill assignment
     const defaultSectionsBySection = new Map();
     
-    for (const section of overlappingSections) {
+    const shouldSeedDefaults = options.seedDefaultSections !== false;
+    
+    if (shouldSeedDefaults) {
+      for (const section of overlappingSections) {
       const defaultSections = await seasonSectionService.getDefaultSections(section.id);
       defaultSectionsBySection.set(section.id, defaultSections);
       
@@ -145,6 +156,7 @@ class SeasonUnionService {
         }
       }
     }
+  }
     
     // Step 3: Add linked drills/formations from overlapping season sections
     const drillsToAdd = [];

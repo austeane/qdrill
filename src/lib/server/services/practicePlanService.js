@@ -99,6 +99,9 @@ export class PracticePlanService extends BaseEntityService {
 					'pp.visibility',
 					'pp.is_editable_by_others',
 					'pp.start_time',
+					'pp.team_id',
+					'pp.season_id',
+					'pp.scheduled_date',
 					'pp.created_at',
 					'pp.updated_at'
 				])
@@ -125,6 +128,13 @@ export class PracticePlanService extends BaseEntityService {
 			});
 
 			// Apply specific filters (excluding search, which is handled by _buildSearchQuery)
+			// Add support for team_id and scheduled_date filters
+			if (filters.team_id) {
+				q = q.where('pp.team_id', '=', filters.team_id);
+			}
+			if (filters.scheduled_date) {
+				q = q.where('pp.scheduled_date', '=', filters.scheduled_date);
+			}
 			if (filters.phase_of_season?.required?.length) {
 				q = q.where('pp.phase_of_season', 'in', filters.phase_of_season.required);
 			}
@@ -224,6 +234,13 @@ export class PracticePlanService extends BaseEntityService {
 			}
 			return eb.or(conditions);
 		});
+		// Add support for team_id and scheduled_date filters in count query
+		if (filters.team_id) {
+			countQuery = countQuery.where('pp.team_id', '=', filters.team_id);
+		}
+		if (filters.scheduled_date) {
+			countQuery = countQuery.where('pp.scheduled_date', '=', filters.scheduled_date);
+		}
 		if (filters.phase_of_season?.required?.length) {
 			countQuery = countQuery.where('pp.phase_of_season', 'in', filters.phase_of_season.required);
 		}
@@ -1272,10 +1289,12 @@ PracticePlanService.prototype.getByTeamAndDate = async function(teamId, schedule
 };
 
 PracticePlanService.prototype.getByIdWithContent = async function(planId) {
+  console.log('getByIdWithContent called with planId:', planId);
   return await this.withTransaction(async (client) => {
     // Get plan
     const planQuery = 'SELECT * FROM practice_plans WHERE id = $1';
     const planResult = await client.query(planQuery, [planId]);
+    console.log('getByIdWithContent query result rows:', planResult.rows.length);
     if (planResult.rows.length === 0) return null;
     
     const plan = planResult.rows[0];
@@ -1328,7 +1347,6 @@ PracticePlanService.prototype.createWithContent = async function(data, userId) {
       team_id: data.team_id,
       season_id: data.season_id,
       scheduled_date: data.scheduled_date,
-      is_published: data.is_published === true,
       is_template: data.is_template || false,
       template_plan_id: data.template_plan_id,
       is_edited: data.is_edited || false
@@ -1339,16 +1357,16 @@ PracticePlanService.prototype.createWithContent = async function(data, userId) {
         name, description, practice_goals, phase_of_season,
         estimated_number_of_participants, created_by, visibility,
         is_editable_by_others, start_time, team_id, season_id,
-        scheduled_date, is_published, is_template, template_plan_id, is_edited
+        scheduled_date, is_template, template_plan_id, is_edited
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
       ) RETURNING *
     `;
     
     const planResult = await client.query(planQuery, [
       planData.name,
       planData.description,
-      JSON.stringify(planData.practice_goals),
+      planData.practice_goals || [],  // Pass array directly, not JSON string
       planData.phase_of_season,
       planData.estimated_number_of_participants,
       planData.created_by,
@@ -1358,13 +1376,14 @@ PracticePlanService.prototype.createWithContent = async function(data, userId) {
       planData.team_id,
       planData.season_id,
       planData.scheduled_date,
-      planData.is_published,
       planData.is_template,
       planData.template_plan_id,
       planData.is_edited
     ]);
     
     const plan = planResult.rows[0];
+    
+    console.log('Created practice plan in DB with ID:', plan?.id, 'Full plan:', JSON.stringify(plan).substring(0, 200));
     
     // Create sections
     const sectionMap = {};
@@ -1434,6 +1453,9 @@ PracticePlanService.prototype.publishPracticePlan = async function(planId, userI
   
   // Update published flag
   return await this.withTransaction(async (client) => {
+    // TODO: Add is_published column to database schema
+    throw new Error('Publishing functionality requires database schema update');
+    /*
     const query = `
       UPDATE practice_plans 
       SET is_published = true,
@@ -1442,6 +1464,7 @@ PracticePlanService.prototype.publishPracticePlan = async function(planId, userI
       WHERE id = $1
       RETURNING *
     `;
+    */
     
     const result = await client.query(query, [planId]);
     return result.rows[0];
@@ -1464,6 +1487,9 @@ PracticePlanService.prototype.unpublishPracticePlan = async function(planId, use
   
   // Update published flag back to false
   return await this.withTransaction(async (client) => {
+    // TODO: Add is_published column to database schema
+    throw new Error('Unpublishing functionality requires database schema update');
+    /*
     const query = `
       UPDATE practice_plans 
       SET is_published = false,
@@ -1471,6 +1497,7 @@ PracticePlanService.prototype.unpublishPracticePlan = async function(planId, use
       WHERE id = $1
       RETURNING *
     `;
+    */
     
     const result = await client.query(query, [planId]);
     return result.rows[0];

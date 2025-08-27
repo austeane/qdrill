@@ -54,6 +54,7 @@
       aria-disabled={disabled || loading}
       data-loading={loading}
       {...$$restProps}
+      on:click
     >
       {#if loading}
         <Loader2 class="mr-2 h-4 w-4 animate-spin" />

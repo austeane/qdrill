@@ -2,15 +2,16 @@
 import { betterAuth } from 'better-auth';
 // Adjust import path to be Node.js friendly for the CLI
 import { kyselyDb } from './server/db.js'; // Use relative path
+import { env } from '$env/dynamic/private';
 
 export const auth = betterAuth({
-	secret: process.env.BETTER_AUTH_SECRET,
-	url: process.env.BETTER_AUTH_URL,
+	secret: env.AUTH_SECRET || env.BETTER_AUTH_SECRET,
+	url: env.NODE_ENV === 'production' ? env.AUTH_URL : 'http://localhost:3000',
 	// Uncommented after successful migration
 	socialProviders: {
 		google: {
-			clientId: process.env.GOOGLE_CLIENT_ID,
-			clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+			clientId: env.GOOGLE_CLIENT_ID,
+			clientSecret: env.GOOGLE_CLIENT_SECRET,
 			scope: ['openid', 'email', 'profile']
 		}
 	},
@@ -41,5 +42,5 @@ export const auth = betterAuth({
                 }
         },
 
-	debug: process.env.NODE_ENV !== 'production'
+	debug: env.NODE_ENV !== 'production'
 });

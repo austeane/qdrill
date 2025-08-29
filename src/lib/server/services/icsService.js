@@ -73,12 +73,10 @@ class IcsService {
     const season = seasonResult.rows[0];
     
     // Get practices
-    const practiceQuery = includeUnpublished 
-      ? `SELECT * FROM practice_plans 
+    // Note: publish/unpublish not implemented yet (no is_published column).
+    // For now, always return all practices for the season.
+    const practiceQuery = `SELECT * FROM practice_plans 
          WHERE season_id = $1 
-         ORDER BY scheduled_date, start_time`
-      : `SELECT * FROM practice_plans 
-         WHERE season_id = $1 AND is_published = true 
          ORDER BY scheduled_date, start_time`;
     
     const practicesResult = await query(practiceQuery, [seasonId]);
@@ -137,7 +135,7 @@ class IcsService {
         `SUMMARY:${this.escapeIcs(practice.name || 'Practice')}`,
         `DESCRIPTION:${this.escapeIcs(practice.description || '')}`,
         `LOCATION:${this.escapeIcs(practice.location || '')}`,
-        `STATUS:${practice.is_published ? 'CONFIRMED' : 'TENTATIVE'}`,
+        'STATUS:CONFIRMED',
         'END:VEVENT'
       );
     });

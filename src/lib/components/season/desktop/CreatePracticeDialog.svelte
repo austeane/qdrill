@@ -26,6 +26,11 @@
   let createAndEdit = false;
   
   $: overlappingSections = getOverlappingSections(selectedDate);
+
+  // Keep selectedDate in sync when parent updates the date while dialog is open
+  $: if (open && date && date !== selectedDate) {
+    selectedDate = date;
+  }
   
   const practiceTypeOptions = [
     { value: 'regular', label: 'Regular Practice' },
@@ -64,7 +69,7 @@
         `/api/teams/${teamId}/practice-plans?date=${selectedDate}`
       );
       
-      if (existingPractices && existingPractices.length > 0) {
+      if (Array.isArray(existingPractices) && existingPractices.length > 0) {
         if (!confirm(`A practice already exists on ${formatDate(selectedDate)}. Create another?`)) {
           loading = false;
           return;
@@ -74,6 +79,7 @@
       // Call the instantiate endpoint to create the practice plan
       const response = await apiFetch(`/api/seasons/${season.id}/instantiate`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           scheduled_date: selectedDate,
           start_time: startTime,
@@ -93,9 +99,18 @@
         }
       });
       
+      console.log('Practice created:', { 
+        responseId: response?.id, 
+        createAndEdit, 
+        teamId,
+        navigateTo: createAndEdit ? `/teams/${teamId}/plans/${response.id}/edit` : 'reload'
+      });
+      
       if (createAndEdit) {
-        // Navigate to the practice plan editor
-        goto(`/practice-plans/${response.id}/edit`);
+        // Navigate first, then close the dialog to avoid resetting createAndEdit
+        const editUrl = `/teams/${teamId}/plans/${response.id}/edit`;
+        await goto(editUrl);
+        handleClose();
       } else {
         dispatch('save', response);
         handleClose();

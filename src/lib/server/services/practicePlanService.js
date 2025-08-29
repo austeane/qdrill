@@ -1288,17 +1288,17 @@ PracticePlanService.prototype.getByTeamAndDate = async function(teamId, schedule
   return result.items[0] || null;
 };
 
-PracticePlanService.prototype.getByIdWithContent = async function(planId) {
+PracticePlanService.prototype.getByIdWithContent = async function(planId, existingClient = null) {
   console.log('getByIdWithContent called with planId:', planId);
-  return await this.withTransaction(async (client) => {
+  const runWithClient = async (client) => {
     // Get plan
     const planQuery = 'SELECT * FROM practice_plans WHERE id = $1';
     const planResult = await client.query(planQuery, [planId]);
     console.log('getByIdWithContent query result rows:', planResult.rows.length);
     if (planResult.rows.length === 0) return null;
-    
+
     const plan = planResult.rows[0];
-    
+
     // Get sections
     const sectionsQuery = `
       SELECT * FROM practice_plan_sections 
@@ -1307,7 +1307,7 @@ PracticePlanService.prototype.getByIdWithContent = async function(planId) {
     `;
     const sectionsResult = await client.query(sectionsQuery, [planId]);
     plan.sections = sectionsResult.rows;
-    
+
     // Get drills with details
     const drillsQuery = `
       SELECT 
@@ -1326,15 +1326,25 @@ PracticePlanService.prototype.getByIdWithContent = async function(planId) {
     `;
     const drillsResult = await client.query(drillsQuery, [planId]);
     plan.drills = drillsResult.rows;
-    
+
     return plan;
-  });
+  };
+
+  if (existingClient) {
+    // Use the provided transaction client (avoid nested transactions)
+    return await runWithClient(existingClient);
+  }
+
+  // No client provided; run within our own transaction
+  return await this.withTransaction(async (client) => runWithClient(client));
 };
 
 PracticePlanService.prototype.createWithContent = async function(data, userId) {
-  return await this.withTransaction(async (client) => {
-    // Create the practice plan
-  const planData = {
+  try {
+    return await this.withTransaction(async (client) => {
+      // Create the practice plan
+      console.log('createWithContent starting with data:', JSON.stringify(data).substring(0, 300));
+      const planData = {
       name: data.name,
       description: data.description,
       practice_goals: data.practice_goals || [],
@@ -1366,7 +1376,7 @@ PracticePlanService.prototype.createWithContent = async function(data, userId) {
     const planResult = await client.query(planQuery, [
       planData.name,
       planData.description,
-      planData.practice_goals || [],  // Pass array directly, not JSON string
+      planData.practice_goals || [],  // Pass array directly
       planData.phase_of_season,
       planData.estimated_number_of_participants,
       planData.created_by,
@@ -1433,8 +1443,26 @@ PracticePlanService.prototype.createWithContent = async function(data, userId) {
       ]);
     }
     
-    return await this.getByIdWithContent(plan.id);
+    // Return the full plan using the same transaction client to avoid isolation issues
+    const result = await this.getByIdWithContent(plan.id, client);
+    
+    // If getByIdWithContent returns null, return the basic plan at least
+    if (!result) {
+      console.log('getByIdWithContent returned null, returning basic plan');
+      return {
+        ...plan,
+        sections: data.sections || [],
+        drills: data.drills || []
+      };
+    }
+    
+    return result;
   });
+  } catch (error) {
+    console.error('Error in createWithContent:', error);
+    console.error('Error stack:', error.stack);
+    throw error;
+  }
 };
 
 PracticePlanService.prototype.publishPracticePlan = async function(planId, userId) {

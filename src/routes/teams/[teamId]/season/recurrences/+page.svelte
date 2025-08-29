@@ -49,8 +49,8 @@
       recurrences = await apiFetch(`/api/seasons/${season.id}/recurrences`).catch(() => []);
 
       // Get template practice plans
-      const plansRes = await apiFetch(`/api/teams/${$page.params.teamId}/practice-plans?template=true`).catch(() => ({ plans: [] }));
-      templates = plansRes.plans || [];
+      const plansRes = await apiFetch(`/api/teams/${$page.params.teamId}/practice-plans?template=true`).catch(() => []);
+      templates = Array.isArray(plansRes) ? plansRes : (plansRes.plans || []);
     } catch (err) {
       error = err?.message || 'Failed to load data';
     } finally {

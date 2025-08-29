@@ -3,7 +3,7 @@
 	import { writable } from 'svelte/store';
 	import { page } from '$app/stores';
 	import { authClient } from '$lib/auth-client';
-	import { ThumbsUpIcon, ThumbsDownIcon } from 'svelte-feather-icons';
+	import { ThumbsUp, ThumbsDown } from 'lucide-svelte';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import Spinner from '$lib/components/Spinner.svelte';
@@ -187,7 +187,7 @@
 			{#if $votingInProgress}
 				<Spinner size="sm" color="blue" />
 			{:else}
-				<ThumbsUpIcon size="20" />
+				<ThumbsUp size={20} />
 			{/if}
 			<span class="sr-only">Upvote</span>
 		</button>
@@ -213,7 +213,7 @@
 			{#if $votingInProgress}
 				<Spinner size="sm" color="red" />
 			{:else}
-				<ThumbsDownIcon size="20" />
+				<ThumbsDown size={20} />
 			{/if}
 			<span class="sr-only">Downvote</span>
 		</button>

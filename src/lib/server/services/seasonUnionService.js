@@ -24,6 +24,15 @@ class SeasonUnionService {
     const season = await seasonService.getById(seasonId);
     const practiceDate = new Date(scheduledDate);
     
+    console.log('Date validation:', {
+      scheduledDate,
+      practiceDate: practiceDate.toISOString(),
+      seasonStart: season.start_date,
+      seasonEnd: season.end_date,
+      startCheck: practiceDate < new Date(season.start_date),
+      endCheck: practiceDate > new Date(season.end_date)
+    });
+    
     if (practiceDate < new Date(season.start_date) || 
         practiceDate > new Date(season.end_date)) {
       throw new ValidationError('Practice date must be within season dates');
@@ -48,7 +57,9 @@ class SeasonUnionService {
     );
     
     // Create the practice plan with all content
+    console.log('Creating practice plan with unionData:', JSON.stringify(unionData).substring(0, 500));
     const practicePlan = await practicePlanService.createWithContent(unionData, userId);
+    console.log('Practice plan created in seasonUnionService:', practicePlan ? `ID: ${practicePlan.id}` : 'NULL');
     
     return practicePlan;
   }

@@ -53,7 +53,8 @@
     
     try {
       const practicesRes = await apiFetch(`/api/teams/${$page.params.teamId}/practice-plans`);
-      practices = practicesRes.filter(p => p.season_id === activeSeason.id);
+      const list = (practicesRes && practicesRes.plans) ? practicesRes.plans : (practicesRes || []);
+      practices = list.filter(p => p.season_id === activeSeason.id);
     } catch {}
   }
   

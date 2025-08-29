@@ -16,8 +16,9 @@ export async function GET({ locals, params, url }) {
   // Parse query parameters
   const startDate = url.searchParams.get('start_date');
   const endDate = url.searchParams.get('end_date');
+  const exactDate = url.searchParams.get('date'); // convenience single-day filter
   const seasonId = url.searchParams.get('season_id');
-  const status = url.searchParams.get('status'); // 'all', 'draft', 'published'
+  const status = url.searchParams.get('status'); // currently ignored until publish feature lands
   
   try {
     // Build query
@@ -40,8 +41,12 @@ export async function GET({ locals, params, url }) {
       paramIndex++;
     }
     
-    // Add date range filter
-    if (startDate && endDate) {
+    // Add date filters
+    if (exactDate) {
+      queryStr += ` AND pp.scheduled_date = $${paramIndex}`;
+      queryParams.push(exactDate);
+      paramIndex++;
+    } else if (startDate && endDate) {
       queryStr += ` AND pp.scheduled_date BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
       queryParams.push(startDate, endDate);
       paramIndex += 2;
@@ -55,32 +60,15 @@ export async function GET({ locals, params, url }) {
       paramIndex++;
     }
     
-    // Add status filter based on user role
-    if (member.role === 'admin') {
-      // Admins can see all practices
-      if (status && status !== 'all') {
-        queryStr += ` AND pp.is_published = ${status === 'published' ? 'true' : 'false'}`;
-      }
-    } else {
-      // Members can only see published practices
-      queryStr += ` AND pp.is_published = true`;
-    }
+    // Note: publish/unpublish not implemented yet (no is_published column).
+    // Once schema supports it, reintroduce filtering here.
     
     // Order by scheduled date
     queryStr += ` ORDER BY pp.scheduled_date ASC, pp.created_at ASC`;
     
     const result = await query(queryStr, queryParams);
     
-    return json({
-      plans: result.rows,
-      count: result.rows.length,
-      filters: {
-        startDate,
-        endDate,
-        seasonId,
-        status: member.role === 'admin' ? (status || 'all') : 'published'
-      }
-    });
+    return json(result.rows);
   } catch (error) {
     console.error('Error fetching team practice plans:', error);
     return json({ error: 'Failed to fetch practice plans' }, { status: 500 });

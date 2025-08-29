@@ -1,3 +1,2 @@
-// since there's no dynamic data here, we can prerender
-// it so that it gets served as a static asset in production
-export const prerender = true;
+// Use server-side rendering for the home page to match the rest of the app
+export const prerender = false;

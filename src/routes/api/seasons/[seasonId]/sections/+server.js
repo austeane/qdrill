@@ -1,53 +1,34 @@
 import { json } from '@sveltejs/kit';
 import { seasonSectionService } from '$lib/server/services/seasonSectionService.js';
-import { createSeasonSectionSchema } from '$lib/validation/seasonSectionSchema.js';
 
 export async function GET({ locals, params }) {
+  if (!locals.user) return json({ error: 'Authentication required' }, { status: 401 });
   try {
-    const sections = await seasonSectionService.getSeasonSections(
-      params.seasonId,
-      locals.user?.id
-    );
-    return json(sections);
-  } catch (error) {
-    return json({ error: error.message }, { status: error.statusCode || 500 });
+    const items = await seasonSectionService.getSeasonSections(params.seasonId, locals.user.id);
+    // Provide a lightweight alias so clients can use `order` if desired
+    const normalized = items.map((s, idx) => ({ ...s, order: s.display_order ?? idx }));
+    return json(normalized);
+  } catch (err) {
+    return json({ error: err?.message || 'Failed to fetch sections' }, { status: err?.status || 500 });
   }
 }
 
 export async function POST({ locals, params, request }) {
-  if (!locals.user) {
-    return json({ error: 'Authentication required' }, { status: 401 });
-  }
-  
+  if (!locals.user) return json({ error: 'Authentication required' }, { status: 401 });
   try {
-    const data = await request.json();
-    const { seed_default_sections, ...sectionData } = data;
-    
-    const validated = createSeasonSectionSchema.parse({
-      ...sectionData,
-      season_id: params.seasonId
-    });
-    
-    const section = await seasonSectionService.create(validated, locals.user.id);
-    
-    // If requested, seed the default practice sections
-    if (seed_default_sections) {
-      const defaultSections = [
-        { section_name: 'Introduction to the sport', order: 0, goals: ['Understand basic rules', 'Learn safety fundamentals'] },
-        { section_name: 'Fundamental skills', order: 1, goals: ['Master basic movements', 'Build core strength'] },
-        { section_name: 'Formations', order: 2, goals: ['Learn team positions', 'Understand spatial awareness'] },
-        { section_name: 'Basic plays', order: 3, goals: ['Execute simple strategies', 'Develop timing'] },
-        { section_name: 'Advanced tactics', order: 4, goals: ['Complex plays', 'Situational awareness'] }
-      ];
-      
-      await seasonSectionService.setDefaultSections(section.id, defaultSections, locals.user.id);
-    }
-    
-    return json({ success: true, section }, { status: 201 });
-  } catch (error) {
-    if (error.name === 'ZodError') {
-      return json({ error: 'Invalid input', details: error.errors }, { status: 400 });
-    }
-    return json({ error: error.message }, { status: error.statusCode || 500 });
+    const body = await request.json();
+    const payload = {
+      season_id: params.seasonId,
+      name: body.name,
+      color: body.color ?? '#2563eb',
+      start_date: body.start_date,
+      end_date: body.end_date,
+      overview_visible_to_members: true
+    };
+    const created = await seasonSectionService.create(payload, locals.user.id);
+    return json(created, { status: 201 });
+  } catch (err) {
+    return json({ error: err?.message || 'Failed to create section' }, { status: err?.status || 500 });
   }
 }
+

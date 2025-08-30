@@ -106,7 +106,7 @@
 			<h1 class="text-3xl font-bold">Season Sections</h1>
 			<p class="text-gray-600 dark:text-gray-400 mt-1">{data.season.name}</p>
 		</div>
-		<Button variant="ghost" on:click={() => goto(`/teams/${data.team.id}/season`)}>
+		<Button variant="ghost" on:click={() => goto(`/teams/${data.team.slug}/season`)}>
 			← Back to Season
 		</Button>
 	</div>

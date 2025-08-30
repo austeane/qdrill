@@ -76,7 +76,7 @@ export class PracticePlanService extends BaseEntityService {
 			userId = null,
 			page = 1,
 			limit = 10,
-			sortBy = 'created_at',
+			sortBy = 'upvotes',
 			sortOrder = 'desc',
 			filters = {}
 		} = options;
@@ -88,6 +88,9 @@ export class PracticePlanService extends BaseEntityService {
 			let q = kyselyDb
 				.selectFrom('practice_plans as pp')
 				.leftJoin('practice_plan_drills as ppd', 'pp.id', 'ppd.practice_plan_id')
+				.leftJoin('votes as v', (join) => 
+					join.onRef('pp.id', '=', 'v.practice_plan_id').on('v.vote', '=', 1)
+				)
 				.select([
 					'pp.id',
 					'pp.name',
@@ -106,6 +109,7 @@ export class PracticePlanService extends BaseEntityService {
 					'pp.updated_at'
 				])
 				.select(sql`array_agg(DISTINCT ppd.drill_id)`.as('drills'))
+				.select(sql`COALESCE(COUNT(DISTINCT v.id), 0)`.as('upvote_count'))
 				.groupBy('pp.id');
 
 			// Apply visibility filters from permissionConfig
@@ -202,11 +206,18 @@ export class PracticePlanService extends BaseEntityService {
 				'name',
 				'created_at',
 				'estimated_number_of_participants',
-				'updated_at'
+				'updated_at',
+				'upvotes'
 			];
-			const sortCol = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
+			const sortCol = validSortColumns.includes(sortBy) ? sortBy : 'upvotes';
 			const direction = sortOrder === 'asc' ? 'asc' : 'desc';
-			finalQuery = finalQuery.orderBy(`pp.${sortCol}`, direction);
+			
+			// Handle special case for upvotes sorting
+			if (sortCol === 'upvotes') {
+				finalQuery = finalQuery.orderBy('upvote_count', direction);
+			} else {
+				finalQuery = finalQuery.orderBy(`pp.${sortCol}`, direction);
+			}
 		}
 
 		const { items, usedFallback } = await this._executeSearch(finalQuery, baseQueryForFallback, {

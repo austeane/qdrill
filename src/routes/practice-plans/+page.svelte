@@ -32,7 +32,7 @@
 	// --- Component State reflecting URL/Load Data ---
 	let searchQuery = data.currentSearch || ''; // Initialize from load data
 	let selectedDrills = initialSelectedDrills; // Initialize from load data
-	let currentSortBy = data.currentSortBy || 'created_at';
+	let currentSortBy = data.currentSortBy || 'upvotes';
 	let currentSortOrder = data.currentSortOrder || 'desc';
 
 	let showAiModal = false; // NEW modal state
@@ -64,7 +64,7 @@
 		);
 
 		// Update local sort state if different from URL
-		const urlSortBy = searchParams.get('sortBy') || 'created_at';
+		const urlSortBy = searchParams.get('sortBy') || 'upvotes';
 		const urlSortOrder = searchParams.get('sortOrder') || 'desc';
 		if (urlSortBy !== currentSortBy) {
 			currentSortBy = urlSortBy;
@@ -205,10 +205,11 @@
 
 	// --- Sort Options ---
 	const sortOptions = [
+		{ value: 'upvotes', label: 'Upvotes' },
 		{ value: 'name', label: 'Name' },
 		{ value: 'created_at', label: 'Date Created' },
-		{ value: 'estimated_number_of_participants', label: 'Estimated Participants' },
-		{ value: 'updated_at', label: 'Date Updated' }
+		{ value: 'updated_at', label: 'Date Updated' },
+		{ value: 'estimated_number_of_participants', label: 'Estimated Participants' }
 	];
 
 	// Helper for DeletePracticePlan callback
@@ -286,8 +287,6 @@
 		on:drillRemove={handleDrillRemove}
 		on:filterChange={handleFilterChange}
 		{sortOptions}
-		bind:selectedSortOption={$selectedSortOption}
-		bind:selectedSortOrder={$selectedSortOrder}
 	/>
 
 	<!-- Search input -->

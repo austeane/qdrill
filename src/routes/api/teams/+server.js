@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { teamService } from '$lib/server/services/teamService';
+import { teamService } from '$lib/server/services/teamService.js';
 import { createTeamSchema } from '$lib/validation/teamSchema';
 
 export async function GET({ locals, url }) {

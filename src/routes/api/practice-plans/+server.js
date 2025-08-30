@@ -16,7 +16,7 @@ export async function GET({ url, locals }) {
 	// Extract query parameters
 	const page = parseInt(url.searchParams.get('page') || '1', 10);
 	const limit = parseInt(url.searchParams.get('limit') || '10', 10);
-	const sortBy = url.searchParams.get('sortBy') || 'created_at';
+	const sortBy = url.searchParams.get('sortBy') || 'upvotes';
 	const sortOrder = url.searchParams.get('sortOrder') || 'desc';
 	const searchQuery = url.searchParams.get('search') || '';
 

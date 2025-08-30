@@ -52,6 +52,9 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 	// Practice Plans Filters
 	export let phaseOfSeasonOptions = [];
 	export let practiceGoalsOptions = [];
+	
+	// Sort options (passed in from parent)
+	export let sortOptions = [];
 
 	// Toggle states for drill filters
 	let showSkillLevels = false;
@@ -68,6 +71,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 	let showPracticeGoals = false;
 	let showEstimatedParticipants = false;
 	let showContainsDrill = false;
+	let showSortBy = false;
 
 	// Provide safe defaults in case props are undefined
 	const fallbackNumberOfPeople = { min: 0, max: 100 };
@@ -204,6 +208,9 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 			case 'containsDrill':
 				if (filterType === 'practice-plans') isCurrentlyOpen = showContainsDrill;
 				break;
+			case 'sortBy':
+				if (filterType === 'practice-plans') isCurrentlyOpen = showSortBy;
+				break;
 		}
 
 		// Always close all filters first
@@ -248,6 +255,9 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 				case 'containsDrill':
 					if (filterType === 'practice-plans') showContainsDrill = true;
 					break;
+				case 'sortBy':
+					if (filterType === 'practice-plans') showSortBy = true;
+					break;
 			}
 		}
 		// If it *was* open, closeAllFilters() already handled closing it.
@@ -269,6 +279,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 		showPracticeGoals = false;
 		showEstimatedParticipants = false;
 		showContainsDrill = false;
+		showSortBy = false;
 	}
 
 	function handleClickOutside(event) {
@@ -849,11 +860,11 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 					aria-controls="practiceGoals-content"
 				>
 					Practice Goals
-					{#if selectedPracticeGoals.length > 0}
+					{#if Object.keys($selectedPracticeGoals).length > 0}
 						<span
 							class="absolute top-0 right-0 bg-blue-500 text-white text-xs rounded-full px-1 transform translate-x-1/2 -translate-y-1/2"
 						>
-							({selectedPracticeGoals.length})
+							({Object.keys($selectedPracticeGoals).length})
 						</span>
 					{/if}
 				</button>
@@ -997,6 +1008,70 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 		</div>
         {/if}
 
+	<!-- Sort Dropdown for Practice Plans -->
+	{#if filterType === 'practice-plans' && sortOptions.length > 0}
+		<div class="relative">
+			<button
+				class="inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 bg-gray-100 text-gray-700 hover:bg-gray-200"
+				on:click={() => toggleFilter('sortBy')}
+				aria-expanded={showSortBy}
+				aria-controls="sortBy-content"
+			>
+				Sort by: {sortOptions.find(opt => opt.value === $selectedSortOption)?.label || 'Date Created'}
+				<span class="ml-2">
+					{#if $selectedSortOrder === 'desc'}
+						↓
+					{:else}
+						↑
+					{/if}
+				</span>
+			</button>
+
+			{#if showSortBy}
+				<div
+					id="sortBy-content"
+					class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
+					on:click|stopPropagation
+					role="menu"
+					tabindex="0"
+				>
+					<div class="space-y-2">
+						{#each sortOptions as option}
+							<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
+								<input
+									type="radio"
+									name="sortBy"
+									value={option.value}
+									checked={$selectedSortOption === option.value}
+									on:change={() => {
+										selectedSortOption.set(option.value);
+										dispatch('filterChange');
+									}}
+									class="mr-2"
+								/>
+								<span>{option.label}</span>
+							</label>
+						{/each}
+					</div>
+					<div class="mt-4 pt-4 border-t border-gray-200">
+						<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
+							<input
+								type="checkbox"
+								checked={$selectedSortOrder === 'asc'}
+								on:change={() => {
+									selectedSortOrder.set($selectedSortOrder === 'asc' ? 'desc' : 'asc');
+									dispatch('filterChange');
+								}}
+								class="mr-2"
+							/>
+							<span>Ascending order</span>
+						</label>
+					</div>
+				</div>
+			{/if}
+		</div>
+	{/if}
+
         {#if (filterType === 'drills' && hasActiveDrillFilters) || (filterType === 'practice-plans' && hasActivePracticePlanFilters)}
                 <button
                         class="inline-flex items-center bg-red-500 text-white border border-red-600 rounded-full px-4 py-2 cursor-pointer hover:bg-red-600 transition-colors duration-300"
@@ -1007,7 +1082,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
         {/if}
 
         <!-- Overlay to close dropdown when clicking outside -->
-        {#if (filterType === 'drills' && (showSkillLevels || showDrillComplexity || showSkillsFocusedOn || showPositionsFocusedOn || showNumberOfPeople || showSuggestedLengths || showHasImages || showDrillTypes)) || (filterType === 'practice-plans' && (showPhaseOfSeason || showPracticeGoals || showEstimatedParticipants || showContainsDrill))}
+        {#if (filterType === 'drills' && (showSkillLevels || showDrillComplexity || showSkillsFocusedOn || showPositionsFocusedOn || showNumberOfPeople || showSuggestedLengths || showHasImages || showDrillTypes)) || (filterType === 'practice-plans' && (showPhaseOfSeason || showPracticeGoals || showEstimatedParticipants || showContainsDrill || showSortBy))}
                 <div
                         class="fixed inset-0 bg-transparent z-0"
                         on:click={closeAllFilters}

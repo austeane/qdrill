@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { teamService } from '$lib/server/services/teamService';
+import { teamService } from '$lib/server/services/teamService.js';
 
 export async function load({ locals }) {
   // If not logged in, show a public list of teams (read‑only)

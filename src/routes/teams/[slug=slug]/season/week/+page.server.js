@@ -82,7 +82,9 @@ export async function load({ locals, url, parent }) {
     };
   } catch (err) {
     console.error('Failed to load week view:', err);
-    if (err.status) throw err;
+    if (err?.status && err?.message) {
+      throw error(err.status, err.message);
+    }
     throw error(500, 'Failed to load week view data');
   }
 }

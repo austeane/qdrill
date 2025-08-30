@@ -1,5 +1,5 @@
-import { BaseEntityService } from './baseEntityService';
-import { ValidationError } from '$lib/server/errors';
+import { BaseEntityService } from './baseEntityService.js';
+import { ValidationError } from '$lib/server/errors.js';
 
 class TeamService extends BaseEntityService {
   constructor() {
@@ -13,7 +13,7 @@ class TeamService extends BaseEntityService {
 
   async create(data, userId) {
     // Import here to avoid circular dependency
-    const { teamMemberService } = await import('./teamMemberService');
+    const { teamMemberService } = await import('./teamMemberService.js');
     
     // Generate slug from name if not provided
     if (!data.slug) {
@@ -50,7 +50,7 @@ class TeamService extends BaseEntityService {
 
   async getUserTeams(userId) {
     // Import here to avoid circular dependency
-    const { teamMemberService } = await import('./teamMemberService');
+    const { teamMemberService } = await import('./teamMemberService.js');
     
     // Get all teams where user is a member
     const memberships = await teamMemberService.getUserMemberships(userId);

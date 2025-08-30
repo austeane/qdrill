@@ -1,4 +1,4 @@
-import { redirect } from '@sveltejs/kit';
+import { redirect, error } from '@sveltejs/kit';
 import { seasonService } from '$lib/server/services/seasonService.js';
 
 export async function load({ locals, parent }) {
@@ -12,10 +12,19 @@ export async function load({ locals, parent }) {
   if (!userRole) {
     throw redirect(302, '/teams');
   }
-  
-  const seasons = await seasonService.getTeamSeasons(team.id, locals.user.id);
-  
-  return {
-    seasons
-  };
+
+  try {
+    const seasons = await seasonService.getTeamSeasons(team.id, locals.user.id);
+    return { seasons };
+  } catch (err) {
+    // Normalize service-layer errors to SvelteKit HttpErrors
+    if (err?.status && err?.message) {
+      // If not a member, send them back to teams list
+      if (err.code === 'VALIDATION_ERROR' || /team members/i.test(err.message)) {
+        throw redirect(302, '/teams');
+      }
+      throw error(err.status, err.message);
+    }
+    throw error(500, 'Failed to load seasons');
+  }
 }

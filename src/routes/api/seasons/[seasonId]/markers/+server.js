@@ -1,67 +1,39 @@
 import { json } from '@sveltejs/kit';
 import { seasonMarkerService } from '$lib/server/services/seasonMarkerService.js';
-import { seasonService } from '$lib/server/services/seasonService.js';
-import { createSeasonMarkerSchema } from '$lib/validation/seasonMarkerSchema.js';
 
 export async function GET({ locals, params }) {
+  if (!locals.user) return json({ error: 'Authentication required' }, { status: 401 });
   try {
-    const raw = await seasonMarkerService.getSeasonMarkers(
-      params.seasonId,
-      locals.user?.id
-    );
-    // Map to UI shape expected by timeline and markers UI
-    const markers = raw.map((m) => ({
-      id: m.id,
-      type: m.type,
-      name: m.title,
-      date: m.start_date,
-      end_date: m.end_date,
-      color: m.color,
-      visible_to_members: m.visible_to_members
+    const items = await seasonMarkerService.getSeasonMarkers(params.seasonId, locals.user.id);
+    // Normalize for UI that may expect `date` when not a range
+    const normalized = items.map((m) => ({
+      ...m,
+      date: m.start_date && !m.end_date ? m.start_date : m.date || m.start_date
     }));
-    return json(markers);
-  } catch (error) {
-    return json({ error: error.message }, { status: error.statusCode || 500 });
+    return json(normalized);
+  } catch (err) {
+    return json({ error: err?.message || 'Failed to fetch markers' }, { status: err?.status || 500 });
   }
 }
 
 export async function POST({ locals, params, request }) {
-  if (!locals.user) {
-    return json({ error: 'Authentication required' }, { status: 401 });
-  }
-  
+  if (!locals.user) return json({ error: 'Authentication required' }, { status: 401 });
   try {
-    const data = await request.json();
-    // Accept both new UI shape (name/date) and service shape (title/start_date)
-    const normalized = {
-      ...data,
-      title: data.title ?? data.name,
-      start_date: data.start_date ?? data.date,
-      end_date: data.end_date ?? null,
-      season_id: params.seasonId
+    const body = await request.json();
+    const payload = {
+      season_id: params.seasonId,
+      type: body.type || 'event',
+      title: body.name || body.title || '',
+      notes: body.description || body.notes || null,
+      color: body.color || '#3b82f6',
+      start_date: body.start_date || body.date,
+      end_date: body.end_date || null,
+      visible_to_members: true
     };
-    const validated = createSeasonMarkerSchema.parse(normalized);
-    
-    const marker = await seasonMarkerService.create(validated, locals.user.id);
-    
-    // Return in UI shape expected by timeline
-    const result = {
-      id: marker.id,
-      type: marker.type,
-      name: marker.title,
-      title: marker.title,
-      date: marker.start_date,
-      start_date: marker.start_date,
-      end_date: marker.end_date,
-      color: marker.color,
-      visible_to_members: marker.visible_to_members
-    };
-    
-    return json({ success: true, marker: result }, { status: 201 });
-  } catch (error) {
-    if (error.name === 'ZodError') {
-      return json({ error: 'Invalid input', details: error.errors }, { status: 400 });
-    }
-    return json({ error: error.message }, { status: error.statusCode || 500 });
+    const created = await seasonMarkerService.create(payload, locals.user.id);
+    return json(created, { status: 201 });
+  } catch (err) {
+    return json({ error: err?.message || 'Failed to create marker' }, { status: err?.status || 500 });
   }
 }
+

@@ -8,7 +8,7 @@ export async function requireTeamAdmin(teamId, userId) {
   
   // Lazy load to avoid circular dependency
   if (!teamMemberService) {
-    const module = await import('$lib/server/services/teamMemberService');
+    const module = await import('$lib/server/services/teamMemberService.js');
     teamMemberService = module.teamMemberService;
   }
   
@@ -24,7 +24,7 @@ export async function requireTeamMember(teamId, userId) {
   
   // Lazy load to avoid circular dependency
   if (!teamMemberService) {
-    const module = await import('$lib/server/services/teamMemberService');
+    const module = await import('$lib/server/services/teamMemberService.js');
     teamMemberService = module.teamMemberService;
   }
   
@@ -38,7 +38,7 @@ export async function getTeamRole(teamId, userId) {
   
   // Lazy load to avoid circular dependency
   if (!teamMemberService) {
-    const module = await import('$lib/server/services/teamMemberService');
+    const module = await import('$lib/server/services/teamMemberService.js');
     teamMemberService = module.teamMemberService;
   }
   

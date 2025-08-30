@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { teamService } from '$lib/server/services/teamService';
+import { teamService } from '$lib/server/services/teamService.js';
 import { requireTeamAdmin, requireTeamMember } from '$lib/server/auth/teamPermissions';
 import { updateTeamSchema } from '$lib/validation/teamSchema';
 

@@ -1,5 +1,5 @@
-import { BaseEntityService } from './baseEntityService';
-import { ForbiddenError, ValidationError } from '$lib/server/errors';
+import { BaseEntityService } from './baseEntityService.js';
+import { ForbiddenError, ValidationError } from '$lib/server/errors.js';
 
 class TeamMemberService extends BaseEntityService {
   constructor() {

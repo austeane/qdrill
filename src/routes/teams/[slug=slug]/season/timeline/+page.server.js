@@ -25,7 +25,9 @@ export async function load({ locals, parent }) {
     };
   } catch (err) {
     console.error('Failed to load timeline data:', err);
-    if (err.status) throw err;
+    if (err?.status && err?.message) {
+      throw error(err.status, err.message);
+    }
     throw error(500, 'Failed to load timeline data');
   }
 }

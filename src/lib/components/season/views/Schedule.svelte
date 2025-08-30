@@ -424,7 +424,7 @@
     {season}
     {sections}
     date={selectedDate}
-    teamSlug={teamSlug}
+    teamId={teamSlug}
     on:save={handlePracticeCreated}
     on:close={() => showPracticeDialog = false}
   />
@@ -434,7 +434,7 @@
   {season}
   {sections}
   date={selectedDate}
-  {teamId}
+  teamId={teamSlug}
   on:save={handlePracticeCreated}
   on:close={() => showPracticeDialog = false}
 />

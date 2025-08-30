@@ -24,7 +24,7 @@ export async function load({ fetch, url, locals }) {
 	// --- Get parameters from URL ---
 	const page = url.searchParams.get('page') || '1';
 	const limit = url.searchParams.get('limit') || '10'; // Or your preferred default
-	const sortBy = url.searchParams.get('sortBy') || 'created_at';
+	const sortBy = url.searchParams.get('sortBy') || 'upvotes';
 	const sortOrder = url.searchParams.get('sortOrder') || 'desc';
 	const search = url.searchParams.get('search') || '';
 	// Get other filter params directly from the URL to pass to the API

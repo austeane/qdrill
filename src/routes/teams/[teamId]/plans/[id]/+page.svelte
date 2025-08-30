@@ -109,8 +109,8 @@
 		<Breadcrumb
 			items={[
 				{ label: 'Teams', href: '/teams' },
-				{ label: team.name, href: `/teams/${team.id}/season` },
-				{ label: 'Practice Plans', href: `/teams/${team.id}/plans` },
+				{ label: team.name, href: `/teams/${team.slug}/season` },
+				{ label: 'Practice Plans', href: `/teams/${team.slug}/plans` },
 				{ label: practicePlan.name || 'Practice Plan' }
 			]}
 		/>
@@ -158,14 +158,14 @@
 		<div class="header-actions">
 			{#if userCanEdit}
 				<a
-					href="/teams/{team.id}/plans/{practicePlan.id}/edit"
+					href="/teams/{team.slug}/plans/{practicePlan.id}/edit"
 					class="btn btn-secondary"
 				>
 					Edit
 				</a>
 			{/if}
 			<a
-				href="/teams/{team.id}/season"
+				href="/teams/{team.slug}/season"
 				class="btn btn-secondary"
 			>
 				Back to Season

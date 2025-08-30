@@ -2,11 +2,96 @@
 	import { page } from '$app/stores';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import { goto } from '$app/navigation';
+	import { Search, Calendar, Filter } from 'lucide-svelte';
 
 	export let data;
 	const { team, practicePlans, userRole } = data;
 
 	$: canCreatePractice = userRole === 'admin' || userRole === 'coach';
+	
+	let searchQuery = '';
+	let selectedType = 'all';
+	let dateFilter = 'all';
+	
+	const practiceTypes = [
+		{ value: 'all', label: 'All Types' },
+		{ value: 'regular', label: 'Regular' },
+		{ value: 'scrimmage', label: 'Scrimmage' },
+		{ value: 'tournament', label: 'Tournament' },
+		{ value: 'special', label: 'Special' }
+	];
+	
+	const dateFilters = [
+		{ value: 'all', label: 'All Dates' },
+		{ value: 'upcoming', label: 'Upcoming' },
+		{ value: 'past', label: 'Past' },
+		{ value: 'this-week', label: 'This Week' },
+		{ value: 'this-month', label: 'This Month' }
+	];
+	
+	$: filteredPlans = filterPlans(practicePlans, searchQuery, selectedType, dateFilter);
+	
+	function filterPlans(plans, search, type, date) {
+		let filtered = [...plans];
+		
+		// Search filter
+		if (search.trim()) {
+			const query = search.toLowerCase();
+			filtered = filtered.filter(plan => 
+				(plan.name || '').toLowerCase().includes(query) ||
+				(plan.description || '').toLowerCase().includes(query)
+			);
+		}
+		
+		// Type filter
+		if (type !== 'all') {
+			filtered = filtered.filter(plan => plan.practice_type === type);
+		}
+		
+		// Date filter
+		if (date !== 'all') {
+			const today = new Date();
+			today.setHours(0, 0, 0, 0);
+			
+			filtered = filtered.filter(plan => {
+				if (!plan.scheduled_date) return false;
+				const planDate = new Date(plan.scheduled_date + 'T00:00:00');
+				
+				switch (date) {
+					case 'upcoming':
+						return planDate >= today;
+					case 'past':
+						return planDate < today;
+					case 'this-week':
+						const weekStart = new Date(today);
+						weekStart.setDate(today.getDate() - today.getDay());
+						const weekEnd = new Date(weekStart);
+						weekEnd.setDate(weekStart.getDate() + 6);
+						return planDate >= weekStart && planDate <= weekEnd;
+					case 'this-month':
+						return planDate.getMonth() === today.getMonth() && 
+						       planDate.getFullYear() === today.getFullYear();
+					default:
+						return true;
+				}
+			});
+		}
+		
+		// Sort by date (most recent first)
+		filtered.sort((a, b) => {
+			const dateA = a.scheduled_date ? new Date(a.scheduled_date) : new Date(0);
+			const dateB = b.scheduled_date ? new Date(b.scheduled_date) : new Date(0);
+			return dateB - dateA;
+		});
+		
+		return filtered;
+	}
+	
+	function clearFilters() {
+		searchQuery = '';
+		selectedType = 'all';
+		dateFilter = 'all';
+	}
 
 	function formatDuration(minutes) {
 		const hours = Math.floor(minutes / 60);
@@ -43,7 +128,7 @@
 		<Breadcrumb
 			items={[
 				{ label: 'Teams', href: '/teams' },
-				{ label: team.name, href: `/teams/${team.id}/season` },
+				{ label: team.name, href: `/teams/${team.slug}/season` },
 				{ label: 'Practice Plans' }
 			]}
 		/>
@@ -54,26 +139,62 @@
 		<div>
 			<h1 class="page-title">Practice Plans</h1>
 			<p class="page-subtitle">
-				{practicePlans.length} practice {practicePlans.length === 1 ? 'plan' : 'plans'} for {team.name}
+				{filteredPlans.length} of {practicePlans.length} practice {practicePlans.length === 1 ? 'plan' : 'plans'} for {team.name}
 			</p>
 		</div>
 		<div class="header-actions">
 			{#if canCreatePractice}
-				<a href="/teams/{team.id}/season" class="btn btn-primary">
+				<a href="/teams/{team.slug}/season" class="btn btn-primary">
 					Create Practice
 				</a>
 			{/if}
-			<a href="/teams/{team.id}/season" class="btn btn-secondary">
+			<a href="/teams/{team.slug}/season" class="btn btn-secondary">
 				Back to Season
 			</a>
 		</div>
 	</div>
 
+	<!-- Search and Filters -->
+	<div class="search-filters">
+		<div class="search-bar">
+			<Search size={20} class="search-icon" />
+			<input
+				type="text"
+				placeholder="Search practice plans..."
+				bind:value={searchQuery}
+				class="search-input"
+			/>
+		</div>
+		
+		<div class="filter-group">
+			<select bind:value={selectedType} class="filter-select">
+				{#each practiceTypes as type}
+					<option value={type.value}>{type.label}</option>
+				{/each}
+			</select>
+		</div>
+		
+		<div class="filter-group">
+			<select bind:value={dateFilter} class="filter-select">
+				{#each dateFilters as filter}
+					<option value={filter.value}>{filter.label}</option>
+				{/each}
+			</select>
+		</div>
+		
+		{#if selectedType !== 'all' || dateFilter !== 'all' || searchQuery}
+			<button class="clear-filters" on:click={clearFilters}>
+				<Filter size={16} />
+				Clear Filters
+			</button>
+		{/if}
+	</div>
+
 	<!-- Practice Plans List -->
-	{#if practicePlans.length > 0}
+	{#if filteredPlans.length > 0}
 		<div class="practice-plans-grid">
-			{#each practicePlans as plan}
-				<a href="/teams/{team.id}/plans/{plan.id}" class="practice-plan-card">
+			{#each filteredPlans as plan}
+					<a href="/teams/{team.slug}/plans/{plan.id}" class="practice-plan-card">
 					<div class="card-header">
 						<h3 class="plan-name">{plan.name || 'Untitled Practice'}</h3>
 						{#if plan.practice_type}
@@ -132,6 +253,17 @@
 				</a>
 			{/each}
 		</div>
+	{:else if practicePlans.length > 0}
+		<div class="empty-state">
+			<svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+			</svg>
+			<h2>No matching practice plans</h2>
+			<p>Try adjusting your search or filters</p>
+			<button class="btn btn-secondary" on:click={clearFilters}>
+				Clear Filters
+			</button>
+		</div>
 	{:else}
 		<div class="empty-state">
 			<svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -140,7 +272,7 @@
 			<h2>No practice plans yet</h2>
 			<p>Create your first practice plan to get started</p>
 			{#if canCreatePractice}
-				<a href="/teams/{team.id}/season" class="btn btn-primary">
+				<a href="/teams/{team.slug}/season" class="btn btn-primary">
 					Go to Season View
 				</a>
 			{/if}
@@ -209,6 +341,89 @@
 
 	.btn-secondary:hover {
 		background-color: var(--color-bg-hover);
+	}
+	
+	/* Search and Filter Styles */
+	.search-filters {
+		display: flex;
+		gap: 1rem;
+		margin-bottom: 1.5rem;
+		flex-wrap: wrap;
+	}
+	
+	.search-bar {
+		flex: 1;
+		min-width: 250px;
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+	
+	:global(.search-icon) {
+		position: absolute;
+		left: 1rem;
+		color: #6b7280;
+		pointer-events: none;
+	}
+	
+	.search-input {
+		width: 100%;
+		padding: 0.75rem 1rem 0.75rem 3rem;
+		border: 1px solid var(--color-border);
+		border-radius: 0.5rem;
+		font-size: 1rem;
+		background: var(--color-bg-secondary);
+		color: var(--color-text);
+		transition: all 0.2s;
+	}
+	
+	.search-input:focus {
+		outline: none;
+		border-color: var(--color-primary);
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+	}
+	
+	.filter-group {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+	
+	.filter-select {
+		padding: 0.75rem 1rem;
+		border: 1px solid var(--color-border);
+		border-radius: 0.5rem;
+		background: var(--color-bg-secondary);
+		color: var(--color-text);
+		font-size: 1rem;
+		cursor: pointer;
+		transition: all 0.2s;
+		min-width: 150px;
+	}
+	
+	.filter-select:focus {
+		outline: none;
+		border-color: var(--color-primary);
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+	}
+	
+	.clear-filters {
+		padding: 0.75rem 1rem;
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border);
+		border-radius: 0.5rem;
+		color: var(--color-text);
+		font-size: 1rem;
+		cursor: pointer;
+		transition: all 0.2s;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+	
+	.clear-filters:hover {
+		background: var(--color-bg-hover);
+		border-color: var(--color-primary);
 	}
 
 	.practice-plans-grid {

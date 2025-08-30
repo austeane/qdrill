@@ -65,11 +65,13 @@
     
     try {
       // Check for existing practices on this date
-      const existingPractices = await apiFetch(
+      const response = await apiFetch(
         `/api/teams/${teamId}/practice-plans?date=${selectedDate}`
       );
       
-      if (Array.isArray(existingPractices) && existingPractices.length > 0) {
+      const existingPractices = response.items || [];
+      
+      if (existingPractices.length > 0) {
         if (!confirm(`A practice already exists on ${formatDate(selectedDate)}. Create another?`)) {
           loading = false;
           return;
@@ -77,7 +79,7 @@
       }
       
       // Call the instantiate endpoint to create the practice plan
-      const response = await apiFetch(`/api/seasons/${season.id}/instantiate`, {
+      const practiceResponse = await apiFetch(`/api/seasons/${season.id}/instantiate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -88,7 +90,7 @@
         })
       });
       
-      if (!response || !response.id) {
+      if (!practiceResponse || !practiceResponse.id) {
         throw new Error('Failed to create practice - no ID returned');
       }
       
@@ -100,22 +102,20 @@
       });
       
       console.log('Practice created:', { 
-        responseId: response?.id, 
+        responseId: practiceResponse?.id, 
         createAndEdit, 
         teamId,
-        navigateTo: createAndEdit ? `/teams/${teamId}/plans/${response.id}/edit` : 'reload'
+        navigateTo: createAndEdit ? `/teams/${teamId}/plans/${practiceResponse.id}/edit` : 'reload'
       });
       
       if (createAndEdit) {
         // Navigate first, then close the dialog to avoid resetting createAndEdit
-        const editUrl = `/teams/${teamId}/plans/${response.id}/edit`;
+        const editUrl = `/teams/${teamId}/plans/${practiceResponse.id}/edit`;
         await goto(editUrl);
         handleClose();
       } else {
-        dispatch('save', response);
+        dispatch('save', practiceResponse);
         handleClose();
-        // Refresh the page to show the new practice
-        window.location.reload();
       }
     } catch (error) {
       console.error('Failed to create practice:', error);

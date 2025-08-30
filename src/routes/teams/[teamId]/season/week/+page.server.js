@@ -2,6 +2,7 @@ import { redirect, error } from '@sveltejs/kit';
 import { teamMemberService } from '$lib/server/services/teamMemberService.js';
 import { seasonService } from '$lib/server/services/seasonService.js';
 import { practicePlanService } from '$lib/server/services/practicePlanService.js';
+import { teamService } from '$lib/server/services/teamService.js';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ locals, params, url }) {
@@ -9,7 +10,8 @@ export async function load({ locals, params, url }) {
     throw redirect(303, '/login');
   }
 
-  const member = await teamMemberService.getMember(params.teamId, locals.user.id);
+  const team = await teamService.getById(params.teamId);
+  const member = await teamMemberService.getMember(team.id, locals.user.id);
   if (!member) {
     throw redirect(303, '/');
   }
@@ -32,7 +34,7 @@ export async function load({ locals, params, url }) {
     const endDateStr = weekEnd.toISOString().split('T')[0];
 
     // Get active season for the team using server service
-    const seasons = await seasonService.getTeamSeasons(params.teamId, locals.user.id);
+    const seasons = await seasonService.getTeamSeasons(team.id, locals.user.id);
     const season = seasons.find(s => s.is_active) || seasons[0];
     
     if (!season) {
@@ -49,7 +51,7 @@ export async function load({ locals, params, url }) {
     // Get practices for the season and week
     const practicesResult = await practicePlanService.getAll({
       filters: {
-        team_id: params.teamId,
+        team_id: team.id,
         season_id: season.id,
         scheduled_date_start: startDateStr,
         scheduled_date_end: endDateStr
@@ -76,6 +78,7 @@ export async function load({ locals, params, url }) {
 
     return {
       userRole: member.role,
+      team,
       season,
       practices,
       markers,

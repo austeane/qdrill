@@ -12,19 +12,19 @@ export async function load({ locals, params }) {
   
   try {
     // Check team membership and get role
-    const userRole = await getTeamRole(teamId, locals.user.id);
+    const team = await teamService.getById(teamId);
+    const userRole = await getTeamRole(team.id, locals.user.id);
     if (!userRole) {
       throw redirect(302, '/teams');
     }
     
-    // Get team info
-    const team = await teamService.getById(teamId);
+    // team already loaded
     if (!team) {
       throw error(404, 'Team not found');
     }
     
     // Get seasons for this team
-    const seasons = await seasonService.getTeamSeasons(teamId, locals.user.id);
+    const seasons = await seasonService.getTeamSeasons(team.id, locals.user.id);
     
     // Find active season or use the first one
     const activeSeason = seasons.find(s => s.is_active) || seasons[0];

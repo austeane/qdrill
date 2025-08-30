@@ -5,6 +5,7 @@
   import { toast } from '@zerodevx/svelte-toast';
   import EditSectionSheet from './EditSectionSheet.svelte';
   import EditMarkerSheet from './EditMarkerSheet.svelte';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
   
   export let season = null;
   export let sections = [];
@@ -19,6 +20,9 @@
   let editingMarker = null;
   let deletingItem = null;
   let deleteType = null;
+  let confirmDeleteSection = null;
+  let confirmDeleteMarker = null;
+  let deleteLoading = false;
   
   async function handleSectionMove(section, direction) {
     const currentIndex = sections.findIndex(s => s.id === section.id);
@@ -59,10 +63,15 @@
     }
   }
   
-  async function handleSectionDelete(section) {
-    if (!confirm(`Delete section "${section.name}"? This cannot be undone.`)) {
-      return;
-    }
+  function handleSectionDeleteClick(section) {
+    confirmDeleteSection = section;
+  }
+  
+  async function handleSectionDelete() {
+    const section = confirmDeleteSection;
+    if (!section) return;
+    
+    deleteLoading = true;
     
     try {
       await apiFetch(`/api/seasons/${season.id}/sections/${section.id}`, {
@@ -86,13 +95,21 @@
           '--toastColor': 'white'
         }
       });
+    } finally {
+      confirmDeleteSection = null;
+      deleteLoading = false;
     }
   }
   
-  async function handleMarkerDelete(marker) {
-    if (!confirm(`Delete event "${marker.name}"? This cannot be undone.`)) {
-      return;
-    }
+  function handleMarkerDeleteClick(marker) {
+    confirmDeleteMarker = marker;
+  }
+  
+  async function handleMarkerDelete() {
+    const marker = confirmDeleteMarker;
+    if (!marker) return;
+    
+    deleteLoading = true;
     
     try {
       await apiFetch(`/api/seasons/${season.id}/markers/${marker.id}`, {
@@ -116,6 +133,9 @@
           '--toastColor': 'white'
         }
       });
+    } finally {
+      confirmDeleteMarker = null;
+      deleteLoading = false;
     }
   }
   
@@ -235,7 +255,7 @@
             
             <button
               class="action-button delete"
-              on:click={() => handleSectionDelete(section)}
+              on:click={() => handleSectionDeleteClick(section)}
               aria-label="Delete"
             >
               <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -300,7 +320,7 @@
             
             <button
               class="action-button delete"
-              on:click={() => handleMarkerDelete(marker)}
+              on:click={() => handleMarkerDeleteClick(marker)}
               aria-label="Delete"
             >
               <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -343,6 +363,31 @@
     on:close={() => showMarkerSheet = false}
   />
 {/if}
+
+<!-- Confirm Delete Dialogs -->
+<ConfirmDialog
+  bind:open={confirmDeleteSection}
+  title="Delete Section"
+  message={`Are you sure you want to delete the section "${confirmDeleteSection?.name}"? This action cannot be undone.`}
+  confirmText="Delete"
+  cancelText="Cancel"
+  confirmVariant="destructive"
+  loading={deleteLoading}
+  on:confirm={handleSectionDelete}
+  on:cancel={() => confirmDeleteSection = null}
+/>
+
+<ConfirmDialog
+  bind:open={confirmDeleteMarker}
+  title="Delete Event"
+  message={`Are you sure you want to delete the event "${confirmDeleteMarker?.name}"? This action cannot be undone.`}
+  confirmText="Delete"
+  cancelText="Cancel"
+  confirmVariant="destructive"
+  loading={deleteLoading}
+  on:confirm={handleMarkerDelete}
+  on:cancel={() => confirmDeleteMarker = null}
+/>
 
 <style>
   .manage-container {

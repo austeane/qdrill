@@ -3,6 +3,7 @@ import { teamMemberService } from '$lib/server/services/teamMemberService';
 import { userService } from '$lib/server/services/userService';
 import { requireTeamAdmin, requireTeamMember } from '$lib/server/auth/teamPermissions';
 import { teamMemberSchema } from '$lib/validation/teamSchema';
+import { teamService } from '$lib/server/services/teamService.js';
 
 export async function GET({ locals, params }) {
   if (!locals.user) {
@@ -10,8 +11,9 @@ export async function GET({ locals, params }) {
   }
   
   try {
-    await requireTeamMember(params.teamId, locals.user.id);
-    const members = await teamMemberService.getTeamMembers(params.teamId);
+    const team = await teamService.getById(params.teamId);
+    await requireTeamMember(team.id, locals.user.id);
+    const members = await teamMemberService.getTeamMembers(team.id);
     
     // Fetch user details for each member
     const membersWithDetails = await Promise.all(
@@ -41,11 +43,12 @@ export async function POST({ locals, params, request }) {
   }
   
   try {
-    await requireTeamAdmin(params.teamId, locals.user.id);
+    const team = await teamService.getById(params.teamId);
+    await requireTeamAdmin(team.id, locals.user.id);
     const data = await request.json();
     const validated = teamMemberSchema.parse(data);
     const member = await teamMemberService.addMember(
-      params.teamId,
+      team.id,
       validated.user_id,
       validated.role
     );
@@ -67,8 +70,9 @@ export async function PATCH({ locals, params, request }) {
     const data = await request.json();
     const { user_id, role } = data;
     
+    const team = await teamService.getById(params.teamId);
     const member = await teamMemberService.updateRole(
-      params.teamId,
+      team.id,
       user_id,
       role,
       locals.user.id
@@ -88,8 +92,9 @@ export async function DELETE({ locals, params, request }) {
     const data = await request.json();
     const { user_id } = data;
     
+    const team = await teamService.getById(params.teamId);
     await teamMemberService.removeMember(
-      params.teamId,
+      team.id,
       user_id,
       locals.user.id
     );

@@ -9,8 +9,8 @@ export async function GET({ locals, params }) {
   }
   
   try {
-    await requireTeamMember(params.teamId, locals.user.id);
     const team = await teamService.getById(params.teamId);
+    await requireTeamMember(team.id, locals.user.id);
     return json(team);
   } catch (error) {
     return json({ error: error.message }, { status: error.status || 500 });
@@ -23,11 +23,12 @@ export async function PATCH({ locals, params, request }) {
   }
   
   try {
-    await requireTeamAdmin(params.teamId, locals.user.id);
+    const team = await teamService.getById(params.teamId);
+    await requireTeamAdmin(team.id, locals.user.id);
     const data = await request.json();
     const validated = updateTeamSchema.parse(data);
-    const team = await teamService.update(params.teamId, validated);
-    return json(team);
+    const updated = await teamService.update(team.id, validated);
+    return json(updated);
   } catch (error) {
     if (error.name === 'ZodError') {
       return json({ error: 'Invalid input', details: error.errors }, { status: 400 });
@@ -42,8 +43,9 @@ export async function DELETE({ locals, params }) {
   }
   
   try {
-    await requireTeamAdmin(params.teamId, locals.user.id);
-    await teamService.delete(params.teamId);
+    const team = await teamService.getById(params.teamId);
+    await requireTeamAdmin(team.id, locals.user.id);
+    await teamService.delete(team.id);
     return json({ success: true });
   } catch (error) {
     return json({ error: error.message }, { status: error.status || 500 });

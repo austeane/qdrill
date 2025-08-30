@@ -46,7 +46,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newTeam)
       });
-      goto(`/teams/${team.id}/settings`);
+      goto(`/teams/${team.slug}/settings`);
     } catch (err) {
       createError = err?.message || 'Failed to create team';
     } finally {
@@ -164,9 +164,9 @@
         <div slot="header" class="flex items-start justify-between">
           <h3>
             {#if data.isAuthenticated}
-              <a href={`/teams/${team.id}/season`} class="hover:underline font-semibold">{team.name}</a>
+              <a href={`/teams/${team.slug}/season`} class="hover:underline font-semibold">{team.name}</a>
             {:else}
-              <a href={`/login?next=${encodeURIComponent(`/teams/${team.id}/season`)}`} class="font-semibold">{team.name}</a>
+              <a href={`/login?next=${encodeURIComponent(`/teams/${team.slug}/season`)}`} class="font-semibold">{team.name}</a>
             {/if}
           </h3>
           {#if data.isAuthenticated && team.role}
@@ -198,15 +198,15 @@
         <div slot="footer" class="flex items-center justify-between">
           <div class="flex gap-2">
             {#if data.isAuthenticated}
-              <Button href={`/teams/${team.id}/season`} size="sm">View Season</Button>
+              <Button href={`/teams/${team.slug}/season`} size="sm">View Season</Button>
               {#if team.role === 'admin'}
-                <Button href={`/teams/${team.id}/settings`} variant="ghost" size="sm">
+                <Button href={`/teams/${team.slug}/settings`} variant="ghost" size="sm">
                   <Shield size={14} class="mr-1" />
                   Settings
                 </Button>
               {/if}
             {:else}
-              <Button href={`/login?next=${encodeURIComponent(`/teams/${team.id}/season`)}`} size="sm">View Season</Button>
+              <Button href={`/login?next=${encodeURIComponent(`/teams/${team.slug}/season`)}`} size="sm">View Season</Button>
             {/if}
           </div>
         </div>

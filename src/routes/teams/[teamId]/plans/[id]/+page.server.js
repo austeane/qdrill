@@ -17,10 +17,10 @@ export async function load({ params, fetch, locals }) {
 		const teamMember = team.members?.find(m => m.user_id === userId);
 		const userRole = teamMember?.role || 'viewer';
 		
-		// Verify the practice plan belongs to this team
-		if (practicePlan.team_id && practicePlan.team_id !== teamId) {
-			throw error(403, 'This practice plan does not belong to this team');
-		}
+    // Verify the practice plan belongs to this team
+    if (practicePlan.team_id && practicePlan.team_id !== team.id) {
+      throw error(403, 'This practice plan does not belong to this team');
+    }
 
 		return { 
 			practicePlan,

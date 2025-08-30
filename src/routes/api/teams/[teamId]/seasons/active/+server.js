@@ -1,14 +1,16 @@
 import { json } from '@sveltejs/kit';
 import { query } from '$lib/server/db.js';
 import { teamMemberService } from '$lib/server/services/teamMemberService.js';
+import { teamService } from '$lib/server/services/teamService.js';
 
 export async function GET({ locals, params }) {
   if (!locals.user) {
     return json({ error: 'Authentication required' }, { status: 401 });
   }
   
-  // Check team membership
-  const member = await teamMemberService.getMember(params.teamId, locals.user.id);
+  // Resolve slug/UUID and check team membership
+  const team = await teamService.getById(params.teamId);
+  const member = await teamMemberService.getMember(team.id, locals.user.id);
   if (!member) {
     return json({ error: 'Not a team member' }, { status: 403 });
   }
@@ -23,7 +25,7 @@ export async function GET({ locals, params }) {
       LIMIT 1
     `;
     
-    const result = await query(queryStr, [params.teamId]);
+    const result = await query(queryStr, [team.id]);
     
     if (result.rows.length === 0) {
       return json({ error: 'No active season found' }, { status: 404 });

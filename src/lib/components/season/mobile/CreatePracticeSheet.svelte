@@ -45,9 +45,11 @@
     
     try {
       // Check if practice already exists on this date
-      const existingPractices = await apiFetch(
+      const response = await apiFetch(
         `/api/teams/${teamId}/practice-plans?date=${selectedDate}`
       );
+      
+      const existingPractices = response.items || [];
       
       if (existingPractices.length > 0) {
         if (!confirm(`A practice already exists on ${formatDate(selectedDate)}. Create another?`)) {
@@ -57,7 +59,7 @@
       }
       
       // Create practice via instantiate endpoint
-      const response = await apiFetch(`/api/seasons/${season.id}/instantiate`, {
+      const practiceResponse = await apiFetch(`/api/seasons/${season.id}/instantiate`, {
         method: 'POST',
         body: JSON.stringify({
           scheduled_date: selectedDate,
@@ -73,7 +75,7 @@
         }
       });
       
-      dispatch('save', response);
+      dispatch('save', practiceResponse);
       handleClose();
     } catch (error) {
       console.error('Failed to create practice:', error);

@@ -42,7 +42,7 @@
     updateSuccess = false;
 
     try {
-      await apiFetch(`/api/teams/${team.id}`, {
+      await apiFetch(`/api/teams/${team.slug}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,7 +82,7 @@
       const userId = usersResult[0].id;
 
       // Add member
-      await apiFetch(`/api/teams/${team.id}/members`, {
+      await apiFetch(`/api/teams/${team.slug}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -97,7 +97,7 @@
       newMemberRole = 'member';
       
       // Refresh data
-      await invalidate(`/teams/${team.id}/settings`);
+      await invalidate(`/teams/${team.slug}/settings`);
     } catch (err) {
       addMemberError = err?.message || 'Failed to add member';
     } finally {
@@ -107,7 +107,7 @@
 
   async function updateMemberRole(userId, newRole) {
     try {
-      await apiFetch(`/api/teams/${team.id}/members`, {
+      await apiFetch(`/api/teams/${team.slug}/members`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -117,7 +117,7 @@
       });
       
       toast.push('Role updated successfully', { theme: { '--toastBackground': '#10b981' } });
-      await invalidate(`/teams/${team.id}/settings`);
+      await invalidate(`/teams/${team.slug}/settings`);
     } catch (err) {
       toast.push(err?.message || 'Failed to update role', { theme: { '--toastBackground': '#ef4444' } });
     }
@@ -127,7 +127,7 @@
     if (!confirm(`Are you sure you want to remove ${userName} from the team?`)) return;
 
     try {
-      await apiFetch(`/api/teams/${team.id}/members`, {
+      await apiFetch(`/api/teams/${team.slug}/members`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -136,7 +136,7 @@
       });
       
       toast.push('Member removed successfully', { theme: { '--toastBackground': '#10b981' } });
-      await invalidate(`/teams/${team.id}/settings`);
+      await invalidate(`/teams/${team.slug}/settings`);
     } catch (err) {
       toast.push(err?.message || 'Failed to remove member', { theme: { '--toastBackground': '#ef4444' } });
     }

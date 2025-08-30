@@ -14,7 +14,7 @@ export async function load({ locals, params }) {
     throw error(404, 'Team not found');
   }
   
-  const role = await getTeamRole(params.teamId, locals.user.id);
+  const role = await getTeamRole(team.id, locals.user.id);
   if (!role) {
     throw error(403, 'You are not a member of this team');
   }
@@ -23,7 +23,7 @@ export async function load({ locals, params }) {
     throw error(403, 'Only team admins can access settings');
   }
   
-  const members = await teamMemberService.getTeamMembers(params.teamId);
+  const members = await teamMemberService.getTeamMembers(team.id);
   
   // Fetch user details for all members
   const userIds = members.map(m => m.user_id);

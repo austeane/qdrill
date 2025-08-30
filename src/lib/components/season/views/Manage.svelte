@@ -10,6 +10,9 @@
   import EditSectionSheet from '../mobile/EditSectionSheet.svelte';
   import EditMarkerSheet from '../mobile/EditMarkerSheet.svelte';
   import Dialog from '$lib/components/ui/Dialog.svelte';
+  import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
+  import CreateSectionDialog from '../desktop/CreateSectionDialog.svelte';
+  import CreateMarkerDialog from '../desktop/CreateMarkerDialog.svelte';
   import { Plus, GripHorizontal, Calendar, Clock, ArrowUp, ArrowDown, Edit2, Trash2, Layers, Star } from 'lucide-svelte';
   
   export let season = null;
@@ -24,6 +27,9 @@
   let editingSection = null;
   let editingMarker = null;
   let reordering = false;
+  let confirmDeleteSection = null;
+  let confirmDeleteMarker = null;
+  let deleteLoading = false;
   
   async function handleSectionMove(section, direction) {
     const currentIndex = sections.findIndex(s => s.id === section.id);
@@ -64,10 +70,15 @@
     }
   }
   
-  async function handleSectionDelete(section) {
-    if (!confirm(`Delete section "${section.name}"? This cannot be undone.`)) {
-      return;
-    }
+  function handleSectionDeleteClick(section) {
+    confirmDeleteSection = section;
+  }
+  
+  async function handleSectionDelete() {
+    const section = confirmDeleteSection;
+    if (!section) return;
+    
+    deleteLoading = true;
     
     try {
       await apiFetch(`/api/seasons/${season.id}/sections/${section.id}`, {
@@ -91,13 +102,21 @@
           '--toastColor': 'white'
         }
       });
+    } finally {
+      confirmDeleteSection = null;
+      deleteLoading = false;
     }
   }
   
-  async function handleMarkerDelete(marker) {
-    if (!confirm(`Delete event "${marker.name || marker.title}"? This cannot be undone.`)) {
-      return;
-    }
+  function handleMarkerDeleteClick(marker) {
+    confirmDeleteMarker = marker;
+  }
+  
+  async function handleMarkerDelete() {
+    const marker = confirmDeleteMarker;
+    if (!marker) return;
+    
+    deleteLoading = true;
     
     try {
       await apiFetch(`/api/seasons/${season.id}/markers/${marker.id}`, {
@@ -121,6 +140,9 @@
           '--toastColor': 'white'
         }
       });
+    } finally {
+      confirmDeleteMarker = null;
+      deleteLoading = false;
     }
   }
   
@@ -265,7 +287,7 @@
             
             <button
               class="action-button delete"
-              on:click={() => handleSectionDelete(section)}
+              on:click={() => handleSectionDeleteClick(section)}
               aria-label="Delete"
               title="Delete section"
             >
@@ -330,7 +352,7 @@
             
             <button
               class="action-button delete"
-              on:click={() => handleMarkerDelete(marker)}
+              on:click={() => handleMarkerDeleteClick(marker)}
               aria-label="Delete"
               title="Delete event"
             >
@@ -364,14 +386,15 @@
       on:close={() => showSectionDialog = false}
     />
   {:else}
-    <Dialog
-      open={showSectionDialog}
-      title={editingSection ? 'Edit Section' : 'Create Section'}
+    <CreateSectionDialog
+      bind:open={showSectionDialog}
+      {season}
+      section={editingSection}
+      {teamId}
+      on:save={handleSectionSaved}
+      on:delete={handleSectionSaved}
       on:close={() => showSectionDialog = false}
-    >
-      <!-- Desktop form content would go here -->
-      <p>Desktop section form coming soon...</p>
-    </Dialog>
+    />
   {/if}
 {/if}
 
@@ -385,16 +408,41 @@
       on:close={() => showMarkerDialog = false}
     />
   {:else}
-    <Dialog
-      open={showMarkerDialog}
-      title={editingMarker ? 'Edit Event' : 'Create Event'}
+    <CreateMarkerDialog
+      bind:open={showMarkerDialog}
+      {season}
+      marker={editingMarker}
+      on:save={handleMarkerSaved}
+      on:delete={handleMarkerSaved}
       on:close={() => showMarkerDialog = false}
-    >
-      <!-- Desktop form content would go here -->
-      <p>Desktop event form coming soon...</p>
-    </Dialog>
+    />
   {/if}
 {/if}
+
+<!-- Confirm Delete Dialogs -->
+<ConfirmDialog
+  bind:open={confirmDeleteSection}
+  title="Delete Section"
+  message={`Are you sure you want to delete the section "${confirmDeleteSection?.name}"? This action cannot be undone.`}
+  confirmText="Delete"
+  cancelText="Cancel"
+  confirmVariant="destructive"
+  loading={deleteLoading}
+  on:confirm={handleSectionDelete}
+  on:cancel={() => confirmDeleteSection = null}
+/>
+
+<ConfirmDialog
+  bind:open={confirmDeleteMarker}
+  title="Delete Event"
+  message={`Are you sure you want to delete the event "${confirmDeleteMarker?.name || confirmDeleteMarker?.title}"? This action cannot be undone.`}
+  confirmText="Delete"
+  cancelText="Cancel"
+  confirmVariant="destructive"
+  loading={deleteLoading}
+  on:confirm={handleMarkerDelete}
+  on:cancel={() => confirmDeleteMarker = null}
+/>
 
 <style>
   .manage-container {

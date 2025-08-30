@@ -9,7 +9,7 @@
   export let markers = [];
   export let practices = [];
   export let isAdmin = false;
-  export let teamId = '';
+  export let teamSlug = '';
   
   const dispatch = createEventDispatcher();
   
@@ -131,7 +131,7 @@
   }
   
   function handlePracticeClick(practice) {
-    goto(`/teams/${teamId}/plans/${practice.id}`);
+    goto(`/teams/${teamSlug}/plans/${practice.id}`);
   }
   
   function handleMarkerClick(marker) {
@@ -350,7 +350,7 @@
     {season}
     {sections}
     date={selectedDate}
-    {teamId}
+    teamSlug={teamSlug}
     on:save={handlePracticeCreated}
     on:close={() => showPracticeSheet = false}
   />

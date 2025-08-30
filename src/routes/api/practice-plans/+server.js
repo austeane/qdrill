@@ -33,26 +33,10 @@ export async function GET({ url, locals }) {
 			.filter((id) => !isNaN(id))
 	};
 
-	// Handle team_id parameter - accept either UUID or slug
+	// Handle team_id parameter - expect UUID only (internal use)
 	const teamIdParam = url.searchParams.get('team_id');
 	if (teamIdParam) {
-		// Check if it's a UUID or slug and resolve to UUID
-		const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-		if (uuidRegex.test(teamIdParam)) {
-			filters.team_id = teamIdParam;
-		} else {
-			// It's a slug, resolve to UUID
-			try {
-				const { teamService } = await import('$lib/server/services/teamService.js');
-				const team = await teamService.getBySlug(teamIdParam);
-				if (team) {
-					filters.team_id = team.id;
-				}
-			} catch (err) {
-				// Team not found by slug, filter will exclude all results
-				filters.team_id = null;
-			}
-		}
+		filters.team_id = teamIdParam;
 	}
 
 	// Handle is_template filter

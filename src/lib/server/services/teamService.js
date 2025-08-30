@@ -43,23 +43,9 @@ class TeamService extends BaseEntityService {
     return result.items[0] || null;
   }
 
-  // Override getById to handle both UUID and slug
-  async getById(idOrSlug, columns = this.defaultColumns, userId = null, client = null) {
-    // Check if it's a valid UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    
-    if (uuidRegex.test(idOrSlug)) {
-      // It's a UUID, use the parent's getById
-      return super.getById(idOrSlug, columns, userId, client);
-    } else {
-      // It's a slug, use getBySlug
-      const team = await this.getBySlug(idOrSlug);
-      if (!team) {
-        const { NotFoundError } = await import('$lib/server/errors');
-        throw new NotFoundError(`Team with slug ${idOrSlug} not found`);
-      }
-      return team;
-    }
+  // getById strictly for UUIDs (internal use only)
+  async getById(id, columns = this.defaultColumns, userId = null, client = null) {
+    return super.getById(id, columns, userId, client);
   }
 
   async getUserTeams(userId) {

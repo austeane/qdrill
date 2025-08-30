@@ -18,7 +18,7 @@
   export let season = null;
   export let sections = [];
   export let markers = [];
-  export let teamId = '';
+  export let teamSlug = '';
   
   const dispatch = createEventDispatcher();
   
@@ -381,7 +381,7 @@
     <EditSectionSheet
       {season}
       section={editingSection}
-      {teamId}
+      teamSlug={teamSlug}
       on:save={handleSectionSaved}
       on:close={() => showSectionDialog = false}
     />
@@ -390,7 +390,7 @@
       bind:open={showSectionDialog}
       {season}
       section={editingSection}
-      {teamId}
+      teamSlug={teamSlug}
       on:save={handleSectionSaved}
       on:delete={handleSectionSaved}
       on:close={() => showSectionDialog = false}

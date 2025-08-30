@@ -6,7 +6,7 @@
   export let markers = [];
   export let currentWeek = new Date();
   export let isAdmin = false;
-  export let teamId;
+  export let teamSlug;
   export let teamTimezone = 'UTC';
   
   let weekStart;
@@ -49,7 +49,7 @@
   function navigateToWeek(date) {
     const dateStr = date.toISOString().split('T')[0];
     // Navigate to same route with updated week param to trigger SSR reload
-    goto(`/teams/${teamId}/season/week?week=${dateStr}`, { keepfocus: true, noScroll: true });
+    goto(`/teams/${teamSlug}/season/week?week=${dateStr}`, { keepfocus: true, noScroll: true });
   }
 
   function navigateWeek(direction) {

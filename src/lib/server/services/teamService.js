@@ -17,13 +17,13 @@ class TeamService extends BaseEntityService {
     
     // Generate slug from name if not provided
     if (!data.slug) {
-      data.slug = this.generateSlug(data.name);
-    }
-    
-    // Validate slug uniqueness
-    const existing = await this.getBySlug(data.slug);
-    if (existing) {
-      throw new ValidationError('Team slug already exists');
+      data.slug = await this.generateUniqueSlug(data.name);
+    } else {
+      // Ensure provided slug is unique
+      const existing = await this.getBySlug(data.slug);
+      if (existing) {
+        throw new ValidationError('Team slug already exists');
+      }
     }
     
     // Create team with creator as admin
@@ -89,6 +89,20 @@ class TeamService extends BaseEntityService {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .substring(0, 50);
+  }
+
+  async generateUniqueSlug(name) {
+    const baseSlug = this.generateSlug(name);
+    let slug = baseSlug;
+    let suffix = 1;
+    
+    // Keep trying until we find a unique slug
+    while (await this.getBySlug(slug)) {
+      suffix++;
+      slug = `${baseSlug}-${suffix}`;
+    }
+    
+    return slug;
   }
 }
 

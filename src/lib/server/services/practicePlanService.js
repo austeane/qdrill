@@ -135,6 +135,9 @@ export class PracticePlanService extends BaseEntityService {
 			if (filters.scheduled_date) {
 				q = q.where('pp.scheduled_date', '=', filters.scheduled_date);
 			}
+			if (filters.is_template !== undefined) {
+				q = q.where('pp.is_template', '=', filters.is_template);
+			}
 			if (filters.phase_of_season?.required?.length) {
 				q = q.where('pp.phase_of_season', 'in', filters.phase_of_season.required);
 			}
@@ -240,6 +243,9 @@ export class PracticePlanService extends BaseEntityService {
 		}
 		if (filters.scheduled_date) {
 			countQuery = countQuery.where('pp.scheduled_date', '=', filters.scheduled_date);
+		}
+		if (filters.is_template !== undefined) {
+			countQuery = countQuery.where('pp.is_template', '=', filters.is_template);
 		}
 		if (filters.phase_of_season?.required?.length) {
 			countQuery = countQuery.where('pp.phase_of_season', 'in', filters.phase_of_season.required);

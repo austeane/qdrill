@@ -12,7 +12,15 @@
   let loading = true;
   
   async function loadTemplates() {
-    const response = await fetch(`/api/practice-plans?team_id=${$page.params.teamId}&is_template=true`);
+    // Use the resolved team.id (UUID) from layout data instead of the URL param
+    const teamId = $page.data.team?.id;
+    if (!teamId) {
+      console.error('No team ID available in page data');
+      loading = false;
+      return;
+    }
+    
+    const response = await fetch(`/api/practice-plans?team_id=${teamId}&is_template=true`);
     if (response.ok) {
       const data = await response.json();
       templates = data.items || [];

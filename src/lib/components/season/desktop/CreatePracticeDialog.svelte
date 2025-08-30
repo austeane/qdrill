@@ -222,6 +222,7 @@
     {/if}
     
     <Checkbox
+      id="create-and-edit-checkbox"
       label="Create and edit immediately"
       bind:checked={createAndEdit}
       disabled={loading}

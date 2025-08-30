@@ -10,7 +10,7 @@
 </script>
 
 <div class="checkbox-wrapper">
-  <label for={id} class="checkbox-label" class:disabled>
+  <label class="checkbox-label" class:disabled>
     <input
       {id}
       type="checkbox"
@@ -20,7 +20,6 @@
       class:error={error}
       aria-invalid={!!error}
       aria-describedby={error ? `${id}-error` : description ? `${id}-description` : undefined}
-      on:change
       {...$$restProps}
     />
     

@@ -7,6 +7,7 @@
   export let currentWeek = new Date();
   export let isAdmin = false;
   export let teamId;
+  export let teamTimezone = 'UTC';
   
   let weekStart;
   let weekEnd;
@@ -65,13 +66,14 @@
     return date.toLocaleDateString('en-US', { 
       weekday: 'short', 
       month: 'short', 
-      day: 'numeric' 
+      day: 'numeric',
+      timeZone: teamTimezone
     });
   }
   
   function formatWeekRange() {
-    const start = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const end = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const start = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: teamTimezone });
+    const end = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: teamTimezone });
     return `${start} - ${end}`;
   }
   

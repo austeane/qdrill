@@ -1481,9 +1481,6 @@ PracticePlanService.prototype.publishPracticePlan = async function(planId, userI
   
   // Update published flag
   return await this.withTransaction(async (client) => {
-    // TODO: Add is_published column to database schema
-    throw new Error('Publishing functionality requires database schema update');
-    /*
     const query = `
       UPDATE practice_plans 
       SET is_published = true,
@@ -1492,7 +1489,6 @@ PracticePlanService.prototype.publishPracticePlan = async function(planId, userI
       WHERE id = $1
       RETURNING *
     `;
-    */
     
     const result = await client.query(query, [planId]);
     return result.rows[0];
@@ -1515,17 +1511,14 @@ PracticePlanService.prototype.unpublishPracticePlan = async function(planId, use
   
   // Update published flag back to false
   return await this.withTransaction(async (client) => {
-    // TODO: Add is_published column to database schema
-    throw new Error('Unpublishing functionality requires database schema update');
-    /*
     const query = `
       UPDATE practice_plans 
       SET is_published = false,
+          published_at = NULL,
           updated_at = NOW()
       WHERE id = $1
       RETURNING *
     `;
-    */
     
     const result = await client.query(query, [planId]);
     return result.rows[0];

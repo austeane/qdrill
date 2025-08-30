@@ -75,6 +75,7 @@
       bind:currentWeek
       isAdmin={data.userRole === 'admin'}
       teamId={$page.params.teamId}
+      teamTimezone={data.team?.timezone || 'UTC'}
     />
     
     <div class="mt-6 text-sm text-gray-600">

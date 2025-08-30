@@ -78,7 +78,7 @@
   function getFullUrl(path) {
     const base = typeof window !== 'undefined' 
       ? window.location.origin 
-      : 'https://qdrill.com';
+      : 'https://www.qdrill.app';
     return `${base}${path}`;
   }
   

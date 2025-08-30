@@ -18,6 +18,7 @@
   export let practices = [];
   export let isAdmin = false;
   export let teamId = '';
+  export let teamTimezone = 'UTC';
   
   const dispatch = createEventDispatcher();
   
@@ -199,8 +200,8 @@
     
     const firstDay = currentWeek[0];
     const lastDay = currentWeek[6];
-    const firstMonth = firstDay.toLocaleDateString('en-US', { month: 'short' });
-    const lastMonth = lastDay.toLocaleDateString('en-US', { month: 'short' });
+    const firstMonth = firstDay.toLocaleDateString('en-US', { month: 'short', timeZone: teamTimezone });
+    const lastMonth = lastDay.toLocaleDateString('en-US', { month: 'short', timeZone: teamTimezone });
     
     if (firstMonth === lastMonth) {
       return `${firstMonth} ${firstDay.getDate()}–${lastDay.getDate()}, ${firstDay.getFullYear()}`;
@@ -212,7 +213,7 @@
   function getMonthHeader() {
     if (currentMonth.length === 0) return '';
     const centerDate = currentMonth[15].date; // Approximate middle of month
-    return centerDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    return centerDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: teamTimezone });
   }
 </script>
 

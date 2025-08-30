@@ -223,6 +223,7 @@
                     on:change={(e) => updateMemberRole(member.user_id, e.target.value)}
                     options={[
                       { value: 'admin', label: 'Admin' },
+                      { value: 'coach', label: 'Coach' },
                       { value: 'member', label: 'Member' }
                     ]}
                     disabled={members.filter(m => m.role === 'admin').length === 1 && member.role === 'admin'}
@@ -256,6 +257,7 @@
               bind:value={newMemberRole}
               options={[
                 { value: 'member', label: 'Member' },
+                { value: 'coach', label: 'Coach' },
                 { value: 'admin', label: 'Admin' }
               ]}
               disabled={isAddingMember}

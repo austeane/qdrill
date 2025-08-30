@@ -42,7 +42,7 @@
     try {
       // Load practices
       const practicesRes = await apiFetch(`/api/teams/${$page.params.teamId}/practice-plans`);
-      const list = (practicesRes && practicesRes.plans) ? practicesRes.plans : (practicesRes || []);
+      const list = practicesRes?.items || [];
       practices = list.filter(p => p.season_id === season.id);
     } catch (error) {
       console.error('Failed to load practices:', error);

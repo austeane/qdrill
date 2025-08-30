@@ -68,7 +68,11 @@ export async function GET({ locals, params, url }) {
     
     const result = await query(queryStr, queryParams);
     
-    return json(result.rows);
+    // Return consistent shape
+    return json({ 
+      items: result.rows,
+      count: result.rows.length 
+    });
   } catch (error) {
     console.error('Error fetching team practice plans:', error);
     return json({ error: 'Failed to fetch practice plans' }, { status: 500 });

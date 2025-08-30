@@ -1,7 +1,7 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { device } from '$lib/stores/deviceStore';
-  import { Layers, Calendar, Settings } from 'lucide-svelte';
+  import { Layers, Calendar, Settings, Share2 } from 'lucide-svelte';
   
   export let activeTab = 'overview';
   export let season = null;
@@ -31,6 +31,12 @@
       id: 'manage',
       label: 'Manage',
       icon: Settings,
+      adminOnly: true
+    },
+    {
+      id: 'share',
+      label: 'Share',
+      icon: Share2,
       adminOnly: true
     }
   ];

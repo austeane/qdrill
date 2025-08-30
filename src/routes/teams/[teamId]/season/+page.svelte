@@ -53,7 +53,7 @@
     
     try {
       const practicesRes = await apiFetch(`/api/teams/${$page.params.teamId}/practice-plans`);
-      const list = (practicesRes && practicesRes.plans) ? practicesRes.plans : (practicesRes || []);
+      const list = practicesRes?.items || [];
       practices = list.filter(p => p.season_id === activeSeason.id);
     } catch {}
   }
@@ -163,6 +163,7 @@
         bind:practices
         isAdmin={data.userRole === 'admin'}
         teamId={$page.params.teamId}
+        teamTimezone={data.team?.timezone || 'UTC'}
         on:practiceCreated={handlePracticeCreated}
         on:markerChange={handleMarkerChange}
       />
@@ -175,6 +176,11 @@
         on:change={loadTimelineData}
         on:sectionChange={handleSectionChange}
         on:markerChange={handleMarkerChange}
+      />
+    {:else if activeTab === 'share'}
+      <ShareSettings
+        seasonId={activeSeason.id}
+        isAdmin={data.userRole === 'admin'}
       />
     {/if}
   </SeasonShell>

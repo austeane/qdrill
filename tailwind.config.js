@@ -8,7 +8,7 @@ export default {
                                'theme-1': 'var(--color-theme-1)',
                                'theme-2': 'var(--color-theme-2)',
                                primary: 'var(--color-theme-2)',
-				'primary-foreground': '#ffffff',
+				'primary-foreground': 'var(--primary-foreground)',
 				'bg-0': 'rgb(202, 216, 228)',
 				'bg-1': 'hsl(209, 36%, 86%)',
 				'bg-2': 'hsl(224, 44%, 95%)',

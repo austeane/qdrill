@@ -501,13 +501,18 @@ export class DrillService extends BaseEntityService {
 
             // Apply specific drill filters using Kysely
             if (filters.skill_level?.length)
-                qb = qb.where(sql`skill_level && ${sql.array(filters.skill_level, 'text')}`); // Array overlap
-			if (filters.complexity) qb = qb.where('complexity', '=', filters.complexity);
+                qb = qb.where(sql`skill_level && ARRAY[${sql.join(filters.skill_level.map(s => sql.literal(s)), sql`, `)}]::text[]`); // Array overlap
+			// Handle complexity as either array or string for backward compatibility
+			if (Array.isArray(filters.complexity) && filters.complexity.length) {
+				qb = qb.where('complexity', 'in', filters.complexity);
+			} else if (typeof filters.complexity === 'string' && filters.complexity) {
+				qb = qb.where('complexity', '=', filters.complexity);
+			}
             if (filters.skills_focused_on?.length)
-                qb = qb.where(sql`skills_focused_on && ${sql.array(filters.skills_focused_on, 'text')}`);
+                qb = qb.where(sql`skills_focused_on && ARRAY[${sql.join(filters.skills_focused_on.map(s => sql.literal(s)), sql`, `)}]::text[]`);
             if (filters.positions_focused_on?.length)
-                qb = qb.where(sql`positions_focused_on && ${sql.array(filters.positions_focused_on, 'text')}`);
-            if (filters.drill_type?.length) qb = qb.where(sql`drill_type && ${sql.array(filters.drill_type, 'text')}`);
+                qb = qb.where(sql`positions_focused_on && ARRAY[${sql.join(filters.positions_focused_on.map(s => sql.literal(s)), sql`, `)}]::text[]`);
+            if (filters.drill_type?.length) qb = qb.where(sql`drill_type && ARRAY[${sql.join(filters.drill_type.map(s => sql.literal(s)), sql`, `)}]::text[]`);
             if (filters.number_of_people_min != null)
                 qb = qb.where('number_of_people_min', '>=', filters.number_of_people_min);
 			if (filters.number_of_people_max != null)
@@ -591,14 +596,19 @@ export class DrillService extends BaseEntityService {
 		}
 		// Re-apply specific drill filters
         if (filters.skill_level?.length)
-            countQuery = countQuery.where(sql`skill_level && ${sql.array(filters.skill_level, 'text')}`);
-		if (filters.complexity) countQuery = countQuery.where('complexity', '=', filters.complexity);
+            countQuery = countQuery.where(sql`skill_level && ARRAY[${sql.join(filters.skill_level.map(s => sql.literal(s)), sql`, `)}]::text[]`);
+		// Handle complexity as either array or string for backward compatibility
+		if (Array.isArray(filters.complexity) && filters.complexity.length) {
+			countQuery = countQuery.where('complexity', 'in', filters.complexity);
+		} else if (typeof filters.complexity === 'string' && filters.complexity) {
+			countQuery = countQuery.where('complexity', '=', filters.complexity);
+		}
         if (filters.skills_focused_on?.length)
-            countQuery = countQuery.where(sql`skills_focused_on && ${sql.array(filters.skills_focused_on, 'text')}`);
+            countQuery = countQuery.where(sql`skills_focused_on && ARRAY[${sql.join(filters.skills_focused_on.map(s => sql.literal(s)), sql`, `)}]::text[]`);
         if (filters.positions_focused_on?.length)
-            countQuery = countQuery.where(sql`positions_focused_on && ${sql.array(filters.positions_focused_on, 'text')}`);
+            countQuery = countQuery.where(sql`positions_focused_on && ARRAY[${sql.join(filters.positions_focused_on.map(s => sql.literal(s)), sql`, `)}]::text[]`);
         if (filters.drill_type?.length)
-            countQuery = countQuery.where(sql`drill_type && ${sql.array(filters.drill_type, 'text')}`);
+            countQuery = countQuery.where(sql`drill_type && ARRAY[${sql.join(filters.drill_type.map(s => sql.literal(s)), sql`, `)}]::text[]`);
 		if (filters.number_of_people_min != null)
 			countQuery = countQuery.where('number_of_people_min', '>=', filters.number_of_people_min);
 		if (filters.number_of_people_max != null)

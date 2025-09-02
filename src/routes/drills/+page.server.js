@@ -34,8 +34,10 @@ export async function load({ fetch, url, locals }) {
 			return value === 'true' ? true : value === 'false' ? false : undefined;
 		};
 
-		filters.skill_level = parseCommaSeparated('skillLevel');
-		filters.complexity = url.searchParams.get('complexity')?.toLowerCase();
+		// Accept both camelCase and snake_case for skill level (defensive)
+		filters.skill_level = parseCommaSeparated('skillLevel') ?? parseCommaSeparated('skill_level');
+		// Complexity is multi-select in the UI → parse as a list too
+		filters.complexity = parseCommaSeparated('complexity');
 		filters.skills_focused_on = parseCommaSeparated('skills');
 		filters.positions_focused_on = parseCommaSeparated('positions');
 		filters.drill_type = parseCommaSeparated('types');

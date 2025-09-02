@@ -131,6 +131,19 @@ export class PracticePlanService extends BaseEntityService {
 				return eb.or(conditions);
 			});
 
+			// For public listing, exclude team-specific draft plans
+			// Team plans with team_id should be filtered differently
+			if (!filters.team_id) {
+				// Only exclude drafts that belong to teams (have team_id)
+				// Public practice plans without team_id can be shown even if draft
+				q = q.where((eb) => 
+					eb.or([
+						eb('pp.team_id', 'is', null),  // Public plans without teams
+						eb('pp.status', '!=', 'draft')  // Or non-draft plans
+					])
+				);
+			}
+
 			// Apply specific filters (excluding search, which is handled by _buildSearchQuery)
 			// Add support for team_id and scheduled_date filters
 			if (filters.team_id) {
@@ -249,6 +262,17 @@ export class PracticePlanService extends BaseEntityService {
 			}
 			return eb.or(conditions);
 		});
+		
+		// For public listing count, exclude team-specific draft plans
+		if (!filters.team_id) {
+			countQuery = countQuery.where((eb) => 
+				eb.or([
+					eb('pp.team_id', 'is', null),  // Public plans without teams
+					eb('pp.status', '!=', 'draft')  // Or non-draft plans
+				])
+			);
+		}
+		
 		// Add support for team_id and scheduled_date filters in count query
 		if (filters.team_id) {
 			countQuery = countQuery.where('pp.team_id', '=', filters.team_id);

@@ -53,7 +53,7 @@
       dispatch('change');
     } catch (error) {
       // Revert on error
-      sections = sections.sort((a, b) => a.order - b.order);
+      sections = [...sections].sort((a, b) => a.order - b.order);
       toast.push('Failed to reorder sections', {
         theme: {
           '--toastBackground': '#ef4444',

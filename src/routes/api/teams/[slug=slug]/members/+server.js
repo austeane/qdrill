@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { teamMemberService } from '$lib/server/services/teamMemberService.js';
-import { userService } from '$lib/server/services/userService';
+import { query } from '$lib/server/db.js';
 import { requireTeamAdmin, requireTeamMember } from '$lib/server/auth/teamPermissions.js';
 import { teamMemberSchema } from '$lib/validation/teamSchema';
 import { teamService } from '$lib/server/services/teamService.js';
@@ -16,25 +16,32 @@ export async function GET({ locals, params }) {
       return json({ error: 'Team not found' }, { status: 404 });
     }
     await requireTeamMember(team.id, locals.user.id);
-    const members = await teamMemberService.getTeamMembers(team.id);
-    
-    // Fetch user details for each member
-    const membersWithDetails = await Promise.all(
-      members.map(async (member) => {
-        const user = await userService.getById(member.user_id);
-        return {
-          ...member,
-          user: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            image: user.image
-          }
-        };
-      })
+    // Single join query to avoid N+1
+    const rows = await query(
+      `SELECT 
+         m.team_id,
+         m.user_id,
+         m.role,
+         m.created_at,
+         m.updated_at,
+         u.name,
+         u.email,
+         u.image
+       FROM team_members m
+       JOIN users u ON u.id = m.user_id
+       WHERE m.team_id = $1
+       ORDER BY (m.role = 'admin') DESC, u.name ASC`,
+      [team.id]
     );
-    
-    return json(membersWithDetails);
+    const members = rows.rows.map((r) => ({
+      team_id: r.team_id,
+      user_id: r.user_id,
+      role: r.role,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+      user: { id: r.user_id, name: r.name, email: r.email, image: r.image }
+    }));
+    return json(members);
   } catch (error) {
     return json({ error: error.message }, { status: error.status || 500 });
   }

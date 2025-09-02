@@ -1,65 +1,39 @@
-/**
- * Simple in-memory storage for pending practice plans.
- * In a production scenario, this might be replaced with Redis, a database table with TTL,
- * or another persistent, expiring storage mechanism.
- */
+import { query } from '$lib/server/db.js';
+import { NotFoundError } from '$lib/server/errors.js';
 
-const pendingPlans = new Map();
-
-// Store pending plan data
 async function save(token, data, expiresAt) {
-	// console.log(`[PendingPlanService] Saving plan for token ${token}, expires at ${expiresAt.toISOString()}`);
-	pendingPlans.set(token, {
-		data,
-		expiresAt: expiresAt.getTime() // Store expiry time as timestamp
-	});
-	// Basic cleanup of expired entries (could be improved with a dedicated interval)
-	cleanupExpired();
+  await query(
+    `INSERT INTO pending_practice_plans(token, data, expires_at)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (token) DO UPDATE SET data = EXCLUDED.data, expires_at = EXCLUDED.expires_at`,
+    [token, data, expiresAt]
+  );
+  await cleanupExpired();
 }
 
-// Retrieve pending plan data
 async function get(token) {
-	cleanupExpired(); // Clean before getting
-	const entry = pendingPlans.get(token);
-	if (entry) {
-		// console.log(`[PendingPlanService] Found plan for token ${token}`);
-		return entry.data; // Return only the data part
-	}
-	// console.log(`[PendingPlanService] Plan not found for token ${token}`);
-	return null;
+  await cleanupExpired();
+  const res = await query(
+    'SELECT data FROM pending_practice_plans WHERE token = $1 AND expires_at > now()',
+    [token]
+  );
+  if (!res.rows[0]) {
+    throw new NotFoundError('Pending plan not found or expired');
+  }
+  return res.rows[0].data;
 }
 
-// Delete pending plan data
 async function deletePlan(token) {
-	const deleted = pendingPlans.delete(token);
-	// if (deleted) {
-	//     console.log(`[PendingPlanService] Deleted plan for token ${token}`);
-	// } else {
-	//     console.log(`[PendingPlanService] Attempted to delete non-existent plan for token ${token}`);
-	// }
-	if (!deleted) {
-		console.log(`[PendingPlanService] Attempted to delete non-existent plan for token ${token}`);
-	}
+  await query('DELETE FROM pending_practice_plans WHERE token = $1', [token]);
 }
 
-// Helper to remove expired entries
-function cleanupExpired() {
-	const now = Date.now();
-	let removedCount = 0;
-	for (const [token, entry] of pendingPlans.entries()) {
-		if (entry.expiresAt <= now) {
-			pendingPlans.delete(token);
-			removedCount++;
-		}
-	}
-	if (removedCount > 0) {
-		// console.log(`[PendingPlanService] Cleaned up ${removedCount} expired pending plans.`);
-	}
+async function cleanupExpired() {
+  await query('DELETE FROM pending_practice_plans WHERE expires_at < now()');
 }
 
 export const pendingPracticePlanService = {
-	save,
-	get,
-	delete: deletePlan, // Export delete as 'delete'
-	_cleanupExpired: cleanupExpired // Expose for potential testing or manual trigger
+  save,
+  get,
+  delete: deletePlan,
+  _cleanupExpired: cleanupExpired
 };

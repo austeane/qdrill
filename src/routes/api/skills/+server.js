@@ -23,10 +23,6 @@ export async function GET({ url }) {
 				.split(',')
 				.map((s) => s.trim())
 				.filter((s) => s);
-			if (currentSkills.length === 0) {
-				// Return empty array if no skills provided for recommendation
-				return json([]);
-			}
 			const recommendations = await skillService.getSkillRecommendations(currentSkills, limit);
 			return json(recommendations);
 		} else {

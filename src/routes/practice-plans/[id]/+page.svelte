@@ -13,7 +13,8 @@
        import { filterSectionsByGroup } from '$lib/utils/groupFilter.js';
 	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
-	import { apiFetch } from '$lib/utils/apiFetch.js';
+    import { apiFetch } from '$lib/utils/apiFetch.js';
+    import { sanitizeHtml } from '$lib/utils/sanitize.js';
 
 	export let data;
 	const { practicePlan } = data;
@@ -168,7 +169,7 @@
 							class="text-gray-600 dark:text-gray-300 prose prose-sm sm:prose lg:prose-lg dark:prose-invert"
 							class:truncate={!$isDescriptionExpanded}
 						>
-							{@html practicePlan.description}
+                    {@html sanitizeHtml(practicePlan.description)}
 						</div>
 						<div class="flex justify-end mt-1">
 							{#if $isDescriptionExpanded}

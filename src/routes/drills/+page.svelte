@@ -12,7 +12,8 @@
 import { navigating } from '$app/stores';
 import { onDestroy } from 'svelte';
 	import { FILTER_STATES } from '$lib/constants';
-	import { apiFetch } from '$lib/utils/apiFetch.js';
+    import { apiFetch } from '$lib/utils/apiFetch.js';
+    import { sanitizeHtml } from '$lib/utils/sanitize.js';
 	import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
 
 	// Import only necessary stores (filter/sort state)
@@ -497,7 +498,7 @@ onDestroy(unsubNavigating);
 										</a>
 									</h2>
 									<div class="prose prose-sm dark:prose-invert mt-2 text-gray-600 dark:text-gray-300 max-h-24 overflow-hidden">
-										{@html drill.brief_description}
+                    {@html sanitizeHtml(drill.brief_description)}
 									</div>
 								</div>
 							</div>

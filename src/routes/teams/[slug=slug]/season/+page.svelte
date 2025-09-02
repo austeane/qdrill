@@ -1,19 +1,29 @@
 <script>
+  export let data;
+  
+  // Early check to prevent loading components if no data
+  if (!data || !data.seasons) {
+    console.warn('Season page: No data or seasons available');
+  }
+  
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import SeasonShell from '$lib/components/season/SeasonShell.svelte';
-  import Overview from '$lib/components/season/views/Overview.svelte';
-  import Schedule from '$lib/components/season/views/Schedule.svelte';
-  import Manage from '$lib/components/season/views/Manage.svelte';
-  import ShareSettings from '$lib/components/season/ShareSettings.svelte';
+  // Lazy-load season components to prevent SSR crashes
+  let SeasonShell;
+  let Overview;
+  let Schedule;
+  let Manage;
+  let ShareSettings;
+  let componentsLoading = true;
+  let componentLoadError = null;
   import { Button } from '$lib/components/ui/button';
   import Input from '$lib/components/ui/Input.svelte';
   import Dialog from '$lib/components/ui/Dialog.svelte';
   import Checkbox from '$lib/components/ui/Checkbox.svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import { apiFetch } from '$lib/utils/apiFetch.js';
-  
-  export let data;
+
+  // Page title is set below in <svelte:head>
   
   let seasons = data.seasons || [];
   let activeSeason = seasons.find(s => s.is_active);
@@ -33,6 +43,28 @@
   };
   
   onMount(async () => {
+    // Dynamically import all season components after mount (client-side only)
+    try {
+      const [shellModule, overviewModule, scheduleModule, manageModule, shareModule] = await Promise.all([
+        import('$lib/components/season/SeasonShell.svelte'),
+        import('$lib/components/season/views/Overview.svelte'),
+        import('$lib/components/season/views/Schedule.svelte'),
+        import('$lib/components/season/views/Manage.svelte'),
+        import('$lib/components/season/ShareSettings.svelte')
+      ]);
+      
+      SeasonShell = shellModule.default;
+      Overview = overviewModule.default;
+      Schedule = scheduleModule.default;
+      Manage = manageModule.default;
+      ShareSettings = shareModule.default;
+      componentsLoading = false;
+    } catch (err) {
+      console.error('Failed to load season components:', err);
+      componentLoadError = err;
+      componentsLoading = false;
+    }
+    
     if (activeSeason) {
       await loadTimelineData();
     }
@@ -132,58 +164,90 @@
   }
 </script>
 
+<svelte:head>
+  <title>Season - {$page.params.slug}</title>
+</svelte:head>
+
 {#if activeSeason}
-  <SeasonShell
-    season={activeSeason}
-    {sections}
-    {markers}
-    {practices}
-    isAdmin={data.userRole === 'admin'}
-    teamSlug={$page.params.slug}
-    bind:activeTab
-    on:tabChange={handleTabChange}
-  >
-    {#if activeTab === 'overview'}
-      <Overview
-        season={activeSeason}
-        bind:sections
-        bind:markers
-        bind:practices
-        isAdmin={data.userRole === 'admin'}
-        teamSlug={$page.params.slug}
-        on:sectionChange={handleSectionChange}
-        on:markerChange={handleMarkerChange}
-        on:createPractice={handleCreatePractice}
-      />
-    {:else if activeTab === 'schedule'}
-      <Schedule
-        season={activeSeason}
-        bind:sections
-        bind:markers
-        bind:practices
-        isAdmin={data.userRole === 'admin'}
-        teamSlug={$page.params.slug}
-        teamTimezone={data.team?.timezone || 'UTC'}
-        on:practiceCreated={handlePracticeCreated}
-        on:markerChange={handleMarkerChange}
-      />
-    {:else if activeTab === 'manage'}
-      <Manage
-        season={activeSeason}
-        bind:sections
-        bind:markers
-        teamSlug={$page.params.slug}
-        on:change={loadTimelineData}
-        on:sectionChange={handleSectionChange}
-        on:markerChange={handleMarkerChange}
-      />
-    {:else if activeTab === 'share'}
-      <ShareSettings
-        seasonId={activeSeason.id}
-        isAdmin={data.userRole === 'admin'}
-      />
-    {/if}
-  </SeasonShell>
+  {#if componentsLoading}
+    <div class="p-4">
+      <Card>
+        <div class="p-6">
+          <div class="text-sm text-gray-500">Loading season view...</div>
+        </div>
+      </Card>
+    </div>
+  {:else if componentLoadError}
+    <div class="p-4">
+      <Card>
+        <div class="p-6">
+          <h2 class="text-lg font-semibold text-red-600 mb-2">Failed to Load Season View</h2>
+          <p class="text-sm text-gray-600">There was an error loading the season components. Please try refreshing the page.</p>
+          <Button href="/teams" variant="ghost" size="sm" class="mt-4">
+            ← Back to Teams
+          </Button>
+        </div>
+      </Card>
+    </div>
+  {:else if SeasonShell}
+    <svelte:component
+      this={SeasonShell}
+      season={activeSeason}
+      {sections}
+      {markers}
+      {practices}
+      isAdmin={data.userRole === 'admin'}
+      teamSlug={$page.params.slug}
+      bind:activeTab
+      on:tabChange={handleTabChange}
+    >
+      {#if activeTab === 'overview' && Overview}
+        <svelte:component
+          this={Overview}
+          season={activeSeason}
+          bind:sections
+          bind:markers
+          bind:practices
+          isAdmin={data.userRole === 'admin'}
+          teamSlug={$page.params.slug}
+          teamTimezone={data.team?.timezone || 'UTC'}
+          on:sectionChange={handleSectionChange}
+          on:markerChange={handleMarkerChange}
+          on:createPractice={handleCreatePractice}
+        />
+      {:else if activeTab === 'schedule' && Schedule}
+        <svelte:component
+          this={Schedule}
+          season={activeSeason}
+          bind:sections
+          bind:markers
+          bind:practices
+          isAdmin={data.userRole === 'admin'}
+          teamSlug={$page.params.slug}
+          teamTimezone={data.team?.timezone || 'UTC'}
+          on:practiceCreated={handlePracticeCreated}
+          on:markerChange={handleMarkerChange}
+        />
+      {:else if activeTab === 'manage' && Manage}
+        <svelte:component
+          this={Manage}
+          season={activeSeason}
+          bind:sections
+          bind:markers
+          teamSlug={$page.params.slug}
+          on:change={loadTimelineData}
+          on:sectionChange={handleSectionChange}
+          on:markerChange={handleMarkerChange}
+        />
+      {:else if activeTab === 'share' && ShareSettings}
+        <svelte:component
+          this={ShareSettings}
+          seasonId={activeSeason.id}
+          isAdmin={data.userRole === 'admin'}
+        />
+      {/if}
+    </svelte:component>
+  {/if}
 {:else}
   <!-- No Active Season -->
   <div class="no-season-container">

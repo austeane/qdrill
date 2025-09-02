@@ -50,4 +50,3 @@
     .appshell__content { padding: var(--space-4) var(--space-3); }
   }
 </style>
-

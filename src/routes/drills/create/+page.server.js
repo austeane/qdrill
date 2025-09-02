@@ -8,6 +8,7 @@ export async function load({ url }) {
 		const prefilledName = url.searchParams.get('name'); // Get 'name' from query params
 		const practicePlanId = url.searchParams.get('practice_plan_id');
 		const practicePlanItemId = url.searchParams.get('practice_plan_item_id');
+		const parentId = url.searchParams.get('parentId');
 
 		const skillsResult = await skillService.getAllSkills({ all: true }); // Fetch all skills
 		const namesResult = await drillService.getAllDrillNames(); // Fetch all drill names
@@ -44,6 +45,7 @@ export async function load({ url }) {
 			prefilledName, // Pass the prefilledName to the page
 			practicePlanId, // Pass practicePlanId
 			practicePlanItemId, // Pass practicePlanItemId
+			parentId,
 			allSkills,
 			allDrillNames
 		};

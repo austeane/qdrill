@@ -105,8 +105,14 @@ class RecurrenceService extends BaseEntityService {
 
     // Filter out skip dates
     if (recurrence.skip_dates && recurrence.skip_dates.length > 0) {
-      const skipSet = new Set(recurrence.skip_dates.map(d => new Date(d).toISOString().split('T')[0]));
-      return dates.filter(date => !skipSet.has(date.toISOString().split('T')[0]));
+      const toLocalISO = (d) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const skipSet = new Set(recurrence.skip_dates.map(d => toLocalISO(new Date(d))));
+      return dates.filter(date => !skipSet.has(toLocalISO(date)));
     }
 
     return dates;
@@ -145,15 +151,27 @@ class RecurrenceService extends BaseEntityService {
       markers.forEach(marker => {
         const start = new Date(marker.start_date);
         const end = marker.end_date ? new Date(marker.end_date) : start;
+        const toLocalISO = (d) => {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          markerDates.add(d.toISOString().split('T')[0]);
+          markerDates.add(toLocalISO(d));
         }
       });
     }
 
     // Build preview
     const preview = dates.map(date => {
-      const dateStr = date.toISOString().split('T')[0];
+      const toLocalISO = (d) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const dateStr = toLocalISO(date);
       const status = {
         date: dateStr,
         day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()],
@@ -271,7 +289,7 @@ class RecurrenceService extends BaseEntityService {
       WHERE gl.recurrence_id = $1
       ORDER BY gl.generated_at DESC
     `;
-    const result = await this.db.query(query, [recurrenceId]);
+    const result = await db.query(query, [recurrenceId]);
     return result.rows;
   }
 

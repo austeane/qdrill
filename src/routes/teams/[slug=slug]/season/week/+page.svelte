@@ -4,6 +4,7 @@
   import Card from '$lib/components/ui/Card.svelte';
   import { Button } from '$lib/components/ui/button';
   import Spinner from '$lib/components/Spinner.svelte';
+  import { toLocalISO } from '$lib/utils/date.js';
   
   export let data;
   
@@ -18,7 +19,7 @@
   function updateUrlWithWeek(week) {
     if (typeof window !== 'undefined') {
       const url = new URL($page.url);
-      url.searchParams.set('week', week.toISOString().split('T')[0]);
+      url.searchParams.set('week', toLocalISO(week));
       window.history.replaceState({}, '', url);
     }
   }

@@ -2,6 +2,7 @@
 import { createEventDispatcher } from 'svelte';
 import { slide } from 'svelte/transition';
 import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
+import { sanitizeHtml } from '$lib/utils/sanitize.js';
 import { getGroupColor } from '$lib/utils/groupColors.js';
 
 	export let item;
@@ -174,7 +175,9 @@ import { getGroupColor } from '$lib/utils/groupColors.js';
 				<div class="detailed-description">
 					<h4 class="info-subtitle">Detailed Description</h4>
 					<div class="description-text prose prose-sm">
-						{@html normalizedItem.detailedDescription}
+    {#if normalizedItem.detailedDescription}
+      {@html sanitizeHtml(normalizedItem.detailedDescription)}
+    {/if}
 					</div>
 				</div>
 

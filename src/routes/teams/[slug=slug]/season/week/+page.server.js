@@ -1,6 +1,6 @@
 import { redirect, error } from '@sveltejs/kit';
 import { seasonService } from '$lib/server/services/seasonService.js';
-import { practicePlanService } from '$lib/server/services/practicePlanService.js';
+import { query } from '$lib/server/db.js';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ locals, url, parent }) {
@@ -29,8 +29,14 @@ export async function load({ locals, url, parent }) {
     weekEnd.setDate(weekStart.getDate() + 6);
     weekEnd.setHours(23, 59, 59, 999);
 
-    const startDateStr = weekStart.toISOString().split('T')[0];
-    const endDateStr = weekEnd.toISOString().split('T')[0];
+    const toLocalISO = (d) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    const startDateStr = toLocalISO(weekStart);
+    const endDateStr = toLocalISO(weekEnd);
 
     // Get active season for the team using server service
     const seasons = await seasonService.getTeamSeasons(team.id, locals.user.id);
@@ -47,17 +53,20 @@ export async function load({ locals, url, parent }) {
     }
 
     // Get practices for the season and week
-    const practicesResult = await practicePlanService.getAll({
-      filters: {
-        team_id: team.id,
-        season_id: season.id,
-        scheduled_date_start: startDateStr,
-        scheduled_date_end: endDateStr
-      },
-      limit: 100  // Get all practices for the week
-    });
-    
-    const practices = practicesResult.plans || [];
+    // Non-admins should only see published practices
+    const isAdmin = userRole === 'admin' || userRole === 'coach';
+    let sql = `
+      SELECT * FROM practice_plans
+      WHERE team_id = $1 AND season_id = $2
+        AND scheduled_date BETWEEN $3 AND $4`;
+    const params = [team.id, season.id, startDateStr, endDateStr];
+    if (!isAdmin) {
+      sql += ` AND is_published = true`;
+    }
+    sql += ` ORDER BY scheduled_date, start_time`;
+
+    const practicesRes = await query(sql, params);
+    const practices = practicesRes.rows || [];
 
     // Get markers for the season
     let markers = [];
@@ -78,7 +87,8 @@ export async function load({ locals, url, parent }) {
       season,
       practices,
       markers,
-      currentWeek: startDateStr
+      currentWeek: startDateStr,
+      userRole
     };
   } catch (err) {
     console.error('Failed to load week view:', err);

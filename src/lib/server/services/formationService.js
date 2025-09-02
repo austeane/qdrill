@@ -109,7 +109,7 @@ export class FormationService extends BaseEntityService {
 				qb = qb.where('formation_type', '=', filters.formation_type);
 			}
 			if (filters.tags && filters.tags.length > 0) {
-				qb = qb.where(sql`tags && $1`, [filters.tags]); // Array overlap for tags
+				qb = qb.where(sql`tags && ${sql.array(filters.tags, 'text')}`); // Array overlap for tags
 			}
 			// Add more specific filters here as needed
 
@@ -169,7 +169,7 @@ export class FormationService extends BaseEntityService {
 			countQuery = countQuery.where('formation_type', '=', filters.formation_type);
 		}
 		if (filters.tags && filters.tags.length > 0) {
-			countQuery = countQuery.where(sql`tags && $1`, [filters.tags]);
+			countQuery = countQuery.where(sql`tags && ${sql.array(filters.tags, 'text')}`);
 		}
 
 		// Apply search conditions based on what was used for the main query

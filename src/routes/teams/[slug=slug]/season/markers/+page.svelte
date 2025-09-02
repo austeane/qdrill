@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch';
+	import { formatInTz } from '$lib/utils/formatInTz';
 	import Card from '$lib/components/ui/Card.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import Input from '$lib/components/ui/Input.svelte';
@@ -75,10 +76,10 @@
 				body: JSON.stringify(marker)
 			});
 
-			editingMarker = null;
-			data.markers = data.markers.sort((a, b) => 
-				new Date(a.date) - new Date(b.date)
-			);
+            editingMarker = null;
+            data.markers = [...data.markers].sort((a, b) => 
+                new Date(a.date) - new Date(b.date)
+            );
 			toast.push('Marker updated successfully', { theme: { '--toastBackground': '#10b981' } });
 		} catch (error) {
 			editError = error.message || 'Failed to update marker';
@@ -103,7 +104,9 @@
 	}
 
 	function formatDate(date) {
-		return new Date(date).toLocaleDateString('en-US', {
+		if (!date) return 'No date';
+		// Use formatInTz with team timezone or UTC fallback
+		return formatInTz(date, data.team?.timezone || 'UTC', {
 			month: 'short',
 			day: 'numeric',
 			year: 'numeric'
@@ -118,13 +121,17 @@
 	}
 </script>
 
+<svelte:head>
+  <title>Season Markers - {data?.team?.name || $page.params.slug}</title>
+</svelte:head>
+
 <div class="container mx-auto px-4 py-8">
 	<div class="mb-6 flex items-center justify-between">
 		<div>
 			<h1 class="text-3xl font-bold">Season Markers</h1>
 			<p class="text-gray-600 dark:text-gray-400 mt-1">{data.season.name}</p>
 		</div>
-		<Button variant="ghost" on:click={() => goto(`/teams/${data.team.id}/season`)}>
+		<Button variant="ghost" on:click={() => goto(`/teams/${data.team.slug}/season`)}>
 			← Back to Season
 		</Button>
 	</div>

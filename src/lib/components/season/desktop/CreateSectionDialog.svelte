@@ -6,6 +6,7 @@
   import Input from '$lib/components/ui/Input.svelte';
   import { Button } from '$lib/components/ui/button';
   import Checkbox from '$lib/components/ui/Checkbox.svelte';
+  import { toLocalISO } from '$lib/utils/date.js';
   
   export let open = false;
   export let season = null;
@@ -151,22 +152,22 @@
       case 'this-week':
         const dayOfWeek = start.getDay();
         start.setDate(start.getDate() - dayOfWeek);
-        startDate = start.toISOString().split('T')[0];
+        startDate = toLocalISO(start);
         
         const endOfWeek = new Date(start);
         endOfWeek.setDate(start.getDate() + 6);
-        endDate = endOfWeek.toISOString().split('T')[0];
+        endDate = toLocalISO(endOfWeek);
         break;
         
       case 'next-4-weeks':
-        startDate = today.toISOString().split('T')[0];
+        startDate = toLocalISO(today);
         const fourWeeksLater = new Date(today);
         fourWeeksLater.setDate(today.getDate() + 28);
-        endDate = fourWeeksLater.toISOString().split('T')[0];
+        endDate = toLocalISO(fourWeeksLater);
         break;
         
       case 'to-season-end':
-        startDate = today.toISOString().split('T')[0];
+        startDate = toLocalISO(today);
         endDate = season?.end_date || '';
         break;
     }

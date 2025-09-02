@@ -15,10 +15,11 @@
 	// Component Props
 	export let drill = {};
 	export let allSkills = [];
-	export let allDrillNames = [];
-	export let prefilledName = null;
-	export let practicePlanId = null;
-	export let practicePlanItemId = null;
+export let allDrillNames = [];
+export let prefilledName = null;
+export let practicePlanId = null;
+export let practicePlanItemId = null;
+export let parentId = null;
 
 	// Initialize stores based on props
 	let name = writable(prefilledName || drill.name || '');
@@ -68,8 +69,8 @@
 	let modalSkillSearchTerm = writable('');
 	let isSubmitting = false;
 
-	let isVariation = writable(!!drill.parent_drill_id);
-	let parentDrillId = writable(drill.parent_drill_id ?? null);
+let isVariation = writable(!!drill.parent_drill_id || !!parentId);
+let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(parentId, 10) : null));
 
 	// Derived store for available skills - depends on selectedSkills store and allSkills prop
 	const availableSkills = derived(selectedSkills, ($selectedSkills) => {

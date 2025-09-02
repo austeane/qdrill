@@ -130,7 +130,7 @@
 			class="grid gap-4"
 			style="--timeline-count: {groupTimelines.length}; grid-template-columns: repeat(var(--timeline-count), 1fr);"
 		>
-			{#each groupTimelines.sort() as timeline}
+			{#each [...groupTimelines].sort() as timeline}
 				<TimelineColumn
 					{timeline}
 					{groupTimelines}

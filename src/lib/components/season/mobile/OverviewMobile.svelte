@@ -4,6 +4,7 @@
   import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
   import EditSectionSheet from './EditSectionSheet.svelte';
   import EditMarkerSheet from './EditMarkerSheet.svelte';
+  import { toLocalISO } from '$lib/utils/date.js';
   
   export let season = null;
   export let sections = [];
@@ -119,7 +120,7 @@
     
     if (targetDate <= sectionEnd) {
       dispatch('createPractice', {
-        date: targetDate.toISOString().split('T')[0],
+        date: toLocalISO(targetDate),
         sectionId: section.id
       });
     }

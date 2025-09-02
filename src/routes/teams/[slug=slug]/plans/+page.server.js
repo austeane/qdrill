@@ -6,8 +6,9 @@ export async function load({ params, fetch, parent }) {
 		// Get team data from parent layout
 		const { team, userRole } = await parent();
 		
-		// Fetch practice plans for this team
-		const practicePlans = await apiFetch(`/api/teams/${team.id}/practice-plans`, {}, fetch);
+		// Fetch practice plans for this team (API returns { items, count })
+		const res = await apiFetch(`/api/teams/${team.slug}/practice-plans`, {}, fetch);
+		const practicePlans = Array.isArray(res) ? res : (res?.items ?? []);
 
 		return {
 			practicePlans: practicePlans || []

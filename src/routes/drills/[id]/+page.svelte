@@ -11,6 +11,7 @@
 	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
 	import { dev } from '$app/environment';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
+    import { sanitizeHtml } from '$lib/utils/sanitize.js';
 
 	export let data;
 	console.log('[Page Component] Initial data:', data);
@@ -461,7 +462,7 @@
 			<div class="mb-6">
 				<h2 class="text-lg font-semibold mb-2 dark:text-white">Detailed Description</h2>
 				<div class="prose prose-sm sm:prose lg:prose-lg dark:prose-invert">
-					{@html $drill.detailed_description}
+					{@html sanitizeHtml($drill.detailed_description)}
 				</div>
 			</div>
 

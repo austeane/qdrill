@@ -150,13 +150,11 @@ export class PracticePlanService extends BaseEntityService {
 			}
 			if (filters.practice_goals?.required?.length) {
 				filters.practice_goals.required.forEach((goal) => {
-					q = q.where(sql`pp.practice_goals @> ARRAY[${goal}]::text[]`);
+					q = q.where(sql`pp.practice_goals @> ${sql.array([goal], 'text')}`);
 				});
 			}
 			if (filters.practice_goals?.excluded?.length) {
-				q = q.where(
-					sql`NOT (pp.practice_goals && ARRAY[${filters.practice_goals.excluded.join(',')}]::text[])`
-				);
+				q = q.where(sql`NOT (pp.practice_goals && ${sql.array(filters.practice_goals.excluded, 'text')})`);
 			}
 			if (filters.min_participants != null) {
 				q = q.where('pp.estimated_number_of_participants', '>=', filters.min_participants);
@@ -194,14 +192,17 @@ export class PracticePlanService extends BaseEntityService {
 			0.3 // Trigram threshold
 		);
 
-		// Apply sorting - if fallback is used, _executeSearch will sort by similarity_score
-		// If FTS is used, or no search, apply standard sorting.
+		// Execute first to determine whether fallback was used and avoid use-before-definition
 		let finalQuery = ftsQuery;
-		if (
-			!ftsQuery._ftsAppliedInfo ||
-			(ftsQuery._ftsAppliedInfo && items.length > 0 && !usedFallback)
-		) {
-			// only apply if FTS was not used or if FTS found items and fallback wasn't used
+		const executed = await this._executeSearch(finalQuery, baseQueryForFallback, {
+			limit,
+			offset
+		});
+		let { items, usedFallback } = executed;
+
+		// If fallback used, similarity ordering is already applied by _executeSearch
+		// Otherwise, apply standard sorting and re-execute to get correctly ordered items
+		if (!usedFallback) {
 			const validSortColumns = [
 				'name',
 				'created_at',
@@ -211,19 +212,19 @@ export class PracticePlanService extends BaseEntityService {
 			];
 			const sortCol = validSortColumns.includes(sortBy) ? sortBy : 'upvotes';
 			const direction = sortOrder === 'asc' ? 'asc' : 'desc';
-			
-			// Handle special case for upvotes sorting
+
 			if (sortCol === 'upvotes') {
 				finalQuery = finalQuery.orderBy('upvote_count', direction);
 			} else {
 				finalQuery = finalQuery.orderBy(`pp.${sortCol}`, direction);
 			}
-		}
 
-		const { items, usedFallback } = await this._executeSearch(finalQuery, baseQueryForFallback, {
-			limit,
-			offset
-		});
+			const reexecuted = await this._executeSearch(finalQuery, baseQueryForFallback, {
+				limit,
+				offset
+			});
+			items = reexecuted.items;
+		}
 
 		// --- Count Query Execution ---
 		let countQuery = kyselyDb
@@ -270,12 +271,12 @@ export class PracticePlanService extends BaseEntityService {
 		}
 		if (filters.practice_goals?.required?.length) {
 			filters.practice_goals.required.forEach((goal) => {
-				countQuery = countQuery.where(sql`pp.practice_goals @> ARRAY[${goal}]::text[]`);
+				countQuery = countQuery.where(sql`pp.practice_goals @> ${sql.array([goal], 'text')}`);
 			});
 		}
 		if (filters.practice_goals?.excluded?.length) {
 			countQuery = countQuery.where(
-				sql`NOT (pp.practice_goals && ARRAY[${filters.practice_goals.excluded.join(',')}]::text[])`
+				sql`NOT (pp.practice_goals && ${sql.array(filters.practice_goals.excluded, 'text')})`
 			);
 		}
 		if (filters.min_participants != null) {

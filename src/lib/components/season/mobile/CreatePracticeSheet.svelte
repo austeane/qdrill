@@ -12,7 +12,8 @@
   const dispatch = createEventDispatcher();
   
   let loading = false;
-  let selectedDate = date || new Date().toISOString().split('T')[0];
+  import { toLocalISO } from '$lib/utils/date.js';
+  let selectedDate = date || toLocalISO(new Date());
   let startTime = '18:00'; // Default 6 PM
   let seedDefaults = true;
   
@@ -105,7 +106,7 @@
   }
   
   // Get min/max dates from season
-  $: minDate = season?.start_date || new Date().toISOString().split('T')[0];
+  $: minDate = season?.start_date || toLocalISO(new Date());
   $: maxDate = season?.end_date || '';
 </script>
 

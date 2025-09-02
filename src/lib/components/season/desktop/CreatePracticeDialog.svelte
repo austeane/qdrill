@@ -19,7 +19,8 @@
   const dispatch = createEventDispatcher();
   
   let loading = false;
-  let selectedDate = date || new Date().toISOString().split('T')[0];
+  import { toLocalISO } from '$lib/utils/date.js';
+  let selectedDate = date || toLocalISO(new Date());
   let startTime = '18:00';
   let seedDefaults = true;
   let practiceType = 'regular';
@@ -136,7 +137,7 @@
   }
   
   function resetForm() {
-    selectedDate = date || new Date().toISOString().split('T')[0];
+    selectedDate = date || toLocalISO(new Date());
     startTime = '18:00';
     seedDefaults = true;
     practiceType = 'regular';

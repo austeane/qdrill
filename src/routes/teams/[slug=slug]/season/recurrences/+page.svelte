@@ -9,6 +9,7 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import RecurrenceConfig from '$lib/components/season/RecurrenceConfig.svelte';
   import BatchGenerationPreview from '$lib/components/season/BatchGenerationPreview.svelte';
+  import { toLocalISO } from '$lib/utils/date.js';
 
   let season = null;
   let recurrences = [];
@@ -41,9 +42,8 @@
       const today = new Date();
       const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
       const endOfNextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-
-      dateRange.start_date = nextMonth.toISOString().split('T')[0];
-      dateRange.end_date = endOfNextMonth.toISOString().split('T')[0];
+      dateRange.start_date = toLocalISO(nextMonth);
+      dateRange.end_date = toLocalISO(endOfNextMonth);
 
       // Get recurrences
       recurrences = await apiFetch(`/api/seasons/${season.id}/recurrences`).catch(() => []);
@@ -158,7 +158,7 @@
   }
 </script>
 
-<div class="container mx-auto px-4 py-8 max-w-6xl">
+<div class="container mx-auto px-4 py-8 max-w-6xl" data-testid="recurrences-page">
   {#if loading}
     <Card>
       <div class="flex justify-center py-12 text-gray-500">Loading...</div>

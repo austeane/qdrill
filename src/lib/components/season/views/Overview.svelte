@@ -7,8 +7,12 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import EditSectionSheet from '../mobile/EditSectionSheet.svelte';
   import EditMarkerSheet from '../mobile/EditMarkerSheet.svelte';
+  import CreateSectionDialog from '../desktop/CreateSectionDialog.svelte';
+  import { toLocalISO } from '$lib/utils/date.js';
+  import CreateMarkerDialog from '../desktop/CreateMarkerDialog.svelte';
   import Dialog from '$lib/components/ui/Dialog.svelte';
   import { Layers, Edit2, ChevronRight, Plus } from 'lucide-svelte';
+  import { formatInTz } from '$lib/utils/formatInTz.js';
   
   export let season = null;
   export let sections = [];
@@ -16,6 +20,7 @@
   export let practices = [];
   export let isAdmin = false;
   export let teamSlug = '';
+  export let teamTimezone = 'UTC';
   
   const dispatch = createEventDispatcher();
   
@@ -124,7 +129,7 @@
     
     if (targetDate <= sectionEnd) {
       dispatch('createPractice', {
-        date: targetDate.toISOString().split('T')[0],
+        date: toLocalISO(targetDate),
         sectionId: section.id
       });
     }
@@ -165,9 +170,9 @@
           <div class="section-info">
             <h3 class="section-name">{section.name}</h3>
             <div class="section-dates">
-              {new Date(section.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {formatInTz(`${section.start_date}T00:00:00Z`, teamTimezone, { month: 'short', day: 'numeric' })}
               –
-              {new Date(section.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {formatInTz(`${section.end_date}T00:00:00Z`, teamTimezone, { month: 'short', day: 'numeric' })}
             </div>
           </div>
           {#if isAdmin}
@@ -202,10 +207,7 @@
               >
                 <span class="stat-label">Next:</span>
                 <span class="stat-value">
-                  {new Date(nextPractice.scheduled_date).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric' 
-                  })}
+                  {formatInTz(`${nextPractice.scheduled_date}T00:00:00Z`, teamTimezone, { month: 'short', day: 'numeric' })}
                 </span>
                 <ChevronRight size={16} />
               </button>
@@ -271,15 +273,11 @@
                       <div class="marker-name">{marker.name || marker.title}</div>
                       <div class="marker-date">
                         {#if marker.end_date}
-                          {new Date(marker.date || marker.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {formatInTz(`${(marker.date || marker.start_date)}T00:00:00Z`, teamTimezone, { month: 'short', day: 'numeric' })}
                           –
-                          {new Date(marker.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          {formatInTz(`${marker.end_date}T00:00:00Z`, teamTimezone, { month: 'short', day: 'numeric' })}
                         {:else}
-                          {new Date(marker.date || marker.start_date).toLocaleDateString('en-US', { 
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric' 
-                          })}
+                          {formatInTz(`${(marker.date || marker.start_date)}T00:00:00Z`, teamTimezone, { weekday: 'short', month: 'short', day: 'numeric' })}
                         {/if}
                       </div>
                     </div>
@@ -310,14 +308,14 @@
       on:close={() => showSectionDialog = false}
     />
   {:else}
-    <Dialog
-      open={showSectionDialog}
-      title={editingSection ? 'Edit Section' : 'Create Section'}
-      on:close={() => showSectionDialog = false}
-    >
-      <!-- Desktop form content would go here -->
-      <p>Desktop section form coming soon...</p>
-    </Dialog>
+    <CreateSectionDialog
+      bind:open={showSectionDialog}
+      {season}
+      section={editingSection}
+      on:save={handleSectionSaved}
+      on:delete={handleSectionSaved}
+      on:close={() => (showSectionDialog = false)}
+    />
   {/if}
 {/if}
 
@@ -331,14 +329,14 @@
       on:close={() => showMarkerDialog = false}
     />
   {:else}
-    <Dialog
-      open={showMarkerDialog}
-      title={editingMarker ? 'Edit Event' : 'Create Event'}
-      on:close={() => showMarkerDialog = false}
-    >
-      <!-- Desktop form content would go here -->
-      <p>Desktop event form coming soon...</p>
-    </Dialog>
+    <CreateMarkerDialog
+      bind:open={showMarkerDialog}
+      {season}
+      marker={editingMarker}
+      on:save={handleMarkerSaved}
+      on:delete={handleMarkerSaved}
+      on:close={() => (showMarkerDialog = false)}
+    />
   {/if}
 {/if}
 

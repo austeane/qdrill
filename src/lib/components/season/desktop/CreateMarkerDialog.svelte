@@ -20,10 +20,11 @@
   let loading = false;
   let isEditing = !!marker;
   
+  import { toLocalISO } from '$lib/utils/date.js';
   let formData = {
     name: marker?.name || '',
     description: marker?.description || '',
-    date: marker?.date || marker?.start_date || defaultDate || new Date().toISOString().split('T')[0],
+    date: marker?.date || marker?.start_date || defaultDate || toLocalISO(new Date()),
     end_date: marker?.end_date || '',
     color: marker?.color || '#3b82f6',
     type: marker?.type || 'event',

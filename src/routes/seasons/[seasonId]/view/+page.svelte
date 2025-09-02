@@ -143,8 +143,8 @@
                   })}
                 {/if}
               </div>
-              {#if marker.description}
-                <p class="text-sm text-gray-700 mt-1">{marker.description}</p>
+              {#if marker.notes}
+                <p class="text-sm text-gray-700 mt-1">{marker.notes}</p>
               {/if}
             </div>
           </div>

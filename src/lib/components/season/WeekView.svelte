@@ -46,8 +46,9 @@
     });
   }
   
+  import { toLocalISO } from '$lib/utils/date.js';
   function navigateToWeek(date) {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalISO(date);
     // Navigate to same route with updated week param to trigger SSR reload
     goto(`/teams/${teamSlug}/season/week?week=${dateStr}`, { keepfocus: true, noScroll: true });
   }
@@ -78,23 +79,31 @@
   }
   
   function getPracticesForDate(date) {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalISO(date);
     return groupedPractices[dateStr] || [];
+  }
+
+  function formatPracticeTime(practice) {
+    const t = (practice.start_time || season.default_start_time || '00:00:00').slice(0, 5); // HH:MM
+    const [hh, mm] = t.split(':').map(Number);
+    const h12 = ((hh + 11) % 12) + 1;
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
   }
   
   function getMarkersForDate(date) {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalISO(date);
     return markers.filter(m => {
       const start = new Date(m.start_date);
       const end = m.end_date ? new Date(m.end_date) : start;
-      const startStr = start.toISOString().split('T')[0];
-      const endStr = end.toISOString().split('T')[0];
+      const startStr = toLocalISO(start);
+      const endStr = toLocalISO(end);
       return dateStr >= startStr && dateStr <= endStr;
     });
   }
   
   async function quickCreatePractice(date) {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalISO(date);
     try {
       const response = await fetch(`/api/seasons/${season.id}/instantiate`, {
         method: 'POST',
@@ -160,7 +169,7 @@
   };
 </script>
 
-<div class="bg-white rounded-lg shadow-lg overflow-hidden">
+<div class="bg-white rounded-lg shadow-lg overflow-hidden" data-testid="week-view">
   <!-- Week navigation header -->
   <div class="bg-gray-50 border-b px-4 py-3 flex items-center justify-between">
     <div class="flex items-center space-x-2">
@@ -243,7 +252,7 @@
               <div class="border rounded p-2 mb-2 
                          {practice.is_published ? 'bg-green-50 border-green-300' : 'bg-yellow-50 border-yellow-300'}">
                 <div class="text-xs text-gray-600">
-                  {practice.start_time || season.default_start_time || '6:00 PM'}
+                  {formatPracticeTime(practice)}
                 </div>
                 <div class="font-medium text-sm mt-1">
                   {practice.name || 'Practice'}

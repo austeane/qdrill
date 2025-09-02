@@ -2,10 +2,11 @@
 	import { page } from '$app/stores';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import { goto } from '$app/navigation';
-	import { Search, Calendar, Filter } from 'lucide-svelte';
+import { Search, Calendar, Filter } from 'lucide-svelte';
+import { formatInTz } from '$lib/utils/formatInTz.js';
 
-	export let data;
-	const { team, practicePlans, userRole } = data;
+export let data;
+const { team, practicePlans, userRole } = data;
 
 	$: canCreatePractice = userRole === 'admin' || userRole === 'coach';
 	
@@ -104,7 +105,8 @@
 
 	function formatPracticeDate(dateStr) {
 		if (!dateStr) return 'Not scheduled';
-		return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+		// dateStr may be 'YYYY-MM-DD' or full ISO; formatInTz handles both
+		return formatInTz(dateStr, team?.timezone || 'UTC', {
 			weekday: 'short',
 			year: 'numeric',
 			month: 'short',
@@ -121,6 +123,10 @@
 		return `${hour12}:${minutes} ${ampm}`;
 	}
 </script>
+
+<svelte:head>
+  <title>Practice Plans - {data?.team?.name || 'Team'}</title>
+</svelte:head>
 
 <main class="page-container">
 	<!-- Breadcrumb -->
@@ -144,11 +150,11 @@
 		</div>
 		<div class="header-actions">
 			{#if canCreatePractice}
-				<a href="/teams/{team.slug}/season" class="btn btn-primary">
+				<a href={`/teams/${team.slug}/season`} class="btn btn-primary">
 					Create Practice
 				</a>
 			{/if}
-			<a href="/teams/{team.slug}/season" class="btn btn-secondary">
+			<a href={`/teams/${team.slug}/season`} class="btn btn-secondary">
 				Back to Season
 			</a>
 		</div>
@@ -194,7 +200,7 @@
 	{#if filteredPlans.length > 0}
 		<div class="practice-plans-grid">
 			{#each filteredPlans as plan}
-					<a href="/teams/{team.slug}/plans/{plan.id}" class="practice-plan-card">
+					<a href={`/teams/${team.slug}/plans/${plan.id}`} class="practice-plan-card">
 					<div class="card-header">
 						<h3 class="plan-name">{plan.name || 'Untitled Practice'}</h3>
 						{#if plan.practice_type}

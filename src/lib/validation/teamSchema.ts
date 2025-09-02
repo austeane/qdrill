@@ -12,5 +12,5 @@ export const updateTeamSchema = createTeamSchema.partial();
 
 export const teamMemberSchema = z.object({
   user_id: z.string(),
-  role: z.enum(['admin', 'member']).default('member')
+  role: z.enum(['admin', 'coach', 'member']).default('member')
 });

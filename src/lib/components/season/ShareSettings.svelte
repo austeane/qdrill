@@ -11,6 +11,8 @@
   let error = null;
   let copiedField = null;
   
+  import { apiFetch } from '$lib/utils/apiFetch.js';
+
   // Load current share settings
   async function loadShareSettings() {
     if (!isAdmin) return;
@@ -19,13 +21,7 @@
     error = null;
     
     try {
-      const response = await fetch(`/api/seasons/${seasonId}/share`);
-      if (response.ok) {
-        shareData = await response.json();
-      } else {
-        const data = await response.json();
-        error = data.error || 'Failed to load share settings';
-      }
+      shareData = await apiFetch(`/api/seasons/${seasonId}/share`);
     } catch (err) {
       console.error('Error loading share settings:', err);
       error = 'Failed to load share settings';
@@ -40,22 +36,15 @@
     error = null;
     
     try {
-      const response = await fetch(`/api/seasons/${seasonId}/share`, {
+      shareData = await apiFetch(`/api/seasons/${seasonId}/share`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type })
       });
-      
-      if (response.ok) {
-        shareData = await response.json();
-        dispatch('tokenGenerated', { type });
-      } else {
-        const data = await response.json();
-        error = data.error || 'Failed to generate share link';
-      }
+      dispatch('tokenGenerated', { type });
     } catch (err) {
       console.error('Error generating token:', err);
-      error = 'Failed to generate share link';
+      error = (err && err.message) || 'Failed to generate share link';
     } finally {
       loading = false;
     }

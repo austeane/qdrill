@@ -1,5 +1,5 @@
 import { redirect, error } from '@sveltejs/kit';
-import { teamMemberService } from '$lib/server/services/teamMemberService';
+import { teamMemberService } from '$lib/server/services/teamMemberService.js';
 import { vercelPool } from '$lib/server/db';
 
 export async function load({ locals, parent }) {

@@ -499,16 +499,17 @@ export class DrillService extends BaseEntityService {
 				});
 			}
 
-			// Apply specific drill filters using Kysely
-			if (filters.skill_level?.length) qb = qb.where(sql`skill_level && $1`, [filters.skill_level]); // Array overlap
+            // Apply specific drill filters using Kysely
+            if (filters.skill_level?.length)
+                qb = qb.where(sql`skill_level && ${sql.array(filters.skill_level, 'text')}`); // Array overlap
 			if (filters.complexity) qb = qb.where('complexity', '=', filters.complexity);
-			if (filters.skills_focused_on?.length)
-				qb = qb.where(sql`skills_focused_on && $1`, [filters.skills_focused_on]);
-			if (filters.positions_focused_on?.length)
-				qb = qb.where(sql`positions_focused_on && $1`, [filters.positions_focused_on]);
-			if (filters.drill_type?.length) qb = qb.where(sql`drill_type && $1`, [filters.drill_type]);
-			if (filters.number_of_people_min != null)
-				qb = qb.where('number_of_people_min', '>=', filters.number_of_people_min);
+            if (filters.skills_focused_on?.length)
+                qb = qb.where(sql`skills_focused_on && ${sql.array(filters.skills_focused_on, 'text')}`);
+            if (filters.positions_focused_on?.length)
+                qb = qb.where(sql`positions_focused_on && ${sql.array(filters.positions_focused_on, 'text')}`);
+            if (filters.drill_type?.length) qb = qb.where(sql`drill_type && ${sql.array(filters.drill_type, 'text')}`);
+            if (filters.number_of_people_min != null)
+                qb = qb.where('number_of_people_min', '>=', filters.number_of_people_min);
 			if (filters.number_of_people_max != null)
 				qb = qb.where('number_of_people_max', '<=', filters.number_of_people_max);
 			if (filters.suggested_length_min != null)
@@ -524,11 +525,11 @@ export class DrillService extends BaseEntityService {
 			if (filters.hasDiagrams === false)
 				qb = qb.where(sql`diagrams IS NULL OR array_length(diagrams, 1) IS NULL OR array_length(diagrams, 1) = 0`);
 			if (filters.hasImages === true) qb = qb.where(sql`array_length(images, 1) > 0`);
-			if (filters.hasImages === false)
-				qb = qb.where(sql`images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0`);
+            if (filters.hasImages === false)
+                qb = qb.where(sql`images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0`);
 
-			return qb;
-		};
+            return qb;
+        };
 
 		const baseQuery = buildDrillBaseQuery();
 		const baseQueryForFallback = buildDrillBaseQuery(); // Separate instance for fallback path
@@ -589,17 +590,15 @@ export class DrillService extends BaseEntityService {
 			});
 		}
 		// Re-apply specific drill filters
-		if (filters.skill_level?.length)
-			countQuery = countQuery.where(sql`skill_level && $1`, [filters.skill_level]);
+        if (filters.skill_level?.length)
+            countQuery = countQuery.where(sql`skill_level && ${sql.array(filters.skill_level, 'text')}`);
 		if (filters.complexity) countQuery = countQuery.where('complexity', '=', filters.complexity);
-		if (filters.skills_focused_on?.length)
-			countQuery = countQuery.where(sql`skills_focused_on && $1`, [filters.skills_focused_on]);
-		if (filters.positions_focused_on?.length)
-			countQuery = countQuery.where(sql`positions_focused_on && $1`, [
-				filters.positions_focused_on
-			]);
-		if (filters.drill_type?.length)
-			countQuery = countQuery.where(sql`drill_type && $1`, [filters.drill_type]);
+        if (filters.skills_focused_on?.length)
+            countQuery = countQuery.where(sql`skills_focused_on && ${sql.array(filters.skills_focused_on, 'text')}`);
+        if (filters.positions_focused_on?.length)
+            countQuery = countQuery.where(sql`positions_focused_on && ${sql.array(filters.positions_focused_on, 'text')}`);
+        if (filters.drill_type?.length)
+            countQuery = countQuery.where(sql`drill_type && ${sql.array(filters.drill_type, 'text')}`);
 		if (filters.number_of_people_min != null)
 			countQuery = countQuery.where('number_of_people_min', '>=', filters.number_of_people_min);
 		if (filters.number_of_people_max != null)
@@ -817,26 +816,62 @@ export class DrillService extends BaseEntityService {
 				throw new NotFoundError('Parent drill not found');
 			}
 
-			// Use transaction helper for the swap operation
-			const tempId = -drill.id;
+			// Safer approach: keep IDs stable and swap content/roles only
+			// 1) Copy content fields from variant (drill) to primary (parentDrill)
+			const fields = [
+				'name',
+				'brief_description',
+				'detailed_description',
+				'skill_level',
+				'complexity',
+				'number_of_people_min',
+				'number_of_people_max',
+				'skills_focused_on',
+				'positions_focused_on',
+				'drill_type',
+				'video_link',
+				'diagrams',
+				'images'
+			];
 
-			// Set drill ID to temporary ID
-			await client.query(`UPDATE drills SET id = $1 WHERE id = $2`, [tempId, drill.id]);
+			// Compute skill count diffs before update
+			const oldSkills = parentDrill.skills_focused_on || [];
+			const newSkills = drill.skills_focused_on || [];
 
-			// Set parent ID to drill's original ID
-			await client.query(`UPDATE drills SET id = $1 WHERE id = $2`, [drill.id, parentDrill.id]);
-
-			// Set temporary ID to parent's original ID
-			await client.query(`UPDATE drills SET id = $1 WHERE id = $2`, [parentDrill.id, tempId]);
-
-			// Update references to maintain relationships
-			await client.query(`UPDATE drills SET parent_drill_id = $1 WHERE parent_drill_id = $2`, [
-				drill.id,
-				parentDrill.id
+			const setSql = fields.map((f, i) => `${f} = $${i + 3}`).join(', ');
+			await client.query(`UPDATE drills SET ${setSql} WHERE id = $1`, [
+				parentDrill.id,
+				null,
+				...fields.map((f) => drill[f])
 			]);
 
-			// Return the updated drill
-			return this.getById(parentDrill.id);
+			// Update votes.item_name if name changed on primary
+			if (drill.name && drill.name !== parentDrill.name) {
+				await client.query(`UPDATE votes SET item_name = $1 WHERE drill_id = $2`, [
+					drill.name,
+					parentDrill.id
+				]);
+			}
+
+			// 2) Rewire children of the variant to the primary
+			await client.query('UPDATE drills SET parent_drill_id = $1 WHERE parent_drill_id = $2', [
+				parentDrill.id,
+				drill.id
+			]);
+
+			// 3) Ensure the variant remains a child of primary
+			await client.query('UPDATE drills SET parent_drill_id = $1 WHERE id = $2', [
+				parentDrill.id,
+				drill.id
+			]);
+
+			// 4) Adjust skill usage counts based on diff
+			const skillsToRemove = oldSkills.filter((s) => !newSkills.includes(s));
+			const skillsToAdd = newSkills.filter((s) => !oldSkills.includes(s));
+			await this.updateSkillCounts(skillsToAdd, skillsToRemove, parentDrill.id, client);
+
+			// Return the updated primary drill with new content
+			return this.getById(parentDrill.id, ['*'], userId, client);
 		});
 	}
 

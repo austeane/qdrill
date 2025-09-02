@@ -27,6 +27,6 @@ export async function load({ locals, parent }) {
 	return {
 		season: activeSeason,
 		markers,
-		canEdit: userRole === 'admin' || userRole === 'owner'
+		canEdit: userRole === 'admin' || userRole === 'coach'
 	};
 }

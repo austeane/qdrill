@@ -7,6 +7,7 @@
         import { dev } from '$app/environment';
         import { slide } from 'svelte/transition'; // Added for transitions
         import { apiFetch } from '$lib/utils/apiFetch.js';
+        import { sanitizeHtml } from '$lib/utils/sanitize.js';
 
 	export let data;
 
@@ -158,7 +159,7 @@
 				<div class="border-t border-gray-200 pt-6 mb-8">
 					<h2 class="text-xl font-semibold mb-4">Description</h2>
 					<div class="prose max-w-none prose-indigo">
-						{@html formation.detailed_description}
+            {@html sanitizeHtml(formation.detailed_description)}
 					</div>
 				</div>
 			{/if}

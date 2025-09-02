@@ -120,8 +120,9 @@
     return checkDate < today;
   }
   
+  import { toLocalISO } from '$lib/utils/date.js';
   function getDateString(date) {
-    return date.toISOString().split('T')[0];
+    return toLocalISO(date);
   }
   
   function getDayPractices(date) {
@@ -202,11 +203,18 @@
     const lastDay = currentWeek[6];
     const firstMonth = firstDay.toLocaleDateString('en-US', { month: 'short', timeZone: teamTimezone });
     const lastMonth = lastDay.toLocaleDateString('en-US', { month: 'short', timeZone: teamTimezone });
-    
+    const firstDayNum = Number(
+      firstDay.toLocaleDateString('en-US', { day: 'numeric', timeZone: teamTimezone })
+    );
+    const lastDayNum = Number(
+      lastDay.toLocaleDateString('en-US', { day: 'numeric', timeZone: teamTimezone })
+    );
+    const yearStr = lastDay.toLocaleDateString('en-US', { year: 'numeric', timeZone: teamTimezone });
+
     if (firstMonth === lastMonth) {
-      return `${firstMonth} ${firstDay.getDate()}–${lastDay.getDate()}, ${firstDay.getFullYear()}`;
+      return `${firstMonth} ${firstDayNum}–${lastDayNum}, ${yearStr}`;
     } else {
-      return `${firstMonth} ${firstDay.getDate()} – ${lastMonth} ${lastDay.getDate()}, ${firstDay.getFullYear()}`;
+      return `${firstMonth} ${firstDayNum} – ${lastMonth} ${lastDayNum}, ${yearStr}`;
     }
   }
   

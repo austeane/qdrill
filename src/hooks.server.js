@@ -3,12 +3,16 @@ import * as Sentry from '@sentry/sveltekit';
 import { auth } from '$lib/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 // import { cleanup } from '@vercel/postgres'; // Commented out if not used
-import { userService } from '$lib/server/services/userService';
+import { dev } from '$app/environment';
 
-Sentry.init({
-	dsn: 'https://f20c97c5f330ac4e17cc678ded5b49da@o4509308595208192.ingest.us.sentry.io/4509308596715520',
-	tracesSampleRate: 1
-});
+if (!dev && process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: 'production',
+    enabled: true,
+    tracesSampleRate: 1.0
+  });
+}
 
 export const handleError = Sentry.handleErrorWithSentry(async function _handleError({ error }) {
 	console.error('Uncaught error:', error);
@@ -19,7 +23,7 @@ export const handleError = Sentry.handleErrorWithSentry(async function _handleEr
 	};
 });
 
-export const handle = sequence(Sentry.sentryHandle(), async function _handle({ event, resolve }) {
+export const handle = sequence(!dev ? Sentry.sentryHandle() : (async ({ event, resolve }) => resolve(event)), async function _handle({ event, resolve }) {
 	// Retrieve the current session (if any) and expose it on event.locals so that
 	// downstream load functions, endpoints and `authGuard` can access it.
 	try {
@@ -28,33 +32,20 @@ export const handle = sequence(Sentry.sentryHandle(), async function _handle({ e
 		});
 
 		if (sessionResult && sessionResult.user) {
-			// Ensure the user exists in our database
-			await userService.ensureUserExists(sessionResult.user);
-			
-			// Fetch user with role from database
-			try {
-				const dbUser = await userService.getById(sessionResult.user.id, ['id', 'name', 'email', 'image', 'role']);
-				
-				// Merge user data with role into session
-				event.locals.session = {
-					...sessionResult.session,
-					user: {
-						...sessionResult.user,
-						role: dbUser.role || 'user'
-					}
-				};
-				event.locals.user = event.locals.session.user;
-			} catch (err) {
-				// If we can't fetch the user, use the session data without role
-				console.warn('Could not fetch user role:', err);
-				event.locals.session = {
-					...sessionResult.session,
-					user: sessionResult.user
-				};
-				event.locals.user = sessionResult.user;
-			}
+			// Trust role from session (populated by auth callbacks); default to 'user'
+			event.locals.session = {
+				...sessionResult.session,
+				user: {
+					...sessionResult.user,
+					role: sessionResult.user.role || 'user'
+				}
+			};
+			event.locals.user = event.locals.session.user;
 		} else {
-			// console.info('No active session found for request');
+			// Debug logging for auth issues
+			if (dev && event.url.pathname.includes('/teams')) {
+				console.log('[auth] No session for teams route; Cookie header:', event.request.headers.get('cookie'));
+			}
 		}
 	} catch (err) {
 		console.warn('Error while fetching session or ensuring user exists:', err);

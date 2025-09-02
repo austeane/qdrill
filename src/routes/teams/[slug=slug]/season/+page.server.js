@@ -6,7 +6,6 @@ export async function load({ locals, parent }) {
     throw redirect(302, '/login');
   }
   
-  // Get team and userRole from parent layout
   const { team, userRole } = await parent();
   
   if (!userRole) {
@@ -17,14 +16,18 @@ export async function load({ locals, parent }) {
     const seasons = await seasonService.getTeamSeasons(team.id, locals.user.id);
     return { seasons };
   } catch (err) {
-    // Normalize service-layer errors to SvelteKit HttpErrors
-    if (err?.status && err?.message) {
-      // If not a member, send them back to teams list
-      if (err.code === 'VALIDATION_ERROR' || /team members/i.test(err.message)) {
-        throw redirect(302, '/teams');
-      }
-      throw error(err.status, err.message);
+    console.error('Season load error:', err);
+    
+    // If validation error about team membership, redirect
+    if (err?.message?.includes('team members')) {
+      throw redirect(302, '/teams');
     }
+    
+    // Pass through HTTP errors
+    if (err?.status) {
+      throw error(err.status, err.message || 'Failed to load seasons');
+    }
+    
     throw error(500, 'Failed to load seasons');
   }
 }

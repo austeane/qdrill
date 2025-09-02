@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { Button as ButtonPrimitive } from 'bits-ui';
   import { Loader2 } from 'lucide-svelte';
   import { buttonVariants } from './index.js';
   import { cn } from '$lib/utils.js';
@@ -46,22 +45,20 @@
     <slot />
   </a>
 {:else}
-  <ButtonPrimitive.Root asChild>
-    <button
-      class={classes}
-      type="button"
-      disabled={disabled || loading}
-      aria-disabled={disabled || loading}
-      data-loading={loading}
-      {...$$restProps}
-      on:click
-    >
-      {#if loading}
-        <Loader2 class="mr-2 h-4 w-4 animate-spin" />
-      {/if}
-      <slot />
-    </button>
-  </ButtonPrimitive.Root>
+  <button
+    class={classes}
+    type="button"
+    disabled={disabled || loading}
+    aria-disabled={disabled || loading}
+    data-loading={loading}
+    {...$$restProps}
+    on:click
+  >
+    {#if loading}
+      <Loader2 class="mr-2 h-4 w-4 animate-spin" />
+    {/if}
+    <slot />
+  </button>
 {/if}
 
 <style>

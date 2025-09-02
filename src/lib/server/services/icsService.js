@@ -12,15 +12,13 @@ class IcsService {
    * Generate a share token for a season
    */
   async generateShareToken(seasonId) {
+    // Use seasons.ics_token (no expires column in schema)
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date();
-    expiresAt.setFullYear(expiresAt.getFullYear() + 1); // 1 year expiry
-    
     await query(
       `UPDATE seasons 
-       SET share_token = $1, share_token_expires_at = $2 
-       WHERE id = $3`,
-      [token, expiresAt, seasonId]
+       SET ics_token = $1 
+       WHERE id = $2`,
+      [token, seasonId]
     );
     
     return token;
@@ -33,8 +31,7 @@ class IcsService {
     const result = await query(
       `SELECT id FROM seasons 
        WHERE id = $1 
-       AND share_token = $2 
-       AND (share_token_expires_at IS NULL OR share_token_expires_at > NOW())`,
+         AND ics_token = $2`,
       [seasonId, token]
     );
     
@@ -47,8 +44,8 @@ class IcsService {
   async revokeShareToken(seasonId) {
     await query(
       `UPDATE seasons 
-       SET share_token = NULL, share_token_expires_at = NULL 
-       WHERE id = $3`,
+       SET ics_token = NULL 
+       WHERE id = $1`,
       [seasonId]
     );
   }
@@ -73,13 +70,14 @@ class IcsService {
     const season = seasonResult.rows[0];
     
     // Get practices
-    // Note: publish/unpublish not implemented yet (no is_published column).
-    // For now, always return all practices for the season.
-    const practiceQuery = `SELECT * FROM practice_plans 
-         WHERE season_id = $1 
-         ORDER BY scheduled_date, start_time`;
-    
-    const practicesResult = await query(practiceQuery, [seasonId]);
+    // If includeUnpublished is false (public token), return only published
+    let practiceQuery = `SELECT * FROM practice_plans WHERE season_id = $1`;
+    const practiceParams = [seasonId];
+    if (!includeUnpublished) {
+      practiceQuery += ` AND is_published = true`;
+    }
+    practiceQuery += ` ORDER BY scheduled_date, start_time`;
+    const practicesResult = await query(practiceQuery, practiceParams);
     
     // Get markers
     const markersResult = await query(
@@ -162,7 +160,7 @@ class IcsService {
         `DTSTART;VALUE=DATE:${startDate}`,
         `DTEND;VALUE=DATE:${endDate}`,
         `SUMMARY:${emoji} ${this.escapeIcs(marker.title)}`,
-        `DESCRIPTION:${this.escapeIcs(marker.description || '')}`,
+        `DESCRIPTION:${this.escapeIcs(marker.description || marker.notes || '')}`,
         'END:VEVENT'
       );
     });

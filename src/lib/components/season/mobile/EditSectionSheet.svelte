@@ -3,6 +3,7 @@
   import { apiFetch } from '$lib/utils/apiFetch.js';
   import { toast } from '@zerodevx/svelte-toast';
   import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
+  import { toLocalISO } from '$lib/utils/date.js';
   
   export let season = null;
   export let section = null;
@@ -42,22 +43,22 @@
         // Start from Sunday of this week
         const dayOfWeek = start.getDay();
         start.setDate(start.getDate() - dayOfWeek);
-        startDate = start.toISOString().split('T')[0];
+        startDate = toLocalISO(start);
         
         const endOfWeek = new Date(start);
         endOfWeek.setDate(start.getDate() + 6);
-        endDate = endOfWeek.toISOString().split('T')[0];
+        endDate = toLocalISO(endOfWeek);
         break;
         
       case 'next-4-weeks':
-        startDate = today.toISOString().split('T')[0];
+        startDate = toLocalISO(today);
         const fourWeeksLater = new Date(today);
         fourWeeksLater.setDate(today.getDate() + 28);
-        endDate = fourWeeksLater.toISOString().split('T')[0];
+        endDate = toLocalISO(fourWeeksLater);
         break;
         
       case 'to-season-end':
-        startDate = today.toISOString().split('T')[0];
+        startDate = toLocalISO(today);
         endDate = season?.end_date || '';
         break;
     }
@@ -76,8 +77,8 @@
     const seasonEnd = new Date(season.end_date);
     
     if (start >= seasonStart && end <= seasonEnd) {
-      startDate = start.toISOString().split('T')[0];
-      endDate = end.toISOString().split('T')[0];
+      startDate = toLocalISO(start);
+      endDate = toLocalISO(end);
     }
   }
   

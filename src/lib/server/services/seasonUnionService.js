@@ -222,8 +222,8 @@ class SeasonUnionService {
     }
     
     // Step 4: Sort sections and drills by order
-    unionData.sections.sort((a, b) => (a.order || 0) - (b.order || 0));
-    unionData.drills.sort((a, b) => (a.order_in_plan || 0) - (b.order_in_plan || 0));
+    unionData.sections = [...unionData.sections].sort((a, b) => (a.order || 0) - (b.order || 0));
+    unionData.drills = [...unionData.drills].sort((a, b) => (a.order_in_plan || 0) - (b.order_in_plan || 0));
     
     return unionData;
   }
@@ -272,7 +272,13 @@ class SeasonUnionService {
     const end = new Date(endDate);
     
     for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
-      const dateStr = date.toISOString().split('T')[0];
+      const toLocalISO = (d) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const dateStr = toLocalISO(date);
       
       try {
         // Check if already exists

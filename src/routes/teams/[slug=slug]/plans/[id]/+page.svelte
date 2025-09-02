@@ -156,20 +156,20 @@
 			</div>
 		</div>
 		<div class="header-actions">
-			{#if userCanEdit}
+				{#if userCanEdit}
+					<a
+						href={`/teams/${team.slug}/plans/${practicePlan.id}/edit`}
+						class="btn btn-secondary"
+					>
+						Edit
+					</a>
+				{/if}
 				<a
-					href="/teams/{team.slug}/plans/{practicePlan.id}/edit"
+					href={`/teams/${team.slug}/season`}
 					class="btn btn-secondary"
 				>
-					Edit
+					Back to Season
 				</a>
-			{/if}
-			<a
-				href="/teams/{team.slug}/season"
-				class="btn btn-secondary"
-			>
-				Back to Season
-			</a>
 		</div>
 	</div>
 

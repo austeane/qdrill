@@ -5,11 +5,22 @@ export async function GET({ locals, params }) {
   if (!locals.user) return json({ error: 'Authentication required' }, { status: 401 });
   try {
     const items = await seasonMarkerService.getSeasonMarkers(params.seasonId, locals.user.id);
-    // Normalize for UI that may expect `date` when not a range
-    const normalized = items.map((m) => ({
-      ...m,
-      date: m.start_date && !m.end_date ? m.start_date : m.date || m.start_date
-    }));
+    const toDateStr = (v) =>
+      v ? (typeof v === 'string' ? v.slice(0, 10) : new Date(v).toISOString().slice(0, 10)) : null;
+
+    const normalized = items.map((m) => {
+      const preferred = m.start_date && !m.end_date ? m.start_date : (m.date || m.start_date);
+      const date = toDateStr(preferred);
+      return {
+        ...m,
+        // keep both keys for UI compatibility
+        name: m.name ?? m.title ?? '',
+        title: m.title ?? m.name ?? '',
+        start_date: toDateStr(m.start_date),
+        end_date: toDateStr(m.end_date),
+        date
+      };
+    });
     return json(normalized);
   } catch (err) {
     return json({ error: err?.message || 'Failed to fetch markers' }, { status: err?.status || 500 });

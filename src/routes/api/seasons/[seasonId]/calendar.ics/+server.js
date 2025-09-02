@@ -17,6 +17,12 @@ export async function GET({ params, url, locals }) {
   const { seasonId } = params;
   const token = url.searchParams.get('token');
   
+  // Validate seasonId is a UUID to prevent type errors with PostgreSQL
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(seasonId)) {
+    throw error(400, 'Invalid season ID format');
+  }
+  
   try {
     // Get season to check team
     const seasonResult = await query(
@@ -46,8 +52,8 @@ export async function GET({ params, url, locals }) {
       if (!member) {
         throw error(403, 'You must be a team member to access this calendar');
       }
-      // Team admins can see unpublished practices
-      includeUnpublished = member.role === 'admin';
+      // Admins and coaches can see unpublished practices
+      includeUnpublished = member.role === 'admin' || member.role === 'coach';
     } else {
       throw error(401, 'Authentication required');
     }

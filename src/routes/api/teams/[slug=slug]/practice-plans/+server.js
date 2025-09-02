@@ -23,7 +23,8 @@ export async function GET({ locals, params, url }) {
   const endDate = url.searchParams.get('end_date');
   const exactDate = url.searchParams.get('date'); // convenience single-day filter
   const seasonId = url.searchParams.get('season_id');
-  const status = url.searchParams.get('status'); // currently ignored until publish feature lands
+  const status = url.searchParams.get('status'); // 'published' | 'all'
+  const canViewAll = member.role === 'admin' || member.role === 'coach';
   
   try {
     // Build query
@@ -65,19 +66,32 @@ export async function GET({ locals, params, url }) {
       paramIndex++;
     }
     
-    // Note: publish/unpublish not implemented yet (no is_published column).
-    // Once schema supports it, reintroduce filtering here.
+    // Publish filter: members see only published; admin/coach can see all
+    if (status === 'published' || (!canViewAll && status !== 'all')) {
+      queryStr += ` AND pp.is_published = true`;
+    }
     
     // Order by scheduled date
     queryStr += ` ORDER BY pp.scheduled_date ASC, pp.created_at ASC`;
     
     const result = await query(queryStr, queryParams);
-    
-    // Return consistent shape
-    return json({ 
-      items: result.rows,
-      count: result.rows.length 
+
+    // Normalize date-only + time-only for consistent client behavior
+    const items = (result.rows || []).map((row) => {
+      const normalizeDate = (v) =>
+        v
+          ? (typeof v === 'string' ? v.slice(0, 10) : new Date(v).toISOString().slice(0, 10))
+          : null;
+      const normalizeTime = (v) => (v ? String(v).slice(0, 8) : null);
+
+      return {
+        ...row,
+        scheduled_date: normalizeDate(row.scheduled_date),
+        start_time: normalizeTime(row.start_time)
+      };
     });
+
+    return json({ items, count: items.length });
   } catch (error) {
     console.error('Error fetching team practice plans:', error);
     return json({ error: 'Failed to fetch practice plans' }, { status: 500 });

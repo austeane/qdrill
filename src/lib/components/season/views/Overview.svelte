@@ -170,9 +170,9 @@
           <div class="section-info">
             <h3 class="section-name">{section.name}</h3>
             <div class="section-dates">
-              {formatInTz(`${section.start_date}T00:00:00Z`, teamTimezone, { month: 'short', day: 'numeric' })}
+              {formatInTz(section.start_date, teamTimezone, { month: 'short', day: 'numeric' })}
               –
-              {formatInTz(`${section.end_date}T00:00:00Z`, teamTimezone, { month: 'short', day: 'numeric' })}
+              {formatInTz(section.end_date, teamTimezone, { month: 'short', day: 'numeric' })}
             </div>
           </div>
           {#if isAdmin}
@@ -207,7 +207,7 @@
               >
                 <span class="stat-label">Next:</span>
                 <span class="stat-value">
-                  {formatInTz(`${nextPractice.scheduled_date}T00:00:00Z`, teamTimezone, { month: 'short', day: 'numeric' })}
+                  {formatInTz(nextPractice.scheduled_date, teamTimezone, { month: 'short', day: 'numeric' })}
                 </span>
                 <ChevronRight size={16} />
               </button>
@@ -273,11 +273,11 @@
                       <div class="marker-name">{marker.name || marker.title}</div>
                       <div class="marker-date">
                         {#if marker.end_date}
-                          {formatInTz(`${(marker.date || marker.start_date)}T00:00:00Z`, teamTimezone, { month: 'short', day: 'numeric' })}
+                          {formatInTz((marker.date || marker.start_date), teamTimezone, { month: 'short', day: 'numeric' })}
                           –
-                          {formatInTz(`${marker.end_date}T00:00:00Z`, teamTimezone, { month: 'short', day: 'numeric' })}
+                          {formatInTz(marker.end_date, teamTimezone, { month: 'short', day: 'numeric' })}
                         {:else}
-                          {formatInTz(`${(marker.date || marker.start_date)}T00:00:00Z`, teamTimezone, { weekday: 'short', month: 'short', day: 'numeric' })}
+                          {formatInTz((marker.date || marker.start_date), teamTimezone, { weekday: 'short', month: 'short', day: 'numeric' })}
                         {/if}
                       </div>
                     </div>

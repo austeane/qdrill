@@ -45,8 +45,8 @@
   @media (min-width: 768px) {
     :global(.appshell .sidebar.collapsed) ~ .appshell__content { margin-left: -176px; }
   }
-  .appshell__content { padding: var(--space-6) var(--space-4); }
+  .appshell__content { padding: var(--space-6) var(--space-4); min-width: 0; }
   @media (max-width: 767px) {
-    .appshell__content { padding: var(--space-4) var(--space-3); }
+    .appshell__content { padding: var(--space-4) var(--space-3); overflow-x: hidden; }
   }
 </style>

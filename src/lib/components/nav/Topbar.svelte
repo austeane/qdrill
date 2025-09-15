@@ -54,7 +54,7 @@
       href="https://discord.gg/yuXBkACYE3"
       target="_blank"
       rel="noopener noreferrer"
-      class="icon-btn"
+      class="icon-btn discord-link"
       aria-label="Join our Discord"
     >
       <img
@@ -138,7 +138,7 @@
     font-size: var(--font-size-xs);
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   }
-  .spacer { flex: 0 0 auto; }
+  .spacer { flex: 1 1 auto; }
   .icon-btn {
     display: inline-flex;
     align-items: center;
@@ -154,6 +154,9 @@
   .icon-btn:hover { background: var(--color-bg-subtle); color: var(--color-text-primary); }
   .mobile-only { display: flex; }
   @media (min-width: 768px) { .mobile-only { display: none; } }
+  /* Hide Discord link on very small screens to prevent overflow */
+  .discord-link { display: none; }
+  @media (min-width: 360px) { .discord-link { display: inline-flex; } }
   .pill {
     padding: 0.375rem 0.625rem;
     border: 1px solid var(--color-border-default);
@@ -161,7 +164,11 @@
     color: var(--color-text-primary);
     background: var(--color-surface-1);
     transition: background var(--transition-fast), border-color var(--transition-fast);
+    white-space: nowrap;
+    flex-shrink: 0;
+    max-width: 40vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .pill:hover { background: var(--color-bg-subtle); border-color: var(--color-border-strong); }
 </style>
-

@@ -27,7 +27,7 @@
     <ul class="nav">
       {#each navItems as item}
         <li>
-          <a href={item.href} class="nav__item" class:active={isActive(item.href)} title={collapsed ? item.label : undefined}>
+          <a href={item.href} class="nav__item" class:active={isActive(item.href)} title={collapsed ? item.label : undefined} on:click={() => (open = false)}>
             <svelte:component this={item.icon} size={18} />
             {#if !collapsed}
               <span class="nav__label">
@@ -120,4 +120,3 @@
     letter-spacing: 0.025em;
   }
 </style>
-

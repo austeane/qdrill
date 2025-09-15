@@ -333,7 +333,7 @@
 					>
 						Manage Variants
 						<div
-							class="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap"
+							class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-normal sm:whitespace-nowrap max-w-[90vw] text-center"
 						>
 							Manage relationships with similar drills to help organize and link related content
 						</div>
@@ -349,7 +349,7 @@
 					>
 						Mark as Variant
 						<div
-							class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap"
+							class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-normal sm:whitespace-nowrap max-w-[90vw] text-center"
 						>
 							If this is very similar to another drill, you can set it to be a variant of that
 							drill, which will link their pages and reduce the clutter on the main drills page

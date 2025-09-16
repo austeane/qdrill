@@ -377,7 +377,28 @@
 				goto(`/formations/${result.id}`);
 			} catch (error) {
 				console.error('Error submitting formation:', error);
-				toast.push('Error saving formation. Please try again.', {
+
+				// Build detailed error message
+				let errorMessage = 'Error saving formation: ';
+				if (error.details) {
+					// If we have validation details, format them nicely
+					const fieldErrors = [];
+					for (const [field, errors] of Object.entries(error.details)) {
+						if (Array.isArray(errors)) {
+							fieldErrors.push(`${field}: ${errors.join(', ')}`);
+						}
+					}
+					if (fieldErrors.length > 0) {
+						errorMessage += fieldErrors.join('; ');
+					} else {
+						errorMessage += error.message || 'Unknown error occurred';
+					}
+				} else {
+					// Fallback to the basic error message
+					errorMessage += error.message || 'Unknown error occurred';
+				}
+
+				toast.push(errorMessage, {
 					theme: {
 						'--toastBackground': '#F56565',
 						'--toastColor': 'white'
@@ -492,11 +513,17 @@
 							<input
 								id="name"
 								bind:value={$name}
-								class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.name ? 'border-red-500 focus:ring-red-500' : ''}"
+								placeholder="Enter formation name"
 							/>
 						</div>
 						{#if $errors.name}
-							<p class="text-red-500 text-sm mt-1">{$errors.name}</p>
+							<p class="text-red-500 text-sm mt-1 flex items-center gap-1">
+								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+									<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+								</svg>
+								{$errors.name}
+							</p>
 						{/if}
 
 						<div class="flex flex-col">
@@ -507,11 +534,17 @@
 							<input
 								id="brief_description"
 								bind:value={$brief_description}
-								class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.brief_description ? 'border-red-500 focus:ring-red-500' : ''}"
+								placeholder="Brief summary of the formation"
 							/>
 						</div>
 						{#if $errors.brief_description}
-							<p class="text-red-500 text-sm mt-1">{$errors.brief_description}</p>
+							<p class="text-red-500 text-sm mt-1 flex items-center gap-1">
+								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+									<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+								</svg>
+								{$errors.brief_description}
+							</p>
 						{/if}
 
 						<div class="flex flex-col">

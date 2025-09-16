@@ -87,7 +87,8 @@ export async function apiFetch(url, opts = {}, fetchInstance = fetch) {
 
                console.error(`API Fetch Error (${url}): ${message}`, { status: response.status, body });
                const code = typeof body === 'object' && body?.error?.code ? body.error.code : 'HTTP_ERROR';
-               throw new APIError(message, response.status, code);
+               const details = typeof body === 'object' && body?.error?.details ? body.error.details : null;
+               throw new APIError(message, response.status, code, details);
 	}
 
 	// Response is OK

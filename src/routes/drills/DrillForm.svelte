@@ -521,7 +521,28 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 		} catch (error) {
 			console.error('Error submitting drill:', error);
 			isSubmitting = false;
-			toast.push(`Error saving drill: ${error.message}. Please try again.`, {
+
+			// Build detailed error message
+			let errorMessage = 'Error saving drill: ';
+			if (error.details) {
+				// If we have validation details, format them nicely
+				const fieldErrors = [];
+				for (const [field, errors] of Object.entries(error.details)) {
+					if (Array.isArray(errors)) {
+						fieldErrors.push(`${field}: ${errors.join(', ')}`);
+					}
+				}
+				if (fieldErrors.length > 0) {
+					errorMessage += fieldErrors.join('; ');
+				} else {
+					errorMessage += error.message || 'Unknown error occurred';
+				}
+			} else {
+				// Fallback to the basic error message
+				errorMessage += error.message || 'Unknown error occurred';
+			}
+
+			toast.push(errorMessage, {
 				theme: {
 					'--toastBackground': '#F56565',
 					'--toastColor': 'white'
@@ -786,8 +807,8 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 								<button
 									type="button"
 									class="px-3 py-1 rounded-full border border-gray-300 skill-level-button"
-									class:selected={$skill_level.includes('Elite')}
-									on:click={() => toggleSelection(skill_level, 'Elite')}>Elite</button
+									class:selected={$skill_level.includes('Expert')}
+									on:click={() => toggleSelection(skill_level, 'Expert')}>Expert</button
 								>
 							</div>
 						</div>

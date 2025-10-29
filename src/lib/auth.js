@@ -69,10 +69,18 @@ const createAuthConfig = () => {
               })
               .onConflict((oc) => oc.column('id').doNothing())
               .execute();
+            console.log('[auth callbacks.signIn] Successfully created user record for:', user.id);
           }
         } catch (err) {
-          console.error('[auth callbacks.signIn] ensure user exists failed:', err);
-          // Allow sign-in to proceed even if our auxiliary insert fails
+          console.error('[auth callbacks.signIn] CRITICAL: Failed to ensure user exists in users table:', err);
+          console.error('[auth callbacks.signIn] User details:', {
+            id: user.id,
+            email: user.email,
+            name: user.name
+          });
+          // LONG-TERM FIX: Fail sign-in if we can't create the user record
+          // This prevents foreign key violations later
+          return false;
         }
         return true;
       },

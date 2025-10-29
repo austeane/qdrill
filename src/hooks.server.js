@@ -2,6 +2,7 @@ import { sequence } from '@sveltejs/kit/hooks';
 import * as Sentry from '@sentry/sveltekit';
 import { auth } from '$lib/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
+import { kyselyDb } from '$lib/server/db.js';
 // import { cleanup } from '@vercel/postgres'; // Commented out if not used
 import { dev } from '$app/environment';
 
@@ -32,14 +33,69 @@ export const handle = sequence(!dev ? Sentry.sentryHandle() : (async ({ event, r
 		});
 
 		if (sessionResult && sessionResult.user) {
-			// Trust role from session (populated by auth callbacks); default to 'user'
-			event.locals.session = {
-				...sessionResult.session,
-				user: {
-					...sessionResult.user,
-					role: sessionResult.user.role || 'user'
+			// Ensure user exists in our users table (short-term fix for missing users)
+			try {
+				const existing = await kyselyDb
+					.selectFrom('users')
+					.select(['id', 'role'])
+					.where('id', '=', sessionResult.user.id)
+					.executeTakeFirst();
+
+				if (!existing) {
+					// User missing in our table - insert them now
+					console.warn('[hooks] User missing from users table, creating:', sessionResult.user.id);
+					await kyselyDb
+						.insertInto('users')
+						.values({
+							id: sessionResult.user.id,
+							email: sessionResult.user.email ?? null,
+							name: sessionResult.user.name ?? null,
+							image: sessionResult.user.image ?? null,
+							role: 'user'
+						})
+						.onConflict((oc) => oc.column('id').doNothing())
+						.execute();
+
+					// Set default role for newly created user
+					event.locals.session = {
+						...sessionResult.session,
+						user: {
+							...sessionResult.user,
+							role: 'user'
+						}
+					};
+				} else {
+					// User exists, use their actual role
+					event.locals.session = {
+						...sessionResult.session,
+						user: {
+							...sessionResult.user,
+							role: existing.role || 'user'
+						}
+					};
 				}
-			};
+			} catch (err) {
+				console.error('[hooks] Failed to ensure user exists:', err);
+				// Report to Sentry in production
+				if (!dev && process.env.SENTRY_DSN) {
+					Sentry.captureException(err, {
+						extra: {
+							userId: sessionResult.user?.id,
+							userEmail: sessionResult.user?.email,
+							context: 'hooks.server.js - ensure user exists'
+						}
+					});
+				}
+				// Fallback: use session data as-is
+				event.locals.session = {
+					...sessionResult.session,
+					user: {
+						...sessionResult.user,
+						role: sessionResult.user.role || 'user'
+					}
+				};
+			}
+
 			event.locals.user = event.locals.session.user;
 		} else {
 			// Debug logging for auth issues

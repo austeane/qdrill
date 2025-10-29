@@ -1,10 +1,23 @@
 <script>
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	// import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
 	import EntityScore from '$lib/components/EntityScore.svelte';
+	import { signOut } from '$lib/auth-client.js';
+	import { LogOut } from '$lib/components/ui/icons.ts';
 
 	export let data;
 	const { userData } = data;
+
+	async function handleSignOut() {
+		try {
+			await signOut();
+			// Redirect to home page after successful signout
+			await goto('/');
+		} catch (error) {
+			console.error('Failed to sign out:', error);
+		}
+	}
 
 	// Pagination settings
 	const itemsPerPage = 5;
@@ -60,12 +73,20 @@
 
 <div class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
 	<!-- User Profile Header -->
-	<header class="flex flex-col sm:flex-row items-center gap-4 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+	<header class="flex flex-col sm:flex-row items-center gap-4 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm relative">
 		<img src={userImage} alt={userName} class="w-24 h-24 rounded-full shadow-md" />
-		<div class="text-center sm:text-left">
+		<div class="text-center sm:text-left flex-grow">
 			<h1 class="text-2xl sm:text-3xl font-bold">{userName}</h1>
 			<p class="text-gray-600 dark:text-gray-300">{userEmail}</p>
 		</div>
+		<button
+			on:click={handleSignOut}
+			class="absolute top-6 right-6 sm:static px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+			aria-label="Sign out"
+		>
+			<LogOut size={20} />
+			<span class="hidden sm:inline">Sign Out</span>
+		</button>
 	</header>
 
 	<!-- Stats Overview -->

@@ -8,7 +8,8 @@ import { handleApiError } from '../../utils/handleApiError.js';
  */
 export async function GET({ url }) {
 	try {
-		const searchTerm = url.searchParams.get('q');
+		// Accept both `query` (used by client modals) and legacy `q`
+		const searchTerm = url.searchParams.get('query') ?? url.searchParams.get('q');
 		const page = parseInt(url.searchParams.get('page') || '1');
 		const limit = parseInt(url.searchParams.get('limit')) || 10;
 		const sortBy = url.searchParams.get('sort');

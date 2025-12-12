@@ -109,3 +109,6 @@ These are incremental notes while reconciling the two external reviews against t
 - **Found new regression in practice plan create:** clicking “Add Drill” then selecting a drill in `EnhancedAddItemModal` always toasted “No section selected” in prod.
   - Root cause: `SectionHeader.svelte` dispatched `openDrillSearch` with raw `section.id`, but `PracticePlanForm.svelte` expects `{ sectionId }`.
   - Fixed by dispatching `{ sectionId: section.id }` (commit `26f1802`) and pushed to `main`. Waiting for prod deploy to re‑verify full practice plan flow.
+
+- **Formation search modal mismatch:** `EnhancedAddItemModal` calls `/api/formations/search?query=...` but the endpoint only read `q`, causing 500 “Search term is required” in prod.
+  - Patched search route to accept both `query` and legacy `q` (commit `c1a55a2`) and pushed to `main`; will re‑verify after deploy.

@@ -67,6 +67,32 @@
 	let isVariation = writable(!!drill.parent_drill_id || !!parentId);
 	let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(parentId, 10) : null));
 
+	// Clear validation errors reactively when field values change
+	$: if ($drill_type.length > 0 && $errors.drill_type) {
+		errors.update((e) => {
+			const { drill_type: _, ...rest } = e;
+			return rest;
+		});
+	}
+	$: if ($skill_level.length > 0 && $errors.skill_level) {
+		errors.update((e) => {
+			const { skill_level: _, ...rest } = e;
+			return rest;
+		});
+	}
+	$: if ($positions_focused_on.length > 0 && $errors.positions_focused_on) {
+		errors.update((e) => {
+			const { positions_focused_on: _, ...rest } = e;
+			return rest;
+		});
+	}
+	$: if ($selectedSkills.length > 0 && $errors.skills_focused_on) {
+		errors.update((e) => {
+			const { skills_focused_on: _, ...rest } = e;
+			return rest;
+		});
+	}
+
 	// Derived store for available skills - depends on selectedSkills store and allSkills prop
 	const availableSkills = derived(selectedSkills, ($selectedSkills) => {
 		return Array.isArray(allSkills)

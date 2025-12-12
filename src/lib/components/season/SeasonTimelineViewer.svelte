@@ -43,7 +43,9 @@
 	function parseISODateLocal(s) {
 		if (!s) return null;
 		if (s instanceof Date) return s;
-		const [y, m, d] = s.split('-').map(Number);
+		// Handle full ISO strings (e.g., "2025-07-31T00:00:00.000Z") by taking just the date part
+		const dateStr = s.includes('T') ? s.split('T')[0] : s;
+		const [y, m, d] = dateStr.split('-').map(Number);
 		return new Date(y, m - 1, d);
 	}
 

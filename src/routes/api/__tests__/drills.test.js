@@ -121,7 +121,7 @@ describe('Drills API Endpoints', () => {
 			const data = await response.json();
 
 			// Verify the service was called correctly
-			expect(drillService.createDrill).toHaveBeenCalledWith(expect.any(Object), 123);
+			expect(drillService.createDrill).toHaveBeenCalledWith(expect.any(Object), '123');
 
 			// Verify the response
 			expect(data).toEqual(mockCreatedDrill);

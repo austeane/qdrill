@@ -790,7 +790,10 @@ export class BaseEntityService {
 			// 2. Entity is editable by others
 			// 3. Entity has no creator (creator column is null)
 			// 4. User is admin (already checked above)
-			const isCreator = userId !== null && entity[userIdColumn] === userId;
+			const isCreator =
+				userId !== null &&
+				entity[userIdColumn] !== null &&
+				String(entity[userIdColumn]) === String(userId);
 			const isEditable = entity[editableByOthersColumn] === true;
 			const isUnowned = entity[userIdColumn] === null;
 
@@ -848,7 +851,12 @@ export class BaseEntityService {
 		// Private entities can only be viewed by the creator (if privateValue and userId are valid)
 		const isPrivate =
 			privateValue !== undefined && privateValue !== null ? visibility === privateValue : false;
-		return isPrivate && userId !== null && entity[userIdColumn] === userId;
+		return (
+			isPrivate &&
+			userId !== null &&
+			entity[userIdColumn] !== null &&
+			String(entity[userIdColumn]) === String(userId)
+		);
 	}
 
 	/**
@@ -999,11 +1007,9 @@ export class BaseEntityService {
 						)
 					)
 				)
-				.select((eb) => [
-					// Kysely's dynamic way to add selections
-					...(this.defaultColumns.includes('*')
-						? []
-						: this.defaultColumns.map((col) => sql.ref(col))), // Select default columns
+				// Do not re-select columns here; baseQueryBuilderForFallback already has its selects.
+				// Just append similarity_score to avoid duplicate/ambiguous selects.
+				.select((eb) =>
 					eb.fn
 						.greatest(
 							...validFallbackColumns.map(
@@ -1011,15 +1017,8 @@ export class BaseEntityService {
 							)
 						)
 						.as('similarity_score')
-				]);
-
-			// If defaultColumns was ['*'], we need to ensure all table columns are selected
-			// Kysely doesn't have a simple way to re-add `select *` after specific selections,
-			// so services using this should define their default columns explicitly if not already.
-			// For now, assuming defaultColumns are explicit or handled by the initial baseQueryBuilder.
-			// If baseQueryBuilderForFallback already has its selects, we just add similarity_score.
-
-			fallbackQuery = fallbackQuery.orderBy('similarity_score', 'desc');
+				)
+				.orderBy('similarity_score', 'desc');
 			items = await fallbackQuery.limit(limit).offset(offset).execute();
 		}
 

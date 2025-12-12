@@ -75,7 +75,8 @@ export const drillSchema = z.object({
 	drill_type: z.array(z.enum(drillTypeOptions)).min(1, 'At least one drill type is required'),
 
 	// Metadata fields (useful for creation/update)
-	created_by: z.number().int().positive().nullable().optional(), // Nullable for anonymous uploads/creations initially
+	// Better Auth user IDs are strings; accept legacy numeric IDs too.
+	created_by: z.union([z.string().min(1), z.number().int().positive()]).nullable().optional(), // Nullable for anonymous uploads/creations initially
 	visibility: z.enum(visibilityOptions).default('public').optional(),
 	is_editable_by_others: z.boolean().default(false).optional(),
 

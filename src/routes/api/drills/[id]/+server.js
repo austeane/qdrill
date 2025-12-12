@@ -26,7 +26,7 @@ export async function GET({ params, locals, url }) {
 
 		// Check visibility and ownership
 		if (drill.visibility === 'private') {
-			if (!userId || drill.created_by !== userId) {
+			if (!userId || String(drill.created_by) !== String(userId)) {
 				throw new ForbiddenError('Unauthorized to view this private drill');
 			}
 		}

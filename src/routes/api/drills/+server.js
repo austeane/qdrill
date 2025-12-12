@@ -91,19 +91,7 @@ export const POST = async (event) => {
 	try {
 		const rawData = await event.request.json();
 		const session = event.locals.session;
-		let userId = session?.user?.id || null;
-
-		// Ensure userId is a number if it exists and is a string representation of a number
-		if (userId && typeof userId === 'string') {
-			const parsedUserId = parseInt(userId, 10);
-			if (!isNaN(parsedUserId)) {
-				userId = parsedUserId;
-			} else {
-				// Handle case where userId is a string but not a valid number - perhaps error or set to null
-				console.warn(`Invalid string user ID found: ${userId}. Treating as null.`);
-				userId = null;
-			}
-		}
+		const userId = session?.user?.id || null;
 
 		// Add userId to the data before validation if not present
 		const dataWithUser = { ...rawData, created_by: userId };

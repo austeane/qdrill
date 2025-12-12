@@ -14,8 +14,11 @@ function getPool() {
 			// Create a real pool when a connection string is available (dev/production runtime)
 			pool = createPool({ connectionString });
 		} else {
-			// Fail fast in production; allow a stub only for local/dev/test/build tooling
-			if (process.env.NODE_ENV === 'production') {
+			// Fail fast in real production runtime; allow a stub for local/dev/test/build and Vercel previews.
+			const isProdRuntime =
+				process.env.NODE_ENV === 'production' &&
+				(process.env.VERCEL_ENV ? process.env.VERCEL_ENV === 'production' : true);
+			if (isProdRuntime) {
 				throw new Error('Database connection string missing. Set POSTGRES_URL or DATABASE_URL.');
 			}
 			console.warn(

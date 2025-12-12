@@ -312,15 +312,25 @@ export class FormationService extends BaseEntityService {
 		}
 
 	/**
-	 * Get formations by created user
-	 * @param {number} userId - User ID
-	 * @param {Object} options - Optional search options (pagination, etc.)
-	 * @returns {Promise<Object>} - Formations created by this user
+	 * Get formations for a specific creator as viewed by a given user.
+	 * Separates viewer scope from owner scope to avoid permission drift.
+	 * @param {number|string} creatorId - User ID who created the formations
+	 * @param {number|string|null} viewerUserId - User requesting access (for private visibility)
+	 * @param {Object} options - Optional query options (pagination, filters, etc.)
+	 * @returns {Promise<Object>} - Formations created by creatorId
+	 */
+	async getFormationsForCreator(creatorId, viewerUserId = null, options = {}) {
+		const filters = { ...options.filters, created_by__eq: creatorId };
+		return await this.getAll({ ...options, filters, userId: viewerUserId });
+	}
+
+	/**
+	 * Backward-compatible alias for getFormationsForCreator.
+	 * @deprecated Use getFormationsForCreator(creatorId, viewerUserId, options)
 	 */
 	async getFormationsByUser(userId, options = {}) {
-		const filters = { ...options.filters, created_by__eq: userId }; // Use __eq operator
-		// Directly use the base getAll method with the filter
-		return await this.getAll({ ...options, filters });
+		const viewerUserId = options.userId ?? null;
+		return this.getFormationsForCreator(userId, viewerUserId, options);
 	}
 
 	/**

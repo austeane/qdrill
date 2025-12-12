@@ -30,7 +30,7 @@ const ParameterSchema = z.object({
 	skillLevel: z.enum(['beginner', 'intermediate', 'advanced', 'expert']).optional(),
 	participantCount: z.number().int().positive().optional(),
 	focusAreas: z.array(z.string().min(1).max(50)).optional(),
-	modelId: z.enum(['claude-3.7-sonnet', 'gpt-4.1', 'gemini-2.5-pro']) // Added modelId
+	modelId: z.enum(['claude-opus-4.5']).default('claude-opus-4.5')
 });
 
 // Basic validation for the structure we expect back from the AI
@@ -70,17 +70,9 @@ const GeneratedPlanSchema = z.object({
 
 // --- Model Mapping ---
 const MODEL_MAP = {
-	'claude-3.7-sonnet': {
+	'claude-opus-4.5': {
 		provider: 'anthropic',
-		id: 'claude-3.7-sonnet-20250219' // User specified
-	},
-	'gpt-4.1': {
-		provider: 'openai',
-		id: 'gpt-4.1-2025-04-14' // User specified, may need adjustment if not available
-	},
-	'gemini-2.5-pro': {
-		provider: 'vertex',
-		id: 'gemini-2.5-pro-preview-05-06' // User specified
+		id: 'claude-opus-4-5-20251101'
 	}
 };
 

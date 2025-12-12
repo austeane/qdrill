@@ -11,15 +11,6 @@
 	export let skillOptions = [];
 	export let focusAreaOptions = [];
 
-	// Model Choices - Removed as we are hardcoding to Gemini
-	/*
-	const modelChoices = [
-		{ value: 'claude-3.7-sonnet', label: 'Anthropic Claude 3.7 Sonnet' },
-		{ value: 'gpt-4.1', label: 'OpenAI GPT-4.1 (Experimental)' },
-		{ value: 'gemini-2.5-pro', label: 'Google Gemini 2.5 Pro (Vertex AI)' }
-	];
-	*/
-
 	// AI Generation State
 	let aiParams = {
 		durationMinutes: 90,
@@ -27,7 +18,7 @@
 		participantCount: 15,
 		goals: 'Improve team offense and cutting timing.',
 		focusAreas: [],
-		modelId: 'gemini-2.5-pro' // Hardcoded to Gemini
+		modelId: 'claude-opus-4.5'
 	};
 	let isGenerating = false;
 	let showInfoTooltip = false; // Added for tooltip visibility
@@ -93,8 +84,8 @@
 					<div
 						class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-72 bg-gray-700 text-white text-xs rounded py-1.5 px-3 z-10 shadow-lg text-center"
 					>
-						Under the hood, this sends your instructions and the details of every drill to Gemini
-						2.5 Pro, and uses all of that information to generate your plan.
+						Under the hood, this sends your instructions and the details of every drill to Claude
+						Opus 4.5, and uses all of that information to generate your plan.
 					</div>
 				{/if}
 			</div>

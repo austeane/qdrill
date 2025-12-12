@@ -112,3 +112,11 @@ These are incremental notes while reconciling the two external reviews against t
 
 - **Formation search modal mismatch:** `EnhancedAddItemModal` calls `/api/formations/search?query=...` but the endpoint only read `q`, causing 500 “Search term is required” in prod.
   - Patched search route to accept both `query` and legacy `q` (commit `c1a55a2`) and pushed to `main`; will re‑verify after deploy.
+
+### Prod verification after deploys
+
+- Re‑tested “Add Drill” in practice plan create: drill selection now adds to the chosen section with no toast errors.
+- Created practice plan via API with a formation reference (`formation_id=33`, `duration=0`) and a parallel group; POST succeeded (`/api/practice-plans` → `201`, plan `id=101`).
+- Viewer `/practice-plans/101` shows formation section at 0min and parallel timelines A/B correctly; edit page loads with parallel block + formation item.
+- Formation search endpoint now accepts `query` (checked `/api/formations/search?query=Hero` → `200`).
+- Formations list/detail, teams list, and team season overview pages load without runtime errors.

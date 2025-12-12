@@ -12,6 +12,8 @@ if (browser && !dev && import.meta.env.VITE_SENTRY_DSN) {
 		integrations: [replayIntegration()],
 		// Keep breadcrumbs reasonable to avoid noise
 		maxBreadcrumbs: 50,
+		// Sentry 10: Explicitly opt-in to IP address collection (now controlled by this flag)
+		sendDefaultPii: true,
 		// Limit trace header propagation to first‑party calls
 		tracePropagationTargets: [/^\/api\//, /^https?:\/\/localhost/, /^https?:\/\/127\.0\.0\.1/],
 		// Filter out known dynamic import noise

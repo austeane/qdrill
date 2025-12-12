@@ -3,7 +3,7 @@
  * Generates iCalendar format feeds for seasons and practice plans
  */
 
-import { query } from '$lib/server/db.js';
+import { kyselyDb } from '$lib/server/db.js';
 import { NotFoundError } from '$lib/server/errors.js';
 import crypto from 'crypto';
 
@@ -14,12 +14,11 @@ class IcsService {
 	async generateShareToken(seasonId) {
 		// Use seasons.ics_token (no expires column in schema)
 		const token = crypto.randomBytes(32).toString('hex');
-		await query(
-			`UPDATE seasons 
-       SET ics_token = $1 
-       WHERE id = $2`,
-			[token, seasonId]
-		);
+		await kyselyDb
+			.updateTable('seasons')
+			.set({ ics_token: token })
+			.where('id', '=', seasonId)
+			.execute();
 
 		return token;
 	}
@@ -28,26 +27,25 @@ class IcsService {
 	 * Validate a share token
 	 */
 	async validateShareToken(seasonId, token) {
-		const result = await query(
-			`SELECT id FROM seasons 
-       WHERE id = $1 
-         AND ics_token = $2`,
-			[seasonId, token]
-		);
+		const row = await kyselyDb
+			.selectFrom('seasons')
+			.select('id')
+			.where('id', '=', seasonId)
+			.where('ics_token', '=', token)
+			.executeTakeFirst();
 
-		return result.rows.length > 0;
+		return !!row;
 	}
 
 	/**
 	 * Revoke a share token
 	 */
 	async revokeShareToken(seasonId) {
-		await query(
-			`UPDATE seasons 
-       SET ics_token = NULL 
-       WHERE id = $1`,
-			[seasonId]
-		);
+		await kyselyDb
+			.updateTable('seasons')
+			.set({ ics_token: null })
+			.where('id', '=', seasonId)
+			.execute();
 	}
 
 	/**
@@ -55,42 +53,44 @@ class IcsService {
 	 */
 	async getSeasonDataForIcs(seasonId, includeUnpublished = false) {
 		// Get season details
-		const seasonResult = await query(
-			`SELECT s.*, t.name as team_name, t.timezone, t.default_start_time
-       FROM seasons s
-       JOIN teams t ON s.team_id = t.id
-       WHERE s.id = $1`,
-			[seasonId]
-		);
+		const season = await kyselyDb
+			.selectFrom('seasons as s')
+			.innerJoin('teams as t', 's.team_id', 't.id')
+			.selectAll('s')
+			.select(['t.name as team_name', 't.timezone', 't.default_start_time'])
+			.where('s.id', '=', seasonId)
+			.executeTakeFirst();
 
-		if (seasonResult.rows.length === 0) {
+		if (!season) {
 			throw new NotFoundError('Season not found');
 		}
 
-		const season = seasonResult.rows[0];
-
 		// Get practices
 		// If includeUnpublished is false (public token), return only published
-		let practiceQuery = `SELECT * FROM practice_plans WHERE season_id = $1`;
-		const practiceParams = [seasonId];
+		let practiceQb = kyselyDb
+			.selectFrom('practice_plans')
+			.selectAll()
+			.where('season_id', '=', seasonId);
 		if (!includeUnpublished) {
-			practiceQuery += ` AND is_published = true`;
+			practiceQb = practiceQb.where('is_published', '=', true);
 		}
-		practiceQuery += ` ORDER BY scheduled_date, start_time`;
-		const practicesResult = await query(practiceQuery, practiceParams);
+		const practicesResult = await practiceQb
+			.orderBy('scheduled_date', 'asc')
+			.orderBy('start_time', 'asc')
+			.execute();
 
 		// Get markers
-		const markersResult = await query(
-			`SELECT * FROM season_markers 
-       WHERE season_id = $1 
-       ORDER BY start_date`,
-			[seasonId]
-		);
+		const markersResult = await kyselyDb
+			.selectFrom('season_markers')
+			.selectAll()
+			.where('season_id', '=', seasonId)
+			.orderBy('start_date', 'asc')
+			.execute();
 
 		return {
 			season,
-			practices: practicesResult.rows,
-			markers: markersResult.rows
+			practices: practicesResult,
+			markers: markersResult
 		};
 	}
 

@@ -1,16 +1,19 @@
 import { json } from '@sveltejs/kit';
-import { sql } from '@vercel/postgres';
 import { dev } from '$app/environment';
+import { kyselyDb } from '$lib/server/db.js';
 import { handleApiError } from '../../utils/handleApiError.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '$lib/server/errors.js';
 
 // Get all poll options
 export async function GET() {
 	try {
-		const { rows } = await sql`
-            SELECT * FROM poll_options 
-            ORDER BY votes DESC, created_at DESC`;
-		return json({ options: rows });
+		const options = await kyselyDb
+			.selectFrom('poll_options')
+			.selectAll()
+			.orderBy('votes', 'desc')
+			.orderBy('created_at', 'desc')
+			.execute();
+		return json({ options });
 	} catch (error) {
 		return handleApiError(error);
 	}
@@ -26,12 +29,17 @@ export async function POST({ request }) {
 			throw new ValidationError('Description must be between 2 and 100 characters');
 		}
 
-		const { rows } = await sql`
-            INSERT INTO poll_options (description)
-            VALUES (${description})
-            RETURNING *`;
+		const inserted = await kyselyDb
+			.insertInto('poll_options')
+			.values({ description })
+			.returningAll()
+			.executeTakeFirst();
 
-		return json(rows[0], { status: 201 }); // Use 201 Created
+		if (!inserted) {
+			throw new Error('Failed to insert poll option');
+		}
+
+		return json(inserted, { status: 201 }); // Use 201 Created
 	} catch (error) {
 		return handleApiError(error);
 	}
@@ -55,17 +63,23 @@ export async function PUT({ request }) {
 			throw new ValidationError('Drill link must be a relative path starting with /');
 		}
 
-		const { rows, rowCount } = await sql`
-            UPDATE poll_options 
-            SET drill_link = ${drill_link}
-            WHERE id = ${id}
-            RETURNING *`;
+		const idInt = Number.parseInt(String(id), 10);
+		if (!Number.isFinite(idInt)) {
+			throw new ValidationError('Invalid id');
+		}
 
-		if (rowCount === 0) {
+		const updated = await kyselyDb
+			.updateTable('poll_options')
+			.set({ drill_link })
+			.where('id', '=', idInt)
+			.returningAll()
+			.executeTakeFirst();
+
+		if (!updated) {
 			throw new NotFoundError('Poll option not found');
 		}
 
-		return json(rows[0]);
+		return json(updated);
 	} catch (error) {
 		return handleApiError(error);
 	}
@@ -86,11 +100,18 @@ export async function DELETE({ request }) {
 			throw new ValidationError('Missing id in request body');
 		}
 
-		const { rowCount } = await sql`
-            DELETE FROM poll_options 
-            WHERE id = ${id}`; // No need for RETURNING if just confirming deletion
+		const idInt = Number.parseInt(String(id), 10);
+		if (!Number.isFinite(idInt)) {
+			throw new ValidationError('Invalid id');
+		}
 
-		if (rowCount === 0) {
+		const deleted = await kyselyDb
+			.deleteFrom('poll_options')
+			.where('id', '=', idInt)
+			.returning('id')
+			.executeTakeFirst();
+
+		if (!deleted) {
 			throw new NotFoundError('Poll option not found');
 		}
 

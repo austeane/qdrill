@@ -63,7 +63,7 @@
 		navigateToWeek(new Date());
 	}
 
-	function formatDate(date) {
+	function _formatDate(date) {
 		return date.toLocaleDateString('en-US', {
 			weekday: 'short',
 			month: 'short',
@@ -224,7 +224,7 @@
 
 	<!-- Week grid -->
 	<div class="grid grid-cols-7 divide-x">
-		{#each weekDays as day}
+		{#each weekDays as day (day.toISOString())}
 			{@const dayPractices = getPracticesForDate(day)}
 			{@const dayMarkers = getMarkersForDate(day)}
 			{@const isToday = day.toDateString() === new Date().toDateString()}
@@ -248,7 +248,7 @@
 				<!-- Markers -->
 				{#if dayMarkers.length > 0}
 					<div class="px-2 pt-2">
-						{#each dayMarkers as marker}
+						{#each dayMarkers as marker (marker.id)}
 							<div
 								class="text-xs px-2 py-1 rounded border mb-1 {markerColors[marker.type] ||
 									markerColors.custom}"
@@ -263,7 +263,7 @@
 				<!-- Practices -->
 				<div class="p-2">
 					{#if dayPractices.length > 0}
-						{#each dayPractices as practice}
+						{#each dayPractices as practice (practice.id)}
 							<div
 								class="border rounded p-2 mb-2
                          {practice.is_published

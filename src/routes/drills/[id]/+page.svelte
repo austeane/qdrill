@@ -48,8 +48,8 @@
 	let searchQuery = '';
 	let selectedDrill = null;
 	let relationshipType = null;
-	let isLoadingParents = false;
-	let availableParentDrills = [];
+	let _isLoadingParents = false;
+	let _availableParentDrills = [];
 	let isSearching = false;
 	let searchResults = [];
 	let editableDiagram = writable(null);
@@ -73,11 +73,11 @@
 		}
 	}
 
-	function editDiagram(index) {
+	function _editDiagram(index) {
 		editableDiagram.set($drill.diagrams[index]);
 	}
 
-	function handleDiagramSave(event, index) {
+	function _handleDiagramSave(event, index) {
 		const updatedDiagram = event.detail;
 		drill.update((d) => {
 			d.diagrams[index] = updatedDiagram;
@@ -93,28 +93,28 @@
 	}
 
 	// Function to create a new variation
-	async function createVariation() {
+	async function _createVariation() {
 		// Use the current drill ID from the store
 		await goto(`/drills/create?parentId=${$drill.id}`);
 	}
 
 	async function loadPotentialParents() {
-		isLoadingParents = true;
-		availableParentDrills = []; // Reset
+		_isLoadingParents = true;
+		_availableParentDrills = []; // Reset
 		try {
 			const drills = await apiFetch('/api/drills');
 
 			// Filter out current drill and any variants
-			availableParentDrills = drills.filter(
+			_availableParentDrills = drills.filter(
 				(d) => d.id !== $drill.id && !d.parent_drill_id && d.id !== $drill.parent_drill_id
 			);
-		} catch (error) {
-			console.error('Error loading potential parent drills:', error);
-			toast.push(`Failed to load drills: ${error.message}`, {
+		} catch (_error) {
+			console.error('Error loading potential parent drills:', _error);
+			toast.push(`Failed to load drills: ${_error.message}`, {
 				theme: { '--toastBackground': '#EF4444', '--toastColor': 'white' }
 			});
 		} finally {
-			isLoadingParents = false;
+			_isLoadingParents = false;
 		}
 	}
 
@@ -207,7 +207,7 @@
 		}, 300);
 	}
 
-	function selectDrill(drill) {
+	function _selectDrill(drill) {
 		selectedDrill = drill;
 		searchQuery = drill.name;
 	}
@@ -364,7 +364,7 @@
 					<div class="flex flex-wrap gap-2">
 						{#if $drill.parent_drill_id && $drill.related_variations}
 							<!-- Show variations when viewing a child drill -->
-							{#each $drill.related_variations as variation}
+							{#each $drill.related_variations as variation (variation.id)}
 								<button
 									on:click={() => switchVariant(variation.id)}
 									class="px-4 py-2 rounded-full {currentDrillId === variation.id
@@ -394,7 +394,7 @@
 							</button>
 
 							<!-- Show all variants -->
-							{#each $allVariants[$drill.parent_drill_id || $drill.id].variations || [] as variation}
+							{#each $allVariants[$drill.parent_drill_id || $drill.id].variations || [] as variation (variation.id)}
 								<button
 									on:click={() => switchVariant(variation.id)}
 									class="px-4 py-2 rounded-full {currentDrillId === variation.id
@@ -486,7 +486,7 @@
 				<div class="mb-6">
 					<h2 class="text-lg font-semibold mb-2 dark:text-white">Images</h2>
 					<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-						{#each Array.isArray($drill.images) ? $drill.images : [] as image}
+						{#each Array.isArray($drill.images) ? $drill.images : [] as image, i (i)}
 							<img src={image} alt="Drill Image" class="w-full h-48 object-cover rounded-lg" />
 						{/each}
 					</div>
@@ -498,7 +498,7 @@
 					<h2 class="text-lg font-semibold mb-2 dark:text-white">Diagrams</h2>
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 						{#if $drill.diagrams?.length > 0}
-							{#each $drill.diagrams as diagramData, index}
+							{#each $drill.diagrams as diagramData, index (index)}
 								<!-- Removed unused 'key' directive -->
 								<div class="border rounded-lg p-2">
 									<h3 class="text-center font-medium mb-2 dark:text-gray-200">
@@ -516,7 +516,7 @@
 
 						<!-- Fallback for old images array -->
 						{#if !$drill.diagrams?.length && Array.isArray($drill.images) && $drill.images.length > 0}
-							{#each $drill.images as image}
+							{#each $drill.images as image, i (i)}
 								<img
 									src={image}
 									alt="Drill diagram"
@@ -549,7 +549,7 @@
 					<div class="mb-6">
 						<h3 class="font-semibold mb-2 dark:text-white">Variant Drills:</h3>
 						<div class="space-y-2">
-							{#each $drill.variations as variation}
+							{#each $drill.variations as variation (variation.id)}
 								<div class="flex items-center justify-between p-2 bg-gray-50 rounded">
 									<span class="dark:text-gray-200">{variation.name}</span>
 									<button
@@ -591,7 +591,7 @@
 					<p>Searching...</p>
 				{:else if searchResults.length > 0}
 					<div class="max-h-60 overflow-y-auto mb-4">
-						{#each searchResults as searchedDrill}
+						{#each searchResults as searchedDrill (searchedDrill.id)}
 							<div
 								class="flex items-center justify-between p-2 hover:bg-gray-100 {selectedDrill?.id ===
 								searchedDrill.id

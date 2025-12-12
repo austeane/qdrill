@@ -9,7 +9,7 @@
 		<li>
 			<a href="/" aria-label="Home"><Home size={16} /></a>
 		</li>
-		{#each segments as segment, i}
+		{#each segments as segment, i (i)}
 			<li class="sep"><ChevronRight size={14} /></li>
 			<li>
 				{#if i === segments.length - 1 || !segment.href}

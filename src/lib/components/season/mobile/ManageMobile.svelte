@@ -18,8 +18,6 @@
 	let showMarkerSheet = false;
 	let editingSection = null;
 	let editingMarker = null;
-	let deletingItem = null;
-	let deleteType = null;
 	let confirmDeleteSection = null;
 	let confirmDeleteMarker = null;
 	let deleteLoading = false;
@@ -54,7 +52,7 @@
 			});
 
 			dispatch('change');
-		} catch (error) {
+		} catch (_error) {
 			// Revert on error
 			sections = [...sections].sort((a, b) => a.order - b.order);
 			toast.push('Failed to reorder sections', {
@@ -91,7 +89,7 @@
 			});
 
 			dispatch('change');
-		} catch (error) {
+		} catch (_error) {
 			toast.push('Failed to delete section', {
 				theme: {
 					'--toastBackground': '#ef4444',
@@ -129,7 +127,7 @@
 			});
 
 			dispatch('change');
-		} catch (error) {
+		} catch (_error) {
 			toast.push('Failed to delete event', {
 				theme: {
 					'--toastBackground': '#ef4444',

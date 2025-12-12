@@ -35,7 +35,7 @@ test.describe('Teams - Public List (logged out)', () => {
 		// Heading and sign-in button
 		await expect(page.locator('h1')).toContainText(/Teams|My Teams/);
 		// When logged out, we expect a Sign in button somewhere
-		const signIn = page.getByRole('link', { name: /Sign in/i });
+		const signIn = page.getByRole('link', { name: /Sign in/i }).first();
 		await expect(signIn).toBeVisible();
 
 		// If a team card exists, the header link should point to login with next param

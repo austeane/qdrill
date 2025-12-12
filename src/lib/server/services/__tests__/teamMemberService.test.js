@@ -1,17 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { teamMemberService } from '../teamMemberService';
-import { ForbiddenError, ValidationError } from '$lib/server/errors';
 
-// Mock the database operations
-vi.mock('$lib/server/db', () => ({
-	db: {
-		query: vi.fn()
-	}
-}));
+vi.mock('$lib/server/db');
+import * as mockDb from '$lib/server/db';
 
 describe('TeamMemberService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockDb.kyselyDb.__setResults([]);
 	});
 
 	describe('getMember', () => {
@@ -103,23 +99,15 @@ describe('TeamMemberService', () => {
 			const mockGetMember = vi
 				.spyOn(teamMemberService, 'getMember')
 				.mockResolvedValueOnce({ role: 'admin' }); // requester is admin
-
-			const mockTransaction = vi
-				.spyOn(teamMemberService, 'withTransaction')
-				.mockImplementation(async (callback) =>
-					callback({
-						query: vi.fn().mockResolvedValue({
-							rows: [{ team_id: 'team-1', user_id: 'user-2', role: 'admin' }]
-						})
-					})
-				);
+			mockDb.kyselyDb.__setResults([
+				{ team_id: 'team-1', user_id: 'user-2', role: 'admin' }
+			]);
 
 			const result = await teamMemberService.updateRole('team-1', 'user-2', 'admin', 'user-1');
 
 			expect(result).toMatchObject({ role: 'admin' });
 
 			mockGetMember.mockRestore();
-			mockTransaction.mockRestore();
 		});
 
 		it('should throw error when requester is not admin', async () => {
@@ -157,23 +145,13 @@ describe('TeamMemberService', () => {
 			const mockGetMember = vi
 				.spyOn(teamMemberService, 'getMember')
 				.mockResolvedValue({ role: 'member' });
-
-			const mockTransaction = vi
-				.spyOn(teamMemberService, 'withTransaction')
-				.mockImplementation(async (callback) =>
-					callback({
-						query: vi.fn().mockResolvedValue({
-							rows: [{ team_id: 'team-1', user_id: 'user-1' }]
-						})
-					})
-				);
+			mockDb.kyselyDb.__setResults([{ team_id: 'team-1', user_id: 'user-1' }]);
 
 			const result = await teamMemberService.removeMember('team-1', 'user-1', 'user-1');
 
 			expect(result).toMatchObject({ team_id: 'team-1', user_id: 'user-1' });
 
 			mockGetMember.mockRestore();
-			mockTransaction.mockRestore();
 		});
 
 		it('should allow admin to remove other members', async () => {
@@ -181,23 +159,13 @@ describe('TeamMemberService', () => {
 				.spyOn(teamMemberService, 'getMember')
 				.mockResolvedValueOnce({ role: 'admin' }) // requester is admin
 				.mockResolvedValueOnce({ role: 'member' }); // member to remove
-
-			const mockTransaction = vi
-				.spyOn(teamMemberService, 'withTransaction')
-				.mockImplementation(async (callback) =>
-					callback({
-						query: vi.fn().mockResolvedValue({
-							rows: [{ team_id: 'team-1', user_id: 'user-2' }]
-						})
-					})
-				);
+			mockDb.kyselyDb.__setResults([{ team_id: 'team-1', user_id: 'user-2' }]);
 
 			const result = await teamMemberService.removeMember('team-1', 'user-2', 'user-1');
 
 			expect(result).toMatchObject({ team_id: 'team-1', user_id: 'user-2' });
 
 			mockGetMember.mockRestore();
-			mockTransaction.mockRestore();
 		});
 
 		it('should prevent non-admin from removing others', async () => {

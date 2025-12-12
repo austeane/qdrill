@@ -55,7 +55,7 @@
 	}
 
 	// Group items by parallel group ID
-	$: groupedItems = groupItemsByParallelGroup(section.items);
+	$: _groupedItems = groupItemsByParallelGroup(section.items);
 
 	function groupItemsByParallelGroup(items) {
 		const result = {
@@ -108,7 +108,7 @@
 			</div>
 		{:else}
 			<!-- Render all items while preserving original order -->
-			{#each section.items as item, itemIndex}
+			{#each section.items as item, itemIndex (item.id)}
 				{#if item.parallel_group_id}
 					<!-- Render group header when we find the first item of that group -->
 					{#if !section.items

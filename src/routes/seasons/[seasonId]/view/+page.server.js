@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { query } from '$lib/server/db.js';
+import { kyselyDb } from '$lib/server/db.js';
 
 /**
  * Public view of a season calendar
@@ -15,49 +15,51 @@ export async function load({ params, url }) {
 
 	try {
 		// Validate token and get season
-		const seasonResult = await query(
-			`SELECT s.*, t.name as team_name, t.timezone, t.default_start_time
-       FROM seasons s
-       JOIN teams t ON s.team_id = t.id
-       WHERE s.id = $1 AND s.public_view_token = $2::uuid`,
-			[seasonId, token]
-		);
+		const season = await kyselyDb
+			.selectFrom('seasons as s')
+			.innerJoin('teams as t', 's.team_id', 't.id')
+			.selectAll('s')
+			.select(['t.name as team_name', 't.timezone', 't.default_start_time'])
+			.where('s.id', '=', seasonId)
+			.where('s.public_view_token', '=', token)
+			.executeTakeFirst();
 
-		if (seasonResult.rows.length === 0) {
+		if (!season) {
 			throw error(404, 'Season not found or invalid token');
 		}
 
-		const season = seasonResult.rows[0];
-
 		// Get published practices only
-		const practicesResult = await query(
-			`SELECT * FROM practice_plans 
-       WHERE season_id = $1 AND is_published = true 
-       ORDER BY scheduled_date, start_time`,
-			[seasonId]
-		);
+		const practices = await kyselyDb
+			.selectFrom('practice_plans')
+			.selectAll()
+			.where('season_id', '=', seasonId)
+			.where('is_published', '=', true)
+			.orderBy('scheduled_date', 'asc')
+			.orderBy('start_time', 'asc')
+			.execute();
 
 		// Get markers
-		const markersResult = await query(
-			`SELECT * FROM season_markers 
-       WHERE season_id = $1 
-       ORDER BY start_date`,
-			[seasonId]
-		);
+		const markers = await kyselyDb
+			.selectFrom('season_markers')
+			.selectAll()
+			.where('season_id', '=', seasonId)
+			.orderBy('start_date', 'asc')
+			.execute();
 
 		// Get sections
-		const sectionsResult = await query(
-			`SELECT * FROM season_sections 
-       WHERE season_id = $1 
-       ORDER BY start_date, end_date`,
-			[seasonId]
-		);
+		const sections = await kyselyDb
+			.selectFrom('season_sections')
+			.selectAll()
+			.where('season_id', '=', seasonId)
+			.orderBy('start_date', 'asc')
+			.orderBy('end_date', 'asc')
+			.execute();
 
 		return {
 			season,
-			practices: practicesResult.rows,
-			markers: markersResult.rows,
-			sections: sectionsResult.rows,
+			practices,
+			markers,
+			sections,
 			isPublicView: true,
 			icsUrl: `/api/seasons/${seasonId}/calendar.ics?token=${season.ics_token}`
 		};

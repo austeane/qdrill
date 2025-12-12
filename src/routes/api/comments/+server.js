@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
-import * as db from '$lib/server/db';
+import { kyselyDb } from '$lib/server/db';
 import { handleApiError } from '../utils/handleApiError.js';
 import { ForbiddenError, NotFoundError } from '$lib/server/errors.js';
 
@@ -17,20 +17,24 @@ export async function GET({ url }) {
 	}
 
 	try {
-		let query =
-			'SELECT c.*, u.name AS user_name FROM comments c JOIN users u ON c.user_id = u.id WHERE ';
-		let params = [];
-		if (drillId) {
-			query += 'c.drill_id = $1';
-			params.push(parseInt(drillId, 10));
-		} else {
-			query += 'c.practice_plan_id = $1';
-			params.push(parseInt(practicePlanId, 10));
-		}
-		query += ' ORDER BY c.created_at ASC';
+		const drillIdInt = drillId ? parseInt(drillId, 10) : null;
+		const planIdInt = practicePlanId ? parseInt(practicePlanId, 10) : null;
 
-		const result = await db.query(query, params);
-		return json(result.rows);
+		let qb = kyselyDb
+			.selectFrom('comments as c')
+			.innerJoin('users as u', 'c.user_id', 'u.id')
+			.selectAll('c')
+			.select('u.name as user_name')
+			.orderBy('c.created_at', 'asc');
+
+		if (drillIdInt) {
+			qb = qb.where('c.drill_id', '=', drillIdInt);
+		} else if (planIdInt) {
+			qb = qb.where('c.practice_plan_id', '=', planIdInt);
+		}
+
+		const comments = await qb.execute();
+		return json(comments);
 	} catch (error) {
 		return handleApiError(error);
 	}
@@ -55,17 +59,18 @@ export const POST = authGuard(async ({ request, locals }) => {
 	}
 
 	try {
-		const result = await db.query(
-			`INSERT INTO comments (user_id, drill_id, practice_plan_id, content) 
-             VALUES ($1, $2, $3, $4) RETURNING *`,
-			[
-				userId,
-				drillId ? parseInt(drillId, 10) : null,
-				practicePlanId ? parseInt(practicePlanId, 10) : null,
+		const inserted = await kyselyDb
+			.insertInto('comments')
+			.values({
+				user_id: userId,
+				drill_id: drillId ? parseInt(drillId, 10) : null,
+				practice_plan_id: practicePlanId ? parseInt(practicePlanId, 10) : null,
 				content
-			]
-		);
-		return json(result.rows[0], { status: 201 });
+			})
+			.returningAll()
+			.executeTakeFirst();
+
+		return json(inserted, { status: 201 });
 	} catch (error) {
 		return handleApiError(error);
 	}
@@ -85,17 +90,22 @@ export const DELETE = authGuard(async ({ url, locals }) => {
 	}
 
 	try {
-		const commentResult = await db.query('SELECT * FROM comments WHERE id = $1', [commentId]);
-		if (commentResult.rows.length === 0) {
+		const commentIdInt = parseInt(commentId, 10);
+		const comment = await kyselyDb
+			.selectFrom('comments')
+			.selectAll()
+			.where('id', '=', commentIdInt)
+			.executeTakeFirst();
+
+		if (!comment) {
 			throw new NotFoundError('Comment not found');
 		}
 
-		const comment = commentResult.rows[0];
 		if (comment.user_id !== userId) {
 			throw new ForbiddenError('User is not authorized to delete this comment');
 		}
 
-		await db.query('DELETE FROM comments WHERE id = $1', [commentId]);
+		await kyselyDb.deleteFrom('comments').where('id', '=', commentIdInt).execute();
 		return new Response(null, { status: 204 });
 	} catch (error) {
 		return handleApiError(error);

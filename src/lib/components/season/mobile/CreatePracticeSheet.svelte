@@ -145,7 +145,7 @@
 				<h3 class="preview-title">Overlapping Sections</h3>
 				<p class="preview-description">This practice will be prefilled with content from:</p>
 				<div class="section-list">
-					{#each overlappingSections as section}
+					{#each overlappingSections as section (section.id)}
 						<div class="section-item">
 							<div class="section-color" style="background-color: {section.color}" />
 							<span class="section-name">{section.name}</span>

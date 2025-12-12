@@ -4,7 +4,6 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import Dialog from '$lib/components/ui/Dialog.svelte';
 	import Tabs from '$lib/components/ui/Tabs.svelte';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
@@ -219,7 +218,7 @@
 					</div>
 
 					<div class="space-y-3">
-						{#each members as member}
+						{#each members as member (member.user_id)}
 							<div
 								class="flex items-center justify-between p-4 border rounded-lg bg-gray-50 dark:bg-gray-800"
 							>

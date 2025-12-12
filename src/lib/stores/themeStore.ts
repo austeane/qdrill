@@ -61,7 +61,18 @@ function createThemeStore() {
 		set: setTheme,
 		toggle: () =>
 			update((t) => {
-				const next = t === 'light' ? 'dark' : 'light';
+				// If the user is on `system`, toggle against the currently rendered theme.
+				// This avoids the confusing behavior where `system` -> `light` is a no-op
+				// when the system theme is already light.
+				let next: Theme;
+				if (t === 'system') {
+					const systemIsDark = browser
+						? window.matchMedia('(prefers-color-scheme: dark)').matches
+						: false;
+					next = systemIsDark ? 'light' : 'dark';
+				} else {
+					next = t === 'light' ? 'dark' : 'light';
+				}
 				setTheme(next);
 				return next;
 			}),

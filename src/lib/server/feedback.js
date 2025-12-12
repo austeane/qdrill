@@ -1,4 +1,4 @@
-import { query } from './db.js';
+import { kyselyDb, sql } from './db.js';
 
 export async function saveFeedback({
 	feedback,
@@ -8,42 +8,45 @@ export async function saveFeedback({
 	email = null,
 	feedbackType
 }) {
-	const text = `
-        INSERT INTO feedback (feedback, device_info, page_url, name, email, feedback_type, upvotes)
-        VALUES ($1, $2, $3, $4, $5, $6, 0)
-        RETURNING *
-    `;
-	const values = [feedback, deviceInfo, page, name, email, feedbackType];
-	const res = await query(text, values);
-	return res.rows[0];
+	const res = await kyselyDb
+		.insertInto('feedback')
+		.values({
+			feedback,
+			device_info: deviceInfo,
+			page_url: page,
+			name,
+			email,
+			feedback_type: feedbackType,
+			upvotes: 0
+		})
+		.returningAll()
+		.executeTakeFirst();
+	return res;
 }
 
 export async function getAllFeedback() {
-	const text = `
-        SELECT id, feedback, feedback_type, timestamp, upvotes FROM feedback
-        ORDER BY timestamp DESC
-    `;
-	const res = await query(text);
-	return res.rows;
+	return await kyselyDb
+		.selectFrom('feedback')
+		.select(['id', 'feedback', 'feedback_type', 'timestamp', 'upvotes'])
+		.orderBy('timestamp', 'desc')
+		.execute();
 }
 
 export async function upvoteFeedback(id) {
-	const text = `
-        UPDATE feedback
-        SET upvotes = upvotes + 1
-        WHERE id = $1
-        RETURNING id, upvotes
-    `;
-	const res = await query(text, [id]);
-	return res.rows[0];
+	const res = await kyselyDb
+		.updateTable('feedback')
+		.set({ upvotes: sql`upvotes + 1` })
+		.where('id', '=', id)
+		.returning(['id', 'upvotes'])
+		.executeTakeFirst();
+	return res;
 }
 
 export async function deleteFeedback(id) {
-	const text = `
-        DELETE FROM feedback
-        WHERE id = $1
-        RETURNING id
-    `;
-	const res = await query(text, [id]);
-	return res.rows[0];
+	const res = await kyselyDb
+		.deleteFrom('feedback')
+		.where('id', '=', id)
+		.returning('id')
+		.executeTakeFirst();
+	return res;
 }

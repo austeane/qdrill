@@ -214,7 +214,7 @@
 			<div class="section-goals">
 				<h3 class="goals-title">Section Goals:</h3>
 				<ul class="goals-list">
-					{#each section.goals as goal}
+					{#each section.goals as goal, goalIndex (goalIndex)}
 						<li>{goal}</li>
 					{/each}
 				</ul>

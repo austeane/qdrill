@@ -10,7 +10,6 @@
 	import CreateSectionDialog from '../desktop/CreateSectionDialog.svelte';
 	import { toLocalISO } from '$lib/utils/date.js';
 	import CreateMarkerDialog from '../desktop/CreateMarkerDialog.svelte';
-	import Dialog from '$lib/components/ui/Dialog.svelte';
 	import { Layers, Edit2, ChevronRight, Plus } from 'lucide-svelte';
 	import { formatInTz } from '$lib/utils/formatInTz.js';
 
@@ -161,14 +160,14 @@
 
 	<!-- Sections -->
 	<div class="sections-grid">
-		{#each sections as section}
+		{#each sections as section (section.id)}
 			{@const progress = calculateProgress(section)}
 			{@const practiceCount = getSectionPractices(section).length}
 			{@const nextPractice = getNextPractice(section)}
 
 			<Card class="section-card">
 				<div class="section-header">
-					<div class="section-color" style="background-color: {section.color}" />
+					<div class="section-color" style="background-color: {section.color}"></div>
 					<div class="section-info">
 						<h3 class="section-name">{section.name}</h3>
 						<div class="section-dates">
@@ -190,7 +189,7 @@
 
 				<div class="progress-container">
 					<div class="progress-bar">
-						<div class="progress-fill" style="width: {progress}%" />
+						<div class="progress-fill" style="width: {progress}%"></div>
 					</div>
 					<span class="progress-text">{progress}%</span>
 				</div>
@@ -253,12 +252,12 @@
 
 			{#if markers.length > 0}
 				<div class="markers-timeline">
-					{#each markerMonths as month}
+					{#each markerMonths as month (month)}
 						<div class="month-group">
 							<h3 class="month-header">{month}</h3>
 
 							<div class="markers-list">
-								{#each markerGroups[month] as marker}
+								{#each markerGroups[month] as marker (marker.id)}
 									<div
 										class="marker-item"
 										class:clickable={isAdmin}
@@ -267,7 +266,7 @@
 										role={isAdmin ? 'button' : 'listitem'}
 										tabindex={isAdmin ? 0 : -1}
 									>
-										<div class="marker-color" style="background-color: {marker.color}" />
+										<div class="marker-color" style="background-color: {marker.color}"></div>
 										<div class="marker-info">
 											<div class="marker-name">{marker.name || marker.title}</div>
 											<div class="marker-date">

@@ -162,8 +162,9 @@
 					required
 				/>
 				<div>
-					<label class="block text-sm font-medium mb-2">Color</label>
+					<label for="new-marker-color" class="block text-sm font-medium mb-2">Color</label>
 					<input
+						id="new-marker-color"
 						type="color"
 						bind:value={newMarker.color}
 						class="h-10 w-32 rounded-md border border-input bg-background px-2 cursor-pointer"
@@ -192,7 +193,7 @@
 	{/if}
 
 	<div class="space-y-4">
-		{#each data.markers as marker}
+		{#each data.markers as marker (marker.id)}
 			<Card>
 				{#if editingMarker === marker.id}
 					<div class="grid gap-4">
@@ -212,8 +213,9 @@
 							error={editError}
 						/>
 						<div>
-							<label class="block text-sm font-medium mb-2">Color</label>
+							<label for="edit-marker-color-{marker.id}" class="block text-sm font-medium mb-2">Color</label>
 							<input
+								id="edit-marker-color-{marker.id}"
 								type="color"
 								bind:value={marker.color}
 								class="h-10 w-32 rounded-md border border-input bg-background px-2 cursor-pointer"

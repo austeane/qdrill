@@ -1,5 +1,6 @@
 import { BaseEntityService } from './baseEntityService.js';
 import { ForbiddenError, ValidationError } from '$lib/server/errors.js';
+import { sql } from '$lib/server/db.js';
 
 class TeamMemberService extends BaseEntityService {
 	constructor() {
@@ -67,16 +68,14 @@ class TeamMemberService extends BaseEntityService {
 			}
 		}
 
-		// Update role
-		return await this.withTransaction(async (client) => {
-			const query = `
-        UPDATE team_members 
-        SET role = $1, updated_at = NOW()
-        WHERE team_id = $2 AND user_id = $3
-        RETURNING *
-      `;
-			const result = await client.query(query, [newRole, teamId, userId]);
-			return result.rows[0];
+		return await this.withTransaction(async (trx) => {
+			return await trx
+				.updateTable('team_members')
+				.set({ role: newRole, updated_at: sql`now()` })
+				.where('team_id', '=', teamId)
+				.where('user_id', '=', userId)
+				.returningAll()
+				.executeTakeFirst();
 		});
 	}
 
@@ -101,14 +100,13 @@ class TeamMemberService extends BaseEntityService {
 			}
 		}
 
-		return await this.withTransaction(async (client) => {
-			const query = `
-        DELETE FROM team_members
-        WHERE team_id = $1 AND user_id = $2
-        RETURNING team_id, user_id
-      `;
-			const result = await client.query(query, [teamId, userId]);
-			return result.rows[0];
+		return await this.withTransaction(async (trx) => {
+			return await trx
+				.deleteFrom('team_members')
+				.where('team_id', '=', teamId)
+				.where('user_id', '=', userId)
+				.returning(['team_id', 'user_id'])
+				.executeTakeFirst();
 		});
 	}
 }

@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { icsService } from '$lib/server/services/icsService.js';
 import { teamMemberService } from '$lib/server/services/teamMemberService.js';
-import { query } from '$lib/server/db.js';
+import { kyselyDb } from '$lib/server/db.js';
 
 /**
  * GET /api/seasons/[seasonId]/calendar.ics
@@ -25,13 +25,17 @@ export async function GET({ params, url, locals }) {
 
 	try {
 		// Get season to check team
-		const seasonResult = await query('SELECT team_id FROM seasons WHERE id = $1', [seasonId]);
+		const seasonRow = await kyselyDb
+			.selectFrom('seasons')
+			.select('team_id')
+			.where('id', '=', seasonId)
+			.executeTakeFirst();
 
-		if (seasonResult.rows.length === 0) {
+		if (!seasonRow) {
 			throw error(404, 'Season not found');
 		}
 
-		const teamId = seasonResult.rows[0].team_id;
+		const teamId = seasonRow.team_id;
 		let includeUnpublished = false;
 
 		// Check authorization

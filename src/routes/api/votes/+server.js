@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { authGuard } from '$lib/server/authGuard';
-import * as db from '$lib/server/db';
+import { kyselyDb, sql } from '$lib/server/db';
 import { handleApiError } from '../utils/handleApiError.js';
 import { NotFoundError } from '$lib/server/errors.js';
 
@@ -27,35 +27,61 @@ export const POST = authGuard(async ({ request, locals }) => {
 
 	try {
 		if (drillId) {
-			const drillResult = await db.query('SELECT name FROM drills WHERE id = $1', [drillId]);
-			if (drillResult.rows.length === 0) {
+			const drillIdInt = parseInt(drillId, 10);
+			const drill = await kyselyDb
+				.selectFrom('drills')
+				.select('name')
+				.where('id', '=', drillIdInt)
+				.executeTakeFirst();
+
+			if (!drill) {
 				throw new NotFoundError('Drill not found');
 			}
-			const drillName = drillResult.rows[0].name;
+			const drillName = drill.name;
 
-			await db.query(
-				`INSERT INTO votes (user_id, drill_id, vote, item_name) 
-                 VALUES ($1, $2, $3, $4) 
-                 ON CONFLICT (user_id, drill_id) 
-                 DO UPDATE SET vote = EXCLUDED.vote, updated_at = CURRENT_TIMESTAMP`,
-				[userId, drillId, vote, drillName]
-			);
+			await kyselyDb
+				.insertInto('votes')
+				.values({
+					user_id: userId,
+					drill_id: drillIdInt,
+					vote,
+					item_name: drillName
+				})
+				.onConflict((oc) =>
+					oc.columns(['user_id', 'drill_id']).doUpdateSet({
+						vote,
+						updated_at: sql`now()`
+					})
+				)
+				.execute();
 		} else {
-			const planResult = await db.query('SELECT name FROM practice_plans WHERE id = $1', [
-				practicePlanId
-			]);
-			if (planResult.rows.length === 0) {
+			const planIdInt = parseInt(practicePlanId, 10);
+			const plan = await kyselyDb
+				.selectFrom('practice_plans')
+				.select('name')
+				.where('id', '=', planIdInt)
+				.executeTakeFirst();
+
+			if (!plan) {
 				throw new NotFoundError('Practice plan not found');
 			}
-			const planName = planResult.rows[0].name;
+			const planName = plan.name;
 
-			await db.query(
-				`INSERT INTO votes (user_id, practice_plan_id, vote, item_name) 
-                 VALUES ($1, $2, $3, $4) 
-                 ON CONFLICT (user_id, practice_plan_id) 
-                 DO UPDATE SET vote = EXCLUDED.vote, updated_at = CURRENT_TIMESTAMP`,
-				[userId, practicePlanId, vote, planName]
-			);
+			await kyselyDb
+				.insertInto('votes')
+				.values({
+					user_id: userId,
+					practice_plan_id: planIdInt,
+					vote,
+					item_name: planName
+				})
+				.onConflict((oc) =>
+					oc.columns(['user_id', 'practice_plan_id']).doUpdateSet({
+						vote,
+						updated_at: sql`now()`
+					})
+				)
+				.execute();
 		}
 
 		return json({ message: 'Vote recorded successfully' });
@@ -81,15 +107,19 @@ export const DELETE = authGuard(async ({ url, locals }) => {
 
 	try {
 		if (drillId) {
-			await db.query('DELETE FROM votes WHERE user_id = $1 AND drill_id = $2', [
-				userId,
-				parseInt(drillId, 10)
-			]);
+			const drillIdInt = parseInt(drillId, 10);
+			await kyselyDb
+				.deleteFrom('votes')
+				.where('user_id', '=', userId)
+				.where('drill_id', '=', drillIdInt)
+				.execute();
 		} else {
-			await db.query('DELETE FROM votes WHERE user_id = $1 AND practice_plan_id = $2', [
-				userId,
-				parseInt(practicePlanId, 10)
-			]);
+			const planIdInt = parseInt(practicePlanId, 10);
+			await kyselyDb
+				.deleteFrom('votes')
+				.where('user_id', '=', userId)
+				.where('practice_plan_id', '=', planIdInt)
+				.execute();
 		}
 
 		return new Response(null, { status: 204 });
@@ -111,31 +141,24 @@ export async function GET({ url }) {
 	}
 
 	try {
-		let query = '';
-		let params = [];
+		let qb = kyselyDb
+			.selectFrom('votes')
+			.select([
+				sql`COALESCE(SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END), 0)`.as('upvotes'),
+				sql`COALESCE(SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END), 0)`.as('downvotes')
+			]);
+
 		if (drillId) {
-			query = `
-                SELECT 
-                    COALESCE(SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END), 0) AS upvotes,
-                    COALESCE(SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END), 0) AS downvotes
-                FROM votes
-                WHERE drill_id = $1
-            `;
-			params.push(parseInt(drillId, 10));
+			qb = qb.where('drill_id', '=', parseInt(drillId, 10));
 		} else {
-			query = `
-                SELECT 
-                    COALESCE(SUM(CASE WHEN vote = 1 THEN 1 ELSE 0 END), 0) AS upvotes,
-                    COALESCE(SUM(CASE WHEN vote = -1 THEN 1 ELSE 0 END), 0) AS downvotes
-                FROM votes
-                WHERE practice_plan_id = $1
-            `;
-			params.push(parseInt(practicePlanId, 10));
+			qb = qb.where('practice_plan_id', '=', parseInt(practicePlanId, 10));
 		}
 
-		const result = await db.query(query, params);
-		const data = result.rows[0] || { upvotes: 0, downvotes: 0 };
-		return json(data);
+		const row = await qb.executeTakeFirst();
+		return json({
+			upvotes: Number(row?.upvotes ?? 0),
+			downvotes: Number(row?.downvotes ?? 0)
+		});
 	} catch (error) {
 		return handleApiError(error);
 	}

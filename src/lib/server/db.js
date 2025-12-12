@@ -1,7 +1,5 @@
-// import pkg from 'pg';
-// const { Pool } = pkg;
-import { createPool } from '@vercel/postgres'; // Import Vercel's createPool
-import { Kysely, PostgresDialect, sql } from 'kysely'; // Import Kysely, PostgresDialect, and sql
+import { createPool } from '@vercel/postgres';
+import { Kysely, PostgresDialect, sql } from 'kysely';
 
 // Create a Vercel-managed pool instance
 let pool;
@@ -42,8 +40,8 @@ function getPool() {
 	return pool;
 }
 
-// Export the pool instance directly for use in other modules
-export const vercelPool = getPool();
+// Pool used by Kysely dialect; kept internal so callers use Kysely.
+const vercelPool = getPool();
 
 // Create and export a Kysely instance configured with the Vercel pool
 export const kyselyDb = new Kysely({
@@ -52,34 +50,5 @@ export const kyselyDb = new Kysely({
 	})
 });
 
-// Re-export sql from Kysely so other modules can import it from here
+// Re-export sql from Kysely so other modules can import it from here.
 export { sql };
-
-export async function query(text, params) {
-	// Use the Vercel pool directly
-	try {
-		const res = await vercelPool.query(text, params); // Use exported pool
-		return res;
-	} catch (err) {
-		console.error('Database query error:', err);
-		throw err;
-	}
-	// No manual client connect/release needed for simple queries with pool.query()
-}
-
-// Update getClient to use Vercel pool's connect method
-export async function getClient() {
-	return vercelPool.connect(); // Use exported pool
-}
-
-// Update end function
-export async function end() {
-	// Check the original variable, not the export
-	if (pool) {
-		await pool.end(); // Use the internal pool variable to end
-		pool = null;
-	}
-}
-
-// Alias for compatibility with hooks.server.js
-export const cleanup = end;

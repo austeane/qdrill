@@ -306,7 +306,7 @@
 							</tr>
 						</thead>
 						<tbody class="divide-y">
-							{#each recurrences as recurrence}
+							{#each recurrences as recurrence (recurrence.id)}
 								<tr>
 									<td class="px-4 py-3 font-medium">
 										{recurrence.name}

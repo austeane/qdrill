@@ -211,7 +211,7 @@
 				<p class="text-sm text-gray-500 italic">No drills selected yet</p>
 			{:else}
 				<div class="space-y-2">
-					{#each currentSection.drills as drill, index}
+					{#each currentSection.drills as drill, index (drill.id || index)}
 						<div
 							class="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-200"
 						>
@@ -304,7 +304,7 @@
 						No drills match your filters
 					</div>
 				{:else}
-					{#each filteredDrills as drill}
+					{#each filteredDrills as drill (drill.id)}
 						<button
 							type="button"
 							on:click={() => addDrill(drill)}

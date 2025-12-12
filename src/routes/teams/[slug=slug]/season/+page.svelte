@@ -285,7 +285,7 @@
 				{#if seasons.length > 0}
 					<h2 class="text-lg font-semibold mt-8 mb-4">All Seasons</h2>
 					<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-						{#each seasons as season}
+						{#each seasons as season (season.id)}
 							<Card>
 								<h3 slot="header" class="font-semibold">{season.name}</h3>
 								<p class="text-sm text-gray-600 mt-1">

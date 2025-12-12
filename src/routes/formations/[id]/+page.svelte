@@ -5,7 +5,6 @@
 	import { toast } from '@zerodevx/svelte-toast';
 	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
 	import { dev } from '$app/environment';
-	import { slide } from 'svelte/transition'; // Added for transitions
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { sanitizeHtml } from '$lib/utils/sanitize.js';
 
@@ -145,7 +144,7 @@
 
 			{#if formation.tags && formation.tags.length > 0}
 				<div class="flex flex-wrap gap-2 mb-6">
-					{#each formation.tags as tag}
+					{#each formation.tags as tag (tag)}
 						<span
 							class="px-3 py-1 bg-blue-50 text-blue-600 text-sm rounded-full border border-blue-100"
 						>
@@ -168,7 +167,7 @@
 				<div class="border-t border-gray-200 pt-6">
 					<h2 class="text-xl font-semibold mb-4">Diagrams</h2>
 					<div class="space-y-8">
-						{#each formation.diagrams as diagramData, i}
+						{#each formation.diagrams as diagramData, i (i)}
 							{@const diagram =
 								typeof diagramData === 'string' ? JSON.parse(diagramData) : diagramData}
 							{#if diagram}

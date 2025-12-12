@@ -3,8 +3,7 @@
 	import { writable } from 'svelte/store';
 	import { goto } from '$app/navigation';
 	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
-	import { page } from '$app/stores';
-	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
+	import { toast } from '@zerodevx/svelte-toast';
 	import { authClient } from '$lib/auth-client';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { createForm } from 'svelte-forms-lib';
@@ -62,7 +61,7 @@
 	let diagrams = writable(parseDiagrams(formation.diagrams));
 
 	let errors = writable({});
-	let mounted = false;
+	let _mounted = false;
 	let diagramKey = 0;
 	let diagramRefs = [];
 
@@ -250,7 +249,7 @@
 	const session = authClient.useSession();
 	$: isLoggedIn = !!$session.data?.user; // Reactive boolean for login state
 
-	const { form, state, handleSubmit, updateField } = createForm({
+	const { handleSubmit, updateField } = createForm({
 		initialValues: {
 			name: formation.name ?? '',
 			brief_description: formation.brief_description ?? '',
@@ -261,7 +260,7 @@
 			visibility: formation.visibility ?? 'public',
 			formation_type: formation.formation_type ?? 'offense'
 		},
-		onSubmit: async (values) => {
+		onSubmit: async (_values) => {
 			// Trigger saveDiagram on each component to dispatch 'save' events
 			diagramRefs.forEach((ref) => {
 				if (ref && typeof ref.saveDiagram === 'function') {
@@ -614,7 +613,7 @@
 
 							<!-- Selected tags display -->
 							<div class="flex flex-wrap gap-2 mt-2">
-								{#each $tags as tag}
+								{#each $tags as tag (tag)}
 									<span
 										class="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full flex items-center"
 									>
@@ -633,8 +632,8 @@
 
 						<!-- Formation Type Setting -->
 						<div class="flex flex-col">
-							<label id="formation-type-label" class="mb-1 text-sm font-medium text-gray-700"
-								>Formation Type:</label
+							<span id="formation-type-label" class="mb-1 text-sm font-medium text-gray-700"
+								>Formation Type:</span
 							>
 							<div
 								role="radiogroup"
@@ -664,8 +663,8 @@
 
 						<!-- Visibility Setting -->
 						<div class="flex flex-col">
-							<label id="visibility-label" class="mb-1 text-sm font-medium text-gray-700"
-								>Visibility:</label
+							<span id="visibility-label" class="mb-1 text-sm font-medium text-gray-700"
+								>Visibility:</span
 							>
 							<div
 								role="radiogroup"
@@ -807,8 +806,8 @@
 			<h2 class="text-xl font-bold mb-4">Add New Diagram</h2>
 
 			<div class="mb-4">
-				<label id="template-label" class="block text-sm font-medium text-gray-700 mb-2"
-					>Template:</label
+				<span id="template-label" class="block text-sm font-medium text-gray-700 mb-2"
+					>Template:</span
 				>
 				<div role="radiogroup" aria-labelledby="template-label" class="space-y-2">
 					<label class="inline-flex items-center">

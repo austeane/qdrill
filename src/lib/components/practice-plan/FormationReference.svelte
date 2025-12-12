@@ -6,7 +6,7 @@
 	<div class="formation-reference-bar">
 		<span class="reference-label">Formations:</span>
 		<div class="formation-links">
-			{#each formations as formation}
+			{#each formations as formation (formation.formation_id || formation.id)}
 				<a
 					href="/formations/{formation.formation_id || formation.id}"
 					target="_blank"

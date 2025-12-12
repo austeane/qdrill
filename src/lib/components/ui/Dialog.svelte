@@ -1,13 +1,36 @@
 <script>
-	import { Dialog as DialogPrimitive } from 'bits-ui';
 	import { X } from 'lucide-svelte';
-	import { onMount } from 'svelte';
+	import { onMount, createEventDispatcher } from 'svelte';
+	import { fade, scale } from 'svelte/transition';
 
+	/** @type {boolean} */
 	export let open = false;
+	/** @type {string} */
 	export let title = '';
+	/** @type {string} */
 	export let description = '';
 
+	const dispatch = createEventDispatcher();
+
+	let dialogRef;
 	let scrollPosition = 0;
+
+	function handleClose() {
+		open = false;
+		dispatch('close');
+	}
+
+	function handleKeydown(e) {
+		if (e.key === 'Escape' && open) {
+			handleClose();
+		}
+	}
+
+	function handleOverlayClick(e) {
+		if (e.target === e.currentTarget) {
+			handleClose();
+		}
+	}
 
 	$: if (typeof window !== 'undefined') {
 		if (open) {
@@ -38,32 +61,35 @@
 	});
 </script>
 
-<DialogPrimitive.Root bind:open>
-	{#if $$slots.trigger}
-		<DialogPrimitive.Trigger asChild let:builder>
-			<slot name="trigger" {builder} />
-		</DialogPrimitive.Trigger>
-	{/if}
+<svelte:window on:keydown={handleKeydown} />
 
-	<DialogPrimitive.Portal>
-		<DialogPrimitive.Overlay class="dialog-overlay" />
-		<DialogPrimitive.Content class="dialog-content">
+{#if open}
+	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+	<div class="dialog-overlay" transition:fade={{ duration: 150 }} on:click={handleOverlayClick}>
+		<div
+			class="dialog-content"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby={title ? 'dialog-title' : undefined}
+			aria-describedby={description ? 'dialog-description' : undefined}
+			bind:this={dialogRef}
+			transition:scale={{ duration: 150, start: 0.96 }}
+		>
 			<div class="dialog-header">
 				{#if title}
-					<DialogPrimitive.Title class="dialog-title">
+					<h2 id="dialog-title" class="dialog-title">
 						{title}
-					</DialogPrimitive.Title>
+					</h2>
 				{/if}
-				<DialogPrimitive.Close class="dialog-close">
+				<button class="dialog-close" on:click={handleClose} aria-label="Close dialog">
 					<X size={20} />
-					<span class="sr-only">Close</span>
-				</DialogPrimitive.Close>
+				</button>
 			</div>
 
 			{#if description}
-				<DialogPrimitive.Description class="dialog-description">
+				<p id="dialog-description" class="dialog-description">
 					{description}
-				</DialogPrimitive.Description>
+				</p>
 			{/if}
 
 			<div class="dialog-body">
@@ -75,31 +101,28 @@
 					<slot name="footer" />
 				</div>
 			{/if}
-		</DialogPrimitive.Content>
-	</DialogPrimitive.Portal>
-</DialogPrimitive.Root>
+		</div>
+	</div>
+{/if}
 
 <style>
-	:global(.dialog-overlay) {
+	.dialog-overlay {
 		position: fixed;
 		inset: 0;
 		background: rgba(0, 0, 0, 0.5);
-		animation: fadeIn 150ms ease;
 		z-index: 50;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	:global(.dialog-content) {
-		position: fixed;
-		left: 50%;
-		top: 50%;
-		transform: translate(-50%, -50%);
+	.dialog-content {
 		width: 90vw;
 		max-width: 500px;
 		max-height: 85vh;
 		background: var(--color-surface-1);
 		border-radius: var(--radius-xl);
 		box-shadow: var(--shadow-xl);
-		animation: contentShow 150ms ease;
 		z-index: 51;
 		overflow: auto;
 	}
@@ -112,13 +135,14 @@
 		border-bottom: 1px solid var(--color-border-default);
 	}
 
-	:global(.dialog-title) {
+	.dialog-title {
 		font-size: var(--font-size-xl);
 		font-weight: var(--font-weight-semibold);
 		color: var(--color-text-primary);
+		margin: 0;
 	}
 
-	:global(.dialog-close) {
+	.dialog-close {
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -132,14 +156,15 @@
 		transition: all var(--transition-fast);
 	}
 
-	:global(.dialog-close:hover) {
+	.dialog-close:hover {
 		background: var(--color-bg-subtle);
 		color: var(--color-text-primary);
 	}
 
-	:global(.dialog-description) {
+	.dialog-description {
 		padding: 0 var(--space-4);
 		margin-top: var(--space-2);
+		margin-bottom: 0;
 		font-size: var(--font-size-sm);
 		color: var(--color-text-muted);
 	}
@@ -154,37 +179,5 @@
 		gap: var(--space-2);
 		padding: var(--space-4);
 		border-top: 1px solid var(--color-border-default);
-	}
-
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
-	}
-
-	@keyframes contentShow {
-		from {
-			opacity: 0;
-			transform: translate(-50%, -48%) scale(0.96);
-		}
-		to {
-			opacity: 1;
-			transform: translate(-50%, -50%) scale(1);
-		}
-	}
-
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border-width: 0;
 	}
 </style>

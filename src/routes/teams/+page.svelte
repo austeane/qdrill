@@ -173,7 +173,7 @@
 
 	<!-- Teams Grid -->
 	<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-		{#each teams as team}
+		{#each teams as team (team.id)}
 			<Card variant="elevated">
 				<div slot="header" class="flex items-start justify-between">
 					<h3>

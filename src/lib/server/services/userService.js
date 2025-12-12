@@ -1,5 +1,5 @@
 import { BaseEntityService } from './baseEntityService.js';
-import * as db from '$lib/server/db';
+import { kyselyDb, sql } from '$lib/server/db';
 import {
 	NotFoundError,
 	DatabaseError,
@@ -27,17 +27,15 @@ export class UserService extends BaseEntityService {
 	 */
 	async getUserByEmail(email) {
 		try {
-			const query = `
-        SELECT * FROM users
-        WHERE email = $1
-      `;
-
-			const result = await db.query(query, [email]);
-			// Throw NotFoundError if no user found
-			if (result.rows.length === 0) {
+			const result = await kyselyDb
+				.selectFrom('users')
+				.selectAll()
+				.where('email', '=', email)
+				.executeTakeFirst();
+			if (!result) {
 				throw new NotFoundError(`User with email ${email} not found`);
 			}
-			return result.rows[0];
+			return result;
 		} catch (error) {
 			// Re-throw NotFoundError
 			if (error instanceof NotFoundError) {
@@ -72,88 +70,108 @@ export class UserService extends BaseEntityService {
 			delete profileUser.email_verified; // Remove snake_case version
 
 			// Now start transaction for related data
-			return this.withTransaction(async (client) => {
-				// Get drills created by user
-				const drillsQuery = `
-          SELECT id, name, brief_description, date_created,
-                 visibility, is_editable_by_others,
-                 (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
-          FROM drills d
-          WHERE created_by = $1
-          ORDER BY date_created DESC
-          LIMIT $2 OFFSET $3
-        `;
-				const drillsResult = await client.query(drillsQuery, [userId, limit, offset]);
+			return this.withTransaction(async (trx) => {
+				const drillsResult = await trx
+					.selectFrom('drills as d')
+					.select([
+						'd.id',
+						'd.name',
+						'd.brief_description',
+						'd.date_created',
+						'd.visibility',
+						'd.is_editable_by_others'
+					])
+					.select(
+						sql`(SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id)`.as(
+							'variation_count'
+						)
+					)
+					.where('d.created_by', '=', userId)
+					.orderBy('d.date_created', 'desc')
+					.limit(limit)
+					.offset(offset)
+					.execute();
 
-				// Get practice plans created by user
-				const plansQuery = `
-          SELECT id, name, description, created_at,
-                 visibility, is_editable_by_others
-          FROM practice_plans
-          WHERE created_by = $1
-          ORDER BY created_at DESC
-          LIMIT $2 OFFSET $3
-        `;
-				const plansResult = await client.query(plansQuery, [userId, limit, offset]);
+				const plansResult = await trx
+					.selectFrom('practice_plans')
+					.select([
+						'id',
+						'name',
+						'description',
+						'created_at',
+						'visibility',
+						'is_editable_by_others'
+					])
+					.where('created_by', '=', userId)
+					.orderBy('created_at', 'desc')
+					.limit(limit)
+					.offset(offset)
+					.execute();
 
-				// Get formations created by user
-				const formationsQuery = `
-          SELECT id, name, brief_description, created_at,
-                 visibility, is_editable_by_others
-          FROM formations
-          WHERE created_by = $1
-          ORDER BY created_at DESC
-          LIMIT $2 OFFSET $3
-        `;
-				const formationsResult = await client.query(formationsQuery, [userId, limit, offset]);
+				const formationsResult = await trx
+					.selectFrom('formations')
+					.select([
+						'id',
+						'name',
+						'brief_description',
+						'created_at',
+						'visibility',
+						'is_editable_by_others'
+					])
+					.where('created_by', '=', userId)
+					.orderBy('created_at', 'desc')
+					.limit(limit)
+					.offset(offset)
+					.execute();
 
-				// Get votes by user
-				const votesQuery = `
-          SELECT
-            v.id,
-            v.drill_id,
-            v.practice_plan_id,
-            v.vote,
-            v.created_at,
-            CASE
-              WHEN v.drill_id IS NOT NULL THEN 'drill'
-              WHEN v.practice_plan_id IS NOT NULL THEN 'practice_plan'
-            END AS type,
-            COALESCE(d.name, pp.name) AS item_name
-          FROM votes v
-          LEFT JOIN drills d ON v.drill_id = d.id
-          LEFT JOIN practice_plans pp ON v.practice_plan_id = pp.id
-          WHERE v.user_id = $1
-          ORDER BY v.created_at DESC
-          LIMIT $2 OFFSET $3
-        `;
-				const votesResult = await client.query(votesQuery, [userId, limit, offset]);
+				const votesResult = await trx
+					.selectFrom('votes as v')
+					.leftJoin('drills as d', 'v.drill_id', 'd.id')
+					.leftJoin('practice_plans as pp', 'v.practice_plan_id', 'pp.id')
+					.select([
+						'v.id',
+						'v.drill_id',
+						'v.practice_plan_id',
+						'v.vote',
+						'v.created_at',
+						sql`CASE
+							WHEN v.drill_id IS NOT NULL THEN 'drill'
+							WHEN v.practice_plan_id IS NOT NULL THEN 'practice_plan'
+						END`.as('type'),
+						sql`COALESCE(d.name, pp.name)`.as('item_name')
+					])
+					.where('v.user_id', '=', userId)
+					.orderBy('v.created_at', 'desc')
+					.limit(limit)
+					.offset(offset)
+					.execute();
 
-				// Get comments by user
-				const commentsQuery = `
-          SELECT c.*,
-            CASE
-              WHEN c.drill_id IS NOT NULL THEN 'drill'
-              WHEN c.practice_plan_id IS NOT NULL THEN 'practice_plan'
-            END AS type,
-            d.name AS drill_name,
-            pp.name AS practice_plan_name
-          FROM comments c
-          LEFT JOIN drills d ON c.drill_id = d.id
-          LEFT JOIN practice_plans pp ON c.practice_plan_id = pp.id
-          WHERE c.user_id = $1
-          ORDER BY c.created_at DESC
-          LIMIT $2 OFFSET $3
-        `;
-				const commentsResult = await client.query(commentsQuery, [userId, limit, offset]);
+				const commentsResult = await trx
+					.selectFrom('comments as c')
+					.leftJoin('drills as d', 'c.drill_id', 'd.id')
+					.leftJoin('practice_plans as pp', 'c.practice_plan_id', 'pp.id')
+					.selectAll('c')
+					.select([
+						sql`CASE
+							WHEN c.drill_id IS NOT NULL THEN 'drill'
+							WHEN c.practice_plan_id IS NOT NULL THEN 'practice_plan'
+						END`.as('type'),
+						'd.name as drill_name',
+						'pp.name as practice_plan_name'
+					])
+					.where('c.user_id', '=', userId)
+					.orderBy('c.created_at', 'desc')
+					.limit(limit)
+					.offset(offset)
+					.execute();
 
 				return {
 					user: profileUser, // Use the adjusted user object
-					drills: drillsResult.rows,
-					practicePlans: plansResult.rows,
-					formations: formationsResult.rows,
-					votes: votesResult.rows,
-					comments: commentsResult.rows
+					drills: drillsResult,
+					practicePlans: plansResult,
+					formations: formationsResult,
+					votes: votesResult,
+					comments: commentsResult
 				};
 			});
 		} catch (error) {
@@ -176,7 +194,7 @@ export class UserService extends BaseEntityService {
 		try {
 			const user = await this.getById(userId, ['role']);
 			return user.role === 'admin';
-		} catch (error) {
+		} catch {
 			// If user not found or error, they're not admin
 			return false;
 		}
@@ -191,7 +209,7 @@ export class UserService extends BaseEntityService {
 	 * @throws {NotFoundError} If user not found
 	 * @throws {DatabaseError} On database error
 	 */
-	async setUserRole(userId, role) {
+		async setUserRole(userId, role) {
 		// Validate role
 		const validRoles = ['user', 'admin'];
 		if (!validRoles.includes(role)) {
@@ -199,20 +217,19 @@ export class UserService extends BaseEntityService {
 		}
 
 		try {
-			const query = `
-				UPDATE users 
-				SET role = $1 
-				WHERE id = $2 
-				RETURNING id, name, email, role
-			`;
-			const result = await db.query(query, [role, userId]);
+			const result = await kyselyDb
+				.updateTable('users')
+				.set({ role })
+				.where('id', '=', userId)
+				.returning(['id', 'name', 'email', 'role'])
+				.executeTakeFirst();
 
-			if (result.rows.length === 0) {
+			if (!result) {
 				throw new NotFoundError(`User with ID ${userId} not found`);
 			}
 
 			console.info(`User ${userId} role updated to ${role}`);
-			return result.rows[0];
+			return result;
 		} catch (error) {
 			if (error instanceof NotFoundError) {
 				throw error;
@@ -227,7 +244,7 @@ export class UserService extends BaseEntityService {
 	 * from Better‑Auth's session.
 	 * @param {{id:string,name?:string,email?:string,image?:string,emailVerified?:boolean}} userObj
 	 */
-	async ensureUserExists(userObj) {
+		async ensureUserExists(userObj) {
 		if (!userObj?.id) return;
 
 		const { id, name, email, image, emailVerified, role = 'user' } = userObj;
@@ -236,22 +253,19 @@ export class UserService extends BaseEntityService {
 		const exists = await this.exists(id);
 		if (exists) return;
 
-		// Insert minimal row
-		const insertQuery = `
-      INSERT INTO users (id, name, email, image, email_verified, role)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (id) DO NOTHING
-    `;
-
 		try {
-			await db.query(insertQuery, [
-				id,
-				name ?? null,
-				email ?? null,
-				image ?? null,
-				emailVerified ? new Date() : null,
-				role
-			]);
+			await kyselyDb
+				.insertInto('users')
+				.values({
+					id,
+					name: name ?? null,
+					email: email ?? null,
+					image: image ?? null,
+					email_verified: emailVerified ? new Date() : null,
+					role
+				})
+				.onConflict((oc) => oc.column('id').doNothing())
+				.execute();
 			console.info('Inserted new user row for Better‑Auth id', id);
 		} catch (err) {
 			console.error('Failed to insert user row for', id, err);

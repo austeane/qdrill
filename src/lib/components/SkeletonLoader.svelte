@@ -21,7 +21,7 @@
 				</div>
 			{/if}
 
-			{#each Array(lines) as _, i}
+			{#each Array(lines) as _, i (i)}
 				<div class="h-4 bg-gray-300 rounded mb-2 {i === lines - 1 ? 'w-2/3' : 'w-full'}"></div>
 			{/each}
 
@@ -41,7 +41,7 @@
 			</div>
 		{/if}
 
-		{#each Array(lines) as _, i}
+		{#each Array(lines) as _, i (i)}
 			<div class="h-4 bg-gray-300 rounded mb-2 {i === lines - 1 ? 'w-2/3' : 'w-full'}"></div>
 		{/each}
 

@@ -1,6 +1,6 @@
 import { redirect, error } from '@sveltejs/kit';
 import { teamMemberService } from '$lib/server/services/teamMemberService.js';
-import { vercelPool } from '$lib/server/db';
+import { kyselyDb } from '$lib/server/db';
 
 export async function load({ locals, parent }) {
 	if (!locals.user) {
@@ -22,13 +22,16 @@ export async function load({ locals, parent }) {
 
 	// Fetch user details for all members
 	const userIds = members.map((m) => m.user_id);
-	const usersResult = await vercelPool.query(
-		'SELECT id, name, email, image FROM users WHERE id = ANY($1)',
-		[userIds]
-	);
+	const users = userIds.length
+		? await kyselyDb
+				.selectFrom('users')
+				.select(['id', 'name', 'email', 'image'])
+				.where('id', 'in', userIds)
+				.execute()
+		: [];
 
 	// Create a map for quick lookup
-	const usersMap = new Map(usersResult.rows.map((u) => [u.id, u]));
+	const usersMap = new Map(users.map((u) => [u.id, u]));
 
 	// Enhance members with user info
 	const membersWithInfo = members.map((member) => ({

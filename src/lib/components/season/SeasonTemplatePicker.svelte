@@ -58,7 +58,7 @@
 					<span class="text-sm text-gray-500 ml-2">(Start from scratch)</span>
 				</label>
 
-				{#each templates as template}
+				{#each templates as template (template.id)}
 					<label class="block border rounded p-3 hover:bg-gray-50 cursor-pointer">
 						<input type="radio" bind:group={selectedTemplateId} value={template.id} class="mr-2" />
 						<span class="font-medium">{template.name}</span>

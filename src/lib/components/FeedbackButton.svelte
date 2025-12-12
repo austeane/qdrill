@@ -1,8 +1,5 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-	// import { writable } from 'svelte/store'; // Commented out as it's not used
 	import FeedbackModal from './FeedbackModal.svelte';
-	import Button from './ui/button/button.svelte';
 	import { feedbackModalVisible } from '$lib/stores/feedbackStore';
 
 	function openFeedbackModal() {

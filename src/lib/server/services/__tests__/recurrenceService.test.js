@@ -1,15 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { recurrenceService } from '../recurrenceService.js';
 
-// Mock the database
-vi.mock('$lib/server/db.js', () => ({
-	query: vi.fn(),
-	getClient: vi.fn(),
-	kyselyDb: {},
-	vercelPool: {}
-}));
-
-import * as db from '$lib/server/db.js';
+vi.mock('$lib/server/db');
+import * as db from '$lib/server/db';
 
 // Mock other services
 vi.mock('../seasonUnionService.js', () => ({
@@ -133,7 +126,7 @@ describe('RecurrenceService', () => {
 			};
 
 			recurrenceService.getById = vi.fn().mockResolvedValue(mockRecurrence);
-			db.query.mockResolvedValue(mockExistingPractices);
+			db.kyselyDb.__setResults([mockExistingPractices.rows]);
 
 			const preview = await recurrenceService.previewGeneration(
 				'rec-1',
@@ -168,9 +161,7 @@ describe('RecurrenceService', () => {
 			const { seasonUnionService } = await import('../seasonUnionService.js');
 			seasonUnionService.instantiatePracticePlan.mockResolvedValue({ id: 123 });
 
-			db.query.mockResolvedValue({
-				rows: [{ id: 'log-1', generated_count: 1 }]
-			});
+			db.kyselyDb.__setResults([{ id: 'log-1', generated_count: 1 }]);
 
 			const result = await recurrenceService.batchGenerate(
 				'rec-1',

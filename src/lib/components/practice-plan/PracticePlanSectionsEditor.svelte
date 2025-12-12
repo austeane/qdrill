@@ -27,7 +27,7 @@
 
 <div class="practice-plan-sections space-y-4">
 	<h2 class="text-xl font-semibold">Plan Sections &amp; Items</h2>
-	{#each $sections as section, sectionIndex}
+	{#each $sections as section, sectionIndex (section.id || sectionIndex)}
 		<SectionContainer
 			{section}
 			{sectionIndex}

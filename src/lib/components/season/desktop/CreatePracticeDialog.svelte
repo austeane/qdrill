@@ -202,7 +202,7 @@
 					Season Sections on this date:
 				</div>
 				<ul class="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-					{#each overlappingSections as section}
+					{#each overlappingSections as section (section.id)}
 						<li>• {formatSectionName(section)}</li>
 					{/each}
 				</ul>

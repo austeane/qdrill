@@ -7,7 +7,7 @@ const describeFn = teamSlug ? test.describe : test.describe.skip;
 describeFn('Teams — Overview desktop dialogs', () => {
 	test('open and interact with Add Section and Add Event dialogs', async ({
 		page,
-		browserName
+		browserName: _browserName
 	}) => {
 		await page.goto(`/teams/${teamSlug}/season`);
 

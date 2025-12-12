@@ -1,32 +1,20 @@
 <script>
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { page } from '$app/stores';
 	import { enhance } from '$app/forms'; // Import enhance
 	import { cart } from '$lib/stores/cartStore';
 	import { undo, redo, canUndo, canRedo, initializeHistory } from '$lib/stores/historyStore';
-	import { authClient } from '$lib/auth-client';
 	import { get } from 'svelte/store'; // Import get
 
 	// Import NEW stores and utils
 	import {
-		planName,
-		planDescription,
-		phaseOfSeason,
-		estimatedNumberOfParticipants,
-		practiceGoals,
 		visibility,
 		isEditableByOthers,
-		startTime,
-		errors as metadataErrors, // Rename to avoid conflict with form errors
 		initializeForm, // Keep initializeForm for setting initial state
-		addPracticeGoal,
-		removePracticeGoal,
-		updatePracticeGoal,
 		validateMetadataForm
 	} from '$lib/stores/practicePlanMetadataStore';
-	import { formatTime } from '$lib/utils/timeUtils';
 
 	import {
 		sections,
@@ -52,7 +40,7 @@
 	// Import component modules
 	import EnhancedAddItemModal from '$lib/components/practice-plan/modals/EnhancedAddItemModal.svelte';
 	import TimelineSelectorModal from '$lib/components/practice-plan/modals/TimelineSelectorModal.svelte';
-	let Editor;
+	let _Editor; // Loaded dynamically, kept for potential future use
 
 	// Add proper prop definitions with defaults
 	import PlanMetadataFields from '$lib/components/practice-plan/PlanMetadataFields.svelte';
@@ -135,7 +123,7 @@
 		updateTimelineColor(timeline, color);
 	}
 
-	function handleSaveTimelinesEvent(event) {
+	function handleSaveTimelinesEvent(_event) {
 		// In this implementation we just call the existing store handler
 		// to persist selected timelines
 		handleTimelineSave();
@@ -246,7 +234,7 @@
 		try {
 			console.log('[DEBUG] Loading TinyMCE editor...');
 			const module = await import('@tinymce/tinymce-svelte');
-			Editor = module.default;
+			_Editor = module.default;
 			console.log('[DEBUG] TinyMCE editor loaded successfully');
 		} catch (error) {
 			console.log('[DEBUG] Error loading TinyMCE', error);
@@ -282,7 +270,7 @@
 	use:practicePlanAuthHandler
 	method="POST"
 	action="?"
-	use:enhance={({ formElement, formData, action, cancel, submitter }) => {
+	use:enhance={({ formData, cancel }) => {
 		submitting = true;
 
 		// Validate metadata fields before submitting
@@ -316,7 +304,7 @@
 
 		formData.set('sections', JSON.stringify(cleanedSections));
 
-		return async ({ result, update }) => {
+		return async ({ result }) => {
 			submitting = false;
 
 			if (result.type === 'redirect' && result.location) {

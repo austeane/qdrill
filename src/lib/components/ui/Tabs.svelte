@@ -1,35 +1,67 @@
 <script>
-	import { Tabs as TabsPrimitive } from 'bits-ui';
+	import { createEventDispatcher } from 'svelte';
 
+	/** @type {string} */
 	export let value = '';
-	export let tabs = []; // [{value, label}]
+	/** @type {Array<{value: string, label: string}>} */
+	export let tabs = [];
+
+	const dispatch = createEventDispatcher();
+
+	function selectTab(tabValue) {
+		value = tabValue;
+		dispatch('change', { value: tabValue });
+	}
+
+	function handleKeydown(e, tabValue, index) {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			selectTab(tabValue);
+		} else if (e.key === 'ArrowRight') {
+			e.preventDefault();
+			const nextIndex = (index + 1) % tabs.length;
+			selectTab(tabs[nextIndex].value);
+		} else if (e.key === 'ArrowLeft') {
+			e.preventDefault();
+			const prevIndex = (index - 1 + tabs.length) % tabs.length;
+			selectTab(tabs[prevIndex].value);
+		}
+	}
 </script>
 
-<TabsPrimitive.Root bind:value class="tabs">
-	<TabsPrimitive.List class="tabs-list">
-		{#each tabs as tab}
-			<TabsPrimitive.Trigger value={tab.value} class="tabs-trigger">
+<div class="tabs">
+	<div class="tabs-list" role="tablist">
+		{#each tabs as tab, index (tab.value)}
+			<button
+				class="tabs-trigger"
+				class:active={value === tab.value}
+				role="tab"
+				aria-selected={value === tab.value}
+				tabindex={value === tab.value ? 0 : -1}
+				on:click={() => selectTab(tab.value)}
+				on:keydown={(e) => handleKeydown(e, tab.value, index)}
+			>
 				{tab.label}
-			</TabsPrimitive.Trigger>
+			</button>
 		{/each}
-	</TabsPrimitive.List>
+	</div>
 
 	<slot />
-</TabsPrimitive.Root>
+</div>
 
 <style>
-	:global(.tabs) {
+	.tabs {
 		width: 100%;
 	}
 
-	:global(.tabs-list) {
+	.tabs-list {
 		display: flex;
 		gap: var(--space-1);
 		border-bottom: 1px solid var(--color-border-default);
 		margin-bottom: var(--space-4);
 	}
 
-	:global(.tabs-trigger) {
+	.tabs-trigger {
 		padding: var(--space-2) var(--space-4);
 		background: transparent;
 		border: none;
@@ -41,25 +73,12 @@
 		margin-bottom: -1px;
 	}
 
-	:global(.tabs-trigger:hover) {
+	.tabs-trigger:hover {
 		color: var(--color-text-primary);
 	}
 
-	:global(.tabs-trigger[data-state='active']) {
+	.tabs-trigger.active {
 		color: var(--color-accent-9);
 		border-bottom-color: var(--color-accent-9);
-	}
-
-	:global(.tabs-content) {
-		animation: fadeIn 150ms ease;
-	}
-
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-		}
-		to {
-			opacity: 1;
-		}
 	}
 </style>

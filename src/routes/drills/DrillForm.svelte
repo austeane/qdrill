@@ -1,16 +1,11 @@
 <script>
-	import { onMount, tick, createEventDispatcher } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { writable, derived } from 'svelte/store';
 	import { goto } from '$app/navigation';
-	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
-	import { dndzone } from 'svelte-dnd-action';
-	import { PREDEFINED_SKILLS } from '$lib/constants/skills';
 	import { page } from '$app/stores';
 	import { authClient } from '$lib/auth-client';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
-
-	const dispatch = createEventDispatcher();
 
 	// Component Props
 	export let drill = {};
@@ -62,8 +57,8 @@
 
 	let errors = writable({});
 	let numberWarnings = writable({});
-	let mounted = false;
-	let diagramKey = 0;
+	let _mounted = false;
+	let _diagramKey = 0;
 	let fileInput;
 	let showSkillsModal = false;
 	let modalSkillSearchTerm = writable('');
@@ -141,14 +136,14 @@
 				files: {}
 			}
 		]);
-		diagramKey++;
+		_diagramKey++;
 		showAddDiagramModal = false;
 	}
 
-	function deleteDiagram(index) {
+	function _deleteDiagram(index) {
 		if (confirm('Are you sure you want to delete this diagram?')) {
 			diagrams.update((d) => d.filter((_, i) => i !== index));
-			diagramKey++;
+			_diagramKey++;
 		}
 	}
 
@@ -160,10 +155,10 @@
 			[newDiagrams[index], newDiagrams[newIndex]] = [newDiagrams[newIndex], newDiagrams[index]];
 			return newDiagrams;
 		});
-		diagramKey++;
+		_diagramKey++;
 	}
 
-	function handleDiagramSave(event, index) {
+	function _handleDiagramSave(event, index) {
 		const diagramData = event.detail;
 		const processedData = {
 			elements: diagramData.elements || [],
@@ -182,15 +177,15 @@
 		});
 	}
 
-	function handleMoveUp(index) {
+	function _handleMoveUp(index) {
 		moveDiagram(index, -1);
 	}
-	function handleMoveDown(index) {
+	function _handleMoveDown(index) {
 		moveDiagram(index, 1);
 	}
 
 	onMount(async () => {
-		mounted = true;
+		_mounted = true;
 
 		const pendingData = sessionStorage.getItem('pendingDrillData');
 		if (pendingData) {
@@ -227,7 +222,7 @@
 			}
 			sessionStorage.removeItem('pendingDrillData');
 			await tick();
-			diagramKey++;
+			_diagramKey++;
 		}
 	});
 
@@ -270,7 +265,7 @@
 		skillSearchTerm.set('');
 
 		try {
-			const addedSkill = await apiFetch('/api/skills', {
+			const _addedSkill = await apiFetch('/api/skills', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ skill: skillToAdd })
@@ -566,7 +561,7 @@
 		});
 	}
 
-	function handleFileSelect(e) {
+	function _handleFileSelect(e) {
 		const files = Array.from(e.target.files);
 		images.update((currentImages) => [
 			...currentImages,
@@ -577,23 +572,23 @@
 		]);
 	}
 
-	function removeImage(id) {
+	function _removeImage(id) {
 		images.update((imgs) => imgs.filter((img) => img.id !== id));
 	}
 
-	function handleDndConsider(e) {
+	function _handleDndConsider(e) {
 		images.set(e.detail.items);
 	}
 
-	function handleDndFinalize(e) {
+	function _handleDndFinalize(e) {
 		images.set(e.detail.items);
 	}
 
-	function triggerFileInput() {
+	function _triggerFileInput() {
 		fileInput.click();
 	}
 
-	function duplicateDiagram(index) {
+	function _duplicateDiagram(index) {
 		if (diagramRefs[index]) {
 			diagramRefs[index].saveDiagram();
 		}
@@ -616,10 +611,10 @@
 			return newDiagrams;
 		});
 
-		diagramKey++;
+		_diagramKey++;
 	}
 
-	function handleDescriptionChange(e) {
+	function _handleDescriptionChange(e) {
 		detailed_description.set(e.detail.content);
 	}
 
@@ -627,15 +622,15 @@
 		selectedSkills.update((skills) => skills.filter((skill) => skill !== skillToRemove));
 	}
 
-	let Editor;
-	onMount(async () => {
-		try {
-			const module = await import('@tinymce/tinymce-svelte');
-			Editor = module.default;
-		} catch (error) {
-			console.error('Error loading TinyMCE:', error);
-		}
-	});
+		let Editor;
+		onMount(async () => {
+			try {
+				const module = await import('@tinymce/tinymce-svelte');
+				Editor = module.Editor ?? module.default;
+			} catch (error) {
+				console.error('Error loading TinyMCE:', error);
+			}
+		});
 </script>
 
 <svelte:head>
@@ -760,8 +755,8 @@
 						</div>
 
 						<div class="flex flex-col">
-							<label id="drill-type-label" class="mb-1 text-sm font-medium text-gray-700"
-								>Drill Type:</label
+							<span id="drill-type-label" class="mb-1 text-sm font-medium text-gray-700"
+								>Drill Type:</span
 							>
 							<p class="text-xs text-gray-500 mb-1">Select one or more drill types.</p>
 							<div role="group" aria-labelledby="drill-type-label" class="flex flex-wrap gap-2">

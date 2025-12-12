@@ -1,5 +1,5 @@
 import { BaseEntityService } from './baseEntityService.js';
-import * as db from '$lib/server/db';
+import { kyselyDb, sql } from '$lib/server/db';
 import { DatabaseError, ValidationError, NotFoundError } from '$lib/server/errors';
 import { upsertSkillCounts } from './skillSql.js';
 
@@ -54,19 +54,21 @@ export class SkillService extends BaseEntityService {
 		}
 
 		try {
-			// Use ON CONFLICT to handle existing skills
-			const query = `
-        INSERT INTO skills (skill, usage_count, drills_used_in)
-        VALUES ($1, 1, 0) 
-        ON CONFLICT (skill) DO UPDATE SET
-          usage_count = skills.usage_count + 1
-        RETURNING skill, usage_count, drills_used_in;
-      `;
-			const result = await db.query(query, [trimmedSkill]);
-			if (result.rows.length === 0) {
+			const result = await kyselyDb
+				.insertInto('skills')
+				.values({ skill: trimmedSkill, usage_count: 1, drills_used_in: 0 })
+				.onConflict((oc) =>
+					oc.column('skill').doUpdateSet({
+						usage_count: sql`skills.usage_count + 1`
+					})
+				)
+				.returning(['skill', 'usage_count', 'drills_used_in'])
+				.executeTakeFirst();
+
+			if (!result) {
 				throw new DatabaseError('Failed to add or update skill in database, no rows returned.');
 			}
-			return result.rows[0];
+			return result;
 		} catch (error) {
 			console.error(`Error adding or incrementing skill "${trimmedSkill}":`, error);
 			// Check for specific DB errors if needed (e.g., constraints)
@@ -81,19 +83,17 @@ export class SkillService extends BaseEntityService {
 	 */
 	async getSkillsForDrill(drillId) {
 		try {
-			const query = `
-        SELECT skills_focused_on
-        FROM drills
-        WHERE id = $1
-      `;
+			const result = await kyselyDb
+				.selectFrom('drills')
+				.select('skills_focused_on')
+				.where('id', '=', drillId)
+				.executeTakeFirst();
 
-			const result = await db.query(query, [drillId]);
-
-			if (result.rows.length === 0) {
+			if (!result) {
 				throw new NotFoundError(`Drill with ID ${drillId} not found when fetching skills.`);
 			}
 
-			return result.rows[0].skills_focused_on || [];
+			return result.skills_focused_on || [];
 		} catch (error) {
 			if (error instanceof NotFoundError) {
 				throw error;
@@ -110,16 +110,13 @@ export class SkillService extends BaseEntityService {
 	 */
 	async getMostUsedSkills(limit = 10) {
 		try {
-			const query = `
-        SELECT skill, drills_used_in, usage_count
-        FROM skills
-        ORDER BY drills_used_in DESC, usage_count DESC
-        LIMIT $1
-      `;
-
-			const result = await db.query(query, [limit]);
-
-			return result.rows;
+			return await kyselyDb
+				.selectFrom('skills')
+				.select(['skill', 'drills_used_in', 'usage_count'])
+				.orderBy('drills_used_in', 'desc')
+				.orderBy('usage_count', 'desc')
+				.limit(limit)
+				.execute();
 		} catch (error) {
 			console.error('Error in getMostUsedSkills:', error);
 			throw new DatabaseError('Failed to get most used skills', error);
@@ -134,21 +131,20 @@ export class SkillService extends BaseEntityService {
 	 * @returns {Promise<void>}
 	 */
 	async updateSkillCounts(skillsToAdd = [], skillsToRemove = [], drillId) {
-		return this.withTransaction(async (client) => {
+		return this.withTransaction(async (trx) => {
 			// Add new skills
 			if (skillsToAdd.length > 0) {
-				await this.addSkillsToDatabase(skillsToAdd, drillId, client);
+				await this.addSkillsToDatabase(skillsToAdd, drillId, trx);
 			}
 
 			// Remove skills no longer used
 			if (skillsToRemove.length > 0) {
 				for (const skill of skillsToRemove) {
-					await client.query(
-						`UPDATE skills 
-             SET drills_used_in = drills_used_in - 1 
-             WHERE skill = $1`,
-						[skill]
-					);
+					await trx
+						.updateTable('skills')
+						.set({ drills_used_in: sql`drills_used_in - 1` })
+						.where('skill', '=', skill)
+						.execute();
 				}
 			}
 		});
@@ -162,9 +158,9 @@ export class SkillService extends BaseEntityService {
 	 * @returns {Promise<void>}
 	 * @private
 	 */
-	async addSkillsToDatabase(skills, drillId, client) {
+	async addSkillsToDatabase(skills, drillId, trx) {
 		for (const skill of skills) {
-			await upsertSkillCounts(client, skill, drillId);
+			await upsertSkillCounts(trx, skill, drillId);
 		}
 	}
 
@@ -180,39 +176,32 @@ export class SkillService extends BaseEntityService {
 		}
 
 		try {
-			// Find drills that use the current skills
-			const query = `
-        SELECT id
-        FROM drills
-        WHERE skills_focused_on && $1::varchar[]
-        LIMIT 100
-      `;
+			const drills = await kyselyDb
+				.selectFrom('drills')
+				.select('id')
+				.where(sql`skills_focused_on && ${currentSkills}::varchar[]`)
+				.limit(100)
+				.execute();
 
-			const result = await db.query(query, [currentSkills]);
-
-			if (result.rows.length === 0) {
+			if (drills.length === 0) {
 				return [];
 			}
 
 			// Get drill IDs
-			const drillIds = result.rows.map((row) => row.id);
+			const drillIds = drills.map((row) => row.id);
 
-			// Find other skills used in these drills, excluding the current skills
-			const skillsQuery = `
-        SELECT skill,
-               COUNT(*) as drill_count
-        FROM (
-          SELECT unnest(COALESCE(skills_focused_on, '{}'::varchar[])) as skill
-          FROM drills
-          WHERE id = ANY($1)
-        ) s
-        WHERE NOT (skill = ANY($2::varchar[]))
-        GROUP BY skill
-        ORDER BY drill_count DESC
-        LIMIT $3
-      `;
-
-			const skillsResult = await db.query(skillsQuery, [drillIds, currentSkills, limit]);
+			const skillsResult = await sql`
+				SELECT skill, COUNT(*) as drill_count
+				FROM (
+					SELECT unnest(COALESCE(skills_focused_on, '{}'::varchar[])) as skill
+					FROM drills
+					WHERE id = ANY(${drillIds}::int[])
+				) s
+				WHERE NOT (skill = ANY(${currentSkills}::varchar[]))
+				GROUP BY skill
+				ORDER BY drill_count DESC
+				LIMIT ${limit}
+			`.execute(kyselyDb);
 
 			return skillsResult.rows.map((row) => row.skill);
 		} catch (error) {

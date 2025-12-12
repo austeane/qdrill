@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { query } from '$lib/server/db.js';
+import { kyselyDb, sql } from '$lib/server/db.js';
 import { teamMemberService } from '$lib/server/services/teamMemberService.js';
 
 export async function POST({ locals, params }) {
@@ -9,11 +9,15 @@ export async function POST({ locals, params }) {
 
 	try {
 		// Fetch plan
-		const planRes = await query('SELECT * FROM practice_plans WHERE id = $1', [params.id]);
-		if (planRes.rows.length === 0) {
+		const plan = await kyselyDb
+			.selectFrom('practice_plans')
+			.selectAll()
+			.where('id', '=', params.id)
+			.executeTakeFirst();
+
+		if (!plan) {
 			return json({ error: 'Practice plan not found' }, { status: 404 });
 		}
-		const plan = planRes.rows[0];
 
 		// Permission: admin of team or creator of plan
 		if (plan.team_id) {
@@ -25,16 +29,18 @@ export async function POST({ locals, params }) {
 			return json({ error: 'Forbidden' }, { status: 403 });
 		}
 
-		const updateRes = await query(
-			`UPDATE practice_plans
-       SET is_published = true,
-           published_at = NOW(),
-           updated_at = NOW()
-       WHERE id = $1
-       RETURNING *`,
-			[params.id]
-		);
-		return json(updateRes.rows[0]);
+		const updated = await kyselyDb
+			.updateTable('practice_plans')
+			.set({
+				is_published: true,
+				published_at: sql`now()`,
+				updated_at: sql`now()`
+			})
+			.where('id', '=', params.id)
+			.returningAll()
+			.executeTakeFirst();
+
+		return json(updated);
 	} catch (error) {
 		return json({ error: error.message }, { status: error.statusCode || 500 });
 	}
@@ -47,11 +53,15 @@ export async function DELETE({ locals, params }) {
 
 	try {
 		// Fetch plan
-		const planRes = await query('SELECT * FROM practice_plans WHERE id = $1', [params.id]);
-		if (planRes.rows.length === 0) {
+		const plan = await kyselyDb
+			.selectFrom('practice_plans')
+			.selectAll()
+			.where('id', '=', params.id)
+			.executeTakeFirst();
+
+		if (!plan) {
 			return json({ error: 'Practice plan not found' }, { status: 404 });
 		}
-		const plan = planRes.rows[0];
 
 		// Permission: admin of team or creator of plan
 		if (plan.team_id) {
@@ -63,16 +73,18 @@ export async function DELETE({ locals, params }) {
 			return json({ error: 'Forbidden' }, { status: 403 });
 		}
 
-		const updateRes = await query(
-			`UPDATE practice_plans
-       SET is_published = false,
-           published_at = NULL,
-           updated_at = NOW()
-       WHERE id = $1
-       RETURNING *`,
-			[params.id]
-		);
-		return json(updateRes.rows[0]);
+		const updated = await kyselyDb
+			.updateTable('practice_plans')
+			.set({
+				is_published: false,
+				published_at: null,
+				updated_at: sql`now()`
+			})
+			.where('id', '=', params.id)
+			.returningAll()
+			.executeTakeFirst();
+
+		return json(updated);
 	} catch (error) {
 		return json({ error: error.message }, { status: error.statusCode || 500 });
 	}

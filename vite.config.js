@@ -38,6 +38,12 @@ export default defineConfig({
 	},
 	server: {
 		port: 3000,
-		strictPort: false
+		strictPort: false,
+		// Playwright creates/cleans up nested `test-results/.playwright-artifacts-*` dirs quickly.
+		// Vite's file watcher can occasionally hit transient ENOENT during those operations,
+		// which can crash `vercel dev` if the error bubbles out unhandled.
+		watch: {
+			ignored: ['**/test-results/**', '**/playwright-report/**', '**/.playwright-artifacts-*/**']
+		}
 	}
 });

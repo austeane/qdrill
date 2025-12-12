@@ -1,5 +1,4 @@
 import { BaseEntityService } from './baseEntityService.js';
-import * as db from '$lib/server/db';
 import { upsertSkillCounts } from './skillSql.js';
 import {
 	NotFoundError,
@@ -167,10 +166,10 @@ export class DrillService extends BaseEntityService {
 		};
 		const normalizedData = this.normalizeDrillData(dataWithMeta);
 
-		return this.withTransaction(async (client) => {
-			const drill = await this.create(normalizedData, client); // Pass client
+		return this.withTransaction(async (trx) => {
+			const drill = await this.create(normalizedData, trx);
 			const skills = normalizedData.skills_focused_on || [];
-			await this.updateSkills(skills, drill.id, client); // Pass client
+			await this.updateSkills(skills, drill.id, trx);
 			return denormalizeDrillForResponse(drill);
 		});
 	}
@@ -185,9 +184,9 @@ export class DrillService extends BaseEntityService {
 	 * @throws {ForbiddenError} - If user not authorized
 	 */
 	async updateDrill(id, drillData, userId) {
-		return this.withTransaction(async (client) => {
-			await this.canUserEdit(id, userId, client);
-			const existingDrill = await this.getById(id, this.defaultColumns, userId, client); // Use defaultColumns, pass client
+		return this.withTransaction(async (trx) => {
+			await this.canUserEdit(id, userId, trx);
+			const existingDrill = await this.getById(id, this.defaultColumns, userId, trx);
 			if (!existingDrill) {
 				throw new NotFoundError('Drill not found');
 			}
@@ -198,7 +197,7 @@ export class DrillService extends BaseEntityService {
 				normalizedData.created_by = userId;
 			}
 
-			const updatedDrill = await this.update(id, normalizedData, client); // Pass client
+			const updatedDrill = await this.update(id, normalizedData, trx);
 
 			const skillsToRemove = existingSkills.filter(
 				(skill) => !normalizedData.skills_focused_on?.includes(skill)
@@ -206,13 +205,14 @@ export class DrillService extends BaseEntityService {
 			const skillsToAdd =
 				normalizedData.skills_focused_on?.filter((skill) => !existingSkills.includes(skill)) || [];
 
-			await this.updateSkillCounts(skillsToAdd, skillsToRemove, id, client); // Pass client
+			await this.updateSkillCounts(skillsToAdd, skillsToRemove, id, trx);
 
 			if (normalizedData.name && normalizedData.name !== existingDrill.name) {
-				await client.query(`UPDATE votes SET item_name = $1 WHERE drill_id = $2`, [
-					normalizedData.name,
-					id
-				]);
+				await trx
+					.updateTable('votes')
+					.set({ item_name: normalizedData.name })
+					.where('drill_id', '=', id)
+					.execute();
 			}
 			return denormalizeDrillForResponse(updatedDrill);
 		});
@@ -228,22 +228,22 @@ export class DrillService extends BaseEntityService {
 	 * @throws {ForbiddenError} - If user not authorized
 	 */
 	async deleteDrill(id, userId, options = { deleteRelated: false }) {
-		return this.withTransaction(async (client) => {
+		return this.withTransaction(async (trx) => {
 			let drill;
 			const allowDevBypass = dev && process.env.ALLOW_DEV_DELETE_BYPASS === 'true';
 			if (options.deleteRelated && allowDevBypass) {
 				// In dev mode with explicit bypass enabled, fetch without user ID check
 				console.log(`[DEV MODE - deleteDrill] Bypassing permission checks for drill ${id}`);
 				try {
-					// Directly fetch the needed columns to avoid permission checks in getById
-					const result = await client.query(
-						`SELECT ${this.permissionConfig.userIdColumn} as created_by, skills_focused_on FROM drills WHERE id = $1`,
-						[id]
-					);
-					if (result.rows.length === 0) {
+					const result = await trx
+						.selectFrom('drills')
+						.select([this.permissionConfig.userIdColumn, 'skills_focused_on'])
+						.where('id', '=', id)
+						.executeTakeFirst();
+					if (!result) {
 						throw new NotFoundError(`Drill not found for deletion (dev mode): ${id}`);
 					}
-					drill = result.rows[0];
+					drill = result;
 				} catch (error) {
 					if (error instanceof NotFoundError) {
 						throw error; // Re-throw as NotFoundError already handled
@@ -256,7 +256,7 @@ export class DrillService extends BaseEntityService {
 					id,
 					[this.permissionConfig.userIdColumn, 'skills_focused_on'],
 					userId,
-					client
+					trx
 				);
 			}
 
@@ -272,21 +272,21 @@ export class DrillService extends BaseEntityService {
 
 			if (options.deleteRelated) {
 				// Delete related votes
-				await client.query('DELETE FROM votes WHERE drill_id = $1', [id]);
+				await trx.deleteFrom('votes').where('drill_id', '=', id).execute();
 				// Delete related comments
-				await client.query('DELETE FROM comments WHERE drill_id = $1', [id]);
+				await trx.deleteFrom('comments').where('drill_id', '=', id).execute();
 				// Potentially delete from practice_plan_drills, etc. if needed
 				// TODO: Add deletion from practice_plan_drills if required
 			}
 
 			// Delete the drill itself using the base service method with the client
-			await this.delete(id, client);
+			await this.delete(id, trx);
 
 			// Decrement skill counts (only if deletion was successful)
 			const skillsToDecrement = drill.skills_focused_on || [];
 			if (skillsToDecrement.length > 0) {
 				// Passing an empty array for skillsToAdd
-				await this.updateSkillCounts([], skillsToDecrement, id, client);
+				await this.updateSkillCounts([], skillsToDecrement, id, trx);
 			}
 
 			return true; // Successfully deleted
@@ -301,64 +301,28 @@ export class DrillService extends BaseEntityService {
 	 */
 	async getDrillWithVariations(id, userId = null) {
 		const drill = await this.getById(id, this.defaultColumns, userId);
-		if (!drill) {
-			return null;
-		}
 
-		// Get variations of this drill
-		let variationsQuery = `
-      SELECT d.*, 
-             (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
-      FROM drills d
-      WHERE d.parent_drill_id = $1
-    `;
+		let variationsQb = kyselyDb
+			.selectFrom('drills as d')
+			.selectAll('d')
+			.where('d.parent_drill_id', '=', id);
+		variationsQb = this._applyReadPermissions(variationsQb, userId, 'd');
 
-		const variationsParams = [id];
+		const variations = await variationsQb.orderBy('d.date_created', 'desc').execute();
+		await this._addVariationCounts(variations);
+		drill.variations = variations;
 
-		// Apply standard visibility/ownership filtering for variations
-		if (this.useStandardPermissions && this.permissionConfig) {
-			const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
-				this.permissionConfig;
-
-			variationsQuery += `
-      AND (
-        d.${visibilityColumn} = $2
-        OR d.${visibilityColumn} = $3
-        ${userId ? `OR (d.${visibilityColumn} = $4 AND d.${userIdColumn} = $5)` : ''}
-      )
-    `;
-
-			variationsParams.push(publicValue, unlistedValue);
-			if (userId) {
-				variationsParams.push(privateValue, userId);
-			}
-		}
-
-		variationsQuery += `
-      ORDER BY d.date_created DESC
-    `;
-
-		const variationsResult = await db.query(variationsQuery, variationsParams);
-		drill.variations = variationsResult.rows;
-
-		// Fetch creator names for variations if any exist
-		if (drill.variations && drill.variations.length > 0) {
-			const userIds = [...new Set(drill.variations.map((v) => v.created_by).filter(Boolean))];
-
-			if (userIds.length > 0) {
+		if (variations.length > 0) {
+			const creatorIds = [...new Set(variations.map((v) => v.created_by).filter(Boolean))];
+			if (creatorIds.length > 0) {
 				try {
-					// Fetch user names using a separate service or direct query for now
-					// TODO: Consider a dedicated UserService for this
-					const usersResult = await db.query(`SELECT id, name FROM users WHERE id = ANY($1)`, [
-						userIds
-					]);
+					const users = await kyselyDb
+						.selectFrom('users')
+						.select(['id', 'name'])
+						.where('id', 'in', creatorIds)
+						.execute();
+					const userMap = Object.fromEntries(users.map((u) => [u.id, u.name]));
 
-					const userMap = {};
-					usersResult.rows.forEach((user) => {
-						userMap[user.id] = user.name;
-					});
-
-					// Add creator_name to each variation
 					drill.variations.forEach((variation) => {
 						if (variation.created_by) {
 							variation.creator_name = userMap[variation.created_by] || 'Unknown User';
@@ -366,7 +330,6 @@ export class DrillService extends BaseEntityService {
 					});
 				} catch (userError) {
 					console.error(`Error fetching user names for variations of drill ${id}:`, userError);
-					// Proceed without creator names if fetching fails
 					drill.variations.forEach((variation) => {
 						variation.creator_name = 'Error fetching name';
 					});
@@ -374,11 +337,7 @@ export class DrillService extends BaseEntityService {
 			}
 		}
 
-		// Denormalize for client display
-		if (drill.variations && Array.isArray(drill.variations)) {
-			drill.variations = drill.variations.map(denormalizeDrillForResponse);
-		}
-
+		drill.variations = drill.variations.map(denormalizeDrillForResponse);
 		return denormalizeDrillForResponse(drill);
 	}
 
@@ -463,22 +422,22 @@ export class DrillService extends BaseEntityService {
 				drillTypesResult,
 				peopleRangeResult,
 				lengthRangeResult // Add lengthRangeResult
-			] = await Promise.all([
-				db.query(skillLevelsQuery),
-				db.query(complexitiesQuery),
-				db.query(skillsFocusedQuery),
-				db.query(positionsFocusedQuery),
-				db.query(drillTypesQuery),
-				db.query(peopleRangeQuery),
-				db.query(lengthRangeQuery) // Execute length query
-			]);
+				] = await Promise.all([
+					sql.raw(skillLevelsQuery).execute(kyselyDb),
+					sql.raw(complexitiesQuery).execute(kyselyDb),
+					sql.raw(skillsFocusedQuery).execute(kyselyDb),
+					sql.raw(positionsFocusedQuery).execute(kyselyDb),
+					sql.raw(drillTypesQuery).execute(kyselyDb),
+					sql.raw(peopleRangeQuery).execute(kyselyDb),
+					sql.raw(lengthRangeQuery).execute(kyselyDb) // Execute length query
+				]);
 
 			return {
-				skillLevels: processDistinctResults(skillLevelsResult.rows),
-				complexities: processDistinctResults(complexitiesResult.rows),
-				skillsFocusedOn: processDistinctResults(skillsFocusedResult.rows),
-				positionsFocusedOn: processDistinctResults(positionsFocusedResult.rows),
-				drillTypes: processDistinctResults(drillTypesResult.rows),
+					skillLevels: processDistinctResults(skillLevelsResult.rows),
+					complexities: processDistinctResults(complexitiesResult.rows),
+					skillsFocusedOn: processDistinctResults(skillsFocusedResult.rows),
+					positionsFocusedOn: processDistinctResults(positionsFocusedResult.rows),
+					drillTypes: processDistinctResults(drillTypesResult.rows),
 				numberOfPeopleOptions: {
 					min: peopleRangeResult.rows[0]?.min_people ?? 0, // Use nullish coalescing
 					max: peopleRangeResult.rows[0]?.max_people ?? 100 // Use nullish coalescing
@@ -550,47 +509,29 @@ export class DrillService extends BaseEntityService {
 
 		const offset = (page - 1) * limit;
 
-		// Helper to build the Kysely base query with specific drill table and common filters.
-		const buildDrillBaseQuery = () => {
-			let qb = kyselyDb.selectFrom('drills').selectAll(); // Start with selectAll, specific columns handled by _executeSearch or defaultColumns
+			// Helper to build the Kysely base query with specific drill table and common filters.
+			const buildDrillBaseQuery = () => {
+				let qb = kyselyDb.selectFrom('drills').selectAll(); // Start with selectAll, specific columns handled by _executeSearch or defaultColumns
 
-			// Apply standard visibility/ownership filters from BaseEntityService
-			// This part needs to be aligned with how _buildWhereClause works or be replicated if _buildWhereClause is not Kysely-native.
-			// For now, assuming _buildWhereClause is not Kysely native and permissions are applied here directly for Kysely.
-			if (this.useStandardPermissions && this.permissionConfig) {
-				const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
-					this.permissionConfig;
-				qb = qb.where((eb) => {
-					const conditions = [
-						eb(visibilityColumn, '=', publicValue),
-						eb(visibilityColumn, '=', unlistedValue)
-					];
-					if (userId) {
-						conditions.push(
-							eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)])
-						);
-					}
-					return eb.or(conditions);
-				});
-			}
+				qb = this._applyReadPermissions(qb, userId);
 
-			// Apply specific drill filters using Kysely
-			if (filters.skill_level?.length)
-				qb = qb.where(sql`skill_level && ${sql.array(filters.skill_level, 'text')}`); // Array overlap
-			// Handle complexity as either array or string for backward compatibility
-			if (Array.isArray(filters.complexity) && filters.complexity.length) {
-				qb = qb.where('complexity', 'in', filters.complexity);
-			} else if (typeof filters.complexity === 'string' && filters.complexity) {
-				qb = qb.where('complexity', '=', filters.complexity);
-			}
-			if (filters.skills_focused_on?.length)
-				qb = qb.where(sql`skills_focused_on && ${sql.array(filters.skills_focused_on, 'text')}`);
-			if (filters.positions_focused_on?.length)
-				qb = qb.where(
-					sql`positions_focused_on && ${sql.array(filters.positions_focused_on, 'text')}`
-				);
-			if (filters.drill_type?.length)
-				qb = qb.where(sql`drill_type && ${sql.array(filters.drill_type, 'text')}`);
+				// Apply specific drill filters using Kysely
+				if (filters.skill_level?.length)
+					qb = qb.where(sql`skill_level && ${filters.skill_level}`); // Array overlap
+				// Handle complexity as either array or string for backward compatibility
+				if (Array.isArray(filters.complexity) && filters.complexity.length) {
+					qb = qb.where('complexity', 'in', filters.complexity);
+				} else if (typeof filters.complexity === 'string' && filters.complexity) {
+					qb = qb.where('complexity', '=', filters.complexity);
+				}
+				if (filters.skills_focused_on?.length)
+					qb = qb.where(sql`skills_focused_on && ${filters.skills_focused_on}`);
+				if (filters.positions_focused_on?.length)
+					qb = qb.where(
+						sql`positions_focused_on && ${filters.positions_focused_on}`
+					);
+				if (filters.drill_type?.length)
+					qb = qb.where(sql`drill_type && ${filters.drill_type}`);
 			if (filters.number_of_people_min != null)
 				qb = qb.where('number_of_people_min', '>=', filters.number_of_people_min);
 			if (filters.number_of_people_max != null)
@@ -648,76 +589,10 @@ export class DrillService extends BaseEntityService {
 		await this._addVariationCounts(items); // Add variation counts to results
 
 			// Count total items matching the successful search strategy
-		// We need a new Kysely instance for count that doesn't have prior .selectAll()
-		let countQuery = kyselyDb
-			.selectFrom('drills')
-			.select(kyselyDb.fn.count('drills.id').as('total'));
-
-		// Apply WHERE clauses from countQueryBaseForFiltersOnly to the new countQuery
-		// This is a bit manual; Kysely doesn't have a direct way to copy just WHERE clauses.
-		// We re-apply filters based on the logic in buildDrillBaseQuery and search conditions.
-
-		// Re-apply visibility/ownership from buildDrillBaseQuery structure
-		if (this.useStandardPermissions && this.permissionConfig) {
-			const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
-				this.permissionConfig;
-			countQuery = countQuery.where((eb) => {
-				const conditions = [
-					eb(visibilityColumn, '=', publicValue),
-					eb(visibilityColumn, '=', unlistedValue)
-				];
-				if (userId) {
-					conditions.push(
-						eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)])
-					);
-				}
-				return eb.or(conditions);
-			});
-		}
-		// Re-apply specific drill filters
-		if (filters.skill_level?.length)
-			countQuery = countQuery.where(sql`skill_level && ${sql.array(filters.skill_level, 'text')}`);
-		// Handle complexity as either array or string for backward compatibility
-		if (Array.isArray(filters.complexity) && filters.complexity.length) {
-			countQuery = countQuery.where('complexity', 'in', filters.complexity);
-		} else if (typeof filters.complexity === 'string' && filters.complexity) {
-			countQuery = countQuery.where('complexity', '=', filters.complexity);
-		}
-		if (filters.skills_focused_on?.length)
-			countQuery = countQuery.where(
-				sql`skills_focused_on && ${sql.array(filters.skills_focused_on, 'text')}`
-			);
-		if (filters.positions_focused_on?.length)
-			countQuery = countQuery.where(
-				sql`positions_focused_on && ${sql.array(filters.positions_focused_on, 'text')}`
-			);
-		if (filters.drill_type?.length)
-			countQuery = countQuery.where(sql`drill_type && ${sql.array(filters.drill_type, 'text')}`);
-		if (filters.number_of_people_min != null)
-			countQuery = countQuery.where('number_of_people_min', '>=', filters.number_of_people_min);
-		if (filters.number_of_people_max != null)
-			countQuery = countQuery.where('number_of_people_max', '<=', filters.number_of_people_max);
-		if (filters.suggested_length_min != null)
-			countQuery = countQuery.where('suggested_length_min', '>=', filters.suggested_length_min);
-		if (filters.suggested_length_max != null)
-			countQuery = countQuery.where('suggested_length_max', '<=', filters.suggested_length_max);
-		if (filters.hasVideo === true)
-			countQuery = countQuery.where('video_link', 'is not', null).where('video_link', '!=', '');
-		if (filters.hasVideo === false)
-			countQuery = countQuery.where((eb) =>
-				eb.or([eb('video_link', 'is', null), eb('video_link', '=', '')])
-			);
-		if (filters.hasDiagrams === true)
-			countQuery = countQuery.where(sql`array_length(diagrams, 1) > 0`);
-		if (filters.hasDiagrams === false)
-			countQuery = countQuery.where(
-				sql`diagrams IS NULL OR array_length(diagrams, 1) IS NULL OR array_length(diagrams, 1) = 0`
-			);
-		if (filters.hasImages === true) countQuery = countQuery.where(sql`array_length(images, 1) > 0`);
-		if (filters.hasImages === false)
-			countQuery = countQuery.where(
-				sql`images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0`
-			);
+				let countQuery = baseQueryForFallback
+					.clearSelect()
+					.clearOrderBy()
+					.select(kyselyDb.fn.count('drills.id').as('total'));
 
 		if (filters.searchQuery) {
 			const cleanedSearchTerm = filters.searchQuery.trim();
@@ -767,37 +642,32 @@ export class DrillService extends BaseEntityService {
 	 * @returns {Promise<void>}
 	 * @private
 	 */
-	async _addVariationCounts(drills) {
-		if (!drills || !drills.length) return;
+		async _addVariationCounts(drills) {
+			if (!drills || !drills.length) return;
 
-		try {
-			// Get all drill IDs
-			const drillIds = drills.map((drill) => drill.id);
+			try {
+				// Get all drill IDs
+				const drillIds = drills.map((drill) => drill.id);
 
-			// Get variation counts for all drills in a single query
-			const query = `
-        SELECT parent_drill_id, COUNT(*) AS count
-        FROM drills
-        WHERE parent_drill_id = ANY($1)
-        GROUP BY parent_drill_id
-      `;
+				const result = await kyselyDb
+					.selectFrom('drills')
+					.select(['parent_drill_id', kyselyDb.fn.countAll().as('count')])
+					.where('parent_drill_id', 'in', drillIds)
+					.groupBy('parent_drill_id')
+					.execute();
 
-			const result = await db.query(query, [drillIds]);
+				// Create a map of drill ID to variation count
+				const countMap = {};
 
-			// Create a map of drill ID to variation count
-			const countMap = {};
-
-			// Safely process query results
-			if (result && result.rows) {
-				result.rows.forEach((row) => {
+				// Safely process query results
+				result.forEach((row) => {
 					countMap[row.parent_drill_id] = parseInt(row.count);
 				});
-			}
 
-			// Set variation counts on drill objects
-			drills.forEach((drill) => {
-				drill.variation_count = countMap[drill.id] || 0;
-			});
+				// Set variation counts on drill objects
+				drills.forEach((drill) => {
+					drill.variation_count = countMap[drill.id] || 0;
+				});
 		} catch (error) {
 			console.error('Error while adding variation counts:', error);
 			// Don't let variation count errors disrupt the main functionality
@@ -859,22 +729,9 @@ export class DrillService extends BaseEntityService {
 				// Removed created_by, date_created, parent_id, upload_source, search_vector for brevity
 			];
 
-			const drills = await kyselyDb
-				.selectFrom('drills')
-				.select(columnsToSelect)
-				.orderBy('name', 'asc') // Keep ordering consistent
-				// Add WHERE clause for visibility/ownership
-				.$if(userId !== null, (qb) =>
-					qb
-						// If userId is provided, get public drills OR drills created by this user
-						.where((eb) => eb.or([eb('visibility', '=', 'public'), eb('created_by', '=', userId)]))
-				)
-				.$if(userId === null, (qb) =>
-					qb
-						// If no userId (anonymous), only get public drills
-						.where('visibility', '=', 'public')
-				)
-				.execute();
+				let qb = kyselyDb.selectFrom('drills').select(columnsToSelect);
+				qb = this._applyReadPermissions(qb, userId);
+				const drills = await qb.orderBy('name', 'asc').execute();
 
 			// No need for JS filtering anymore, SQL handles it.
 			return drills;
@@ -893,83 +750,65 @@ export class DrillService extends BaseEntityService {
 	 * @throws {ValidationError} - If the drill is not a variation
 	 * @throws {ForbiddenError} - If user not authorized
 	 */
-	async setAsPrimaryVariant(drillId, userId) {
-		return this.withTransaction(async (client) => {
-			const drill = await this.getById(drillId, ['*', 'parent_drill_id'], userId, client);
-			if (!drill) {
-				// Throw NotFoundError instead of generic Error
-				throw new NotFoundError('Drill not found');
-			}
+		async setAsPrimaryVariant(drillId, userId) {
+			return this.withTransaction(async (trx) => {
+				const drill = await this.getById(drillId, ['*', 'parent_drill_id'], userId, trx);
 
-			if (!drill.parent_drill_id) {
-				// Throw ValidationError instead of generic Error
-				throw new ValidationError('This drill is not a variation');
-			}
+				if (!drill.parent_drill_id) {
+					throw new ValidationError('This drill is not a variation');
+				}
 
-			const parentDrill = await this.getById(drill.parent_drill_id, ['*'], userId, client);
-			// Add check for parentDrill existence (though getById should handle it)
-			if (!parentDrill) {
-				throw new NotFoundError('Parent drill not found');
-			}
+				const parentDrill = await this.getById(drill.parent_drill_id, ['*'], userId, trx);
 
-			// Safer approach: keep IDs stable and swap content/roles only
-			// 1) Copy content fields from variant (drill) to primary (parentDrill)
-			const fields = [
-				'name',
-				'brief_description',
-				'detailed_description',
-				'skill_level',
-				'complexity',
-				'number_of_people_min',
-				'number_of_people_max',
-				'skills_focused_on',
-				'positions_focused_on',
-				'drill_type',
-				'video_link',
-				'diagrams',
-				'images'
-			];
+				const fields = [
+					'name',
+					'brief_description',
+					'detailed_description',
+					'skill_level',
+					'complexity',
+					'number_of_people_min',
+					'number_of_people_max',
+					'skills_focused_on',
+					'positions_focused_on',
+					'drill_type',
+					'video_link',
+					'diagrams',
+					'images'
+				];
 
-			// Compute skill count diffs before update
-			const oldSkills = parentDrill.skills_focused_on || [];
-			const newSkills = drill.skills_focused_on || [];
+				const oldSkills = parentDrill.skills_focused_on || [];
+				const newSkills = drill.skills_focused_on || [];
 
-			const setSql = fields.map((f, i) => `${f} = $${i + 3}`).join(', ');
-			await client.query(`UPDATE drills SET ${setSql} WHERE id = $1`, [
-				parentDrill.id,
-				null,
-				...fields.map((f) => drill[f])
-			]);
+				const updateData = Object.fromEntries(fields.map((f) => [f, drill[f]]));
+				await trx.updateTable('drills').set(updateData).where('id', '=', parentDrill.id).execute();
 
-			// Update votes.item_name if name changed on primary
-			if (drill.name && drill.name !== parentDrill.name) {
-				await client.query(`UPDATE votes SET item_name = $1 WHERE drill_id = $2`, [
-					drill.name,
-					parentDrill.id
-				]);
-			}
+				if (drill.name && drill.name !== parentDrill.name) {
+					await trx
+						.updateTable('votes')
+						.set({ item_name: drill.name })
+						.where('drill_id', '=', parentDrill.id)
+						.execute();
+				}
 
-			// 2) Rewire children of the variant to the primary
-			await client.query('UPDATE drills SET parent_drill_id = $1 WHERE parent_drill_id = $2', [
-				parentDrill.id,
-				drill.id
-			]);
+				await trx
+					.updateTable('drills')
+					.set({ parent_drill_id: parentDrill.id })
+					.where('parent_drill_id', '=', drill.id)
+					.execute();
 
-			// 3) Ensure the variant remains a child of primary
-			await client.query('UPDATE drills SET parent_drill_id = $1 WHERE id = $2', [
-				parentDrill.id,
-				drill.id
-			]);
+				await trx
+					.updateTable('drills')
+					.set({ parent_drill_id: parentDrill.id })
+					.where('id', '=', drill.id)
+					.execute();
 
-			// 4) Adjust skill usage counts based on diff
-			const skillsToRemove = oldSkills.filter((s) => !newSkills.includes(s));
-			const skillsToAdd = newSkills.filter((s) => !oldSkills.includes(s));
-			await this.updateSkillCounts(skillsToAdd, skillsToRemove, parentDrill.id, client);
+				const skillsToRemove = oldSkills.filter((s) => !newSkills.includes(s));
+				const skillsToAdd = newSkills.filter((s) => !oldSkills.includes(s));
+				await this.updateSkillCounts(skillsToAdd, skillsToRemove, parentDrill.id, trx);
 
-			// Return the updated primary drill with new content
-			return this.getById(parentDrill.id, ['*'], userId, client);
-		});
-	}
+				return this.getById(parentDrill.id, ['*'], userId, trx);
+			});
+		}
 
 	/**
 	 * Update skills usage counts
@@ -980,21 +819,20 @@ export class DrillService extends BaseEntityService {
 	 * @returns {Promise<void>}
 	 */
 	async updateSkillCounts(skillsToAdd, skillsToRemove, drillId, client = null) {
-		const dbInterface = client || db;
+		const dbInterface = this._db(client);
 		// Add new skills
 		if (skillsToAdd && skillsToAdd.length > 0) {
-			// Pass client to updateSkills
 			await this.updateSkills(skillsToAdd, drillId, client);
 		}
 
 		// Remove skills no longer used
 		if (skillsToRemove && skillsToRemove.length > 0) {
 			for (const skill of skillsToRemove) {
-				await dbInterface.query(
-					// Use dbInterface (client or db)
-					`UPDATE skills SET drills_used_in = drills_used_in - 1 WHERE skill = $1`,
-					[skill]
-				);
+				await dbInterface
+					.updateTable('skills')
+					.set({ drills_used_in: sql`drills_used_in - 1` })
+					.where('skill', '=', skill)
+					.execute();
 			}
 		}
 	}
@@ -1007,11 +845,8 @@ export class DrillService extends BaseEntityService {
 	 * @returns {Promise<void>}
 	 */
 	async updateSkills(skills, drillId, client = null) {
-		// Use the provided client or the default db module
-		const dbInterface = client || db;
-
 		for (const skill of skills) {
-			await upsertSkillCounts(dbInterface, skill, drillId);
+			await upsertSkillCounts(client ?? kyselyDb, skill, drillId);
 		}
 	}
 
@@ -1029,51 +864,47 @@ export class DrillService extends BaseEntityService {
 			throw new ValidationError('Both drill ID and user ID are required');
 		}
 
-		return this.withTransaction(async (client) => {
-			// First verify the drill exists using the base method (which might throw NotFoundError itself)
+		return this.withTransaction(async (trx) => {
+			// Verify drill exists
 			try {
-				// Pass undefined for columns to use default, null for userId, then the client
-				await this.getById(drillId, undefined, null, client);
+				await this.getById(drillId, undefined, null, trx);
 			} catch (err) {
 				if (err instanceof NotFoundError) {
 					throw new NotFoundError('Drill not found for upvoting');
 				}
-				throw err; // Re-throw other unexpected errors
+				throw err;
 			}
 
-			// Check if user has already voted
-			const voteCheckQuery = `
-        SELECT * FROM votes 
-        WHERE user_id = $1 AND drill_id = $2
-      `;
-			const voteCheck = await client.query(voteCheckQuery, [userId, drillId]);
+			const existingVote = await trx
+				.selectFrom('votes')
+				.select(['id'])
+				.where('user_id', '=', userId)
+				.where('drill_id', '=', drillId)
+				.executeTakeFirst();
 
-			if (voteCheck.rows.length > 0) {
-				// User has already voted, remove their vote
-				await client.query('DELETE FROM votes WHERE user_id = $1 AND drill_id = $2', [
-					userId,
-					drillId
-				]);
+			if (existingVote) {
+				await trx
+					.deleteFrom('votes')
+					.where('user_id', '=', userId)
+					.where('drill_id', '=', drillId)
+					.execute();
 			} else {
-				// Add new vote
-				await client.query('INSERT INTO votes (user_id, drill_id, vote) VALUES ($1, $2, $3)', [
-					userId,
-					drillId,
-					1
-				]);
+				await trx
+					.insertInto('votes')
+					.values({ user_id: userId, drill_id: drillId, vote: 1 })
+					.execute();
 			}
 
-			// Get updated vote count
-			const voteCountQuery = `
-        SELECT COUNT(CASE WHEN vote = 1 THEN 1 END) as upvotes
-        FROM votes 
-        WHERE drill_id = $1
-      `;
-			const result = await client.query(voteCountQuery, [drillId]);
+			const countRow = await trx
+				.selectFrom('votes')
+				.select((eb) => eb.fn.countAll().as('upvotes'))
+				.where('drill_id', '=', drillId)
+				.where('vote', '=', 1)
+				.executeTakeFirst();
 
 			return {
-				upvotes: parseInt(result.rows[0].upvotes),
-				hasVoted: voteCheck.rows.length === 0 // True if we just added a vote
+				upvotes: parseInt(countRow?.upvotes ?? '0', 10),
+				hasVoted: !existingVote
 			};
 		});
 	}
@@ -1093,71 +924,67 @@ export class DrillService extends BaseEntityService {
 			throw new ValidationError('Drill ID is required');
 		}
 
-		return this.withTransaction(async (client) => {
-			// Check if the current drill exists and get its details
-			const drillQuery = `
-        SELECT d.*, 
-               (SELECT COUNT(*) FROM drills WHERE parent_drill_id = d.id) as child_count
-        FROM drills d 
-        WHERE d.id = $1
-      `;
-			const drillResult = await client.query(drillQuery, [drillId]);
+		return this.withTransaction(async (trx) => {
+			const currentDrill = await trx
+				.selectFrom('drills')
+				.selectAll()
+				.where('id', '=', drillId)
+				.executeTakeFirst();
 
-			if (drillResult.rows.length === 0) {
-				// Throw NotFoundError instead of generic Error
+			if (!currentDrill) {
 				throw new NotFoundError('Drill not found');
 			}
 
-			const currentDrill = drillResult.rows[0];
+			const currentChildCountRow = await trx
+				.selectFrom('drills')
+				.select((eb) => eb.fn.countAll().as('count'))
+				.where('parent_drill_id', '=', drillId)
+				.executeTakeFirst();
+			const currentChildCount = parseInt(currentChildCountRow?.count ?? '0', 10);
 
 			if (parentDrillId) {
-				// Check if the parent drill exists and is valid
-				const parentQuery = `
-          SELECT d.*, 
-                 (SELECT COUNT(*) FROM drills WHERE parent_drill_id = d.id) as child_count
-          FROM drills d 
-          WHERE d.id = $1
-        `;
-				const parentResult = await client.query(parentQuery, [parentDrillId]);
+				const parentDrill = await trx
+					.selectFrom('drills')
+					.selectAll()
+					.where('id', '=', parentDrillId)
+					.executeTakeFirst();
 
-				if (parentResult.rows.length === 0) {
-					// Throw NotFoundError instead of generic Error
+				if (!parentDrill) {
 					throw new NotFoundError('Parent drill not found');
 				}
 
-				const parentDrill = parentResult.rows[0];
-
-				// Validate constraints
-				if (currentDrill.child_count > 0) {
-					// Throw ConflictError instead of generic Error
+				if (currentChildCount > 0) {
 					throw new ConflictError('Cannot make a parent drill into a variant');
 				}
 
 				if (parentDrill.parent_drill_id) {
-					// Throw ConflictError instead of generic Error
 					throw new ConflictError('Cannot set a variant as a parent');
 				}
 
-				// Prevent drill from being its own parent
 				if (parentDrillId === drillId) {
-					// Throw ConflictError instead of generic Error
 					throw new ConflictError('Drill cannot be its own parent');
 				}
 			}
 
-			// Update the parent_drill_id
-			const updateQuery = `
-        UPDATE drills 
-        SET parent_drill_id = $1 
-        WHERE id = $2 
-        RETURNING *, 
-          (SELECT name FROM drills WHERE id = $1) as parent_drill_name
-      `;
-			const result = await client.query(updateQuery, [parentDrillId, drillId]);
+			const updated = await trx
+				.updateTable('drills')
+				.set({ parent_drill_id: parentDrillId })
+				.where('id', '=', drillId)
+				.returningAll()
+				.executeTakeFirst();
 
-			return result.rows[0];
+			if (parentDrillId) {
+				const parentNameRow = await trx
+					.selectFrom('drills')
+					.select('name')
+					.where('id', '=', parentDrillId)
+					.executeTakeFirst();
+				updated.parent_drill_name = parentNameRow?.name ?? null;
+			}
+
+			return updated;
 		});
-	}
+		}
 
 	/**
 	 * Normalize drill data for consistent database storage
@@ -1320,7 +1147,7 @@ export class DrillService extends BaseEntityService {
 		// Generate a unique upload_source ID (using timestamp + partial UUID for uniqueness)
 		const uploadSource = `${fileName}_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
 
-		return this.withTransaction(async (client) => {
+		return this.withTransaction(async (trx) => {
 			try {
 				const insertPromises = drillsData.map(async (drillInput) => {
 					// Mark inner function as async
@@ -1378,7 +1205,7 @@ export class DrillService extends BaseEntityService {
 					// Use base create method logic for consistency
 					// Assuming base `create` can work within the transaction using the passed client.
 					// Ensure base `create` accepts a client argument.
-					return this.create(drillToInsert, client);
+					return this.create(drillToInsert, trx);
 				});
 
 				// Wait for all insertions to complete
@@ -1388,11 +1215,10 @@ export class DrillService extends BaseEntityService {
 
 				// Optionally, update skill counts for all imported drills
 				for (const drill of insertedDrills) {
-					if (drill.skills_focused_on && drill.skills_focused_on.length > 0) {
-						// Use the existing updateSkills method, passing the client for transaction safety
-						await this.updateSkills(drill.skills_focused_on, drill.id, client);
+						if (drill.skills_focused_on && drill.skills_focused_on.length > 0) {
+							await this.updateSkills(drill.skills_focused_on, drill.id, trx);
+						}
 					}
-				}
 
 				return { importedCount: drillsData.length, uploadSource };
 			} catch (error) {

@@ -114,7 +114,7 @@
 					aria-describedby={$validationErrors.phaseOfSeason ? 'phase-error' : undefined}
 				>
 					<option value={null}>Select a phase (optional)</option>
-					{#each phaseOptions as phase}
+					{#each phaseOptions as phase (phase)}
 						<option value={phase}>{phase}</option>
 					{/each}
 				</select>
@@ -141,7 +141,7 @@
 				</button>
 			</div>
 			<div role="list" aria-labelledby="practice-goals-label" class="mt-2 space-y-2">
-				{#each $basicInfo.practiceGoals as _, index}
+				{#each $basicInfo.practiceGoals as _, index (index)}
 					<div class="flex items-center space-x-2">
 						<input
 							type="text"

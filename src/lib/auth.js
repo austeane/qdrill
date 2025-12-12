@@ -11,10 +11,15 @@ const createAuthConfig = () => {
 		// During build/prerender, use a minimal config
 		return {
 			secret: 'prerender-placeholder-secret',
-			url: 'http://localhost:3000',
+			baseURL: 'http://localhost:3000',
 			database: {
 				db: kyselyDb,
 				type: 'postgres'
+			},
+			advanced: {
+				// Ensures base URL resolution uses forwarded headers when present.
+				// This is required for `vercel dev`, which proxies requests to an internal port.
+				trustedProxyHeaders: true
 			},
 			debug: false
 		};
@@ -23,14 +28,21 @@ const createAuthConfig = () => {
 	// During runtime, use process.env which is safe to access
 	// These are set by Vercel at runtime
 	const AUTH_SECRET = process.env.AUTH_SECRET || process.env.BETTER_AUTH_SECRET;
-	const AUTH_URL = process.env.AUTH_URL;
 	const NODE_ENV = process.env.NODE_ENV;
 	const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 	const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+	const baseURL =
+		process.env.BETTER_AUTH_URL ||
+		process.env.NEXT_PUBLIC_BETTER_AUTH_URL ||
+		process.env.PUBLIC_BETTER_AUTH_URL ||
+		undefined;
 
 	return {
 		secret: AUTH_SECRET,
-		url: NODE_ENV === 'production' ? AUTH_URL : 'http://localhost:3000',
+		// Prefer Better Auth's own env vars. If not set, Better Auth derives baseURL from the
+		// request; with `trustedProxyHeaders` it will use `x-forwarded-host`/`x-forwarded-proto`
+		// so local `vercel dev` generates `http://localhost:3000/...` callback URLs (not `:60xxx`).
+		baseURL,
 		// Uncommented after successful migration
 		socialProviders: {
 			google: {
@@ -100,7 +112,7 @@ const createAuthConfig = () => {
 								.where('id', '=', user.id)
 								.executeTakeFirst();
 							session.user.role = roleRes?.role ?? 'user';
-						} catch (err) {
+						} catch {
 							session.user.role = 'user';
 						}
 					}
@@ -109,6 +121,9 @@ const createAuthConfig = () => {
 			}
 		},
 
+		advanced: {
+			trustedProxyHeaders: true
+		},
 		debug: NODE_ENV !== 'production'
 	};
 };

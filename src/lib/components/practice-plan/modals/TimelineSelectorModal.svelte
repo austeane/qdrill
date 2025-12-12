@@ -5,7 +5,7 @@
 	export let selectedTimelines;
 	export let parallelTimelines = {};
 	export let timelineColors = {};
-	export let getTimelineColor = (timeline) => 'bg-gray-500';
+	export let getTimelineColor = (_timeline) => 'bg-gray-500';
 	export let getTimelineName = (timeline) => timeline;
 	export let customTimelineNames;
 
@@ -127,7 +127,7 @@
 				<!-- Timeline Selection -->
 				<h4 class="text-md font-medium text-gray-800 mb-2">Select Timelines</h4>
 				<div class="space-y-4">
-					{#each Object.entries(parallelTimelines) as [key, _]}
+					{#each Object.entries(parallelTimelines) as [key, _] (key)}
 						<div class="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
 							<label class="flex items-center space-x-3 flex-grow cursor-pointer">
 								<input
@@ -220,7 +220,7 @@
 								: ''} Timeline
 						</h5>
 						<div class="grid grid-cols-5 gap-2">
-							{#each Object.entries(timelineColors) as [colorClass, colorName]}
+							{#each Object.entries(timelineColors) as [colorClass, colorName] (colorClass)}
 								<button
 									type="button"
 									class={`w-8 h-8 rounded cursor-pointer hover:opacity-80 ${colorClass}`}

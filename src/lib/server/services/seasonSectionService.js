@@ -184,15 +184,12 @@ class SeasonSectionService extends BaseEntityService {
 	}
 
 	async getDefaultSections(sectionId) {
-		return await this.withTransaction(async (client) => {
-			const query = `
-        SELECT * FROM season_section_default_sections
-        WHERE season_section_id = $1
-        ORDER BY "order" ASC
-      `;
-			const result = await client.query(query, [sectionId]);
-			return result.rows;
-		});
+		return await this._db()
+			.selectFrom('season_section_default_sections')
+			.selectAll()
+			.where('season_section_id', '=', sectionId)
+			.orderBy('order', 'asc')
+			.execute();
 	}
 
 	async setDefaultSections(sectionId, sections, userId) {
@@ -209,59 +206,50 @@ class SeasonSectionService extends BaseEntityService {
 			throw new ForbiddenError('Only team admins can set default sections');
 		}
 
-		return await this.withTransaction(async (client) => {
-			// Delete existing
-			await client.query(
-				'DELETE FROM season_section_default_sections WHERE season_section_id = $1',
-				[sectionId]
-			);
+		return await this.withTransaction(async (trx) => {
+			await trx
+				.deleteFrom('season_section_default_sections')
+				.where('season_section_id', '=', sectionId)
+				.execute();
 
-			// Insert new
-			for (let i = 0; i < sections.length; i++) {
-				const section = sections[i];
-				const query = `
-          INSERT INTO season_section_default_sections 
-          (season_section_id, section_name, "order", goals, notes)
-          VALUES ($1, $2, $3, $4, $5)
-        `;
-				await client.query(query, [
-					sectionId,
-					section.section_name,
-					section.order ?? i,
-					JSON.stringify(section.goals || []),
-					section.notes || null
-				]);
+			const rowsToInsert = sections.map((section, i) => ({
+				season_section_id: sectionId,
+				section_name: section.section_name,
+				order: section.order ?? i,
+				goals: JSON.stringify(section.goals || []),
+				notes: section.notes || null
+			}));
+
+			if (rowsToInsert.length) {
+				await trx.insertInto('season_section_default_sections').values(rowsToInsert).execute();
 			}
 
-			// Return updated list
-			const result = await client.query(
-				'SELECT * FROM season_section_default_sections WHERE season_section_id = $1 ORDER BY "order"',
-				[sectionId]
-			);
-			return result.rows;
+			return await trx
+				.selectFrom('season_section_default_sections')
+				.selectAll()
+				.where('season_section_id', '=', sectionId)
+				.orderBy('order', 'asc')
+				.execute();
 		});
 	}
 
 	async getLinkedDrills(sectionId) {
-		return await this.withTransaction(async (client) => {
-			const query = `
-        SELECT 
-          ssd.*,
-          d.name as drill_name,
-          d.brief_description as drill_description,
-          f.name as formation_name,
-          f.brief_description as formation_description,
-          ssds.section_name as default_section_name
-        FROM season_section_drills ssd
-        LEFT JOIN drills d ON ssd.drill_id = d.id
-        LEFT JOIN formations f ON ssd.formation_id = f.id
-        LEFT JOIN season_section_default_sections ssds ON ssd.default_section_id = ssds.id
-        WHERE ssd.season_section_id = $1
-        ORDER BY ssd.order_in_section ASC
-      `;
-			const result = await client.query(query, [sectionId]);
-			return result.rows;
-		});
+		return await this._db()
+			.selectFrom('season_section_drills as ssd')
+			.leftJoin('drills as d', 'ssd.drill_id', 'd.id')
+			.leftJoin('formations as f', 'ssd.formation_id', 'f.id')
+			.leftJoin('season_section_default_sections as ssds', 'ssd.default_section_id', 'ssds.id')
+			.selectAll('ssd')
+			.select([
+				'd.name as drill_name',
+				'd.brief_description as drill_description',
+				'f.name as formation_name',
+				'f.brief_description as formation_description',
+				'ssds.section_name as default_section_name'
+			])
+			.where('ssd.season_section_id', '=', sectionId)
+			.orderBy('ssd.order_in_section', 'asc')
+			.execute();
 	}
 
 	async setLinkedDrills(sectionId, drills, userId) {
@@ -278,16 +266,13 @@ class SeasonSectionService extends BaseEntityService {
 			throw new ForbiddenError('Only team admins can set linked drills');
 		}
 
-		return await this.withTransaction(async (client) => {
-			// Delete existing
-			await client.query('DELETE FROM season_section_drills WHERE season_section_id = $1', [
-				sectionId
-			]);
+		return await this.withTransaction(async (trx) => {
+			await trx
+				.deleteFrom('season_section_drills')
+				.where('season_section_id', '=', sectionId)
+				.execute();
 
-			// Insert new
-			for (let i = 0; i < drills.length; i++) {
-				const drill = drills[i];
-
+			const rowsToInsert = drills.map((drill, i) => {
 				// Validate type and references
 				if (drill.type === 'drill' && !drill.drill_id) {
 					throw new ValidationError(`Drill at position ${i} requires drill_id`);
@@ -296,25 +281,22 @@ class SeasonSectionService extends BaseEntityService {
 					throw new ValidationError(`Formation at position ${i} requires formation_id`);
 				}
 
-				const query = `
-          INSERT INTO season_section_drills 
-          (season_section_id, type, drill_id, formation_id, name, 
-           default_duration_minutes, order_in_section, default_section_id)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        `;
-				await client.query(query, [
-					sectionId,
-					drill.type,
-					drill.drill_id || null,
-					drill.formation_id || null,
-					drill.name || null,
-					drill.default_duration_minutes || 30,
-					drill.order_in_section ?? i,
-					drill.default_section_id || null
-				]);
+				return {
+					season_section_id: sectionId,
+					type: drill.type,
+					drill_id: drill.drill_id || null,
+					formation_id: drill.formation_id || null,
+					name: drill.name || null,
+					default_duration_minutes: drill.default_duration_minutes || 30,
+					order_in_section: drill.order_in_section ?? i,
+					default_section_id: drill.default_section_id || null
+				};
+			});
+
+			if (rowsToInsert.length) {
+				await trx.insertInto('season_section_drills').values(rowsToInsert).execute();
 			}
 
-			// Return updated list with joins
 			return await this.getLinkedDrills(sectionId);
 		});
 	}
@@ -331,12 +313,14 @@ class SeasonSectionService extends BaseEntityService {
 			throw new ForbiddenError('Only team admins can reorder sections');
 		}
 
-		return await this.withTransaction(async (client) => {
+		return await this.withTransaction(async (trx) => {
 			for (let i = 0; i < sectionIds.length; i++) {
-				await client.query(
-					'UPDATE season_sections SET display_order = $1 WHERE id = $2 AND season_id = $3',
-					[i, sectionIds[i], seasonId]
-				);
+				await trx
+					.updateTable('season_sections')
+					.set({ display_order: i })
+					.where('id', '=', sectionIds[i])
+					.where('season_id', '=', seasonId)
+					.execute();
 			}
 		});
 	}

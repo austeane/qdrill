@@ -1,7 +1,5 @@
 <script>
 	import RangeSlider from 'svelte-range-slider-pips';
-	import RangeFilter from '$lib/components/RangeFilter.svelte';
-	import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 	import {
 		selectedSkillLevels,
 		selectedComplexities,
@@ -18,7 +16,6 @@
 	} from '$lib/stores/drillsStore';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
-	import { writable } from 'svelte/store';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import ThreeStateCheckbox from '$lib/components/ThreeStateCheckbox.svelte';
 	import { FILTER_STATES } from '$lib/constants';
@@ -29,9 +26,7 @@
 		selectedEstimatedParticipantsMax,
 		updateFilterState as updatePracticePlanFilterState
 	} from '$lib/stores/practicePlanFilterStore';
-	import { browser } from '$app/environment';
 	import debounce from 'lodash/debounce';
-	import { Plus, Minus, Search } from 'lucide-svelte';
 
 	const dispatch = createEventDispatcher();
 
@@ -281,16 +276,6 @@
 		showSortBy = false;
 	}
 
-	function handleClickOutside(event) {
-		// Close all filters if clicking outside
-		closeAllFilters();
-	}
-
-	// Prevent click events from propagating to the overlay
-	function handleCheckboxClick(event) {
-		event.stopPropagation();
-	}
-
 	// Handle Escape key to close all filters
 	function handleKeydown(event) {
 		if (event.key === 'Escape') {
@@ -379,20 +364,20 @@
 	const updatePracticeGoals = updatePracticePlanFilterState(selectedPracticeGoals);
 
 	// Add handlers for estimated participants changes
-	function handleEstimatedParticipantsChange(event) {
+	function handleEstimatedParticipantsChange(_event) {
 		selectedEstimatedParticipantsMin.set(estimatedParticipantsRange[0]);
 		selectedEstimatedParticipantsMax.set(estimatedParticipantsRange[1]);
 		dispatch('filterChange');
 	}
 
 	// Update the range slider handlers
-	function handleNumberOfPeopleChange(event) {
+	function handleNumberOfPeopleChange(_event) {
 		selectedNumberOfPeopleMin.set(numberOfPeopleRange[0]);
 		selectedNumberOfPeopleMax.set(numberOfPeopleRange[1]);
 		dispatch('filterChange');
 	}
 
-	function handleSuggestedLengthsChange(event) {
+	function handleSuggestedLengthsChange(_event) {
 		selectedSuggestedLengthsMin.set(suggestedLengthsRange[0]);
 		selectedSuggestedLengthsMax.set(suggestedLengthsRange[1]);
 		dispatch('filterChange');
@@ -409,12 +394,6 @@
 				// Filter by search term
 				skill.toLowerCase().includes(skillsSearchTerm.toLowerCase())
 		);
-
-	// Helper function to subscribe to multiple stores
-	function subscribe(stores, callback) {
-		const unsubscribes = stores.map((store) => store.subscribe(() => callback()));
-		return () => unsubscribes.forEach((unsub) => unsub());
-	}
 
 	// Helper to toggle tri‑state boolean filters (null → true → false → null)
 	function toggleBooleanFilter(store) {
@@ -467,7 +446,7 @@
 						role="menu"
 						tabindex="0"
 					>
-						{#each skillLevels as level}
+						{#each skillLevels as level (level)}
 							{@const currentState = $selectedSkillLevels[level] || FILTER_STATES.NEUTRAL}
 							<ThreeStateCheckbox
 								value={level}
@@ -508,7 +487,7 @@
 						role="menu"
 						tabindex="0"
 					>
-						{#each complexities as complexity}
+						{#each complexities as complexity (complexity)}
 							{@const currentState = $selectedComplexities[complexity] || FILTER_STATES.NEUTRAL}
 							<ThreeStateCheckbox
 								value={complexity}
@@ -555,7 +534,7 @@
 							class="w-full p-2 border border-gray-300 rounded-md mb-2"
 							bind:value={skillsSearchTerm}
 						/>
-						{#each filteredSkills as skill}
+						{#each filteredSkills as skill (typeof skill === 'object' ? skill.skill : skill)}
 							{@const skillValue = typeof skill === 'object' ? skill.skill : skill}
 							{@const currentState = $selectedSkillsFocusedOn[skillValue] || FILTER_STATES.NEUTRAL}
 							<ThreeStateCheckbox
@@ -597,7 +576,7 @@
 						role="menu"
 						tabindex="0"
 					>
-						{#each positionsFocusedOn as position}
+						{#each positionsFocusedOn as position (position)}
 							{@const currentState = $selectedPositionsFocusedOn[position] || FILTER_STATES.NEUTRAL}
 							<ThreeStateCheckbox
 								value={position}
@@ -638,7 +617,7 @@
 					role="menu"
 					tabindex="0"
 				>
-					<label class="block text-sm font-medium text-gray-700 mb-2">Participants Range</label>
+					<span class="block text-sm font-medium text-gray-700 mb-2">Participants Range</span>
 					<RangeSlider
 						bind:values={numberOfPeopleRange}
 						min={effectiveNumberOfPeopleOptions.min ?? 0}
@@ -690,7 +669,7 @@
 					role="menu"
 					tabindex="0"
 				>
-					<label class="block text-sm font-medium text-gray-700 mb-2">Length Range (mins)</label>
+					<span class="block text-sm font-medium text-gray-700 mb-2">Length Range (mins)</span>
 					<RangeSlider
 						bind:values={suggestedLengthsRange}
 						min={effectiveSuggestedLengths.min}
@@ -791,7 +770,7 @@
 						role="menu"
 						tabindex="0"
 					>
-						{#each drillTypes as type}
+						{#each drillTypes as type (type)}
 							{@const currentState = $selectedDrillTypes[type] || FILTER_STATES.NEUTRAL}
 							<ThreeStateCheckbox
 								value={type}
@@ -835,7 +814,7 @@
 						role="menu"
 						tabindex="0"
 					>
-						{#each phaseOfSeasonOptions as phase}
+						{#each phaseOfSeasonOptions as phase (phase)}
 							<ThreeStateCheckbox
 								value={phase}
 								state={$selectedPhaseOfSeason[phase] || FILTER_STATES.NEUTRAL}
@@ -875,7 +854,7 @@
 						role="menu"
 						tabindex="0"
 					>
-						{#each practiceGoalsOptions as goal}
+						{#each practiceGoalsOptions as goal (goal)}
 							<ThreeStateCheckbox
 								value={goal}
 								state={$selectedPracticeGoals[goal] || FILTER_STATES.NEUTRAL}
@@ -913,7 +892,7 @@
 					role="menu"
 					tabindex="0"
 				>
-					<label class="block text-sm font-medium text-gray-700 mb-2">Participants Range</label>
+					<span class="block text-sm font-medium text-gray-700 mb-2">Participants Range</span>
 					<RangeSlider
 						bind:values={estimatedParticipantsRange}
 						min={1}
@@ -973,7 +952,7 @@
 						<p class="text-red-500">{drillError}</p>
 					{:else if drillSuggestions.length > 0}
 						<ul class="max-h-48 overflow-y-auto">
-							{#each drillSuggestions as drill}
+							{#each drillSuggestions as drill (drill.id)}
 								<li
 									class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-100"
 									on:click={() => addDrillToSelected(drill)}
@@ -988,7 +967,7 @@
 					{#if selectedDrills.length > 0}
 						<div class="mt-2">
 							<h4 class="font-semibold mb-1">Selected Drills:</h4>
-							{#each selectedDrills as drill}
+							{#each selectedDrills as drill (drill.id)}
 								<div class="flex items-center justify-between bg-blue-100 p-2 rounded mb-1">
 									<span>{drill.name}</span>
 									<button
@@ -1035,7 +1014,7 @@
 					tabindex="0"
 				>
 					<div class="space-y-2">
-						{#each sortOptions as option}
+						{#each sortOptions as option (option.value)}
 							<label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
 								<input
 									type="radio"

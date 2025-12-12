@@ -74,7 +74,7 @@
 	</div>
 
 	<div class="filter-buttons">
-		{#each availablePositions as position}
+		{#each availablePositions as position (position)}
 			<button
 				class="position-btn"
 				class:active={selectedPositions.includes(position)}

@@ -9,7 +9,6 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import EditSectionSheet from '../mobile/EditSectionSheet.svelte';
 	import EditMarkerSheet from '../mobile/EditMarkerSheet.svelte';
-	import Dialog from '$lib/components/ui/Dialog.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 	import CreateSectionDialog from '../desktop/CreateSectionDialog.svelte';
 	import CreateMarkerDialog from '../desktop/CreateMarkerDialog.svelte';
@@ -37,7 +36,6 @@
 	let showMarkerDialog = false;
 	let editingSection = null;
 	let editingMarker = null;
-	let reordering = false;
 	let confirmDeleteSection = null;
 	let confirmDeleteMarker = null;
 	let deleteLoading = false;
@@ -72,7 +70,7 @@
 			});
 
 			dispatch('change');
-		} catch (error) {
+		} catch (_error) {
 			// Revert on error
 			sections = [...sections].sort((a, b) => a.order - b.order);
 			toast.push('Failed to reorder sections', {
@@ -109,7 +107,7 @@
 			});
 
 			dispatch('change');
-		} catch (error) {
+		} catch (_error) {
 			toast.push('Failed to delete section', {
 				theme: {
 					'--toastBackground': '#ef4444',
@@ -147,7 +145,7 @@
 			});
 
 			dispatch('change');
-		} catch (error) {
+		} catch (_error) {
 			toast.push('Failed to delete event', {
 				theme: {
 					'--toastBackground': '#ef4444',
@@ -248,7 +246,7 @@
 						<GripHorizontal size={16} opacity={0.5} />
 					</div>
 
-					<div class="item-color" style="background-color: {section.color}" />
+					<div class="item-color" style="background-color: {section.color}"></div>
 
 					<div class="item-content">
 						<div class="item-name">{section.name}</div>
@@ -285,7 +283,7 @@
 							<ArrowDown size={16} />
 						</button>
 
-						<div class="action-divider" />
+						<div class="action-divider"></div>
 
 						<button
 							class="action-button"
@@ -333,7 +331,7 @@
 		<div class="items-list">
 			{#each markers as marker (marker.id)}
 				<div class="list-item" animate:flip={{ duration: 200 }}>
-					<div class="item-color" style="background-color: {marker.color}" />
+					<div class="item-color" style="background-color: {marker.color}"></div>
 
 					<div class="item-content">
 						<div class="item-name">{marker.name || marker.title}</div>

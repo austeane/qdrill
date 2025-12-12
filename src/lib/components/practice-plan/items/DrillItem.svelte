@@ -5,8 +5,7 @@
 		handleDragLeave,
 		handleDrop,
 		handleDragEnd,
-		dragState,
-		isItemDrag
+		dragState
 	} from '$lib/stores/dragManager';
 
 	export let item;
@@ -43,7 +42,7 @@
 		$dragState.sourceSection === sectionIndex &&
 		$dragState.itemId === itemId;
 
-	$: isDropTarget =
+	$: _isDropTarget =
 		$dragState.targetSection === sectionIndex && $dragState.targetIndex === itemIndex;
 
 	// Only log when mounted in the DOM

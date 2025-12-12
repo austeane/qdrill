@@ -1,6 +1,5 @@
 <script>
-	import { onMount } from 'svelte';
-	import { invalidate } from '$app/navigation'; // Import invalidate
+	import { invalidate } from '$app/navigation';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let data; // Accept data from load function
@@ -34,7 +33,7 @@
 		try {
 			await apiFetch(`/api/feedback/${id}/upvote`, { method: 'POST' });
 			invalidateFeedbackData();
-		} catch (error) {
+		} catch (_error) {
 			alert('Failed to upvote feedback.');
 		}
 	}
@@ -45,7 +44,7 @@
 		try {
 			await apiFetch(`/api/feedback/${id}/delete`, { method: 'DELETE' });
 			invalidateFeedbackData();
-		} catch (error) {
+		} catch (_error) {
 			alert('Failed to delete feedback.');
 		}
 	}
@@ -83,7 +82,7 @@
 			email = '';
 			invalidateFeedbackData();
 			alert('Feedback submitted successfully.');
-		} catch (error) {
+		} catch (_error) {
 			alert('Failed to submit feedback.');
 		}
 	}

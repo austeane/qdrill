@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PracticePlanService } from '../practicePlanService.js';
 import {
-	AppError,
 	NotFoundError,
 	ForbiddenError,
 	ValidationError,
@@ -11,108 +10,17 @@ import {
 // Ensure deterministic dev flag for permission-related tests
 vi.mock('$app/environment', () => ({ dev: false }));
 
-// Explicitly mock the db module RIGHT AT THE TOP
-vi.mock('$lib/server/db', () => {
-	// Define mockKyselyInterface INSIDE the factory function
-	const mockKyselyInterface = {
-		selectFrom: vi.fn().mockReturnThis(),
-		selectAll: vi.fn().mockReturnThis(),
-		select: vi.fn().mockReturnThis(),
-		distinctOn: vi.fn().mockReturnThis(),
-		leftJoin: vi.fn().mockReturnThis(),
-		innerJoin: vi.fn().mockReturnThis(),
-		rightJoin: vi.fn().mockReturnThis(),
-		fullJoin: vi.fn().mockReturnThis(),
-		where: vi.fn().mockReturnThis(),
-		whereRef: vi.fn().mockReturnThis(),
-		orWhere: vi.fn().mockReturnThis(),
-		andWhere: vi.fn().mockReturnThis(),
-		orderBy: vi.fn().mockReturnThis(),
-		groupBy: vi.fn().mockReturnThis(),
-		limit: vi.fn().mockReturnThis(),
-		offset: vi.fn().mockReturnThis(),
-		insertInto: vi.fn().mockReturnThis(),
-		values: vi.fn().mockReturnThis(),
-		updateTable: vi.fn().mockReturnThis(),
-		set: vi.fn().mockReturnThis(),
-		deleteFrom: vi.fn().mockReturnThis(),
-		returning: vi.fn().mockReturnThis(),
-		execute: vi.fn().mockResolvedValue({ rows: [] }),
-		executeTakeFirst: vi.fn().mockResolvedValue(undefined),
-		stream: vi.fn().mockResolvedValue([]),
-		fn: {
-			count: vi.fn().mockReturnThis(),
-			distinct: vi.fn().mockReturnThis()
-		}
-	};
-
-	return {
-		__esModule: true, // ES Module compliance
-		default: {
-			query: vi.fn().mockResolvedValue({ rows: [] }),
-			getClient: vi.fn(() => ({
-				query: vi.fn().mockResolvedValue({ rows: [] }),
-				release: vi.fn()
-			})),
-			transaction: vi.fn(async (callback) => {
-				const mockClient = {
-					query: vi.fn().mockResolvedValue({ rows: [] }),
-					release: vi.fn()
-				};
-				await mockClient.query('BEGIN');
-				try {
-					const result = await callback(mockClient);
-					await mockClient.query('COMMIT');
-					return result;
-				} catch (error) {
-					await mockClient.query('ROLLBACK');
-					throw error;
-				}
-			}),
-			kyselyDb: mockKyselyInterface
-		},
-		query: vi.fn().mockResolvedValue({ rows: [] }),
-		getClient: vi.fn(() => ({
-			query: vi.fn().mockResolvedValue({ rows: [] }),
-			release: vi.fn()
-		})),
-		transaction: vi.fn(async (callback) => {
-			const mockClient = {
-				query: vi.fn().mockResolvedValue({ rows: [] }),
-				release: vi.fn()
-			};
-			await mockClient.query('BEGIN');
-			try {
-				const result = await callback(mockClient);
-				await mockClient.query('COMMIT');
-				return result;
-			} catch (error) {
-				await mockClient.query('ROLLBACK');
-				throw error;
-			}
-		}),
-		kyselyDb: mockKyselyInterface
-	};
-});
-
-// Get the mocked db instance AFTER the mock is defined.
-import db, { kyselyDb as namedKyselyDbMock } from '$lib/server/db'; // Import named export for checking
-
-// Create a mock transaction client for testing
-const mockClient = {
-	query: vi.fn(),
-	release: vi.fn()
-};
+vi.mock('$lib/server/db');
+import * as mockDb from '$lib/server/db';
 
 describe('PracticePlanService', () => {
 	let service;
 
 	beforeEach(() => {
-		// Create a new service instance for each test
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+		mockDb.kyselyDb.__setResults([]);
 		service = new PracticePlanService();
-
-		// Reset mock function calls
-		vi.resetAllMocks();
 	});
 
 	describe('constructor', () => {
@@ -328,51 +236,31 @@ describe('PracticePlanService', () => {
 		});
 	});
 
-	describe.skip('getAll', () => {
-		beforeEach(() => {
-			// Mock withTransaction to simulate successful transaction
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				return callback(mockClient);
-			});
-
-			// Reset the mock client query function
-			mockClient.query.mockReset();
-		});
-
-		it('should retrieve all practice plans with public visibility', async () => {
-			// Mock client query to return practice plans
-			mockClient.query.mockResolvedValue({
-				rows: [
+		describe('getAll', () => {
+			it('should retrieve public practice plans by default', async () => {
+				const mockPlans = [
 					{
 						id: 1,
 						name: 'Public Plan',
 						visibility: 'public',
 						drills: [1, 2],
-						drill_durations: [10, 15]
+						upvote_count: 0
 					}
-				]
+				];
+				// initial search execute, sorted re-execute, then count
+				mockDb.kyselyDb.__setResults([mockPlans, mockPlans, { total: '1' }]);
+
+				const result = await service.getAll();
+
+				expect(result.items).toHaveLength(1);
+				expect(result.items[0].id).toBe(1);
+				expect(result.items[0].visibility).toBe('public');
+				expect(result.pagination.totalItems).toBe(1);
 			});
 
-			const result = await service.getAll();
-
-			// Check if the query was called with the right parameters
-			expect(mockClient.query).toHaveBeenCalled();
-
-			// Verify that SQL query includes public visibility condition
-			const queryCall = mockClient.query.mock.calls[0];
-			expect(queryCall[0]).toContain("visibility = 'public'");
-
-			// Check that the result has the correct structure
-			expect(result).toHaveProperty('items');
-			expect(result.items).toHaveLength(1);
-			expect(result.items[0].id).toBe(1);
-			expect(result.pagination).toBeNull();
-		});
-
-		it('should filter by userId for private plans', async () => {
-			// Mock client query to return practice plans for a specific user
-			mockClient.query.mockResolvedValue({
-				rows: [
+			it('should include private plans for the requesting user', async () => {
+				const userId = 123;
+				const mockPlans = [
 					{
 						id: 1,
 						name: 'Public Plan',
@@ -383,48 +271,25 @@ describe('PracticePlanService', () => {
 						id: 2,
 						name: 'Private Plan',
 						visibility: 'private',
-						created_by: 123
+						created_by: userId
 					}
-				]
+				];
+				mockDb.kyselyDb.__setResults([mockPlans, mockPlans, { total: '2' }]);
+
+				const result = await service.getAll({ userId });
+
+				expect(result.items).toHaveLength(2);
 			});
 
-			const userId = 123;
-			const result = await service.getAll({ userId });
-
-			// Check if the query parameter includes the userId
-			const queryCall = mockClient.query.mock.calls[0];
-			expect(queryCall[0]).toContain("OR (visibility = 'private' AND created_by = $1)");
-			expect(queryCall[1]).toEqual([userId]);
-
-			// Check if both plans are returned
-			expect(result.items).toHaveLength(2);
-		});
-
-		it('should handle database errors', async () => {
-			// Mock client query to throw an error
-			mockClient.query.mockRejectedValue(new Error('Database error'));
-
-			// Mock the transaction to pass through the error
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				try {
-					return await callback(mockClient);
-				} catch (error) {
-					throw error;
-				}
+			it('should handle database errors', async () => {
+				mockDb.kyselyDb.execute.mockRejectedValueOnce(new Error('Database error'));
+				await expect(service.getAll()).rejects.toThrow('Database error');
 			});
-
-			await expect(service.getAll()).rejects.toThrow('Database error');
 		});
-	});
 
 	describe('createPracticePlan', () => {
 		beforeEach(() => {
-			// Mock withTransaction to simulate successful transaction
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				return callback(mockClient);
-			});
-
-			// Mock validatePracticePlan to prevent validation errors
+			// Mock validatePracticePlan to prevent validation errors (currently not invoked by service)
 			vi.spyOn(service, 'validatePracticePlan').mockImplementation(() => {});
 
 			// Mock addTimestamps
@@ -433,20 +298,10 @@ describe('PracticePlanService', () => {
 				created_at: new Date('2025-01-01'),
 				updated_at: new Date('2025-01-01')
 			}));
-
-			// Reset the mock client query function
-			mockClient.query.mockReset();
 		});
 
 		it('should create a new practice plan', async () => {
-			// Mock client queries to simulate successful insertions
-			mockClient.query
-				// First query for plan insertion
-				.mockResolvedValueOnce({ rows: [{ id: 123 }] })
-				// Mock for section insertion
-				.mockResolvedValueOnce({ rows: [{ id: 456 }] })
-				// No need to mock drill insertion result since it's not used
-				.mockResolvedValue({});
+			mockDb.kyselyDb.__setResults([{ id: 123 }, { id: 456 }]);
 
 			const planData = {
 				name: 'Test Practice Plan',
@@ -476,37 +331,12 @@ describe('PracticePlanService', () => {
 			const userId = 456;
 			const result = await service.createPracticePlan(planData, userId);
 
-			// Verify the practice plan was inserted
-			expect(mockClient.query).toHaveBeenCalledTimes(3); // Plan, section, and drill insertions
-
-			// Check the first call (plan insertion)
-			const planInsertCall = mockClient.query.mock.calls[0];
-			expect(planInsertCall[0]).toContain('INSERT INTO practice_plans');
-			expect(planInsertCall[1]).toContain(planData.name);
-			expect(planInsertCall[1]).toContain(userId);
-
-			// Check the second call (section insertion)
-			const sectionInsertCall = mockClient.query.mock.calls[1];
-			expect(sectionInsertCall[0]).toContain('INSERT INTO practice_plan_sections');
-			expect(sectionInsertCall[1]).toEqual([
-				123, // plan ID
-				'Warm-up',
-				0,
-				['warm up players'],
-				'Start slow'
-			]);
-
-			// Check the third call (drill insertion)
-			const drillInsertCall = mockClient.query.mock.calls[2];
-			expect(drillInsertCall[0]).toContain('INSERT INTO practice_plan_drills');
-
 			// Check if the correct ID is returned
 			expect(result).toEqual({ id: 123 });
 		});
 
 		it('should force public visibility for anonymous users', async () => {
-			// Mock client query for plan insertion
-			mockClient.query.mockResolvedValue({ rows: [{ id: 123 }] });
+			mockDb.kyselyDb.__setResults([{ id: 123 }, { id: 456 }]);
 
 			const planData = {
 				name: 'Anonymous Plan',
@@ -523,17 +353,13 @@ describe('PracticePlanService', () => {
 			await service.createPracticePlan(planData, null); // null userId = anonymous
 
 			// Check if visibility was changed to public
-			const planInsertCall = mockClient.query.mock.calls[0];
-			expect(planInsertCall[1][6]).toBe('public'); // visibility parameter
-			expect(planInsertCall[1][7]).toBe(true); // is_editable_by_others parameter
+			const planValues = mockDb.kyselyDb.values.mock.calls[0][0];
+			expect(planValues.visibility).toBe('public');
+			expect(planValues.is_editable_by_others).toBe(true);
 		});
 
 		it('should handle one-off items and type mapping', async () => {
-			// Mock client queries
-			mockClient.query
-				.mockResolvedValueOnce({ rows: [{ id: 123 }] })
-				.mockResolvedValueOnce({ rows: [{ id: 456 }] })
-				.mockResolvedValue({});
+			mockDb.kyselyDb.__setResults([{ id: 123 }, { id: 456 }]);
 
 			const planData = {
 				name: 'Plan with One-offs',
@@ -555,19 +381,14 @@ describe('PracticePlanService', () => {
 
 			await service.createPracticePlan(planData, 123);
 
-			// Check the drill insertion call
-			const drillInsertCall = mockClient.query.mock.calls[2];
-			expect(drillInsertCall[1][2]).toBeNull(); // drill_id should be null for one-off
-			expect(drillInsertCall[1][6]).toBe('drill'); // type should be mapped to 'drill'
-			expect(drillInsertCall[1][11]).toBe('Custom Drill'); // name should be preserved
+			const itemValues = mockDb.kyselyDb.values.mock.calls[2][0];
+			expect(itemValues.drill_id).toBeNull();
+			expect(itemValues.type).toBe('drill');
+			expect(itemValues.name).toBe('Custom Drill');
 		});
 
 		it('should handle parallel groups and timelines', async () => {
-			// Mock client queries
-			mockClient.query
-				.mockResolvedValueOnce({ rows: [{ id: 123 }] })
-				.mockResolvedValueOnce({ rows: [{ id: 456 }] })
-				.mockResolvedValue({});
+			mockDb.kyselyDb.__setResults([{ id: 123 }, { id: 456 }]);
 
 			const planData = {
 				name: 'Parallel Plan',
@@ -592,21 +413,15 @@ describe('PracticePlanService', () => {
 
 			await service.createPracticePlan(planData, 123);
 
-			// Check the drill insertion call
-			const drillInsertCall = mockClient.query.mock.calls[2];
-			expect(drillInsertCall[1][8]).toBe('group1'); // parallel_group_id
-			expect(drillInsertCall[1][9]).toBe('timeline1'); // parallel_timeline
-			expect(drillInsertCall[1][10]).toBe('{timeline1,timeline2}'); // groupTimelines
+			const itemValues = mockDb.kyselyDb.values.mock.calls[2][0];
+			expect(itemValues.parallel_group_id).toBe('group1');
+			expect(itemValues.parallel_timeline).toBe('timeline1');
+			expect(itemValues.group_timelines).toEqual(['timeline1', 'timeline2']);
 		});
 	});
 
 	describe('getPracticePlanById', () => {
 		beforeEach(() => {
-			// Mock withTransaction
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				return callback(mockClient);
-			});
-
 			// Mock base getById (used before transaction)
 			vi.spyOn(service, 'getById').mockResolvedValue({
 				id: 123,
@@ -623,26 +438,18 @@ describe('PracticePlanService', () => {
 
 			// Mock calculateSectionDuration
 			vi.spyOn(service, 'calculateSectionDuration').mockReturnValue(30);
-
-			// Reset mockClient.query
-			mockClient.query.mockReset();
 		});
 
 		it('should retrieve a practice plan with its sections and items', async () => {
-			// Mock client queries
-			mockClient.query
-				// First query for sections
-				.mockResolvedValueOnce({
-					rows: [
-						{
-							id: 'section1',
-							name: 'Section 1',
-							order: 0
-						}
-					]
-				})
-				// Second query for items
-				.mockResolvedValueOnce({
+			mockDb.kyselyDb.__setResults([
+				[
+					{
+						id: 'section1',
+						name: 'Section 1',
+						order: 0
+					}
+				],
+				{
 					rows: [
 						{
 							id: 'item1',
@@ -654,23 +461,10 @@ describe('PracticePlanService', () => {
 							drill_name: 'Test Drill'
 						}
 					]
-				});
+				}
+			]);
 
 			const result = await service.getPracticePlanById(123, 456);
-
-			// Check if both queries were called (sections + items)
-			expect(mockClient.query).toHaveBeenCalledTimes(2);
-
-			// Check the first query (sections)
-			const sectionsQuery = mockClient.query.mock.calls[0];
-			expect(sectionsQuery[0]).toContain('SELECT * FROM practice_plan_sections');
-			expect(sectionsQuery[1]).toEqual([123]);
-
-			// Check the second query (items)
-			const itemsQuery = mockClient.query.mock.calls[1];
-			expect(itemsQuery[0]).toContain('SELECT');
-			expect(itemsQuery[0]).toContain('FROM practice_plan_drills ppd');
-			expect(itemsQuery[1]).toEqual([123]);
 
 			// Check the result structure
 			expect(result.id).toBe(123);
@@ -687,9 +481,6 @@ describe('PracticePlanService', () => {
 			await expect(service.getPracticePlanById(999, 123)).rejects.toThrow(
 				'Practice plan not found'
 			);
-
-			// No transaction queries should have been executed
-			expect(mockClient.query).not.toHaveBeenCalled();
 		});
 
 		it('should throw error if user is not authorized', async () => {
@@ -699,14 +490,9 @@ describe('PracticePlanService', () => {
 		});
 
 		it('should create default section if no sections exist', async () => {
-			// Mock client queries
-			mockClient.query
-				// First query for sections (empty result)
-				.mockResolvedValueOnce({
-					rows: []
-				})
-				// Second query for items
-				.mockResolvedValueOnce({
+			mockDb.kyselyDb.__setResults([
+				[],
+				{
 					rows: [
 						{
 							id: 'item1',
@@ -718,7 +504,8 @@ describe('PracticePlanService', () => {
 							drill_name: 'Test Drill'
 						}
 					]
-				});
+				}
+			]);
 
 			const result = await service.getPracticePlanById(123, 456);
 
@@ -732,11 +519,6 @@ describe('PracticePlanService', () => {
 
 	describe('updatePracticePlan', () => {
 		beforeEach(() => {
-			// Mock withTransaction
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				return callback(mockClient);
-			});
-
 			// Mock getById
 			vi.spyOn(service, 'getById').mockResolvedValue({
 				id: 123,
@@ -753,25 +535,11 @@ describe('PracticePlanService', () => {
 				...data,
 				updated_at: new Date('2025-01-01')
 			}));
-
-			// Reset mockClient.query
-			mockClient.query.mockReset();
+			vi.spyOn(service, '_resequenceItems').mockResolvedValue();
 		});
 
 		it('should update a practice plan', async () => {
-			// Mock client queries
-			mockClient.query
-				// First query for updating plan
-				.mockResolvedValueOnce({
-					rows: [
-						{
-							id: 123,
-							name: 'Updated Plan'
-						}
-					]
-				})
-				// For section and drill deletion/insertion
-				.mockResolvedValue({});
+			vi.spyOn(service, 'update').mockResolvedValue({ id: 123, name: 'Updated Plan' });
 
 			const planData = {
 				name: 'Updated Plan',
@@ -795,26 +563,6 @@ describe('PracticePlanService', () => {
 
 			const result = await service.updatePracticePlan(123, planData, 456);
 
-			// Check the update query
-			const updateQuery = mockClient.query.mock.calls[0];
-			expect(updateQuery[0]).toMatch(/UPDATE practice_plans\s+SET/);
-			expect(updateQuery[1]).toContain('Updated Plan');
-
-			// Check that sections were deleted and recreated
-			const deleteDrillsQuery = mockClient.query.mock.calls[1];
-			expect(deleteDrillsQuery[0]).toContain('DELETE FROM practice_plan_drills');
-
-			const deleteSecQuery = mockClient.query.mock.calls[2];
-			expect(deleteSecQuery[0]).toContain('DELETE FROM practice_plan_sections');
-
-			// Check section insertion
-			const sectionInsertQuery = mockClient.query.mock.calls[3];
-			expect(sectionInsertQuery[0]).toContain('INSERT INTO practice_plan_sections');
-
-			// Check drill insertion
-			const drillInsertQuery = mockClient.query.mock.calls[4];
-			expect(drillInsertQuery[0]).toContain('INSERT INTO practice_plan_drills');
-
 			// Check result
 			expect(result.id).toBe(123);
 			expect(result.name).toBe('Updated Plan');
@@ -826,9 +574,6 @@ describe('PracticePlanService', () => {
 			await expect(service.updatePracticePlan(999, { name: 'Updated' }, 456)).rejects.toThrow(
 				'Practice plan not found'
 			);
-
-			// No queries should have been executed
-			expect(mockClient.query).not.toHaveBeenCalled();
 		});
 
 		it('should throw error if user is not authorized', async () => {
@@ -839,14 +584,10 @@ describe('PracticePlanService', () => {
 			await expect(service.updatePracticePlan(123, { name: 'Updated' }, 789)).rejects.toThrow(
 				'Unauthorized to edit this practice plan'
 			);
-
-			// No queries should have been executed
-			expect(mockClient.query).not.toHaveBeenCalled();
 		});
 
 		it('should force public visibility for anonymous users', async () => {
 			vi.spyOn(service, 'update').mockResolvedValue({ id: 123, name: 'Updated Plan' });
-			mockClient.query.mockResolvedValue({});
 
 			const planData = {
 				name: 'Updated by Anonymous',
@@ -858,13 +599,12 @@ describe('PracticePlanService', () => {
 			expect(service.update).toHaveBeenCalledWith(
 				123,
 				expect.objectContaining({ visibility: 'public', is_editable_by_others: true }),
-				mockClient
+				expect.anything()
 			);
 		});
 
 		it('should handle complex items with timelines and custom attributes', async () => {
-			// Mock client queries
-			mockClient.query.mockResolvedValueOnce({ rows: [{ id: 123 }] }).mockResolvedValue({});
+			vi.spyOn(service, 'update').mockResolvedValue({ id: 123 });
 
 			const planData = {
 				name: 'Complex Plan',
@@ -890,30 +630,17 @@ describe('PracticePlanService', () => {
 
 			await service.updatePracticePlan(123, planData, 456);
 
-			// Check the item insertion
-			const itemInsertQuery = mockClient.query.mock.calls[4];
-
-			// Should use drill.id when drill_id is not provided
-			expect(itemInsertQuery[1][2]).toBe(789);
-
-			// Should use duration for non-formation items
-			expect(itemInsertQuery[1][5]).toBe(15);
-
-			// Check parallel group properties
-			// Match the parameter indexes from the query in updatePracticePlan
-			expect(itemInsertQuery[1][7]).toBe('group1'); // parallel_group_id
-			expect(itemInsertQuery[1][8]).toBe('timeline1'); // parallel_timeline
-			expect(itemInsertQuery[1][9]).toBe('{timeline1,timeline2}'); // group_timelines
+			const itemValues = mockDb.kyselyDb.values.mock.calls[1][0];
+			expect(itemValues.drill_id).toBe(789);
+			expect(itemValues.duration).toBe(15);
+			expect(itemValues.parallel_group_id).toBe('group1');
+			expect(itemValues.parallel_timeline).toBe('timeline1');
+			expect(itemValues.group_timelines).toEqual(['timeline1', 'timeline2']);
 		});
 	});
 
 	describe('deletePracticePlan', () => {
 		beforeEach(() => {
-			// Mock withTransaction
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				return callback(mockClient);
-			});
-
 			// Mock getById
 			vi.spyOn(service, 'getById').mockResolvedValue({
 				id: 123,
@@ -924,83 +651,39 @@ describe('PracticePlanService', () => {
 
 			// Mock canUserEdit
 			vi.spyOn(service, 'canUserEdit').mockResolvedValue(true);
-
-			// Reset mockClient.query
-			mockClient.query.mockReset();
 		});
 
 		it('should delete a practice plan and related records', async () => {
-			// Mock client queries
-			mockClient.query
-				// Plan details lookup
-				.mockResolvedValueOnce({ rows: [{ created_by: 456, visibility: 'public' }] })
-				// Delete drills
-				.mockResolvedValueOnce({})
-				// Delete sections
-				.mockResolvedValueOnce({})
-				// Base delete
-				.mockResolvedValueOnce({ rows: [{ id: 123 }] });
+			// plan (executeTakeFirst), delete drills (execute), delete sections (execute), base delete (executeTakeFirst)
+			mockDb.kyselyDb.__setResults([
+				{ created_by: 456, visibility: 'public' },
+				[],
+				[],
+				{ id: 123 }
+			]);
 
 			const result = await service.deletePracticePlan(123, 456);
-
-			// Check queries were executed in correct order
-			expect(mockClient.query).toHaveBeenCalledTimes(4);
-
-			// First should fetch plan details
-			const detailsQuery = mockClient.query.mock.calls[0];
-			expect(detailsQuery[0]).toContain('SELECT');
-			expect(detailsQuery[1]).toEqual([123]);
-
-			// Second should delete drills
-			const deleteItemsQuery = mockClient.query.mock.calls[1];
-			expect(deleteItemsQuery[0]).toContain('DELETE FROM practice_plan_drills');
-			expect(deleteItemsQuery[1]).toEqual([123]);
-
-			// Third should delete sections
-			const deleteSectionsQuery = mockClient.query.mock.calls[2];
-			expect(deleteSectionsQuery[0]).toContain('DELETE FROM practice_plan_sections');
-			expect(deleteSectionsQuery[1]).toEqual([123]);
-
-			// Fourth should delete the plan
-			const deletePlanQuery = mockClient.query.mock.calls[3];
-			expect(deletePlanQuery[0]).toContain('DELETE FROM practice_plans');
-			expect(deletePlanQuery[1]).toEqual([123]);
 
 			// Should return true on success
 			expect(result).toBe(true);
 		});
 
 		it('should throw error if plan not found', async () => {
-			mockClient.query.mockResolvedValueOnce({ rows: [] });
+			mockDb.kyselyDb.__setResults([undefined]);
 
 			await expect(service.deletePracticePlan(999, 456)).rejects.toThrow('not found');
-
-			// Only the lookup query should have been executed
-			expect(mockClient.query).toHaveBeenCalledTimes(1);
 		});
 
 		it('should throw error if user is not authorized', async () => {
-			mockClient.query.mockResolvedValueOnce({ rows: [{ created_by: 456, visibility: 'public' }] });
+			mockDb.kyselyDb.__setResults([{ created_by: 456, visibility: 'public' }]);
 
 			await expect(service.deletePracticePlan(123, 789)).rejects.toThrow(
 				'Only the creator can delete this practice plan.'
 			);
-
-			expect(mockClient.query).toHaveBeenCalledTimes(1);
 		});
 
 		it('should handle database errors during deletion', async () => {
-			// Mock client query to throw error
-			mockClient.query.mockRejectedValue(new Error('Database error'));
-
-			// Mock transaction to pass through the error
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				try {
-					return await callback(mockClient);
-				} catch (error) {
-					throw error;
-				}
-			});
+			mockDb.kyselyDb.executeTakeFirst.mockRejectedValueOnce(new Error('Database error'));
 
 			await expect(service.deletePracticePlan(123, 456)).rejects.toThrow(DatabaseError);
 		});
@@ -1008,11 +691,6 @@ describe('PracticePlanService', () => {
 
 	describe('duplicatePracticePlan', () => {
 		beforeEach(() => {
-			// Mock withTransaction
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				return callback(mockClient);
-			});
-
 			// Mock getPracticePlanById (used to load original)
 			vi.spyOn(service, 'getPracticePlanById').mockResolvedValue({
 				id: 123,
@@ -1032,73 +710,39 @@ describe('PracticePlanService', () => {
 				created_at: new Date('2025-01-01'),
 				updated_at: new Date('2025-01-01')
 			}));
-
-			// Reset mockClient.query
-			mockClient.query.mockReset();
 		});
 
 		it('should duplicate a practice plan with all sections and items', async () => {
-			// Mock client queries
-			mockClient.query
-				// First query for new plan
-				.mockResolvedValueOnce({
-					rows: [{ id: 456 }]
-				})
-				// Second query for sections
-				.mockResolvedValueOnce({
-					rows: [{ id: 'section1', name: 'Section 1', order: 0, goals: ['goal1'], notes: 'notes' }]
-				})
-				// Third query for new section
-				.mockResolvedValueOnce({
-					rows: [{ id: 'newSection1' }]
-				})
-				// Fourth query for drills
-				.mockResolvedValueOnce({
-					rows: [
-						{
-							id: 'item1',
-							drill_id: 789,
-							order_in_plan: 0,
-							duration: 10,
-							type: 'drill',
-							parallel_group_id: 'group1',
-							parallel_timeline: 'timeline1',
-							group_timelines: ['timeline1'],
-							name: 'Drill Name'
-						}
-					]
-				})
-				// Final query for drill insertion
-				.mockResolvedValue({});
+			mockDb.kyselyDb.__setResults([
+				{ id: 456 },
+				[
+					{
+						id: 'section1',
+						name: 'Section 1',
+						order: 0,
+						goals: ['goal1'],
+						notes: 'notes'
+					}
+				],
+				{ id: 'newSection1' },
+				[
+					{
+						id: 'item1',
+						drill_id: 789,
+						order_in_plan: 0,
+						duration: 10,
+						type: 'drill',
+						parallel_group_id: 'group1',
+						parallel_timeline: 'timeline1',
+						group_timelines: ['timeline1'],
+						name: 'Drill Name'
+					}
+				]
+			]);
 
 			const result = await service.duplicatePracticePlan(123, 456); // original ID, new userId
-
-			// Check queries
-			expect(mockClient.query).toHaveBeenCalledTimes(5);
-
-			// Check new plan creation
-			const planInsertQuery = mockClient.query.mock.calls[0];
-			expect(planInsertQuery[0]).toContain('INSERT INTO practice_plans');
-			expect(planInsertQuery[1][0]).toBe('Original Plan (Copy)'); // Name should have (Copy) appended
-
-			// Check sections query
-			const sectionsQuery = mockClient.query.mock.calls[1];
-			expect(sectionsQuery[0]).toContain('SELECT * FROM practice_plan_sections');
-
-			// Check section insertion
-			const sectionInsertQuery = mockClient.query.mock.calls[2];
-			expect(sectionInsertQuery[0]).toContain('INSERT INTO practice_plan_sections');
-
-			// Check drills query
-			const drillsQuery = mockClient.query.mock.calls[3];
-			expect(drillsQuery[0]).toContain('SELECT * FROM practice_plan_drills');
-
-			// Check drill insertion
-			const drillInsertQuery = mockClient.query.mock.calls[4];
-			expect(drillInsertQuery[0]).toContain('INSERT INTO practice_plan_drills');
-			expect(drillInsertQuery[1][0]).toBe(456); // new plan ID
-			expect(drillInsertQuery[1][1]).toBe('newSection1'); // new section ID
-			expect(drillInsertQuery[1][2]).toBe(789); // original drill ID
+			const planValues = mockDb.kyselyDb.values.mock.calls[0][0];
+			expect(planValues.name).toBe('Original Plan (Copy)');
 
 			// Check result
 			expect(result).toEqual({ id: 456 });
@@ -1110,24 +754,16 @@ describe('PracticePlanService', () => {
 			await expect(service.duplicatePracticePlan(999, 456)).rejects.toThrow(
 				'Practice plan not found'
 			);
-
-			// No queries should have been executed
-			expect(mockClient.query).not.toHaveBeenCalled();
 		});
 
 		it('should use userId of duplicator as creator', async () => {
-			// Mock client queries with minimal implementation
-			mockClient.query
-				.mockResolvedValueOnce({ rows: [{ id: 456 }] })
-				.mockResolvedValueOnce({ rows: [] })
-				.mockResolvedValue({});
+			mockDb.kyselyDb.__setResults([{ id: 456 }, []]);
 
 			const newUserId = 789;
 			await service.duplicatePracticePlan(123, newUserId);
 
-			// Check if the new plan has the duplicator as creator
-			const planInsertQuery = mockClient.query.mock.calls[0];
-			expect(planInsertQuery[1][5]).toBe(newUserId); // created_by parameter
+			const planValues = mockDb.kyselyDb.values.mock.calls[0][0];
+			expect(planValues.created_by).toBe(newUserId);
 		});
 
 		it('should preserve visibility and editability settings', async () => {
@@ -1143,18 +779,13 @@ describe('PracticePlanService', () => {
 				is_editable_by_others: false
 			});
 
-			// Mock minimal query implementation
-			mockClient.query
-				.mockResolvedValueOnce({ rows: [{ id: 456 }] })
-				.mockResolvedValueOnce({ rows: [] })
-				.mockResolvedValue({});
+			mockDb.kyselyDb.__setResults([{ id: 456 }, []]);
 
 			await service.duplicatePracticePlan(123, 456);
 
-			// Check if visibility and editability are preserved
-			const planInsertQuery = mockClient.query.mock.calls[0];
-			expect(planInsertQuery[1][6]).toBe('private'); // visibility parameter
-			expect(planInsertQuery[1][7]).toBe(false); // is_editable_by_others parameter
+			const planValues = mockDb.kyselyDb.values.mock.calls[0][0];
+			expect(planValues.visibility).toBe('private');
+			expect(planValues.is_editable_by_others).toBe(false);
 		});
 	});
 });

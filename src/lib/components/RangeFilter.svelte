@@ -28,10 +28,11 @@
 			id={`${label}-content`}
 			class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
 			on:click|stopPropagation
+			on:keydown|stopPropagation
 			role="menu"
 			tabindex="0"
 		>
-			<label class="block text-sm font-medium text-gray-700 mb-2">{label} Range</label>
+			<span class="block text-sm font-medium text-gray-700 mb-2">{label} Range</span>
 			<RangeSlider
 				bind:values={range}
 				{min}

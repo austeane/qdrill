@@ -45,7 +45,7 @@
 		<option value="" disabled selected={!value}>
 			{placeholder}
 		</option>
-		{#each options as option}
+		{#each options as option (option.value)}
 			<option value={option.value}>
 				{option.label}
 			</option>

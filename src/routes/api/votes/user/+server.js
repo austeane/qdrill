@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import * as db from '$lib/server/db';
+import { kyselyDb } from '$lib/server/db';
 import { handleApiError } from '../../utils/handleApiError.js';
 
 export async function GET({ url, locals }) {
@@ -21,19 +21,23 @@ export async function GET({ url, locals }) {
 	}
 
 	try {
-		let query = '';
-		let params = [];
-
 		if (drillId) {
-			query = 'SELECT vote FROM votes WHERE user_id = $1 AND drill_id = $2';
-			params = [userId, parseInt(drillId, 10)];
+			const row = await kyselyDb
+				.selectFrom('votes')
+				.select('vote')
+				.where('user_id', '=', userId)
+				.where('drill_id', '=', parseInt(drillId, 10))
+				.executeTakeFirst();
+			return json(row || { vote: 0 });
 		} else {
-			query = 'SELECT vote FROM votes WHERE user_id = $1 AND practice_plan_id = $2';
-			params = [userId, parseInt(practicePlanId, 10)];
+			const row = await kyselyDb
+				.selectFrom('votes')
+				.select('vote')
+				.where('user_id', '=', userId)
+				.where('practice_plan_id', '=', parseInt(practicePlanId, 10))
+				.executeTakeFirst();
+			return json(row || { vote: 0 });
 		}
-
-		const result = await db.query(query, params);
-		return json(result.rows[0] || { vote: 0 });
 	} catch (error) {
 		return handleApiError(error);
 	}

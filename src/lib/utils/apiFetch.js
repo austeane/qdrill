@@ -69,14 +69,14 @@ export async function apiFetch(url, opts = {}, fetchInstance = fetch) {
 			} else {
 				body = await response.text();
 			}
-		} catch (e) {
-			// Parsing error, try to get text for error message
-			try {
-				body = await response.text(); // Read as text if JSON parsing failed or not JSON
-			} catch (textErr) {
-				body = `Response body could not be parsed. Status: ${response.status}`;
+			} catch {
+				// Parsing error, try to get text for error message
+				try {
+					body = await response.text(); // Read as text if JSON parsing failed or not JSON
+				} catch {
+					body = `Response body could not be parsed. Status: ${response.status}`;
+				}
 			}
-		}
 
 		let message = `HTTP error! Status: ${response.status}`;
 		if (typeof body === 'object' && body !== null && body.error && body.error.message) {
@@ -108,9 +108,9 @@ export async function apiFetch(url, opts = {}, fetchInstance = fetch) {
 				// Cloning upfront as in the original code is safer if we need to retry .json() vs .text()
 				const clonedResponseForError = response.clone(); // Clone before attempting to read body
 				responseTextForError = await clonedResponseForError.text();
-			} catch (textErr) {
-				responseTextForError = '(Could not retrieve text body for error context)';
-			}
+				} catch {
+					responseTextForError = '(Could not retrieve text body for error context)';
+				}
 			throw new Error(
 				`Successfully fetched, but failed to parse expected JSON response body. Status: ${response.status}. Error: ${parseError.message}. Response text: ${responseTextForError}`
 			);

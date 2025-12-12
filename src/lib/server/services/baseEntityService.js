@@ -104,135 +104,146 @@ export class BaseEntityService {
 	}
 
 	/**
-	 * Builds the WHERE clause and parameters for a query based on filters and permissions.
-	 * @param {Object} filters - Filter conditions (e.g., { name__like: '%test%', age__gt: 18 })
-	 * @param {number|null} [userId=null] - ID of the user making the request (for permission checks)
-	 * @param {number} [initialParamCount=0] - Starting index for query parameters.
-	 * @returns {{ whereClause: string, queryParams: Array<any>, paramCount: number }}
+	 * Internal helper to get the Kysely instance or transaction.
+	 * @param {import('kysely').Transaction<any>|null} trx
 	 */
-	_buildWhereClause(filters = {}, userId = null, initialParamCount = 0) {
-		const conditions = [];
-		const queryParams = [];
-		let paramCount = initialParamCount;
+	_db(trx = null) {
+		return trx ?? db.kyselyDb;
+	}
 
-		// Define supported operators and their SQL generation logic
-		const operators = {
-			exact: (col, val) => ({ clause: `${col} = $${paramCount + 1}`, params: [val] }),
-			eq: (col, val) => ({ clause: `${col} = $${paramCount + 1}`, params: [val] }),
-			neq: (col, val) => ({ clause: `${col} != $${paramCount + 1}`, params: [val] }),
-			gt: (col, val) => ({ clause: `${col} > $${paramCount + 1}`, params: [val] }),
-			gte: (col, val) => ({ clause: `${col} >= $${paramCount + 1}`, params: [val] }),
-			lt: (col, val) => ({ clause: `${col} < $${paramCount + 1}`, params: [val] }),
-			lte: (col, val) => ({ clause: `${col} <= $${paramCount + 1}`, params: [val] }),
-			like: (col, val) => ({ clause: `${col} LIKE $${paramCount + 1}`, params: [val] }),
-			ilike: (col, val) => ({ clause: `${col} ILIKE $${paramCount + 1}`, params: [val] }),
-			isnull: (col, val) => ({ clause: `${col} IS ${val ? 'NULL' : 'NOT NULL'}`, params: [] }), // Value is boolean true/false
-			in: (col, val) => {
-				// Expects value to be an array
-				if (!Array.isArray(val) || val.length === 0) return null; // Or throw error?
-				const placeholders = val.map((_, i) => `$${paramCount + 1 + i}`).join(', ');
-				return { clause: `${col} IN (${placeholders})`, params: val };
-			},
-			any: (col, val) => {
-				// Specific to PostgreSQL ANY operator for array membership
-				if (!Array.isArray(val) && this.columnTypes[col] === 'array') {
-					// If filter value is single for an array col, check membership
-					return { clause: `$${paramCount + 1} = ANY(${col})`, params: [val] };
-				} else if (Array.isArray(val) && this.columnTypes[col] === 'array') {
-					// If filter value is array for array col, check overlap (&&)
-					return { clause: `${col} && $${paramCount + 1}`, params: [val] };
-				}
-				// Fallback or error for non-array columns/values?
-				console.warn(`Unsupported 'any' filter for column '${col}' with value:`, val);
-				return null;
-			}
-			// TODO: Add support for other operators like 'between', 'not in', etc.
-		};
+	/**
+	 * Internal helper to start a select builder for this table.
+	 * @param {import('kysely').Transaction<any>|null} trx
+	 * @param {string|null} alias
+	 */
+	_selectFrom(trx = null, alias = null) {
+		return this._db(trx).selectFrom(alias ?? this.tableName);
+	}
 
-		// Process filters
-		Object.entries(filters).forEach(([key, value]) => {
-			// Skip undefined values (allow null for isnull)
-			if (value === undefined) {
-				return;
+	/**
+	 * Apply legacy-standard read permissions (visibility/ownership) to a Kysely query.
+	 * Semantics match legacy _buildWhereClause + canUserView().
+	 */
+	_applyReadPermissions(qb, viewerUserId = null, alias = null) {
+		if (!this.useStandardPermissions || !this.permissionConfig) return qb;
+
+		const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
+			this.permissionConfig;
+		const visCol = alias ? `${alias}.${visibilityColumn}` : visibilityColumn;
+		const ownerCol = alias ? `${alias}.${userIdColumn}` : userIdColumn;
+
+		return qb.where((eb) => {
+			const orConditions = [];
+
+			if (publicValue !== undefined && publicValue !== null) {
+				orConditions.push(eb(visCol, '=', publicValue));
+			} else {
+				orConditions.push(eb(visCol, 'is', null));
 			}
 
-			let columnName = key;
-			let operator = 'exact'; // Default operator
+			if (unlistedValue !== undefined && unlistedValue !== null) {
+				orConditions.push(eb(visCol, '=', unlistedValue));
+			}
 
-			// Check for operator suffix (e.g., "name__like")
-			const parts = key.split('__');
-			if (parts.length === 2 && operators[parts[1]]) {
+			if (
+				viewerUserId !== null &&
+				viewerUserId !== undefined &&
+				privateValue !== undefined &&
+				privateValue !== null
+			) {
+				orConditions.push(
+					eb.and([eb(visCol, '=', privateValue), eb(ownerCol, '=', viewerUserId)])
+				);
+			}
+
+			return eb.or(orConditions);
+		});
+	}
+
+	/**
+	 * Apply legacy filter DSL to a Kysely query.
+	 * Supported operators match legacy _buildWhereClause.
+	 */
+	_applyFilters(qb, filters = {}, alias = null) {
+		if (!filters || typeof filters !== 'object') return qb;
+
+		for (const [rawKey, value] of Object.entries(filters)) {
+			if (value === undefined) continue;
+
+			let columnName = rawKey;
+			let operator = 'exact';
+			const parts = rawKey.split('__');
+			if (parts.length === 2) {
 				columnName = parts[0];
 				operator = parts[1];
 			}
 
-			// Validate column
 			if (!this.isColumnAllowed(columnName)) {
-				console.warn(`Filter key '${key}' uses disallowed column '${columnName}'. Skipping.`);
-				return;
+				continue;
 			}
 
-			// Skip null values unless using isnull operator
 			if (value === null && operator !== 'isnull') {
-				return;
+				continue;
 			}
 
-			// Get the clause and params from the operator function
-			const opFunc = operators[operator];
-			const result = opFunc(columnName, value);
+				const colRef = alias ? `${alias}.${columnName}` : columnName;
 
-			if (result && result.clause) {
-				conditions.push(result.clause);
-				queryParams.push(...result.params);
-				paramCount += result.params.length; // Increment count by number of params added
+				// Back-compat for legacy array filtering:
+				// - scalar value => `${value} = ANY(col)`
+				// - array value => `col && value`
+				if (
+					(this.columnTypes[columnName] === 'array' &&
+						(operator === 'exact' || operator === 'eq')) ||
+					(operator === 'any' && this.columnTypes[columnName] === 'array')
+				) {
+					if (Array.isArray(value)) {
+						qb = qb.where(sql`${sql.ref(colRef)} && ${value}`);
+					} else {
+						qb = qb.where(sql`${value} = ANY(${sql.ref(colRef)})`);
+					}
+					continue;
+				}
+
+				switch (operator) {
+					case 'exact':
+					case 'eq':
+						qb = qb.where(colRef, '=', value);
+						break;
+				case 'neq':
+					qb = qb.where(colRef, '!=', value);
+					break;
+				case 'gt':
+					qb = qb.where(colRef, '>', value);
+					break;
+				case 'gte':
+					qb = qb.where(colRef, '>=', value);
+					break;
+				case 'lt':
+					qb = qb.where(colRef, '<', value);
+					break;
+				case 'lte':
+					qb = qb.where(colRef, '<=', value);
+					break;
+				case 'like':
+					qb = qb.where(colRef, 'like', value);
+					break;
+				case 'ilike':
+					qb = qb.where(colRef, 'ilike', value);
+					break;
+				case 'isnull':
+					qb = value ? qb.where(colRef, 'is', null) : qb.where(colRef, 'is not', null);
+					break;
+				case 'in':
+					if (Array.isArray(value) && value.length > 0) {
+						qb = qb.where(colRef, 'in', value);
+					}
+					break;
+					default:
+						qb = qb.where(colRef, '=', value);
+				}
 			}
-		});
 
-		// Add standard permission filtering if enabled
-		if (this.useStandardPermissions && this.permissionConfig) {
-			const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
-				this.permissionConfig;
-			const visibilityConditions = [];
-
-			// Always allow public (if defined)
-			if (publicValue !== undefined && publicValue !== null) {
-				visibilityConditions.push(`${visibilityColumn} = $${paramCount + 1}`);
-				queryParams.push(publicValue);
-				paramCount++;
-			} else {
-				// If public not defined, maybe allow NULL? Or require explicit public value?
-				// For now, let's assume NULL is implicitly public if publicValue isn't set.
-				visibilityConditions.push(`${visibilityColumn} IS NULL`);
-			}
-
-			// Always allow unlisted (if defined)
-			if (unlistedValue !== undefined && unlistedValue !== null) {
-				visibilityConditions.push(`${visibilityColumn} = $${paramCount + 1}`);
-				queryParams.push(unlistedValue);
-				paramCount++;
-			}
-
-			// Allow private if userId matches and privateValue is defined
-			if (userId !== null && privateValue !== undefined && privateValue !== null) {
-				visibilityConditions.push(
-					`(${visibilityColumn} = $${paramCount + 1} AND ${userIdColumn} = $${paramCount + 2})`
-				);
-				queryParams.push(privateValue, userId);
-				paramCount += 2;
-			}
-
-			if (visibilityConditions.length > 0) {
-				conditions.push(`(${visibilityConditions.join(' OR ')})`);
-			} else if (userId === null && privateValue !== undefined) {
-				// If user is not logged in and private items exist, explicitly exclude them
-				conditions.push(`${visibilityColumn} != $${paramCount + 1}`);
-				queryParams.push(privateValue);
-				paramCount++;
-			}
-		}
-
-		const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-		return { whereClause, queryParams, paramCount };
+		return qb;
 	}
 
 	/**
@@ -260,85 +271,61 @@ export class BaseEntityService {
 			userId = null // For permission filtering
 		} = options;
 
-		// Calculate offset for pagination
 		const offset = (page - 1) * limit;
-
-		const { whereClause, queryParams, paramCount } = this._buildWhereClause(filters, userId, 0);
-
-		// Build ORDER BY clause with validation
-		let orderBy;
-		if (sortBy && this.isColumnAllowed(sortBy)) {
-			const sanitizedSortOrder = this.validateSortOrder(sortOrder);
-			if (this.primaryKey) {
-				orderBy = `ORDER BY ${sortBy} ${sanitizedSortOrder}, ${this.primaryKey} ${sanitizedSortOrder}`;
-			} else {
-				orderBy = `ORDER BY ${sortBy} ${sanitizedSortOrder}`;
-			}
-		} else if (this.primaryKey) {
-			orderBy = `ORDER BY ${this.primaryKey} DESC`;
-		} else {
-			orderBy = ''; // No ordering if no primary key
-		}
 
 		// Validate columns to return
 		const validColumns = columns.filter((col) => col === '*' || this.isColumnAllowed(col));
-
-		// If no valid columns, default to primary key (if it exists) or all allowed columns
 		if (validColumns.length === 0) {
-			if (this.primaryKey) {
-				validColumns.push(this.primaryKey);
-			} else {
-				validColumns.push('*');
-			}
+			if (this.primaryKey) validColumns.push(this.primaryKey);
+			else validColumns.push('*');
 		}
 
 		try {
-			let results;
-			let pagination = {};
+			let qb = this._selectFrom();
 
-			if (!all) {
-				const countQuery = `
-            SELECT COUNT(*)
-            FROM ${this.tableName}
-            ${whereClause}
-          `;
+			if (validColumns.includes('*')) {
+				qb = qb.selectAll();
+			} else {
+				qb = qb.select(validColumns);
+			}
 
-				const countResult = await db.query(countQuery, queryParams);
-				const totalItems = parseInt(countResult.rows[0].count);
+			qb = this._applyFilters(qb, filters);
+			qb = this._applyReadPermissions(qb, userId);
 
-				pagination = {
+			// Apply ordering
+			if (sortBy && this.isColumnAllowed(sortBy)) {
+				const direction = this.validateSortOrder(sortOrder).toLowerCase();
+				qb = qb.orderBy(sortBy, direction);
+				if (this.primaryKey) {
+					qb = qb.orderBy(this.primaryKey, direction);
+				}
+			} else if (this.primaryKey) {
+				qb = qb.orderBy(this.primaryKey, 'desc');
+			}
+
+			if (all) {
+				const items = await qb.execute();
+				return { items, pagination: null };
+			}
+
+				const countQb = qb
+					.clearSelect()
+					.clearOrderBy()
+					.select((eb) => eb.fn.countAll().as('count'));
+
+			const countResult = await countQb.executeTakeFirst();
+			const totalItems = parseInt(countResult?.count ?? '0', 10);
+
+			const items = await qb.limit(limit).offset(offset).execute();
+
+			return {
+				items,
+				pagination: {
 					page: parseInt(page),
 					limit: parseInt(limit),
 					totalItems,
 					totalPages: Math.ceil(totalItems / limit)
-				};
-
-				const query = `
-            SELECT ${validColumns.join(', ')}
-            FROM ${this.tableName}
-            ${whereClause}
-            ${orderBy}
-            LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
-          `;
-
-				const allParams = [...queryParams, limit, offset];
-				const result = await db.query(query, allParams);
-				results = result.rows;
-			} else {
-				const query = `
-            SELECT ${validColumns.join(', ')}
-            FROM ${this.tableName}
-            ${whereClause}
-            ${orderBy}
-          `;
-
-				const result = await db.query(query, queryParams);
-				results = result.rows;
-			}
-
-			return {
-				items: results,
-				pagination: all ? null : pagination
+				}
 			};
 		} catch (error) {
 			console.error(`Error in ${this.tableName}.getAll():`, error);
@@ -358,47 +345,44 @@ export class BaseEntityService {
 	 */
 	async getById(id, columns = this.defaultColumns, userId = null, client = null) {
 		try {
-			// Validate columns to return
-			const validColumns = columns.filter((col) => col === '*' || this.isColumnAllowed(col));
-
-			// If no valid columns, default to primary key
-			if (validColumns.length === 0) {
-				validColumns.push(this.primaryKey);
+			if (!this.primaryKey) {
+				throw new ValidationError(
+					`Cannot getById for ${this.tableName}: no primary key configured`
+				);
 			}
 
-			// Use the provided client or the default db connection
-			const dbInterface = client || db;
+			// Validate columns to return
+			const validColumns = columns.filter((col) => col === '*' || this.isColumnAllowed(col));
+			if (validColumns.length === 0) {
+				if (this.primaryKey) validColumns.push(this.primaryKey);
+				else validColumns.push('*');
+			}
 
-			const query = `
-        SELECT ${validColumns.join(', ')}
-        FROM ${this.tableName}
-        WHERE ${this.primaryKey} = $1
-      `;
+			let qb = this._selectFrom(client);
+			if (validColumns.includes('*')) {
+				qb = qb.selectAll();
+			} else {
+				qb = qb.select(validColumns);
+			}
 
-			const result = await dbInterface.query(query, [id]);
+			const entity = await qb.where(this.primaryKey, '=', id).executeTakeFirst();
 
-			// Throw NotFoundError if no rows are returned
-			if (result.rows.length === 0) {
+			if (!entity) {
 				throw new NotFoundError(`${this.tableName.slice(0, -1)} with ID ${id} not found`);
 			}
 
-			const entity = result.rows[0];
-
-			// Check view permission if standard permissions are enabled
 			if (this.useStandardPermissions && !this.canUserView(entity, userId)) {
 				throw new ForbiddenError(
 					`User not authorized to view ${this.tableName.slice(0, -1)} with ID ${id}`
 				);
 			}
 
-			return result.rows[0];
+			return entity;
 		} catch (error) {
-			// Re-throw NotFoundError directly
-			if (error instanceof NotFoundError) {
+			if (error instanceof NotFoundError || error instanceof ForbiddenError) {
 				throw error;
 			}
 			console.error(`Error in ${this.tableName}.getById(${id}):`, error);
-			// Wrap other errors as DatabaseError
 			throw new DatabaseError(
 				`Failed to retrieve ${this.tableName.slice(0, -1)} with ID ${id}`,
 				error
@@ -413,38 +397,32 @@ export class BaseEntityService {
 	 * @returns {Promise<Object>} - Created entity
 	 */
 	async create(data, client = null) {
-		const dbInterface = client || db;
+		const dbInterface = this._db(client);
 		try {
-			// Create a copy of the data
 			const dataCopy = { ...data };
 
-			// Remove id field if it exists - let the database generate it
-			if (this.primaryKey in dataCopy) {
+			if (this.primaryKey && this.primaryKey in dataCopy) {
 				delete dataCopy[this.primaryKey];
 			}
 
-			// Filter out undefined values and validate columns
-			const columns = Object.keys(dataCopy).filter(
-				(key) => dataCopy[key] !== undefined && this.isColumnAllowed(key)
-			);
-			const values = columns.map((column) => dataCopy[column]);
+			const insertData = {};
+			for (const [key, val] of Object.entries(dataCopy)) {
+				if (val !== undefined && this.isColumnAllowed(key)) {
+					insertData[key] = val;
+				}
+			}
 
-			// No columns to insert
-			if (columns.length === 0) {
+			if (Object.keys(insertData).length === 0) {
 				throw new ValidationError('No valid data provided for insertion');
 			}
 
-			const placeholders = columns.map((_, index) => `$${index + 1}`).join(', ');
+			const created = await dbInterface
+				.insertInto(this.tableName)
+				.values(insertData)
+				.returningAll()
+				.executeTakeFirst();
 
-			const query = `
-        INSERT INTO ${this.tableName} (${columns.join(', ')})
-        VALUES (${placeholders})
-        RETURNING *
-      `;
-
-			const result = await dbInterface.query(query, values);
-
-			return result.rows[0];
+			return created;
 		} catch (error) {
 			console.error(`Error in ${this.tableName}.create():`, error);
 			throw new DatabaseError(`Failed to create ${this.tableName.slice(0, -1)}`, error);
@@ -462,40 +440,44 @@ export class BaseEntityService {
 	 * @throws {ValidationError} If no valid data provided
 	 */
 	async update(id, data, client = null) {
-		const dbInterface = client || db;
+		const dbInterface = this._db(client);
 		try {
-			// Filter out undefined values and validate columns
-			const columns = Object.keys(data).filter(
-				(key) => data[key] !== undefined && key !== this.primaryKey && this.isColumnAllowed(key)
-			);
+			if (!this.primaryKey) {
+				throw new ValidationError(
+					`Cannot update ${this.tableName}: no primary key configured`
+				);
+			}
 
-			if (columns.length === 0) {
+			const updateData = {};
+			for (const [key, val] of Object.entries(data)) {
+				if (
+					val !== undefined &&
+					key !== this.primaryKey &&
+					this.isColumnAllowed(key)
+				) {
+					updateData[key] = val;
+				}
+			}
+
+			if (Object.keys(updateData).length === 0) {
 				throw new ValidationError('No valid data provided for update');
 			}
 
-			const values = columns.map((column) => data[column]);
+			const updated = await dbInterface
+				.updateTable(this.tableName)
+				.set(updateData)
+				.where(this.primaryKey, '=', id)
+				.returningAll()
+				.executeTakeFirst();
 
-			const setClause = columns.map((column, index) => `${column} = $${index + 2}`).join(', ');
-
-			const query = `
-        UPDATE ${this.tableName}
-        SET ${setClause}
-        WHERE ${this.primaryKey} = $1
-        RETURNING *
-      `;
-
-			const result = await dbInterface.query(query, [id, ...values]);
-
-			// Throw NotFoundError if no rows were affected (entity didn't exist)
-			if (result.rows.length === 0) {
+			if (!updated) {
 				throw new NotFoundError(
 					`${this.tableName.slice(0, -1)} with ID ${id} not found for update`
 				);
 			}
 
-			return result.rows[0];
+			return updated;
 		} catch (error) {
-			// Re-throw known errors
 			if (error instanceof NotFoundError || error instanceof ValidationError) {
 				throw error;
 			}
@@ -516,32 +498,34 @@ export class BaseEntityService {
 	 * @throws {DatabaseError} On database error
 	 */
 	async delete(id, client = null) {
-		const dbInterface = client || db;
+		const dbInterface = this._db(client);
 		try {
-			// Ensure the primary key is allowed (it should be by default)
+			if (!this.primaryKey) {
+				throw new InternalServerError(
+					`Cannot delete from ${this.tableName}: no primary key configured`
+				);
+			}
+
 			if (!this.isColumnAllowed(this.primaryKey)) {
 				throw new InternalServerError(
 					`Primary key ${this.primaryKey} is not in the allowed columns list for ${this.tableName}`
 				);
 			}
 
-			const query = `
-        DELETE FROM ${this.tableName}
-        WHERE ${this.primaryKey} = $1
-        RETURNING ${this.primaryKey}
-      `;
+			const deleted = await dbInterface
+				.deleteFrom(this.tableName)
+				.where(this.primaryKey, '=', id)
+				.returning(this.primaryKey)
+				.executeTakeFirst();
 
-			const result = await dbInterface.query(query, [id]);
-
-			// Throw NotFoundError if no rows were deleted (entity didn't exist)
-			if (result.rows.length === 0) {
+			if (!deleted) {
 				throw new NotFoundError(
 					`${this.tableName.slice(0, -1)} with ID ${id} not found for deletion`
 				);
 			}
-			return true; // Explicitly return true on success
+
+			return true;
 		} catch (error) {
-			// Re-throw known errors
 			if (error instanceof NotFoundError || error instanceof InternalServerError) {
 				throw error;
 			}
@@ -560,159 +544,24 @@ export class BaseEntityService {
 	 */
 	async exists(id) {
 		try {
-			// Ensure the primary key is allowed (it should be by default)
+			if (!this.primaryKey) {
+				throw new Error(`Cannot exists() for ${this.tableName}: no primary key configured`);
+			}
+
 			if (!this.isColumnAllowed(this.primaryKey)) {
 				throw new Error(`Primary key ${this.primaryKey} is not in the allowed columns list`);
 			}
 
-			const query = `
-        SELECT 1 
-        FROM ${this.tableName}
-        WHERE ${this.primaryKey} = $1
-        LIMIT 1
-      `;
+			const row = await this._selectFrom()
+				.select(this.primaryKey)
+				.where(this.primaryKey, '=', id)
+				.limit(1)
+				.executeTakeFirst();
 
-			const result = await db.query(query, [id]);
-
-			return result.rows.length > 0;
+			return !!row;
 		} catch (error) {
 			console.error(`Error in ${this.tableName}.exists(${id}):`, error);
 			return false;
-		}
-	}
-
-	/**
-	 * Search entities by text columns
-	 * @param {string} searchTerm - Search term
-	 * @param {Array<string>} searchColumns - Columns to search in (DEPRECATED: use searchVectorColumn)
-	 * @param {string} [searchVectorColumn='search_vector'] - The tsvector column to search against.
-	 * @param {string} [searchConfig='english'] - The text search configuration.
-	 * @param {Object} options - Additional options (page, limit, etc.)
-	 * @param {number|null} [options.userId=null] - User ID for permission checking.
-	 * @returns {Promise<Object>} - Search results with pagination
-	 */
-	async search(
-		searchTerm,
-		searchColumns,
-		options = {},
-		searchVectorColumn = 'search_vector',
-		searchConfig = 'english'
-	) {
-		try {
-			const {
-				page = 1,
-				limit = 10,
-				sortBy = null,
-				sortOrder = 'desc',
-				columns = this.defaultColumns,
-				userId = null // For permission checking
-			} = options;
-
-			// --- BEGIN DEPRECATION WARNING for searchColumns ---
-			if (searchColumns && Array.isArray(searchColumns) && searchColumns.length > 0) {
-				console.warn(`The 'searchColumns' parameter in BaseEntityService.search() is DEPRECATED and will be removed. 
-          Configure a tsvector column ('${searchVectorColumn}') in your database and service instead.`);
-				// Optional: Fallback to old LIKE search if searchVectorColumn check fails?
-				// For now, we proceed assuming tsvector is preferred.
-			}
-			// --- END DEPRECATION WARNING ---
-
-			// Validate tsvector column existence (basic check - assumes it exists in DB)
-			// A more robust check might involve querying information_schema, but adds overhead.
-			// We also need to ensure it's allowed if specific columns are enforced.
-			// if (!this.isColumnAllowed(searchVectorColumn)) { // Optional: uncomment if searchVectorColumn must be in allowedColumns
-			//   throw new ValidationError(`Search vector column '${searchVectorColumn}' is not allowed.`);
-			// }
-
-			// Validate columns to return
-			const validColumns = columns.filter((col) => col === '*' || this.isColumnAllowed(col));
-
-			// If no valid columns, default to primary key
-			if (validColumns.length === 0) {
-				validColumns.push(this.primaryKey);
-			}
-
-			const offset = (page - 1) * limit;
-			// Prepare the search term for tsquery (plainto_tsquery handles basic parsing and stemming)
-			const tsQueryParam = searchTerm;
-
-			// Build search conditions
-			// Use tsquery for full-text search
-			const searchCondition = `${searchVectorColumn} @@ plainto_tsquery($1, $2)`;
-			const initialParams = [searchConfig, tsQueryParam];
-			let currentParamCount = initialParams.length;
-
-			// Combine with permission and other filters using _buildWhereClause
-			// Pass the search condition as a raw filter (needs careful handling)
-			// TODO: How to best integrate raw SQL conditions with _buildWhereClause?
-			// Option 1: Add a special filter key like '__raw'.
-			// Option 2: Modify _buildWhereClause to accept initial conditions.
-			// Option 3: Build search and filter WHERE clauses separately and combine.
-			// Let's try Option 3 for now.
-
-			const {
-				whereClause: filterWhereClause,
-				queryParams: filterQueryParams,
-				paramCount: filterParamCount
-			} = this._buildWhereClause(options.filters || {}, userId, currentParamCount);
-
-			// Combine conditions
-			const combinedConditions = [searchCondition];
-			if (filterWhereClause) {
-				// Extract conditions from filterWhereClause (remove 'WHERE ')
-				combinedConditions.push(filterWhereClause.substring(6));
-			}
-			const finalWhereClause = `WHERE ${combinedConditions.join(' AND ')}`;
-			const finalQueryParams = [...initialParams, ...filterQueryParams];
-			currentParamCount = filterParamCount; // Update param count
-
-			// Count total matches
-			const countQuery = `
-        SELECT COUNT(*)
-        FROM ${this.tableName}
-        ${finalWhereClause}
-      `;
-
-			const countResult = await db.query(countQuery, finalQueryParams);
-			const totalItems = parseInt(countResult.rows[0].count);
-
-			// Build ORDER BY clause with validation
-			let orderBy;
-			if (sortBy && this.isColumnAllowed(sortBy)) {
-				const sanitizedSortOrder = this.validateSortOrder(sortOrder);
-				orderBy = `ORDER BY ${sortBy} ${sanitizedSortOrder}, ${this.primaryKey} ${sanitizedSortOrder}`;
-			} else {
-				// Default sort by relevance when searching
-				orderBy = `ORDER BY ts_rank_cd(${searchVectorColumn}, plainto_tsquery($1, $2)) DESC, ${this.primaryKey} DESC`;
-			}
-
-			// Main search query
-			const query = `
-        SELECT ${validColumns.join(', ')}
-        FROM ${this.tableName}
-        ${finalWhereClause}
-        ${orderBy}
-        LIMIT $${currentParamCount + 1} OFFSET $${currentParamCount + 2}
-      `;
-
-			const result = await db.query(query, [...finalQueryParams, limit, offset]);
-
-			return {
-				items: result.rows,
-				pagination: {
-					page: parseInt(page),
-					limit: parseInt(limit),
-					totalItems,
-					totalPages: Math.ceil(totalItems / limit)
-				}
-			};
-		} catch (error) {
-			// Re-throw known errors
-			if (error instanceof ValidationError) {
-				throw error;
-			}
-			console.error(`Error in ${this.tableName}.search():`, error);
-			throw new DatabaseError(`Failed to search ${this.tableName}`, error);
 		}
 	}
 
@@ -722,19 +571,9 @@ export class BaseEntityService {
 	 * @returns {Promise<any>} - Result of the callback function
 	 */
 	async withTransaction(callback) {
-		const client = await db.getClient();
-		try {
-			await client.query('BEGIN');
-			const result = await callback(client);
-			await client.query('COMMIT');
-			return result;
-		} catch (error) {
-			await client.query('ROLLBACK');
-			console.error(`Transaction error in ${this.tableName}:`, error);
-			throw error;
-		} finally {
-			client.release();
-		}
+		return db.kyselyDb.transaction().execute(async (trx) => {
+			return await callback(trx);
+		});
 	}
 
 	/**
@@ -747,14 +586,17 @@ export class BaseEntityService {
 	 * @throws {ForbiddenError} If user is not authorized
 	 */
 	async canUserEdit(entityId, userId, client = null) {
-		// Use the provided client or the default db connection
-		const dbInterface = client || db;
+		const dbInterface = this._db(client);
 
 		// Check if user is admin
 		if (userId) {
-			const userResult = await dbInterface.query('SELECT role FROM users WHERE id = $1', [userId]);
-			if (userResult.rows.length > 0 && userResult.rows[0].role === 'admin') {
-				return true; // Admins can edit anything
+			const userRow = await dbInterface
+				.selectFrom('users')
+				.select('role')
+				.where('id', '=', userId)
+				.executeTakeFirst();
+			if (userRow?.role === 'admin') {
+				return true;
 			}
 		}
 
@@ -774,16 +616,23 @@ export class BaseEntityService {
 		const { userIdColumn, editableByOthersColumn } = this.permissionConfig;
 
 		try {
-			// Fetch only necessary columns for permission check
-			const query = `SELECT ${userIdColumn}, ${editableByOthersColumn} FROM ${this.tableName} WHERE ${this.primaryKey} = $1`;
-			const result = await dbInterface.query(query, [entityId]);
+			if (!this.primaryKey) {
+				throw new InternalServerError(
+					`Cannot check edit permission for ${this.tableName}: no primary key configured`
+				);
+			}
 
-			if (result.rows.length === 0) {
+			const entity = await dbInterface
+				.selectFrom(this.tableName)
+				.select([userIdColumn, editableByOthersColumn])
+				.where(this.primaryKey, '=', entityId)
+				.executeTakeFirst();
+
+			if (!entity) {
 				throw new NotFoundError(
 					`${this.tableName.slice(0, -1)} with ID ${entityId} not found for permission check`
 				);
 			}
-			const entity = result.rows[0];
 
 			// Can edit if:
 			// 1. User created the entity (and userId is not null)
@@ -803,7 +652,7 @@ export class BaseEntityService {
 				);
 			}
 
-			return true; // Return true if no ForbiddenError was thrown
+			return true;
 		} catch (error) {
 			if (
 				error instanceof NotFoundError ||

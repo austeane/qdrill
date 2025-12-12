@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
 import * as dragManager from '../dragManager';
 import * as sectionsStore from '../sectionsStore';
-import * as historyStore from '../historyStore';
+import * as _historyStore from '../historyStore';
 
 // ------------------------------------------------------------------
 // MOCKS
@@ -322,22 +322,21 @@ describe('dragManager', () => {
 
 			it('should handle errors gracefully', () => {
 				// Force an error by manually calling the error handler
+				const resetSpy = vi.spyOn(dragManager, 'resetDragState');
 				try {
 					// Call the function with a setup that will throw an error
 					mockDragEvent.currentTarget = null;
-					// Force an error and catch it
-					dragManager.resetDragState = vi.fn(); // Mock resetDragState to test if it's called
 
 					// This should throw an error and call resetDragState
 					dragManager.startGroupDrag(mockDragEvent, 0, 'group1');
 
 					// Check resetDragState was called
-					expect(dragManager.resetDragState).toHaveBeenCalled();
-				} catch (e) {
+					expect(resetSpy).toHaveBeenCalled();
+				} catch {
 					// Expected error
 				} finally {
 					// Reset the mock
-					vi.restoreAllMocks();
+					resetSpy.mockRestore();
 					// Reset drag state manually for next tests
 					dragManager.dragState.set({
 						isDragging: false,
@@ -363,22 +362,21 @@ describe('dragManager', () => {
 
 			it('should handle errors gracefully', () => {
 				// Force an error by manually calling the error handler
+				const resetSpy = vi.spyOn(dragManager, 'resetDragState');
 				try {
 					// Call the function with a setup that will throw an error
 					mockDragEvent.currentTarget = null;
-					// Force an error and catch it
-					dragManager.resetDragState = vi.fn(); // Mock resetDragState to test if it's called
 
 					// This should throw an error and call resetDragState
 					dragManager.startSectionDrag(mockDragEvent, 0);
 
 					// Check resetDragState was called
-					expect(dragManager.resetDragState).toHaveBeenCalled();
-				} catch (e) {
+					expect(resetSpy).toHaveBeenCalled();
+				} catch {
 					// Expected error
 				} finally {
 					// Reset the mock
-					vi.restoreAllMocks();
+					resetSpy.mockRestore();
 					// Reset drag state manually for next tests
 					dragManager.dragState.set({
 						isDragging: false,

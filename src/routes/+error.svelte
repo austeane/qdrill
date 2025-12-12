@@ -12,7 +12,7 @@
 	$: errorType = getErrorType(status, error);
 	$: errorConfig = getErrorConfig(errorType);
 
-	function getErrorType(status, error) {
+	function getErrorType(status, _error) {
 		if (status === 404) return '404';
 		if (status === 403) return 'forbidden';
 		if (status === 500) return 'server';
@@ -111,7 +111,7 @@
 
 			<!-- Actions -->
 			<div class="space-y-3">
-				{#each errorConfig.actions as action}
+				{#each errorConfig.actions as action (action.label)}
 					{#if action.href}
 						<a
 							href={action.href}

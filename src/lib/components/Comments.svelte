@@ -80,7 +80,7 @@
 	{/if}
 
 	<ul>
-		{#each $comments as comment}
+		{#each $comments as comment (comment.id)}
 			<li class="mb-4 p-4 border border-gray-200 rounded-md">
 				<div class="flex justify-between">
 					<span class="font-semibold">{comment.user_name}</span>

@@ -155,9 +155,9 @@
 	<div class="form-content">
 		<!-- Type Selection -->
 		<div class="form-group">
-			<label class="form-label">Event Type</label>
+			<span class="form-label">Event Type</span>
 			<div class="type-grid">
-				{#each markerTypes as markerType}
+				{#each markerTypes as markerType (markerType.value)}
 					<button
 						class="type-option"
 						class:selected={type === markerType.value}
@@ -192,9 +192,9 @@
 
 		<!-- Color Selection -->
 		<div class="form-group">
-			<label class="form-label">Color</label>
+			<span class="form-label">Color</span>
 			<div class="color-grid">
-				{#each colors as c}
+				{#each colors as c (c)}
 					<button
 						class="color-option"
 						class:selected={color === c}
@@ -217,9 +217,9 @@
 
 		<!-- Date Selection -->
 		<div class="form-group">
-			<label class="form-label">
+			<span class="form-label">
 				{isMultiDay ? 'Date Range' : 'Date'}
-			</label>
+			</span>
 
 			<div class="date-inputs" class:multi={isMultiDay}>
 				<div class="date-field">

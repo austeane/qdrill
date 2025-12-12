@@ -5,7 +5,7 @@
 
 	let excalidrawError = null;
 	let isRetrying = false;
-	let excalidrawId = 'whiteboard-main';
+	let _excalidrawId = 'whiteboard-main';
 
 	function handleExcalidrawError(error) {
 		console.error('Excalidraw error:', error);

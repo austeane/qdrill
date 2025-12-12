@@ -4,7 +4,6 @@
 	import { toast } from '@zerodevx/svelte-toast';
 	import Dialog from '$lib/components/ui/Dialog.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
-	import { Button } from '$lib/components/ui/button';
 	import Checkbox from '$lib/components/ui/Checkbox.svelte';
 	import { toLocalISO } from '$lib/utils/date.js';
 
@@ -193,9 +192,9 @@
 		/>
 
 		<div class="form-group">
-			<label class="form-label">Color</label>
+			<span class="form-label">Color</span>
 			<div class="color-grid">
-				{#each colors as c}
+				{#each colors as c (c)}
 					<button
 						type="button"
 						class="color-option"

@@ -66,13 +66,13 @@
 		</div>
 
 		<div class="max-h-96 overflow-y-auto border rounded-lg">
-			{#each Object.entries(groupedPreview) as [monthKey, monthData]}
+			{#each Object.entries(groupedPreview) as [_monthKey, monthData] (_monthKey)}
 				<div class="border-b last:border-b-0">
 					<div class="bg-gray-50 px-4 py-2 font-medium text-gray-700 sticky top-0">
 						{monthData.label}
 					</div>
 					<div class="divide-y">
-						{#each monthData.dates as dateInfo}
+						{#each monthData.dates as dateInfo (dateInfo.date.toISOString())}
 							<div
 								class="px-4 py-2 flex items-center justify-between
                          {dateInfo.willCreate ? 'bg-white' : 'bg-gray-50'}"

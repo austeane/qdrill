@@ -8,8 +8,6 @@
 
 	let feedbackText = '';
 	let feedbackType = 'general';
-	let name = '';
-	let email = '';
 
 	async function submitFeedback() {
 		const deviceInfo = browser ? navigator.userAgent : 'Server-side';
@@ -31,8 +29,6 @@
 
 			feedbackText = '';
 			feedbackType = 'general';
-			name = '';
-			email = '';
 			feedbackModalVisible.set(false);
 		} catch (error) {
 			// Error handling already done by apiFetch

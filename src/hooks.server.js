@@ -7,13 +7,15 @@ import { kyselyDb } from '$lib/server/db.js';
 import { dev } from '$app/environment';
 
 if (!dev && process.env.SENTRY_DSN) {
-	Sentry.init({
-		dsn: process.env.SENTRY_DSN,
-		environment: 'production',
-		enabled: true,
-		tracesSampleRate: 1.0
-	});
-}
+		Sentry.init({
+			dsn: process.env.SENTRY_DSN,
+			environment: 'production',
+			enabled: true,
+			tracesSampleRate: 1.0,
+			// Sentry 10: Explicitly opt-in to IP address collection (now controlled by this flag)
+			sendDefaultPii: true
+		});
+	}
 
 export const handleError = Sentry.handleErrorWithSentry(async function _handleError({ error }) {
 	console.error('Uncaught error:', error);

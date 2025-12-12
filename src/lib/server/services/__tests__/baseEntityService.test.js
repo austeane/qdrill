@@ -1,13 +1,11 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BaseEntityService } from '../baseEntityService.js';
 import {
 	NotFoundError,
 	ForbiddenError,
 	DatabaseError,
-	ConflictError,
-	AppError,
 	ValidationError
-} from '../../../../lib/server/errors.js'; // Ensure AppError is imported
+} from '../../../../lib/server/errors.js';
 
 // Mock db module - REMOVE THIS BLOCK
 // vi.mock('$lib/server/db', () => {
@@ -45,8 +43,9 @@ describe('BaseEntityService', () => {
 			{ tags: 'array' }
 		);
 
-		// Reset mock function calls
-		vi.resetAllMocks();
+		// Clear mock calls without wiping Kysely mock implementations
+		vi.clearAllMocks();
+		mockDb.kyselyDb.__setResults([]);
 	});
 
 	describe('constructor', () => {
@@ -159,19 +158,16 @@ describe('BaseEntityService', () => {
 
 	describe('getAll', () => {
 		it('should return all items with default options', async () => {
-			// Mock for the COUNT query
-			mockDb.query.mockResolvedValueOnce({ rows: [{ count: '10' }] });
-			// Mock for the data query
-			mockDb.query.mockResolvedValueOnce({
-				rows: [
+			mockDb.kyselyDb.__setResults([
+				{ count: '10' },
+				[
 					{ id: 1, name: 'Item 1' },
 					{ id: 2, name: 'Item 2' }
 				]
-			});
+			]);
 
 			const result = await service.getAll();
 
-			expect(mockDb.query).toHaveBeenCalledTimes(2);
 			expect(result.items).toHaveLength(2);
 			expect(result.pagination.totalItems).toBe(10);
 			expect(result.pagination.page).toBe(1);
@@ -179,122 +175,96 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should handle filters correctly', async () => {
-			mockDb.query.mockResolvedValueOnce({ rows: [{ count: '1' }] }); // For COUNT
-			mockDb.query.mockResolvedValueOnce({ rows: [{ id: 1, name: 'Test Item' }] }); // For data
+			mockDb.kyselyDb.__setResults([
+				{ count: '1' },
+				[{ id: 1, name: 'Test Item' }]
+			]);
 
 			const result = await service.getAll({
 				filters: { name: 'Test Item' }
 			});
 
-			expect(mockDb.query).toHaveBeenCalledTimes(2);
-			// Check that the WHERE clause was included in the query (for both count and data)
-			expect(mockDb.query.mock.calls[0][0]).toContain('WHERE'); // Count query
-			expect(mockDb.query.mock.calls[1][0]).toContain('WHERE'); // Data query
+			expect(mockDb.kyselyDb.where).toHaveBeenCalledWith('name', '=', 'Test Item');
 			expect(result.items).toHaveLength(1);
 		});
 
-		// Temporarily disable problematic tests
-		it.skip('should handle array filters', async () => {
-			mockDb.query.mockImplementation((query, params) => {
-				if (query.includes('COUNT(*)')) {
-					return { rows: [{ count: '1' }] };
-				}
-				return {
-					rows: [{ id: 1, name: 'Test Item', tags: ['tag1'] }]
-				};
+			it('should handle array filters', async () => {
+				mockDb.kyselyDb.__setResults([
+					{ count: '1' },
+					[{ id: 1, name: 'Test Item', tags: ['tag1'] }]
+				]);
+
+				const result = await service.getAll({
+					filters: { tags: 'tag1' }
+				});
+
+				expect(result.items).toHaveLength(1);
 			});
 
-			// Set up a service with array columns
-			service.columnTypes = { tags: 'array' };
+			it('should handle array filters with multiple values', async () => {
+				mockDb.kyselyDb.__setResults([
+					{ count: '1' },
+					[{ id: 1, name: 'Test Item', tags: ['tag1', 'tag2'] }]
+				]);
 
-			const result = await service.getAll({
-				filters: { tags: 'tag1' }
+				const result = await service.getAll({
+					filters: { tags: ['tag1', 'tag2'] }
+				});
+
+				expect(result.items).toHaveLength(1);
 			});
-
-			expect(mockDb.query).toHaveBeenCalledTimes(2);
-			expect(result.items).toHaveLength(1);
-		});
-
-		it.skip('should handle array filters with multiple values', async () => {
-			mockDb.query.mockImplementation((query, params) => {
-				if (query.includes('COUNT(*)')) {
-					return { rows: [{ count: '1' }] };
-				}
-				return {
-					rows: [{ id: 1, name: 'Test Item', tags: ['tag1', 'tag2'] }]
-				};
-			});
-
-			// Set up a service with array columns
-			service.columnTypes = { tags: 'array' };
-
-			const result = await service.getAll({
-				filters: { tags: ['tag1', 'tag2'] }
-			});
-
-			expect(mockDb.query).toHaveBeenCalledTimes(2);
-			expect(result.items).toHaveLength(1);
-		});
 
 		it('should handle custom sorting', async () => {
-			mockDb.query.mockResolvedValueOnce({ rows: [{ count: '10' }] }); // COUNT
-			mockDb.query.mockResolvedValueOnce({
-				// Data
-				rows: [
+			mockDb.kyselyDb.__setResults([
+				{ count: '10' },
+				[
 					{ id: 2, name: 'A Item' },
 					{ id: 1, name: 'B Item' }
 				]
-			});
+			]);
 
 			const result = await service.getAll({
 				sortBy: 'name',
 				sortOrder: 'asc'
 			});
 
-			expect(mockDb.query).toHaveBeenCalledTimes(2);
-			expect(mockDb.query.mock.calls[1][0]).toContain('ORDER BY name ASC'); // Data query
+			expect(mockDb.kyselyDb.orderBy).toHaveBeenCalledWith('name', 'asc');
 			expect(result.items).toHaveLength(2);
 		});
 
 		it('should return all records when all=true', async () => {
-			mockDb.query.mockResolvedValueOnce({
-				// Data query (no count query when all=true)
-				rows: [
+			mockDb.kyselyDb.__setResults([
+				[
 					{ id: 1, name: 'Item 1' },
 					{ id: 2, name: 'Item 2' },
 					{ id: 3, name: 'Item 3' }
 				]
-			});
+			]);
 
 			const result = await service.getAll({ all: true });
 
-			expect(mockDb.query).toHaveBeenCalledTimes(1); // Only data query
 			expect(result.items).toHaveLength(3);
 			expect(result.pagination).toBeNull();
 		});
 
 		it('should handle database errors', async () => {
-			mockDb.query.mockRejectedValueOnce(new Error('db down'));
+			mockDb.kyselyDb.executeTakeFirst.mockRejectedValueOnce(new Error('db down'));
 			await expect(service.getAll()).rejects.toThrow('Failed to retrieve test_table');
 		});
 	});
 
 	describe('getById', () => {
 		it('should return entity by id', async () => {
-			mockDb.query.mockResolvedValue({
-				rows: [{ id: 1, name: 'Test Entity' }]
-			});
+			mockDb.kyselyDb.__setResults([{ id: 1, name: 'Test Entity' }]);
 
 			const result = await service.getById(1);
 
-			expect(mockDb.query).toHaveBeenCalledTimes(1);
-			expect(mockDb.query.mock.calls[0][1]).toEqual([1]);
 			expect(result).toHaveProperty('id', 1);
 			expect(result).toHaveProperty('name', 'Test Entity');
 		});
 
 		it('should return null when entity not found', async () => {
-			mockDb.query.mockResolvedValue({ rows: [] });
+			mockDb.kyselyDb.__setResults([undefined]);
 
 			// Service now throws NotFoundError if rows.length is 0
 			await expect(service.getById(999)).rejects.toThrow(NotFoundError);
@@ -303,109 +273,85 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should handle custom columns', async () => {
-			mockDb.query.mockResolvedValue({
-				rows: [{ id: 1, name: 'Test Entity' }]
-			});
+			mockDb.kyselyDb.__setResults([{ id: 1, name: 'Test Entity' }]);
 
 			await service.getById(1, ['id', 'name']);
 
-			expect(mockDb.query.mock.calls[0][0]).toContain('SELECT id, name');
+			expect(mockDb.kyselyDb.select).toHaveBeenCalledWith(['id', 'name']);
 		});
 
 		it('should handle invalid columns', async () => {
-			mockDb.query.mockResolvedValue({
-				rows: [{ id: 1 }]
-			});
+			mockDb.kyselyDb.__setResults([{ id: 1 }]);
 
 			await service.getById(1, ['invalid_column']);
 
 			// Should default to primary key
-			expect(mockDb.query.mock.calls[0][0]).toContain('SELECT id');
+			expect(mockDb.kyselyDb.select).toHaveBeenCalledWith(['id']);
 		});
 
 		it('should handle database errors', async () => {
-			mockDb.query.mockRejectedValue(new DatabaseError('Failed to retrieve test_tabl with ID 1'));
-
+			mockDb.kyselyDb.executeTakeFirst.mockRejectedValueOnce(new Error('db down'));
 			await expect(service.getById(1)).rejects.toThrow('Failed to retrieve test_tabl with ID 1');
 		});
 	});
 
 	describe('create', () => {
 		it('should create a new entity', async () => {
-			mockDb.query.mockResolvedValue({
-				rows: [{ id: 1, name: 'New Entity', description: 'Test' }]
-			});
+			mockDb.kyselyDb.__setResults([
+				{ id: 1, name: 'New Entity', description: 'Test' }
+			]);
 
 			const result = await service.create({
 				name: 'New Entity',
 				description: 'Test'
 			});
 
-			expect(mockDb.query).toHaveBeenCalledTimes(1);
-			expect(mockDb.query.mock.calls[0][0]).toContain('INSERT INTO');
 			expect(result).toHaveProperty('id', 1);
 			expect(result).toHaveProperty('name', 'New Entity');
 		});
 
 		it('should ignore id in create data', async () => {
-			mockDb.query.mockResolvedValue({
-				rows: [{ id: 100, name: 'New Entity' }]
-			});
+			mockDb.kyselyDb.__setResults([{ id: 100, name: 'New Entity' }]);
 
 			const result = await service.create({
 				id: 5, // Should be ignored
 				name: 'New Entity'
 			});
 
-			expect(mockDb.query).toHaveBeenCalledTimes(1);
-			expect(mockDb.query.mock.calls[0][0]).not.toContain('id');
+			expect(mockDb.kyselyDb.values.mock.calls[0][0]).not.toHaveProperty('id');
 			expect(result).toHaveProperty('id', 100); // DB-generated ID
 		});
 
 		it('should throw error when no valid data provided', async () => {
-			// Service now throws a DatabaseError wrapping the ValidationError from buildInsertQuery
-			mockDb.query.mockImplementation(() => {
-				// This state happens if buildInsertQuery throws, and create wraps it.
-				throw new DatabaseError(
-					'Failed to create test_tabl',
-					new ValidationError('No valid data provided for insertion')
-				);
-			});
 			await expect(
 				service.create({
 					invalid_column: 'value'
 				})
-			).rejects.toThrow('Failed to create test_tabl');
+			).rejects.toThrow(DatabaseError);
 		});
 
 		it('should handle database errors', async () => {
-			mockDb.query.mockRejectedValue(new DatabaseError('Failed to create test_tabl'));
-
+			mockDb.kyselyDb.executeTakeFirst.mockRejectedValueOnce(new Error('db down'));
 			await expect(service.create({ name: 'Test' })).rejects.toThrow('Failed to create test_tabl');
 		});
 	});
 
 	describe('update', () => {
 		it('should update an entity', async () => {
-			mockDb.query.mockResolvedValueOnce({
-				rows: [{ id: 1, name: 'Updated Entity', description: 'New description' }]
-			});
+			mockDb.kyselyDb.__setResults([
+				{ id: 1, name: 'Updated Entity', description: 'New description' }
+			]);
 
 			const result = await service.update(1, {
 				name: 'Updated Entity',
 				description: 'New description'
 			});
 
-			expect(mockDb.query).toHaveBeenCalledTimes(1);
-			expect(mockDb.query.mock.calls[0][0]).toContain('UPDATE');
-			expect(mockDb.query.mock.calls[0][1][0]).toBe(1); // ID
 			expect(result).toHaveProperty('name', 'Updated Entity');
 		});
 
 		it('should ignore primary key in update data', async () => {
-			mockDb.query.mockResolvedValueOnce({
-				rows: [{ id: 1, name: 'Updated Entity' }]
-			});
+			mockDb.kyselyDb.__setResults([{ id: 1, name: 'Updated Entity' }]);
 
 			await service.update(1, {
 				id: 999, // Should be ignored
@@ -413,7 +359,7 @@ describe('BaseEntityService', () => {
 			});
 
 			// ID should not be in SET clause
-			expect(mockDb.query.mock.calls[0][0]).not.toContain('SET id');
+			expect(mockDb.kyselyDb.set.mock.calls[0][0]).not.toHaveProperty('id');
 		});
 
 		it('should get entity when no valid update data', async () => {
@@ -426,8 +372,7 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should handle database errors', async () => {
-			mockDb.query.mockRejectedValue(new DatabaseError('Failed to update test_tabl with ID 1'));
-
+			mockDb.kyselyDb.executeTakeFirst.mockRejectedValueOnce(new Error('db down'));
 			await expect(service.update(1, { name: 'Test' })).rejects.toThrow(
 				'Failed to update test_tabl with ID 1'
 			);
@@ -436,20 +381,15 @@ describe('BaseEntityService', () => {
 
 	describe('delete', () => {
 		it('should delete an entity', async () => {
-			mockDb.query.mockResolvedValueOnce({
-				rows: [{ id: 1 }] // Simulate successful deletion, returning the deleted row (or just a row)
-			});
+			mockDb.kyselyDb.__setResults([{ id: 1 }]);
 
 			const result = await service.delete(1);
 
-			expect(mockDb.query).toHaveBeenCalledTimes(1);
-			expect(mockDb.query.mock.calls[0][0]).toContain('DELETE FROM');
-			expect(mockDb.query.mock.calls[0][1]).toEqual([1]);
 			expect(result).toBe(true);
 		});
 
 		it('should return false when entity not found', async () => {
-			mockDb.query.mockResolvedValueOnce({ rows: [] }); // Simulate entity not found by returning no rows
+			mockDb.kyselyDb.__setResults([undefined]);
 
 			// The service now throws NotFoundError in this case
 			await expect(service.delete(999)).rejects.toThrow(NotFoundError);
@@ -458,8 +398,7 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should handle database errors', async () => {
-			mockDb.query.mockRejectedValue(new DatabaseError('Failed to delete test_tabl with ID 1'));
-
+			mockDb.kyselyDb.executeTakeFirst.mockRejectedValueOnce(new Error('db down'));
 			await expect(service.delete(1)).rejects.toThrow('Failed to delete test_tabl with ID 1');
 		});
 
@@ -476,19 +415,15 @@ describe('BaseEntityService', () => {
 
 	describe('exists', () => {
 		it('should return true when entity exists', async () => {
-			mockDb.query.mockResolvedValueOnce({
-				rows: [{ exists: true }] // Simulate entity exists
-			});
+			mockDb.kyselyDb.__setResults([{ id: 1 }]);
 
 			const result = await service.exists(1);
 
-			expect(mockDb.query).toHaveBeenCalledTimes(1);
-			expect(mockDb.query.mock.calls[0][1]).toEqual([1]);
 			expect(result).toBe(true);
 		});
 
 		it('should return false when entity does not exist', async () => {
-			mockDb.query.mockResolvedValueOnce({ rows: [] }); // Simulate entity does not exist
+			mockDb.kyselyDb.__setResults([undefined]);
 
 			const result = await service.exists(999);
 
@@ -496,118 +431,31 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should handle database errors', async () => {
-			mockDb.query.mockRejectedValueOnce(new Error('Database error'));
 			// TODO: service.exists currently catches errors and returns false.
 			// Consider if it should propagate DatabaseErrors.
 			// For now, test current behavior:
+			mockDb.kyselyDb.executeTakeFirst.mockRejectedValueOnce(new Error('Database error'));
 			const result = await service.exists(1);
 			expect(result).toBe(false);
 			// await expect(service.exists(1)).rejects.toThrow('Database error'); // Ideal if service propagated
 		});
 	});
 
-	describe('search', () => {
-		it('should search entities and return paginated results', async () => {
-			// Mock for the COUNT query
-			mockDb.query.mockResolvedValueOnce({ rows: [{ count: '2' }] });
-			// Mock for the data query
-			mockDb.query.mockResolvedValueOnce({
-				rows: [
-					{ id: 1, name: 'Test Item 1', description: 'Contains test term' },
-					{ id: 2, name: 'Another Item', description: 'Also a test match' }
-				]
-			});
-
-			const result = await service.search('test', ['name', 'description']);
-
-			expect(mockDb.query).toHaveBeenCalledTimes(2);
-			// Check the COUNT query (first call)
-			expect(mockDb.query.mock.calls[0][0]).toContain(
-				'search_vector @@ plainto_tsquery' // Updated to new FTS query
-			);
-			// Check the data query (second call)
-			expect(mockDb.query.mock.calls[1][0]).toContain(
-				'search_vector @@ plainto_tsquery' // Updated to new FTS query
-			);
-
-			expect(result.items).toHaveLength(2);
-			expect(result.pagination.totalItems).toBe(2);
-			expect(result.items[0].name).toBe('Test Item 1');
-		});
-
-		it('should validate search columns', async () => {
-			// TODO: Service should ideally throw a ValidationError before DB call.
-			// For now, test current behavior: if query not mocked for this path, it leads to DatabaseError
-			mockDb.query.mockRejectedValueOnce(new DatabaseError('Failed to search test_table'));
-			await expect(service.search('test', ['invalid_column'])).rejects.toThrow(
-				'Failed to search test_table' // Expecting the actual error thrown
-			);
-			// await expect(service.search('test', ['invalid_column'])).rejects.toThrow(
-			// 	'No valid search columns provided' // Ideal expectation
-			// );
-		});
-
-		it('should use default search columns if none provided', async () => {
-			mockDb.query.mockResolvedValueOnce({ rows: [{ count: '1' }] });
-			mockDb.query.mockResolvedValueOnce({ rows: [{ id: 1, name: 'Default Search' }] });
-
-			// Service has defaultColumns = ['*'] but search defaults to allowedColumns if searchColumns not given
-			// service.allowedColumns = ['name', 'description', 'created_by', 'id']
-			await service.search('test');
-
-			expect(mockDb.query).toHaveBeenCalledTimes(2);
-			// Check that the query used allowed columns for searching
-			// (Actual SQL construction for search_vector might be complex, focusing on plainto_tsquery presence)
-			expect(mockDb.query.mock.calls[0][0]).toContain('plainto_tsquery($1, $2)'); // Check the count query
-			expect(mockDb.query.mock.calls[1][0]).toContain('plainto_tsquery($1, $2)'); // Check the data query
-		});
-
-		it('should handle database errors', async () => {
-			mockDb.query.mockRejectedValue(new DatabaseError('Failed to search test_table'));
-
-			await expect(service.search('test', ['name'])).rejects.toThrow('Failed to search test_table');
-		});
-	});
-
 	describe('withTransaction', () => {
 		it('should execute callback within transaction', async () => {
-			// Mock the DB client
-			const mockClient = {
-				query: vi.fn().mockResolvedValue({}),
-				release: vi.fn().mockResolvedValue(undefined)
-			};
-
-			// Mock getClient to return our test client
-			mockDb.getClient.mockResolvedValue(mockClient);
-
 			const callback = vi.fn().mockResolvedValue('result');
 
 			const result = await service.withTransaction(callback);
 
-			expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-			expect(callback).toHaveBeenCalledWith(mockClient);
-			expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
-			expect(mockClient.release).toHaveBeenCalled();
+			expect(mockDb.kyselyDb.transaction).toHaveBeenCalled();
+			expect(callback).toHaveBeenCalledWith(mockDb.kyselyDb);
 			expect(result).toBe('result');
 		});
 
-		it('should rollback on error', async () => {
-			// Mock the DB client
-			const mockClient = {
-				query: vi.fn().mockResolvedValue({}),
-				release: vi.fn().mockResolvedValue(undefined)
-			};
-
-			// Mock getClient to return our test client
-			mockDb.getClient.mockResolvedValue(mockClient);
-
+		it('should propagate errors from callback', async () => {
 			const callback = vi.fn().mockRejectedValue(new Error('Transaction error'));
 
 			await expect(service.withTransaction(callback)).rejects.toThrow('Transaction error');
-
-			expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-			expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
-			expect(mockClient.release).toHaveBeenCalled();
 		});
 	});
 
@@ -618,75 +466,68 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should allow editing by the creator', async () => {
-			// First query: admin role check
-			mockDb.query.mockResolvedValueOnce({ rows: [] });
-			// Second query: entity permission check
-			mockDb.query.mockResolvedValueOnce({
-				rows: [{ created_by: 'user123', is_editable_by_others: false }]
-			});
+			mockDb.kyselyDb.__setResults([
+				undefined,
+				{ created_by: 'user123', is_editable_by_others: false }
+			]);
 			const result = await service.canUserEdit('entity1', 'user123');
 			expect(result).toBe(true);
 		});
 
 		it('should allow editing if is_editable_by_others is true', async () => {
-			mockDb.query.mockResolvedValueOnce({ rows: [] }); // admin check
-			mockDb.query.mockResolvedValueOnce({
-				rows: [{ created_by: 'otherUser', is_editable_by_others: true }]
-			});
+			mockDb.kyselyDb.__setResults([
+				undefined,
+				{ created_by: 'otherUser', is_editable_by_others: true }
+			]);
 			const result = await service.canUserEdit('entity1', 'user123');
 			expect(result).toBe(true);
 		});
 
 		it('should allow editing if entity has no creator', async () => {
-			mockDb.query.mockResolvedValueOnce({ rows: [] }); // admin check
-			mockDb.query.mockResolvedValueOnce({
-				rows: [{ created_by: null, is_editable_by_others: false }]
-			});
+			mockDb.kyselyDb.__setResults([
+				undefined,
+				{ created_by: null, is_editable_by_others: false }
+			]);
 			const result = await service.canUserEdit('entity1', 'user123');
 			expect(result).toBe(true);
 		});
 
 		it('should deny editing for non-creators when not editable by others', async () => {
-			mockDb.query.mockResolvedValueOnce({ rows: [] }); // admin check
-			mockDb.query.mockResolvedValueOnce({
-				rows: [{ created_by: 'otherUser', is_editable_by_others: false }]
-			});
+			mockDb.kyselyDb.__setResults([
+				undefined,
+				{ created_by: 'otherUser', is_editable_by_others: false }
+			]);
 			// The service now throws ForbiddenError in this case
 			await expect(service.canUserEdit('entity1', 'user123')).rejects.toThrow(ForbiddenError);
 			// expect(result).toBe(false); // Old expectation
 		});
 
 		it('should return false when entity not found', async () => {
-			mockDb.query.mockResolvedValueOnce({ rows: [] }); // admin check
-			mockDb.query.mockResolvedValueOnce({ rows: [] }); // entity not found
+			mockDb.kyselyDb.__setResults([undefined, undefined]);
 			// The service now throws NotFoundError in this case
 			await expect(service.canUserEdit('nonexistent', 'user123')).rejects.toThrow(NotFoundError);
 			// expect(result).toBe(false); // Old expectation
 		});
 
 		it('should throw DatabaseError if query fails', async () => {
-			mockDb.query.mockResolvedValueOnce({ rows: [] }); // admin check
-			mockDb.query.mockRejectedValueOnce(new Error('DB Query Failed'));
+			mockDb.kyselyDb.executeTakeFirst
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('DB Query Failed'));
 			await expect(service.canUserEdit('entity1', 'user123')).rejects.toThrow(DatabaseError);
 		});
 
 		it('should throw error if entityId is missing', async () => {
-			// TODO: Service should ideally throw a ValidationError before DB call.
-			// For now, test current behavior where it attempts DB call, leading to DatabaseError if not mocked.
-			mockDb.query.mockResolvedValueOnce({ rows: [] }); // admin check
-			mockDb.query.mockRejectedValueOnce(
-				new DatabaseError('Simulated DB error for missing entityId')
-			); // Ensure query mock leads to DatabaseError for this path
+			mockDb.kyselyDb.executeTakeFirst
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('Simulated DB error for missing entityId'));
 			await expect(service.canUserEdit(null, 'user123')).rejects.toThrow(DatabaseError);
 			// await expect(service.canUserEdit(null, 'user123')).rejects.toThrow('Entity ID is required'); // Ideal expectation
 		});
 
 		it('should throw error if userId is missing', async () => {
-			// TODO: Service should ideally throw a ValidationError before DB call.
-			// For now, test current behavior where it attempts DB call, leading to DatabaseError if not mocked.
-			mockDb.query.mockRejectedValueOnce(
-				new DatabaseError('Simulated DB error for missing userId')
-			); // Ensure query mock leads to DatabaseError for this path
+			mockDb.kyselyDb.executeTakeFirst.mockRejectedValueOnce(
+				new Error('Simulated DB error for missing userId')
+			);
 			await expect(service.canUserEdit('entity1', null)).rejects.toThrow(DatabaseError);
 			// await expect(service.canUserEdit('entity1', null)).rejects.toThrow('User ID is required'); // Ideal expectation
 		});

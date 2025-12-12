@@ -102,7 +102,7 @@
 		$dragState.sourceSection === sectionIndex &&
 		$dragState.sourceGroupId === groupId;
 
-	$: isDropTarget =
+	$: _isDropTarget =
 		$dragState.targetSection === sectionIndex && $dragState.targetGroupId === groupId;
 </script>
 
@@ -130,7 +130,7 @@
 			class="grid gap-4"
 			style="--timeline-count: {groupTimelines.length}; grid-template-columns: repeat(var(--timeline-count), 1fr);"
 		>
-			{#each [...groupTimelines].sort() as timeline}
+			{#each [...groupTimelines].sort() as timeline (timeline)}
 				<TimelineColumn
 					{timeline}
 					{groupTimelines}

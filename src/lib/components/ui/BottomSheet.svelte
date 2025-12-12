@@ -154,7 +154,7 @@
 			role="button"
 			tabindex="-1"
 			aria-label="Close bottom sheet"
-		/>
+		></div>
 
 		<!-- Sheet -->
 		<div
@@ -184,7 +184,7 @@
 					tabindex="-1"
 					aria-label="Drag to close"
 				>
-					<div class="handle" />
+					<div class="handle"></div>
 				</div>
 			{/if}
 

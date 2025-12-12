@@ -93,7 +93,7 @@
 
 	<!-- Stats Overview -->
 	<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-		{#each [{ label: 'Drills Created', value: userData.drills.length }, { label: 'Practice Plans', value: userData.practicePlans.length }, { label: 'Likes Given', value: userData.votes.length }, { label: 'Comments Made', value: userData.comments.length }] as stat}
+		{#each [{ label: 'Drills Created', value: userData.drills.length }, { label: 'Practice Plans', value: userData.practicePlans.length }, { label: 'Likes Given', value: userData.votes.length }, { label: 'Comments Made', value: userData.comments.length }] as stat (stat.label)}
 			<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm text-center">
 				<p class="text-2xl font-bold" style="color: var(--color-theme-1)">{stat.value}</p>
 				<p class="text-gray-600 dark:text-gray-300">{stat.label}</p>
@@ -110,7 +110,7 @@
 				<h2 class="text-xl font-semibold mb-4">Drills I've Created</h2>
 				{#if userData.drills.length > 0}
 					<ul class="divide-y">
-						{#each paginatedDrills as drill}
+						{#each paginatedDrills as drill (drill.id)}
 							<li class="py-4 first:pt-0 last:pb-0">
 								<h3 class="text-lg font-bold">
 									<a href={`/drills/${drill.id}`} class="text-theme-1 hover:underline"
@@ -156,7 +156,7 @@
 				<h2 class="text-xl font-semibold mb-4">Practice Plans I've Created</h2>
 				{#if userData.practicePlans.length > 0}
 					<ul class="divide-y">
-						{#each paginatedPracticePlans as plan}
+						{#each paginatedPracticePlans as plan (plan.id)}
 							<li class="py-4 first:pt-0 last:pb-0">
 								<h3 class="text-lg font-bold">
 									<a href={`/practice-plans/${plan.id}`} class="text-theme-1 hover:underline"
@@ -206,7 +206,7 @@
 						<h3 class="text-lg font-semibold mb-2">Drills</h3>
 						{#if getLikedDrills(userData.votes).length > 0}
 							<ul class="divide-y">
-								{#each getLikedDrills(userData.votes) as vote}
+								{#each getLikedDrills(userData.votes) as vote (vote.drill_id)}
 									<li class="py-3 first:pt-0 last:pb-0 flex justify-between items-center">
 										<a href={`/drills/${vote.drill_id}`} class="text-theme-1 hover:underline"
 											>{vote.item_name}</a
@@ -226,7 +226,7 @@
 						<h3 class="text-lg font-semibold mb-2">Practice Plans</h3>
 						{#if getLikedPracticePlans(userData.votes).length > 0}
 							<ul class="divide-y">
-								{#each getLikedPracticePlans(userData.votes) as vote}
+								{#each getLikedPracticePlans(userData.votes) as vote (vote.practice_plan_id)}
 									<li class="py-3 first:pt-0 last:pb-0 flex justify-between items-center">
 										<a
 											href={`/practice-plans/${vote.practice_plan_id}`}
@@ -249,7 +249,7 @@
 				<h2 class="text-xl font-semibold mb-4">Recent Comments</h2>
 				{#if userData.comments.length > 0}
 					<ul class="divide-y">
-						{#each userData.comments as comment}
+						{#each userData.comments as comment (comment.id)}
 							<li class="py-4 first:pt-0 last:pb-0">
 								<p class="text-gray-800">{comment.content}</p>
 								<div class="mt-2 text-sm text-gray-500 dark:text-gray-400 flex flex-wrap gap-2">

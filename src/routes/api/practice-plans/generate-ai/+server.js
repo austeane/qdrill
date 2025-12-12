@@ -191,16 +191,18 @@ export async function POST({ request, locals }) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
-	try {
-		const requestBody = await request.json();
-		const validationResult = ParameterSchema.safeParse(requestBody.parameters);
-		if (!validationResult.success) {
-			console.error('Invalid input parameters:', validationResult.error.flatten());
-			return json(
-				{ error: 'Invalid input parameters.', issues: validationResult.error.flatten() },
-				{ status: 400 }
-			);
-		}
+		try {
+			const requestBody = await request.json();
+			const validationResult = ParameterSchema.safeParse(requestBody.parameters);
+			if (!validationResult.success) {
+				// Zod 4: Use .format() for better structured error messages
+				const formattedErrors = validationResult.error.format();
+				console.error('Invalid input parameters:', formattedErrors);
+				return json(
+					{ error: 'Invalid input parameters.', issues: formattedErrors },
+					{ status: 400 }
+				);
+			}
 		const parameters = validationResult.data;
 		const selectedModelInfo = MODEL_MAP[parameters.modelId];
 
@@ -357,9 +359,9 @@ Focus Areas: ${parameters.focusAreas?.join(', ') || 'Not specified'}`;
 			schema: GeneratedPlanSchema, // Your Zod schema for the expected output
 			prompt: userMessageContent, // User message can go here
 			system: systemPrompt, // System prompt for overall instructions
-			maxTokens: 8000 // Increased from 2500
-			// temperature: 0.3, // Example: for more deterministic output
-		});
+				maxOutputTokens: 8000 // Increased from 2500
+				// temperature: 0.3, // Example: for more deterministic output
+			});
 
 		console.log('Received response from AI SDK.');
 		console.log('AI Usage:', usage);

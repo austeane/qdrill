@@ -22,7 +22,7 @@
 </script>
 
 <div class="group-filter">
-	{#each availableFilters as filter}
+	{#each availableFilters as filter (filter)}
 		<button
 			class="filter-btn {selectedFilter === filter ? 'active' : ''}"
 			on:click={() => handleFilterChange(filter)}

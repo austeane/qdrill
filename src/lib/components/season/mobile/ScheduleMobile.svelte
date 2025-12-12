@@ -196,8 +196,8 @@
 
 	<!-- Calendar Strip -->
 	<div class="calendar-strip">
-		{#each currentWeek as date}
-			{@const dateStr = getDateString(date)}
+		{#each currentWeek as date (date.toISOString())}
+			{@const _dateStr = getDateString(date)}
 			<button
 				class="calendar-day"
 				class:today={isToday(date)}
@@ -224,7 +224,7 @@
 
 	<!-- Day List -->
 	<div class="day-list">
-		{#each currentWeek as date}
+		{#each currentWeek as date (date.toISOString())}
 			{@const dayPractices = getDayPractices(date)}
 			{@const daySections = getDaySections(date)}
 			{@const dayMarkers = getDayMarkers(date)}
@@ -257,7 +257,7 @@
 					<!-- Practices -->
 					{#if dayPractices.length > 0}
 						<div class="practices-section">
-							{#each dayPractices as practice}
+							{#each dayPractices as practice (practice.id)}
 								<button
 									class="practice-chip"
 									class:draft={practice.status === 'draft'}
@@ -282,7 +282,7 @@
 						<div class="sections-row">
 							<span class="row-label">Sections:</span>
 							<div class="section-chips">
-								{#each daySections as section}
+								{#each daySections as section (section.id)}
 									<div
 										class="section-chip"
 										style="background-color: {section.color}20; border-color: {section.color}"
@@ -299,7 +299,7 @@
 						<div class="markers-row">
 							<span class="row-label">Events:</span>
 							<div class="marker-chips">
-								{#each dayMarkers as marker}
+								{#each dayMarkers as marker (marker.id)}
 									<button
 										class="marker-chip"
 										style="background-color: {marker.color}20; border-color: {marker.color}"

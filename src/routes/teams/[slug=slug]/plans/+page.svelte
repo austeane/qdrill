@@ -1,8 +1,6 @@
 <script>
-	import { page } from '$app/stores';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
-	import { goto } from '$app/navigation';
-	import { Search, Calendar, Filter } from 'lucide-svelte';
+	import { Search, Filter } from 'lucide-svelte';
 	import { formatInTz } from '$lib/utils/formatInTz.js';
 
 	export let data;
@@ -176,7 +174,7 @@
 
 		<div class="filter-group">
 			<select bind:value={selectedType} class="filter-select">
-				{#each practiceTypes as type}
+				{#each practiceTypes as type (type.value)}
 					<option value={type.value}>{type.label}</option>
 				{/each}
 			</select>
@@ -184,7 +182,7 @@
 
 		<div class="filter-group">
 			<select bind:value={dateFilter} class="filter-select">
-				{#each dateFilters as filter}
+				{#each dateFilters as filter (filter.value)}
 					<option value={filter.value}>{filter.label}</option>
 				{/each}
 			</select>
@@ -201,7 +199,7 @@
 	<!-- Practice Plans List -->
 	{#if filteredPlans.length > 0}
 		<div class="practice-plans-grid">
-			{#each filteredPlans as plan}
+			{#each filteredPlans as plan (plan.id)}
 				<a href={`/teams/${team.slug}/plans/${plan.id}`} class="practice-plan-card">
 					<div class="card-header">
 						<h3 class="plan-name">{plan.name || 'Untitled Practice'}</h3>

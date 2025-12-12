@@ -1,21 +1,15 @@
 <script>
-	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
-	import Comments from '$lib/components/Comments.svelte';
-	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
 	import Timeline from '../../../../practice-plans/viewer/Timeline.svelte';
 	import Section from '../../../../practice-plans/viewer/Section.svelte';
 	import DeletePracticePlan from '$lib/components/DeletePracticePlan.svelte';
 	import GroupFilter from '$lib/components/practice-plan/GroupFilter.svelte';
 	import { filterSectionsByGroup } from '$lib/utils/groupFilter.js';
-	import { goto } from '$app/navigation';
-	import { toast } from '@zerodevx/svelte-toast';
-	import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	export let data;
-	const { practicePlan, team, userRole, isTeamContext } = data;
+	const { practicePlan, team, userRole } = data;
 
 	// Store for tracking the current section
 	const currentSectionId = writable(null);
@@ -225,7 +219,7 @@
 
 	<!-- Sections -->
 	<div class="sections-container">
-		{#each filteredSections as section, index}
+		{#each filteredSections as section, index (section.id)}
 			<div data-section-id={section.id}>
 				<Section {section} {index} />
 			</div>

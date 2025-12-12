@@ -16,6 +16,7 @@ exports.down = (pgm) => {
 	// Best-effort restore of the previous index (if created_at exists).
 	try {
 		pgm.sql('CREATE INDEX IF NOT EXISTS idx_drills_created_at ON drills (created_at DESC);');
-	} catch {}
+	} catch {
+		// Column may not exist - ignore
+	}
 };
-

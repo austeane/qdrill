@@ -2,8 +2,7 @@
 	import {
 		handleTimelineDragOver,
 		handleDragLeave,
-		handleDrop,
-		handleDragEnd
+		handleDrop
 	} from '$lib/stores/dragManager';
 	import DrillItem from './DrillItem.svelte';
 	// Remove direct store imports
@@ -131,7 +130,7 @@
 				Drag drills here
 			</div>
 		{:else}
-			{#each timelineSpecificItems as item, timelineItemIndex}
+			{#each timelineSpecificItems as item, timelineItemIndex (item.id)}
 				{@const originalItemIndex = findOriginalItemIndex(item)}
 				<DrillItem
 					{item}

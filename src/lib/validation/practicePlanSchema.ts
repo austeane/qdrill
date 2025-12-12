@@ -1,17 +1,4 @@
 import { z } from 'zod';
-import { drillSchema } from './drillSchema'; // Import the drill schema if needed for item validation
-
-// Constants
-const phaseOfSeasonOptions = [
-	'Offseason',
-	'Early season, new players',
-	'Mid season, skill building',
-	'Tournament tuneup',
-	'End of season, peaking'
-] as const;
-
-const visibilityOptions = ['public', 'unlisted', 'private'] as const;
-const practicePlanItemType = z.enum(['drill', 'break', 'one-off']); // Add 'one-off' if it's a valid type
 
 // Base schema for Practice Plan Item (shape only)
 const practicePlanItemBaseSchema = z.object({

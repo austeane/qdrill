@@ -1,10 +1,9 @@
 <script>
-	import { page } from '$app/stores';
 	import SeasonTimelineViewer from '$lib/components/season/SeasonTimelineViewer.svelte';
 
 	export let data;
 
-	$: ({ season, practices, markers, sections, isPublicView, icsUrl } = data);
+	$: ({ season, practices, markers, sections, _isPublicView, icsUrl } = data);
 
 	function downloadIcs() {
 		window.location.href = icsUrl;
@@ -84,7 +83,7 @@
 				.slice(0, 5)}
 			{#if upcomingPractices.length > 0}
 				<div class="space-y-3">
-					{#each upcomingPractices as practice}
+					{#each upcomingPractices as practice (practice.id)}
 						<div class="flex items-center justify-between p-3 bg-gray-50 rounded">
 							<div>
 								<div class="font-medium">{practice.name || 'Practice'}</div>
@@ -127,7 +126,7 @@
 		<div class="mt-8 bg-white rounded-lg shadow-lg p-6">
 			<h2 class="text-xl font-semibold mb-4">Important Dates</h2>
 			<div class="space-y-3">
-				{#each markers as marker}
+				{#each markers as marker (marker.id)}
 					{@const emoji =
 						{
 							tournament: '🏆',

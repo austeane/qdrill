@@ -1,7 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
-	import { page } from '$app/stores';
 	import { authClient } from '$lib/auth-client';
 	import { ThumbsUp, ThumbsDown } from 'lucide-svelte';
 	import { toast } from '@zerodevx/svelte-toast';

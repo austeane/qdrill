@@ -70,8 +70,9 @@
 
 <div class="space-y-4">
 	<div>
-		<label class="block text-sm font-medium text-gray-700 mb-1"> Recurrence Name </label>
+		<label for="recurrence-name" class="block text-sm font-medium text-gray-700 mb-1"> Recurrence Name </label>
 		<input
+			id="recurrence-name"
 			type="text"
 			bind:value={formData.name}
 			class="w-full border rounded px-3 py-2"
@@ -81,8 +82,8 @@
 	</div>
 
 	<div>
-		<label class="block text-sm font-medium text-gray-700 mb-1"> Pattern </label>
-		<select bind:value={formData.pattern} class="w-full border rounded px-3 py-2">
+		<label for="recurrence-pattern" class="block text-sm font-medium text-gray-700 mb-1"> Pattern </label>
+		<select id="recurrence-pattern" bind:value={formData.pattern} class="w-full border rounded px-3 py-2">
 			<option value="weekly">Weekly</option>
 			<option value="biweekly">Biweekly</option>
 			<option value="monthly">Monthly</option>
@@ -91,9 +92,9 @@
 
 	{#if formData.pattern === 'weekly' || formData.pattern === 'biweekly'}
 		<div>
-			<label class="block text-sm font-medium text-gray-700 mb-2"> Days of Week </label>
+			<span class="block text-sm font-medium text-gray-700 mb-2"> Days of Week </span>
 			<div class="flex flex-wrap gap-2">
-				{#each weekDays as day}
+				{#each weekDays as day (day.value)}
 					<button
 						type="button"
 						class="px-3 py-2 rounded border transition-colors
@@ -111,9 +112,9 @@
 
 	{#if formData.pattern === 'monthly'}
 		<div>
-			<label class="block text-sm font-medium text-gray-700 mb-2"> Days of Month </label>
+			<span class="block text-sm font-medium text-gray-700 mb-2"> Days of Month </span>
 			<div class="grid grid-cols-7 gap-1">
-				{#each Array(31) as _, i}
+				{#each Array(31) as _, i (i)}
 					{@const day = i + 1}
 					<button
 						type="button"
@@ -132,8 +133,9 @@
 
 	<div class="grid grid-cols-2 gap-4">
 		<div>
-			<label class="block text-sm font-medium text-gray-700 mb-1"> Time of Day </label>
+			<label for="recurrence-time" class="block text-sm font-medium text-gray-700 mb-1"> Time of Day </label>
 			<input
+				id="recurrence-time"
 				type="time"
 				bind:value={formData.time_of_day}
 				class="w-full border rounded px-3 py-2"
@@ -141,8 +143,9 @@
 		</div>
 
 		<div>
-			<label class="block text-sm font-medium text-gray-700 mb-1"> Duration (minutes) </label>
+			<label for="recurrence-duration" class="block text-sm font-medium text-gray-700 mb-1"> Duration (minutes) </label>
 			<input
+				id="recurrence-duration"
 				type="number"
 				bind:value={formData.duration_minutes}
 				min="15"
@@ -154,12 +157,12 @@
 	</div>
 
 	<div>
-		<label class="block text-sm font-medium text-gray-700 mb-1">
+		<label for="recurrence-template" class="block text-sm font-medium text-gray-700 mb-1">
 			Template Practice Plan (Optional)
 		</label>
-		<select bind:value={formData.template_plan_id} class="w-full border rounded px-3 py-2">
+		<select id="recurrence-template" bind:value={formData.template_plan_id} class="w-full border rounded px-3 py-2">
 			<option value={null}>Use season template</option>
-			{#each templates as template}
+			{#each templates as template (template.id)}
 				<option value={template.id}>{template.name}</option>
 			{/each}
 		</select>

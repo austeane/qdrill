@@ -186,7 +186,7 @@
 		<div class="progress-line" style="height: {$scrollPosition}%"></div>
 
 		<!-- Timeline sections -->
-		{#each timelineItems as section, index}
+		{#each timelineItems as section, index (section.id)}
 			<div
 				role="button"
 				tabindex="0"
@@ -204,7 +204,7 @@
 
 				<!-- Section items -->
 				<div class="section-items">
-					{#each section.items as item}
+					{#each section.items as item (item.id)}
 						{#if item.type === 'parallel'}
 							{@const timelineGroups = groupByTimeline(item.items)}
 							<!-- Parallel group -->
@@ -213,9 +213,9 @@
 								style="height: {(item.duration / calculateSectionDuration(section.items)) * 100}%"
 							>
 								<div class="parallel-split">
-									{#each Object.entries(timelineGroups) as [timeline, timelineItems]}
+									{#each Object.entries(timelineGroups) as [_timeline, timelineItems] (_timeline)}
 										<div class="parallel-timeline">
-											{#each timelineItems as parallelItem, idx}
+											{#each timelineItems as parallelItem, idx (parallelItem.id || idx)}
 												{@const totalTimelineDuration = timelineItems.reduce(
 													(sum, i) => sum + i.duration,
 													0

@@ -5,9 +5,8 @@
 	import { onDestroy } from 'svelte';
 	import '../app.css';
 	import AppShell from '$lib/components/AppShell.svelte';
-	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
+	import { SvelteToast } from '@zerodevx/svelte-toast';
 	import FeedbackButton from '$lib/components/FeedbackButton.svelte';
-	import Spinner from '$lib/components/Spinner.svelte';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import ErrorBoundary from '$lib/components/ErrorBoundary.svelte';
 	import { inject } from '@vercel/analytics';

@@ -1,6 +1,6 @@
 import { redirect, error } from '@sveltejs/kit';
 import { seasonService } from '$lib/server/services/seasonService.js';
-import { query } from '$lib/server/db.js';
+import { kyselyDb } from '$lib/server/db.js';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ locals, url, parent }) {
@@ -55,18 +55,19 @@ export async function load({ locals, url, parent }) {
 		// Get practices for the season and week
 		// Non-admins should only see published practices
 		const isAdmin = userRole === 'admin' || userRole === 'coach';
-		let sql = `
-      SELECT * FROM practice_plans
-      WHERE team_id = $1 AND season_id = $2
-        AND scheduled_date BETWEEN $3 AND $4`;
-		const params = [team.id, season.id, startDateStr, endDateStr];
-		if (!isAdmin) {
-			sql += ` AND is_published = true`;
-		}
-		sql += ` ORDER BY scheduled_date, start_time`;
+		let qb = kyselyDb
+			.selectFrom('practice_plans')
+			.selectAll()
+			.where('team_id', '=', team.id)
+			.where('season_id', '=', season.id)
+			.where('scheduled_date', '>=', startDateStr)
+			.where('scheduled_date', '<=', endDateStr);
 
-		const practicesRes = await query(sql, params);
-		const practices = practicesRes.rows || [];
+		if (!isAdmin) {
+			qb = qb.where('is_published', '=', true);
+		}
+
+		const practices = await qb.orderBy('scheduled_date', 'asc').orderBy('start_time', 'asc').execute();
 
 		// Get markers for the season
 		let markers = [];
@@ -79,7 +80,7 @@ export async function load({ locals, url, parent }) {
 				const end = m.end_date || m.start_date || m.date;
 				return !(end < startDateStr || start > endDateStr);
 			});
-		} catch (err) {
+		} catch {
 			console.log('Markers service not available');
 		}
 

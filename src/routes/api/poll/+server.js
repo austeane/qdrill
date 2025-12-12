@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { sql } from '@vercel/postgres';
+import { kyselyDb, sql } from '$lib/server/db';
 import { handleApiError } from '../utils/handleApiError.js';
 import { NotFoundError } from '$lib/server/errors.js';
 
@@ -16,17 +16,26 @@ export async function POST({ request }) {
 			);
 		}
 
-		const { rows, rowCount } = await sql`
-            UPDATE poll_options 
-            SET votes = votes + 1
-            WHERE id = ${optionId}
-            RETURNING *`;
+		const optionIdInt = Number.parseInt(String(optionId), 10);
+		if (!Number.isFinite(optionIdInt)) {
+			return json(
+				{ error: { code: 'BAD_REQUEST', message: 'Invalid optionId' } },
+				{ status: 400 }
+			);
+		}
 
-		if (rowCount === 0) {
+		const updated = await kyselyDb
+			.updateTable('poll_options')
+			.set({ votes: sql`votes + 1` })
+			.where('id', '=', optionIdInt)
+			.returningAll()
+			.executeTakeFirst();
+
+		if (!updated) {
 			throw new NotFoundError('Poll option not found'); // Throw custom error
 		}
 
-		return json(rows[0]); // Return updated option
+		return json(updated); // Return updated option
 	} catch (error) {
 		return handleApiError(error); // Use handleApiError
 	}

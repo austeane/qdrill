@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { seasonSectionService } from '$lib/server/services/seasonSectionService.js';
 import { seasonService } from '$lib/server/services/seasonService.js';
 import { teamMemberService } from '$lib/server/services/teamMemberService.js';
+import { sql } from '$lib/server/db';
 
 export async function PUT({ locals, params, request }) {
 	if (!locals.user) return json({ error: 'Authentication required' }, { status: 401 });
@@ -19,13 +20,15 @@ export async function PUT({ locals, params, request }) {
 			return json({ error: 'Invalid payload' }, { status: 400 });
 		}
 
-		await seasonSectionService.withTransaction(async (client) => {
+		await seasonSectionService.withTransaction(async (trx) => {
 			for (const s of sections) {
 				if (!s?.id || s?.order === undefined) continue;
-				await client.query(
-					'UPDATE season_sections SET display_order = $1, updated_at = NOW() WHERE id = $2 AND season_id = $3',
-					[s.order, s.id, params.seasonId]
-				);
+				await trx
+					.updateTable('season_sections')
+					.set({ display_order: s.order, updated_at: sql`now()` })
+					.where('id', '=', s.id)
+					.where('season_id', '=', params.seasonId)
+					.execute();
 			}
 		});
 

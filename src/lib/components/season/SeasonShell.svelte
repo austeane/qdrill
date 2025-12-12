@@ -79,7 +79,7 @@
 		</main>
 
 		<nav class="mobile-nav">
-			{#each visibleTabs as tab}
+			{#each visibleTabs as tab (tab.id)}
 				<button
 					class="nav-tab"
 					class:active={activeTab === tab.id}
@@ -117,7 +117,7 @@
 				</div>
 
 				<nav class="desktop-nav">
-					{#each visibleTabs as tab}
+					{#each visibleTabs as tab (tab.id)}
 						<button
 							class="desktop-tab"
 							class:active={activeTab === tab.id}

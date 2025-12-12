@@ -148,8 +148,8 @@
 		return months;
 	}
 
-	// Group markers by day for collision detection
-	function getMarkersForDay(date) {
+	// Group markers by day for collision detection (currently unused but kept for potential future use)
+	function _getMarkersForDay(date) {
 		const dateStr = formatDateISO(date);
 		return markers.filter((m) => {
 			const startDate = formatDateISO(m.start_date || m.date);
@@ -227,7 +227,7 @@
 				class="timeline-header sticky top-0 bg-gray-50 border-b z-20"
 				style="height: {headerHeight}px"
 			>
-				{#each getMonths() as month}
+				{#each getMonths() as month (month.name)}
 					<div
 						class="month-header absolute flex items-center justify-center font-medium text-sm border-r border-gray-300"
 						style="left: {month.x}px; width: {month.width}px; height: {headerHeight / 2}px"
@@ -238,7 +238,7 @@
 
 				<!-- Day numbers -->
 				<div class="absolute" style="top: {headerHeight / 2}px">
-					{#each getDays() as day, i}
+					{#each getDays() as day, i (day.toISOString())}
 						<div
 							class="day-header absolute text-xs text-center border-r"
 							class:week-divider={day.getDay() === 1}
@@ -259,7 +259,7 @@
 					class="grid-bg absolute"
 					style="top: 0; left: 0; width: {timelineWidth}px; height: {bodyHeight}px;"
 				>
-					{#each getDays() as day, i}
+					{#each getDays() as day, i (day.toISOString())}
 						{@const isWeekend = day.getDay() === 0 || day.getDay() === 6}
 						{@const isToday = formatDateISO(day) === formatDateISO(new Date())}
 						<div
@@ -274,8 +274,8 @@
 
 				<!-- Sections -->
 				<div class="sections-lane relative" style="height: {sectionsHeight}px">
-					{#each stackedSections as row, rowIndex}
-						{#each row as section}
+					{#each stackedSections as row, rowIndex (rowIndex)}
+						{#each row as section (section.id)}
 							<div
 								class="section-bar absolute rounded"
 								style="
@@ -303,7 +303,7 @@
 					class="markers-lane absolute"
 					style="top: {sectionsHeight}px; height: {markersHeight}px; left: 0; right: 0"
 				>
-					{#each markers as marker}
+					{#each markers as marker (marker.id)}
 						{@const isRange =
 							marker.end_date && marker.end_date !== (marker.start_date || marker.date)}
 						{@const markerName = marker.title || marker.name}
@@ -349,7 +349,7 @@
 						style="top: {sectionsHeight +
 							markersHeight}px; height: {rowHeight}px; left: 0; right: 0"
 					>
-						{#each practices as practice}
+						{#each practices as practice (practice.id)}
 							<div
 								class="practice-chip absolute"
 								style="left: {dateToX(practice.scheduled_date) +

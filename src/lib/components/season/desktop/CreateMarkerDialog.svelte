@@ -260,11 +260,11 @@
 		</div>
 
 		<div>
-			<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+			<span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 				Event Color
-			</label>
+			</span>
 			<div class="flex gap-2 flex-wrap">
-				{#each colorOptions as option}
+				{#each colorOptions as option (option.value)}
 					<button
 						type="button"
 						class="w-10 h-10 rounded-lg border-2 transition-all {formData.color === option.value

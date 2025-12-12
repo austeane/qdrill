@@ -50,7 +50,7 @@ export const GET = authGuard(async ({ locals }) => {
 		} else if (err.message && typeof err.message !== 'string') {
 			try {
 				processedError = new Error(JSON.stringify(err.message));
-			} catch (stringifyError) {
+			} catch {
 				processedError = new Error('Error with non-string message that could not be stringified.');
 			}
 			processedError.stack = err.stack;

@@ -4,13 +4,14 @@ import { NotFoundError, DatabaseError, ValidationError } from '../../../../lib/s
 
 vi.mock('$lib/server/db');
 
-import db from '$lib/server/db'; // Import the default export directly
+import * as db from '$lib/server/db';
 
 describe('UserService', () => {
 	let userService;
 
 	beforeEach(() => {
-		vi.resetAllMocks();
+		vi.clearAllMocks();
+		db.kyselyDb.__setResults([]);
 		userService = new UserService();
 	});
 
@@ -27,18 +28,13 @@ describe('UserService', () => {
 	describe('getUserByEmail', () => {
 		it('should return user data when found', async () => {
 			const mockUser = { id: '123', name: 'Test User', email: 'test@example.com' };
-			db.query.mockResolvedValueOnce({
-				rows: [mockUser]
-			});
+			db.kyselyDb.__setResults([mockUser]);
 			const result = await userService.getUserByEmail('test@example.com');
-			expect(db.query).toHaveBeenCalledWith(expect.stringContaining('SELECT * FROM users'), [
-				'test@example.com'
-			]);
 			expect(result).toEqual(mockUser);
 		});
 
 		it('should throw NotFoundError when user not found', async () => {
-			db.query.mockResolvedValueOnce({ rows: [] });
+			db.kyselyDb.__setResults([undefined]);
 			await expect(userService.getUserByEmail('nonexistent@example.com')).rejects.toThrow(
 				NotFoundError
 			);
@@ -46,7 +42,7 @@ describe('UserService', () => {
 
 		it('should handle errors properly', async () => {
 			const mockError = new Error('Database error');
-			db.query.mockRejectedValueOnce(mockError);
+			db.kyselyDb.executeTakeFirst.mockRejectedValueOnce(mockError);
 			await expect(userService.getUserByEmail('test@example.com')).rejects.toThrow(DatabaseError);
 		});
 	});
@@ -87,14 +83,11 @@ describe('UserService', () => {
 	describe('setUserRole', () => {
 		it('should update user role successfully', async () => {
 			const mockUser = { id: '123', name: 'Test User', email: 'test@example.com', role: 'admin' };
-			db.query.mockResolvedValueOnce({ rows: [mockUser] });
+			db.kyselyDb.__setResults([mockUser]);
 
 			const result = await userService.setUserRole('123', 'admin');
 			expect(result).toEqual(mockUser);
-			expect(db.query).toHaveBeenCalledWith(
-				expect.stringMatching(/UPDATE users\s+SET role = \$1/),
-				['admin', '123']
-			);
+			expect(db.kyselyDb.updateTable).toHaveBeenCalledWith('users');
 		});
 
 		it('should throw ValidationError for invalid role', async () => {
@@ -103,12 +96,12 @@ describe('UserService', () => {
 		});
 
 		it('should throw NotFoundError when user not found', async () => {
-			db.query.mockResolvedValueOnce({ rows: [] });
+			db.kyselyDb.__setResults([undefined]);
 			await expect(userService.setUserRole('nonexistent', 'admin')).rejects.toThrow(NotFoundError);
 		});
 
 		it('should throw DatabaseError on database error', async () => {
-			db.query.mockRejectedValueOnce(new Error('Database error'));
+			db.kyselyDb.executeTakeFirst.mockRejectedValueOnce(new Error('Database error'));
 			await expect(userService.setUserRole('123', 'admin')).rejects.toThrow(DatabaseError);
 		});
 	});

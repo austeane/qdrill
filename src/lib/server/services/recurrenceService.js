@@ -1,5 +1,5 @@
 import { BaseEntityService } from './baseEntityService.js';
-import * as db from '$lib/server/db.js';
+import { kyselyDb } from '$lib/server/db.js';
 import { seasonUnionService } from './seasonUnionService.js';
 import { seasonMarkerService } from './seasonMarkerService.js';
 
@@ -65,18 +65,15 @@ class RecurrenceService extends BaseEntityService {
 	 * Get all recurrence patterns for a season
 	 */
 	async getBySeasonId(seasonId) {
-		const query = `
-      SELECT r.*, 
-             pp.name as template_name,
-             u.name as created_by_name
-      FROM season_recurrences r
-      LEFT JOIN practice_plans pp ON r.template_plan_id = pp.id
-      LEFT JOIN users u ON r.created_by = u.id
-      WHERE r.season_id = $1
-      ORDER BY r.created_at DESC
-    `;
-		const result = await db.query(query, [seasonId]);
-		return result.rows;
+		return await kyselyDb
+			.selectFrom('season_recurrences as r')
+			.leftJoin('practice_plans as pp', 'r.template_plan_id', 'pp.id')
+			.leftJoin('users as u', 'r.created_by', 'u.id')
+			.selectAll('r')
+			.select(['pp.name as template_name', 'u.name as created_by_name'])
+			.where('r.season_id', '=', seasonId)
+			.orderBy('r.created_at', 'desc')
+			.execute();
 	}
 
 	/**
@@ -174,19 +171,14 @@ class RecurrenceService extends BaseEntityService {
 		const dates = this.generateDatesFromPattern(recurrence, startDate, endDate);
 
 		// Check for existing practices and markers
-		const existingQuery = `
-      SELECT scheduled_date 
-      FROM practice_plans 
-      WHERE season_id = $1 
-        AND scheduled_date >= $2 
-        AND scheduled_date <= $3
-    `;
-		const existingResult = await db.query(existingQuery, [
-			recurrence.season_id,
-			startDate,
-			endDate
-		]);
-		const existingDates = new Set(existingResult.rows.map((r) => r.scheduled_date));
+		const existingResult = await kyselyDb
+			.selectFrom('practice_plans')
+			.select('scheduled_date')
+			.where('season_id', '=', recurrence.season_id)
+			.where('scheduled_date', '>=', startDate)
+			.where('scheduled_date', '<=', endDate)
+			.execute();
+		const existingDates = new Set(existingResult.map((r) => r.scheduled_date));
 
 		// Check for markers if skip_markers is true
 		let markerDates = new Set();
@@ -280,27 +272,23 @@ class RecurrenceService extends BaseEntityService {
 		}
 
 		// Log the generation
-		const logQuery = `
-      INSERT INTO season_generation_logs (
-        recurrence_id, generated_count, skipped_count,
-        start_date, end_date, generated_plan_ids,
-        skip_reasons, generated_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *
-    `;
-		const logResult = await db.query(logQuery, [
-			recurrenceId,
-			generatedPlanIds.length,
-			Object.keys(skipReasons).length,
-			startDate,
-			endDate,
-			generatedPlanIds,
-			JSON.stringify(skipReasons),
-			userId
-		]);
+		const logResult = await kyselyDb
+			.insertInto('season_generation_logs')
+			.values({
+				recurrence_id: recurrenceId,
+				generated_count: generatedPlanIds.length,
+				skipped_count: Object.keys(skipReasons).length,
+				start_date: startDate,
+				end_date: endDate,
+				generated_plan_ids: generatedPlanIds,
+				skip_reasons: JSON.stringify(skipReasons),
+				generated_by: userId
+			})
+			.returningAll()
+			.executeTakeFirst();
 
 		return {
-			log: logResult.rows[0],
+			log: logResult,
 			generated: generatedPlanIds.length,
 			skipped: Object.keys(skipReasons).length,
 			generatedPlanIds,
@@ -327,15 +315,14 @@ class RecurrenceService extends BaseEntityService {
 	 * Get generation history for a recurrence
 	 */
 	async getGenerationHistory(recurrenceId) {
-		const query = `
-      SELECT gl.*, u.name as generated_by_name
-      FROM season_generation_logs gl
-      LEFT JOIN users u ON gl.generated_by = u.id
-      WHERE gl.recurrence_id = $1
-      ORDER BY gl.generated_at DESC
-    `;
-		const result = await db.query(query, [recurrenceId]);
-		return result.rows;
+		return await kyselyDb
+			.selectFrom('season_generation_logs as gl')
+			.leftJoin('users as u', 'gl.generated_by', 'u.id')
+			.selectAll('gl')
+			.select('u.name as generated_by_name')
+			.where('gl.recurrence_id', '=', recurrenceId)
+			.orderBy('gl.generated_at', 'desc')
+			.execute();
 	}
 
 	/**

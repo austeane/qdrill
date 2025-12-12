@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GET, POST } from '../drills/+server.js';
-import { ValidationError } from '$lib/server/errors.js';
 
 // Mock the dependencies
 vi.mock('$lib/server/services/drillService', () => {

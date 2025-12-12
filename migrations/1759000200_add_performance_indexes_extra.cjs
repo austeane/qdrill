@@ -45,12 +45,16 @@ exports.up = (pgm) => {
 		pgm.createIndex('comments', ['drill_id', { name: 'created_at', sort: 'DESC' }], {
 			name: 'idx_comments_drill'
 		});
-	} catch {}
+	} catch {
+		// Index may already exist - ignore
+	}
 	try {
 		pgm.createIndex('comments', ['practice_plan_id', { name: 'created_at', sort: 'DESC' }], {
 			name: 'idx_comments_plan'
 		});
-	} catch {}
+	} catch {
+		// Index may already exist - ignore
+	}
 };
 
 exports.down = (pgm) => {
@@ -91,11 +95,15 @@ exports.down = (pgm) => {
 			name: 'idx_comments_drill',
 			ifExists: true
 		});
-	} catch {}
+	} catch {
+		// Index may not exist - ignore
+	}
 	try {
 		pgm.dropIndex('comments', ['practice_plan_id', { name: 'created_at', sort: 'DESC' }], {
 			name: 'idx_comments_plan',
 			ifExists: true
 		});
-	} catch {}
+	} catch {
+		// Index may not exist - ignore
+	}
 };

@@ -29,7 +29,7 @@
 </script>
 
 {#if open}
-	<div class="cp__backdrop" on:click={close} />
+	<div class="cp__backdrop" on:click={close}></div>
 	<div class="cp__dialog" role="dialog" aria-modal="true" aria-label="Command Palette">
 		<div class="cp__input">
 			<Search size={16} />

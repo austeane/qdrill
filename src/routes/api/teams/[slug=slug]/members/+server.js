@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { teamMemberService } from '$lib/server/services/teamMemberService.js';
-import { query } from '$lib/server/db.js';
+import { kyselyDb, sql } from '$lib/server/db.js';
 import { requireTeamAdmin, requireTeamMember } from '$lib/server/auth/teamPermissions.js';
 import { teamMemberSchema } from '$lib/validation/teamSchema';
 import { teamService } from '$lib/server/services/teamService.js';
@@ -17,23 +17,25 @@ export async function GET({ locals, params }) {
 		}
 		await requireTeamMember(team.id, locals.user.id);
 		// Single join query to avoid N+1
-		const rows = await query(
-			`SELECT 
-         m.team_id,
-         m.user_id,
-         m.role,
-         m.created_at,
-         m.updated_at,
-         u.name,
-         u.email,
-         u.image
-       FROM team_members m
-       JOIN users u ON u.id = m.user_id
-       WHERE m.team_id = $1
-       ORDER BY (m.role = 'admin') DESC, u.name ASC`,
-			[team.id]
-		);
-		const members = rows.rows.map((r) => ({
+		const rows = await kyselyDb
+			.selectFrom('team_members as m')
+			.innerJoin('users as u', 'u.id', 'm.user_id')
+			.select([
+				'm.team_id',
+				'm.user_id',
+				'm.role',
+				'm.created_at',
+				'm.updated_at',
+				'u.name',
+				'u.email',
+				'u.image'
+			])
+			.where('m.team_id', '=', team.id)
+			.orderBy(sql`(m.role = 'admin')`, 'desc')
+			.orderBy('u.name', 'asc')
+			.execute();
+
+		const members = rows.map((r) => ({
 			team_id: r.team_id,
 			user_id: r.user_id,
 			role: r.role,

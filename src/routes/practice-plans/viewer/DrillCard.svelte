@@ -48,7 +48,7 @@
 		console.log('[DrillCard] Toggled expansion:', isExpanded);
 	}
 
-	function handleEdit() {
+	function _handleEdit() {
 		dispatch('edit', { item });
 	}
 
@@ -238,7 +238,7 @@
 						<div class="info-item">
 							<span class="info-label">Skills:</span>
 							<div class="skill-tags">
-								{#each Array.isArray(normalizedItem.skillsFocusedOn) ? normalizedItem.skillsFocusedOn : normalizedItem.skillsFocusedOn.split(',') as skill}
+								{#each Array.isArray(normalizedItem.skillsFocusedOn) ? normalizedItem.skillsFocusedOn : normalizedItem.skillsFocusedOn.split(',') as skill (skill)}
 									<span class="skill-tag">{skill.trim()}</span>
 								{/each}
 							</div>
@@ -249,7 +249,7 @@
 						<div class="info-item">
 							<span class="info-label">Positions:</span>
 							<div class="skill-tags">
-								{#each Array.isArray(normalizedItem.positionsFocusedOn) ? normalizedItem.positionsFocusedOn : normalizedItem.positionsFocusedOn.split(',') as position}
+								{#each Array.isArray(normalizedItem.positionsFocusedOn) ? normalizedItem.positionsFocusedOn : normalizedItem.positionsFocusedOn.split(',') as position (position)}
 									<span class="skill-tag">{position.trim()}</span>
 								{/each}
 							</div>

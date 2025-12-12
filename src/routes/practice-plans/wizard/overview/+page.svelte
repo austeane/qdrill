@@ -134,7 +134,7 @@
 				<dd class="mt-1 text-sm text-gray-900">
 					{#if $basicInfo.practiceGoals && $basicInfo.practiceGoals.filter((g) => g && g.trim()).length > 0}
 						<ul class="list-disc pl-5 space-y-1">
-							{#each $basicInfo.practiceGoals.filter((goal) => goal && goal.trim()) as goal}
+							{#each $basicInfo.practiceGoals.filter((goal) => goal && goal.trim()) as goal (goal)}
 								<li>{goal}</li>
 							{/each}
 						</ul>

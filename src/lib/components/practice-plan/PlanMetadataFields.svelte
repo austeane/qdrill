@@ -103,7 +103,7 @@
 				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
 			>
 				<option value="" disabled>Select skill level...</option>
-				{#each skillOptions as option}
+				{#each skillOptions as option (option.value)}
 					<option value={option.value}>{option.label}</option>
 				{/each}
 			</select>
@@ -141,7 +141,7 @@
 				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
 			>
 				<option value="">Select Phase</option>
-				{#each phaseOfSeasonOptions as option}
+				{#each phaseOfSeasonOptions as option (option)}
 					<option value={option}>{option}</option>
 				{/each}
 			</select>
@@ -166,14 +166,14 @@
 	</div>
 
 	<div>
-		<!-- Standard label -->
-		<label class="block text-sm font-medium text-gray-700 mb-1">Focus Areas</label>
+		<!-- Group heading for focus area checkboxes -->
+		<span class="block text-sm font-medium text-gray-700 mb-1">Focus Areas</span>
 		<!-- Replaced Popover/Command with Checkboxes -->
 		<div class="mt-2 space-y-2 border border-gray-200 rounded-md p-3 max-h-48 overflow-y-auto">
 			{#if focusAreaOptions.length === 0}
 				<p class="text-sm text-gray-500">No focus areas available.</p>
 			{:else}
-				{#each focusAreaOptions as option}
+				{#each focusAreaOptions as option (option.value)}
 					<label class="flex items-center space-x-2 cursor-pointer">
 						<input
 							type="checkbox"
@@ -191,11 +191,11 @@
 	</div>
 
 	<div>
-		<label id="practice-goals-label" class="block text-sm font-medium text-gray-700 mb-1"
-			>Practice Goals</label
+		<span id="practice-goals-label" class="block text-sm font-medium text-gray-700 mb-1"
+			>Practice Goals</span
 		>
 		<div role="list" aria-labelledby="practice-goals-label" class="space-y-2">
-			{#each $practiceGoals as goal, index}
+			{#each $practiceGoals as goal, index (index)}
 				<div class="flex items-center space-x-2">
 					<!-- Standard input -->
 					<input

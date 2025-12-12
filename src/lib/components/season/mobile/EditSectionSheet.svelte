@@ -190,9 +190,9 @@
 
 		<!-- Color Selection -->
 		<div class="form-group">
-			<label class="form-label">Color</label>
+			<span class="form-label">Color</span>
 			<div class="color-grid">
-				{#each colors as c}
+				{#each colors as c (c)}
 					<button
 						class="color-option"
 						class:selected={color === c}
@@ -207,7 +207,7 @@
 
 		<!-- Date Range -->
 		<div class="form-group">
-			<label class="form-label">Date Range</label>
+			<span class="form-label">Date Range</span>
 
 			{#if !isEdit}
 				<div class="quick-options">

@@ -101,7 +101,7 @@
 	</div>
 
 	<div class="group-content">
-		{#each timelineGroupsWithStartTimes as [timeline, timelineItems]}
+		{#each timelineGroupsWithStartTimes as [timeline, timelineItems] (timeline)}
 			<div class="timeline-column" class:single-timeline={Object.keys(timelineGroups).length === 1}>
 				<div class="timeline-header {getTimelineColor(timeline)}">
 					{timelineNamesStore

@@ -384,7 +384,7 @@
 							value={$selectedSortOption}
 							data-testid="sort-select"
 						>
-							{#each sortOptions as option}
+							{#each sortOptions as option (option.value)}
 								<option value={option.value}>{option.label}</option>
 							{/each}
 						</select>
@@ -415,7 +415,7 @@
 	{#if isNavigating && !data.items}
 		<!-- Skeleton loaders for drills -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-			{#each Array(6) as _, i}
+			{#each Array(6) as _, _i (_i)}
 				<SkeletonLoader lines={4} showCard={true} showButton={true} className="h-64" />
 			{/each}
 		</div>

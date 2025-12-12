@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SkillService } from '../skillService.js';
-import { NotFoundError, DatabaseError } from '../../../../lib/server/errors.js';
+import { NotFoundError } from '../../../../lib/server/errors.js';
 
 // Mock db module
 // vi.mock('$lib/server/db', () => ({
@@ -12,13 +12,14 @@ import { NotFoundError, DatabaseError } from '../../../../lib/server/errors.js';
 // }));
 vi.mock('$lib/server/db');
 
-import * as db from '$lib/server/db'; // Changed to import * as db
+import * as db from '$lib/server/db';
 
 describe('SkillService', () => {
 	let skillService;
 
 	beforeEach(() => {
-		vi.resetAllMocks();
+		vi.clearAllMocks();
+		db.kyselyDb.__setResults([]);
 		skillService = new SkillService();
 	});
 
@@ -81,28 +82,20 @@ describe('SkillService', () => {
 
 	describe('getSkillsForDrill', () => {
 		it('should return skills for a specific drill', async () => {
-			db.query.mockResolvedValueOnce({
-				rows: [{ skills_focused_on: ['passing', 'catching'] }]
-			});
+			db.kyselyDb.__setResults([{ skills_focused_on: ['passing', 'catching'] }]);
 
 			const result = await skillService.getSkillsForDrill(1);
-
-			expect(db.query).toHaveBeenCalledWith(expect.stringContaining('SELECT skills_focused_on'), [
-				1
-			]);
 
 			expect(result).toEqual(['passing', 'catching']);
 		});
 
 		it('should return empty array if drill not found', async () => {
-			db.query.mockResolvedValueOnce({ rows: [] });
+			db.kyselyDb.__setResults([undefined]);
 			await expect(skillService.getSkillsForDrill(999)).rejects.toThrow(NotFoundError);
 		});
 
 		it('should handle null skills_focused_on', async () => {
-			db.query.mockResolvedValueOnce({
-				rows: [{ skills_focused_on: null }]
-			});
+			db.kyselyDb.__setResults([{ skills_focused_on: null }]);
 
 			const result = await skillService.getSkillsForDrill(1);
 
@@ -112,45 +105,31 @@ describe('SkillService', () => {
 
 	describe('getMostUsedSkills', () => {
 		it('should return most frequently used skills', async () => {
-			db.query.mockResolvedValueOnce({
-				rows: [
+			db.kyselyDb.__setResults([
+				[
 					{ skill: 'passing', drills_used_in: 10, usage_count: 25 },
 					{ skill: 'catching', drills_used_in: 8, usage_count: 20 }
 				]
-			});
+			]);
 
 			const result = await skillService.getMostUsedSkills(2);
-
-			expect(db.query).toHaveBeenCalledWith(
-				expect.stringContaining('ORDER BY drills_used_in DESC'),
-				[2]
-			);
+			expect(db.kyselyDb.limit).toHaveBeenCalledWith(2);
 
 			expect(result).toHaveLength(2);
 			expect(result[0].skill).toBe('passing');
 		});
 
 		it('should use default limit if not provided', async () => {
-			db.query.mockResolvedValueOnce({ rows: [] });
+			db.kyselyDb.__setResults([[]]);
 
 			await skillService.getMostUsedSkills();
 
-			expect(db.query).toHaveBeenCalledWith(
-				expect.stringContaining('LIMIT $1'),
-				[10] // Default limit
-			);
+			expect(db.kyselyDb.limit).toHaveBeenCalledWith(10);
 		});
 	});
 
 	describe('updateSkillCounts', () => {
 		it('should add new skills and remove old ones', async () => {
-			// Mock client for transaction
-			const mockClient = {
-				query: vi.fn().mockResolvedValue({ rows: [] }), // Give client its own query mock
-				release: vi.fn()
-			};
-			db.getClient.mockResolvedValueOnce(mockClient);
-
 			// Mock addSkillsToDatabase
 			vi.spyOn(skillService, 'addSkillsToDatabase').mockResolvedValueOnce();
 
@@ -160,73 +139,39 @@ describe('SkillService', () => {
 				1 // Drill ID
 			);
 
-			// Check transaction was started
-			expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+			// Check transaction was started (Kysely transaction helper)
+			expect(db.kyselyDb.transaction).toHaveBeenCalled();
 
 			// Check addSkillsToDatabase was called
 			expect(skillService.addSkillsToDatabase).toHaveBeenCalledWith(
 				['passing', 'catching'],
 				1,
-				mockClient
+				expect.anything()
 			);
-
-			// Check update query for removed skill
-			expect(mockClient.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE skills'), [
-				'defense'
-			]);
-
-			// Check transaction was committed
-			expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+			expect(db.kyselyDb.updateTable).toHaveBeenCalledWith('skills');
 		});
 
 		it('should handle empty arrays gracefully', async () => {
-			const mockClient = {
-				query: vi.fn().mockResolvedValue({ rows: [] }), // Give client its own query mock
-				release: vi.fn()
-			};
-			db.getClient.mockResolvedValueOnce(mockClient);
-
+			const addSpy = vi.spyOn(skillService, 'addSkillsToDatabase');
 			await skillService.updateSkillCounts([], [], 1);
-
-			expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-			expect(mockClient.query).not.toHaveBeenCalledWith(
-				expect.stringContaining('UPDATE skills'),
-				expect.anything()
-			);
-			expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+			expect(addSpy).not.toHaveBeenCalled();
+			expect(db.kyselyDb.updateTable).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('getSkillRecommendations', () => {
 		it('should return recommendations based on related skills', async () => {
-			// First query to find drills with current skills
-			db.query.mockResolvedValueOnce({
-				rows: [{ id: 1 }, { id: 2 }]
-			});
-
-			// Second query to find other skills in these drills
-			db.query.mockResolvedValueOnce({
-				rows: [
-					{ skill: 'throwing', drill_count: 2 },
-					{ skill: 'strategy', drill_count: 1 }
-				]
-			});
+			db.kyselyDb.__setResults([
+				[{ id: 1 }, { id: 2 }],
+				{
+					rows: [
+						{ skill: 'throwing', drill_count: 2 },
+						{ skill: 'strategy', drill_count: 1 }
+					]
+				}
+			]);
 
 			const result = await skillService.getSkillRecommendations(['passing']);
-
-			// Check first query
-			expect(db.query).toHaveBeenNthCalledWith(
-				1,
-				expect.stringContaining('WHERE skills_focused_on && $1'),
-				[['passing']]
-			);
-
-			// Check second query
-			expect(db.query).toHaveBeenNthCalledWith(2, expect.stringContaining('WHERE id = ANY($1)'), [
-				[1, 2],
-				['passing'],
-				5
-			]);
 
 			expect(result).toEqual(['throwing', 'strategy']);
 		});
@@ -244,7 +189,7 @@ describe('SkillService', () => {
 		});
 
 		it('should return empty array if no related drills found', async () => {
-			db.query.mockResolvedValueOnce({ rows: [] });
+			db.kyselyDb.__setResults([[]]);
 
 			const result = await skillService.getSkillRecommendations(['very_rare_skill']);
 

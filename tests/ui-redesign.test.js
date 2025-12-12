@@ -3,9 +3,9 @@ import { test, expect } from '@playwright/test';
 test.describe('UI Redesign - Component Library', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/ui-demo');
-		// Wait for page to be fully loaded and hydrated
-		await page.waitForLoadState('networkidle');
-		await page.waitForTimeout(500); // Additional wait for Svelte hydration
+		// Avoid `networkidle` (analytics/polling can keep the network busy).
+		await expect(page.locator('h1')).toContainText('UI Component Library Demo');
+		await page.waitForTimeout(200); // Small buffer for Svelte hydration
 	});
 
 	test('should display all UI components', async ({ page }) => {
@@ -83,27 +83,23 @@ test.describe('UI Redesign - Component Library', () => {
 	});
 
 	test('should switch tabs', async ({ page }) => {
-		// Initially Tab 1 should be selected (bits-ui uses data-state="active")
+		// Initially Tab 1 should be selected
 		const tab1 = page.getByRole('tab', { name: 'Tab 1' });
 		const tab2 = page.getByRole('tab', { name: 'Tab 2' });
 		const tab3 = page.getByRole('tab', { name: 'Tab 3' });
 
-		await expect(tab1).toHaveAttribute('data-state', 'active');
+		// Tab 1 content should be visible initially
 		await expect(page.locator('text=Content for Tab 1')).toBeVisible();
 
-		// Switch to Tab 2
+		// Switch to Tab 2 - verify content changes
 		await tab2.click();
-		await page.waitForTimeout(100); // Wait for state update
-		await expect(tab2).toHaveAttribute('data-state', 'active');
-		await expect(tab1).toHaveAttribute('data-state', 'inactive');
-		await expect(page.locator('text=Content for Tab 2')).toBeVisible();
+		await expect(page.locator('text=Content for Tab 2')).toBeVisible({ timeout: 2000 });
+		await expect(page.locator('text=Content for Tab 1')).not.toBeVisible();
 
-		// Switch to Tab 3
+		// Switch to Tab 3 - verify content changes
 		await tab3.click();
-		await page.waitForTimeout(100); // Wait for state update
-		await expect(tab3).toHaveAttribute('data-state', 'active');
-		await expect(tab2).toHaveAttribute('data-state', 'inactive');
-		await expect(page.locator('text=Content for Tab 3')).toBeVisible();
+		await expect(page.locator('text=Content for Tab 3')).toBeVisible({ timeout: 2000 });
+		await expect(page.locator('text=Content for Tab 2')).not.toBeVisible();
 	});
 
 	test('should open dialog', async ({ page }) => {
@@ -261,7 +257,7 @@ test.describe('UI Redesign - Main App Integration', () => {
 		await expect(page.getByRole('button', { name: 'Reset Filters' })).toBeVisible();
 
 		// Check search input
-		await expect(page.locator('input[placeholder="Search drills"]')).toBeVisible();
+		await expect(page.locator('input[placeholder="Search drills..."]')).toBeVisible();
 
 		// Check drill cards are rendered (look for drill headings)
 		const drillHeadings = page.locator('h2 a');
@@ -310,8 +306,8 @@ test.describe('UI Redesign - Main App Integration', () => {
 	test('should show command palette on keyboard shortcut', async ({ page }) => {
 		await page.goto('/');
 
-		// Wait for page to be ready
-		await page.waitForLoadState('networkidle');
+		// Avoid `networkidle` (analytics/polling can keep the network busy).
+		await expect(page.locator('header')).toBeVisible();
 
 		// Press Cmd+K (or Ctrl+K on non-Mac)
 		const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';

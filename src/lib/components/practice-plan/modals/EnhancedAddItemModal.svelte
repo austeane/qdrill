@@ -182,8 +182,15 @@
 </script>
 
 {#if show}
-	<div class="modal-backdrop" on:click={close}>
-		<div class="modal-content" on:click|stopPropagation>
+	<div
+		class="modal-backdrop"
+		role="button"
+		tabindex="0"
+		aria-label="Close modal"
+		on:click={close}
+		on:keydown={(e) => e.key === 'Escape' && close()}
+	>
+		<div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation>
 			<div class="modal-header">
 				<h2 class="modal-title">Add to Practice Plan</h2>
 				<button class="close-button" on:click={close}>×</button>
@@ -234,7 +241,7 @@
 						/>
 
 						<div class="search-results">
-							{#each drillSearchResults as drill}
+							{#each drillSearchResults as drill (drill.id)}
 								<div class="result-item" on:click={() => handleAddDrill(drill)}>
 									<div class="result-name">{drill.name}</div>
 									<div class="result-details">
@@ -271,7 +278,7 @@
 						/>
 
 						<div class="search-results">
-							{#each formationSearchResults as formation}
+							{#each formationSearchResults as formation (formation.id)}
 								<div class="result-item" on:click={() => handleAddFormation(formation)}>
 									<div class="result-name">{formation.name}</div>
 									<div class="result-details">
@@ -289,7 +296,7 @@
 						<p class="help-text">Create parallel activities for different position groups</p>
 
 						<div class="position-selector">
-							{#each ['BEATERS', 'CHASERS', 'SEEKERS'] as position}
+							{#each ['BEATERS', 'CHASERS', 'SEEKERS'] as position (position)}
 								<label class="position-checkbox">
 									<input
 										type="checkbox"
@@ -302,7 +309,7 @@
 						</div>
 
 						<div class="position-drills">
-							{#each ['BEATERS', 'CHASERS', 'SEEKERS'] as position}
+							{#each ['BEATERS', 'CHASERS', 'SEEKERS'] as position (position)}
 								{#if selectedPositions.has(position)}
 									<div class="position-drill-row">
 										<span class="position-label">{position}:</span>
@@ -344,8 +351,9 @@
 						<div class="divider">OR</div>
 
 						<div class="one-off-section">
-							<label>Quick Activity Name:</label>
+							<label for="one-off-activity-name">Quick Activity Name:</label>
 							<input
+								id="one-off-activity-name"
 								type="text"
 								bind:value={oneOffName}
 								placeholder="Activity name..."

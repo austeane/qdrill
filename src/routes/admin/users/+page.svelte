@@ -55,7 +55,7 @@
 				</tr>
 			</thead>
 			<tbody class="bg-white divide-y divide-gray-200">
-				{#each users as user}
+				{#each users as user (user.id)}
 					<tr>
 						<td class="px-6 py-4 whitespace-nowrap">
 							<div class="text-sm font-medium text-gray-900">

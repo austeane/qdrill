@@ -89,32 +89,17 @@ export class FormationService extends BaseEntityService {
 
 		const offset = (page - 1) * limit;
 
-		const buildFormationBaseQuery = () => {
-			let qb = kyselyDb.selectFrom('formations').selectAll(); // Select all initially
+			const buildFormationBaseQuery = () => {
+				let qb = kyselyDb.selectFrom('formations').selectAll(); // Select all initially
 
-			if (this.useStandardPermissions && this.permissionConfig) {
-				const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
-					this.permissionConfig;
-				qb = qb.where((eb) => {
-					const conditions = [
-						eb(visibilityColumn, '=', publicValue),
-						eb(visibilityColumn, '=', unlistedValue)
-					];
-					if (userId) {
-						conditions.push(
-							eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)])
-						);
-					}
-					return eb.or(conditions);
-				});
-			}
-			// Apply other formation-specific filters from options.filters if any
-			if (filters.formation_type) {
-				qb = qb.where('formation_type', '=', filters.formation_type);
-			}
-			if (filters.tags && filters.tags.length > 0) {
-				qb = qb.where(sql`tags && ${sql.array(filters.tags, 'text')}`); // Array overlap for tags
-			}
+				qb = this._applyReadPermissions(qb, userId);
+				// Apply other formation-specific filters from options.filters if any
+				if (filters.formation_type) {
+					qb = qb.where('formation_type', '=', filters.formation_type);
+				}
+				if (filters.tags && filters.tags.length > 0) {
+					qb = qb.where(sql`tags && ${filters.tags}`); // Array overlap for tags
+				}
 			// Add more specific filters here as needed
 
 			return qb;
@@ -147,34 +132,11 @@ export class FormationService extends BaseEntityService {
 			offset
 		});
 
-		// Count logic - Create a fresh count query instead of reusing the base query
-		let countQuery = kyselyDb
-			.selectFrom('formations')
-			.select(kyselyDb.fn.count('formations.id').as('total'));
-
-		// Apply the same non-search filters as the base query
-		if (this.useStandardPermissions && this.permissionConfig) {
-			const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
-				this.permissionConfig;
-			countQuery = countQuery.where((eb) => {
-				const conditions = [
-					eb(visibilityColumn, '=', publicValue),
-					eb(visibilityColumn, '=', unlistedValue)
-				];
-				if (userId) {
-					conditions.push(
-						eb.and([eb(visibilityColumn, '=', privateValue), eb(userIdColumn, '=', userId)])
-					);
-				}
-				return eb.or(conditions);
-			});
-		}
-		if (filters.formation_type) {
-			countQuery = countQuery.where('formation_type', '=', filters.formation_type);
-		}
-		if (filters.tags && filters.tags.length > 0) {
-			countQuery = countQuery.where(sql`tags && ${sql.array(filters.tags, 'text')}`);
-		}
+				// Count logic - reuse the same base filters/permissions (Kysely builders are immutable).
+				let countQuery = baseQueryForFallback
+					.clearSelect()
+					.clearOrderBy()
+					.select(kyselyDb.fn.count('formations.id').as('total'));
 
 		// Apply search conditions based on what was used for the main query
 		if (filters.searchQuery) {

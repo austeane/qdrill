@@ -1,10 +1,7 @@
 <script>
 	import { toast } from '@zerodevx/svelte-toast';
-	import { get } from 'svelte/store';
 	import ExcalidrawRenderer from '$lib/components/ExcalidrawRenderer.svelte';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
-	import { onMount } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
 
 	let isMigrating = false;
 	let migrationResult = null;
@@ -246,7 +243,7 @@
 					{#if migrationResult.errors && migrationResult.errors.length > 0}
 						<h4 class="font-medium mt-4 text-red-600">Migration Errors:</h4>
 						<ul class="list-disc list-inside text-red-600 text-sm">
-							{#each migrationResult.errors as errorDetail}
+							{#each migrationResult.errors as errorDetail (errorDetail.drillId)}
 								<li>Drill ID {errorDetail.drillId}: {errorDetail.error}</li>
 							{/each}
 						</ul>

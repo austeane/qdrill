@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { query } from '$lib/server/db.js';
+import { kyselyDb } from '$lib/server/db.js';
 import { teamMemberService } from '$lib/server/services/teamMemberService.js';
 import { teamService } from '$lib/server/services/teamService.js';
 
@@ -27,57 +27,42 @@ export async function GET({ locals, params, url }) {
 	const canViewAll = member.role === 'admin' || member.role === 'coach';
 
 	try {
-		// Build query
-		let queryStr = `
-      SELECT 
-        pp.*,
-        u.name as created_by_name
-      FROM practice_plans pp
-      LEFT JOIN users u ON pp.created_by = u.id
-      WHERE pp.team_id = $1
-    `;
-
-		const queryParams = [team.id];
-		let paramIndex = 2;
+		// Build Kysely query
+		let qb = kyselyDb
+			.selectFrom('practice_plans as pp')
+			.leftJoin('users as u', 'pp.created_by', 'u.id')
+			.selectAll('pp')
+			.select('u.name as created_by_name')
+			.where('pp.team_id', '=', team.id);
 
 		// Add season filter
 		if (seasonId) {
-			queryStr += ` AND pp.season_id = $${paramIndex}`;
-			queryParams.push(seasonId);
-			paramIndex++;
+			qb = qb.where('pp.season_id', '=', seasonId);
 		}
 
 		// Add date filters
 		if (exactDate) {
-			queryStr += ` AND pp.scheduled_date = $${paramIndex}`;
-			queryParams.push(exactDate);
-			paramIndex++;
+			qb = qb.where('pp.scheduled_date', '=', exactDate);
 		} else if (startDate && endDate) {
-			queryStr += ` AND pp.scheduled_date BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
-			queryParams.push(startDate, endDate);
-			paramIndex += 2;
+			qb = qb.where('pp.scheduled_date', '>=', startDate).where('pp.scheduled_date', '<=', endDate);
 		} else if (startDate) {
-			queryStr += ` AND pp.scheduled_date >= $${paramIndex}`;
-			queryParams.push(startDate);
-			paramIndex++;
+			qb = qb.where('pp.scheduled_date', '>=', startDate);
 		} else if (endDate) {
-			queryStr += ` AND pp.scheduled_date <= $${paramIndex}`;
-			queryParams.push(endDate);
-			paramIndex++;
+			qb = qb.where('pp.scheduled_date', '<=', endDate);
 		}
 
 		// Publish filter: members see only published; admin/coach can see all
 		if (status === 'published' || (!canViewAll && status !== 'all')) {
-			queryStr += ` AND pp.is_published = true`;
+			qb = qb.where('pp.is_published', '=', true);
 		}
 
-		// Order by scheduled date
-		queryStr += ` ORDER BY pp.scheduled_date ASC, pp.created_at ASC`;
-
-		const result = await query(queryStr, queryParams);
+		const result = await qb
+			.orderBy('pp.scheduled_date', 'asc')
+			.orderBy('pp.created_at', 'asc')
+			.execute();
 
 		// Normalize date-only + time-only for consistent client behavior
-		const items = (result.rows || []).map((row) => {
+		const items = (result || []).map((row) => {
 			const normalizeDate = (v) =>
 				v
 					? typeof v === 'string'

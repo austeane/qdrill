@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { seasonService } from '../seasonService';
-import { ValidationError } from '$lib/server/errors';
 
 // Mock teamMemberService
 vi.mock('../teamMemberService', () => ({
@@ -9,16 +8,8 @@ vi.mock('../teamMemberService', () => ({
 	}
 }));
 
-// Mock the database operations
-vi.mock('$lib/server/db', () => ({
-	query: vi.fn(),
-	getClient: vi.fn(() =>
-		Promise.resolve({
-			query: vi.fn(),
-			release: vi.fn()
-		})
-	)
-}));
+vi.mock('$lib/server/db');
+import * as mockDb from '$lib/server/db';
 
 describe('SeasonService', () => {
 	let testTeamId = 'team-123';
@@ -28,6 +19,7 @@ describe('SeasonService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.restoreAllMocks();
+		mockDb.kyselyDb.__setResults([]);
 	});
 
 	describe('create', () => {
@@ -264,27 +256,18 @@ describe('SeasonService', () => {
 				public_view_token: 'old-token'
 			});
 
-			const mockTransaction = vi
-				.spyOn(seasonService, 'withTransaction')
-				.mockImplementation(async (callback) => {
-					return callback({
-						query: vi.fn().mockResolvedValue({
-							rows: [
-								{
-									id: 'season-1',
-									public_view_token: 'new-token'
-								}
-							]
-						})
-					});
-				});
+			mockDb.kyselyDb.__setResults([
+				{
+					id: 'season-1',
+					public_view_token: 'new-token'
+				}
+			]);
 
 			const result = await seasonService.rotatePublicToken('season-1', adminUserId);
 
 			expect(result.public_view_token).toBe('new-token');
 
 			mockGetById.mockRestore();
-			mockTransaction.mockRestore();
 		});
 
 		it('should rotate ICS token for admins', async () => {
@@ -297,27 +280,18 @@ describe('SeasonService', () => {
 				ics_token: 'old-ics-token'
 			});
 
-			const mockTransaction = vi
-				.spyOn(seasonService, 'withTransaction')
-				.mockImplementation(async (callback) => {
-					return callback({
-						query: vi.fn().mockResolvedValue({
-							rows: [
-								{
-									id: 'season-1',
-									ics_token: 'new-ics-token'
-								}
-							]
-						})
-					});
-				});
+			mockDb.kyselyDb.__setResults([
+				{
+					id: 'season-1',
+					ics_token: 'new-ics-token'
+				}
+			]);
 
 			const result = await seasonService.rotateIcsToken('season-1', adminUserId);
 
 			expect(result.ics_token).toBe('new-ics-token');
 
 			mockGetById.mockRestore();
-			mockTransaction.mockRestore();
 		});
 
 		it('should reject token rotation for non-admins', async () => {
@@ -339,44 +313,15 @@ describe('SeasonService', () => {
 
 	describe('deactivateTeamSeasons', () => {
 		it('should deactivate all active seasons for team', async () => {
-			const mockTransaction = vi
-				.spyOn(seasonService, 'withTransaction')
-				.mockImplementation(async (callback) => {
-					const mockClient = {
-						query: vi.fn()
-					};
-					await callback(mockClient);
-					return mockClient;
-				});
-
 			await seasonService.deactivateTeamSeasons(testTeamId);
 
-			expect(mockTransaction).toHaveBeenCalled();
-
-			mockTransaction.mockRestore();
+			expect(mockDb.kyselyDb.updateTable).toHaveBeenCalledWith('seasons');
+			expect(mockDb.kyselyDb.where).toHaveBeenCalledWith('team_id', '=', testTeamId);
 		});
 
 		it('should exclude specific season when deactivating', async () => {
-			const mockTransaction = vi
-				.spyOn(seasonService, 'withTransaction')
-				.mockImplementation(async (callback) => {
-					const mockClient = {
-						query: vi.fn()
-					};
-					await callback(mockClient);
-
-					// Verify the query includes the exception
-					expect(mockClient.query).toHaveBeenCalledWith(expect.stringContaining('AND id != $2'), [
-						testTeamId,
-						'season-1'
-					]);
-
-					return mockClient;
-				});
-
 			await seasonService.deactivateTeamSeasons(testTeamId, 'season-1');
-
-			mockTransaction.mockRestore();
+			expect(mockDb.kyselyDb.where).toHaveBeenCalledWith('id', '!=', 'season-1');
 		});
 	});
 

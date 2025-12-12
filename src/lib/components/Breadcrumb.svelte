@@ -40,7 +40,7 @@
 				</svg>
 			{/if}
 		</li>
-		{#each pathSegments as segment, index}
+		{#each pathSegments as segment, index (index)}
 			<li class="flex items-center">
 				{#if index === pathSegments.length - 1}
 					<span class="text-gray-500">{formatSegment(segment)}</span>

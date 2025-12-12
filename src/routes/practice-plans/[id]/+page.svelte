@@ -2,7 +2,6 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
-	import { get } from 'svelte/store';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import Comments from '$lib/components/Comments.svelte';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
@@ -264,7 +263,7 @@
 		<div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 mb-6">
 			<h2 class="text-xl font-semibold mb-4">Practice Goals</h2>
 			<ul class="space-y-2">
-				{#each practicePlan.practice_goals as goal}
+				{#each practicePlan.practice_goals as goal, i (i)}
 					<li class="flex items-start">
 						<span class="mr-2">•</span>
 						<span class="goal-text">{goal}</span>

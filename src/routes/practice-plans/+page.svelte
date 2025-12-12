@@ -1,6 +1,6 @@
 <script>
 	import FilterPanel from '$lib/components/FilterPanel.svelte';
-	import { onDestroy, onMount, afterUpdate } from 'svelte';
+	import { onMount, afterUpdate } from 'svelte';
 	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page, navigating } from '$app/stores';
@@ -313,7 +313,7 @@
 	{#if $navigating && !practicePlans.length}
 		<!-- Loading skeletons -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-			{#each Array(6) as _, i}
+			{#each Array(6) as _, _i (_i)}
 				<SkeletonLoader lines={3} showCard={true} showButton={true} className="h-56" />
 			{/each}
 		</div>

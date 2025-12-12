@@ -1,6 +1,7 @@
 import { BaseEntityService } from './baseEntityService.js';
 import { ValidationError } from '$lib/server/errors.js';
 import { teamMemberService } from './teamMemberService.js';
+import { sql } from '$lib/server/db.js';
 
 class SeasonService extends BaseEntityService {
 	constructor() {
@@ -126,20 +127,16 @@ class SeasonService extends BaseEntityService {
 	}
 
 	async deactivateTeamSeasons(teamId, exceptId = null) {
-		return await this.withTransaction(async (client) => {
-			let query = `
-        UPDATE seasons 
-        SET is_active = false, updated_at = NOW()
-        WHERE team_id = $1 AND is_active = true
-      `;
-			const params = [teamId];
-
+		return await this.withTransaction(async (trx) => {
+			let q = trx
+				.updateTable('seasons')
+				.set({ is_active: false, updated_at: sql`now()` })
+				.where('team_id', '=', teamId)
+				.where('is_active', '=', true);
 			if (exceptId) {
-				query += ' AND id != $2';
-				params.push(exceptId);
+				q = q.where('id', '!=', exceptId);
 			}
-
-			await client.query(query, params);
+			await q.execute();
 		});
 	}
 
@@ -171,15 +168,13 @@ class SeasonService extends BaseEntityService {
 			throw new ValidationError('Only team admins can rotate tokens');
 		}
 
-		return await this.withTransaction(async (client) => {
-			const query = `
-        UPDATE seasons 
-        SET public_view_token = gen_random_uuid(), updated_at = NOW()
-        WHERE id = $1
-        RETURNING *
-      `;
-			const result = await client.query(query, [seasonId]);
-			return result.rows[0];
+		return await this.withTransaction(async (trx) => {
+			return await trx
+				.updateTable('seasons')
+				.set({ public_view_token: sql`gen_random_uuid()`, updated_at: sql`now()` })
+				.where('id', '=', seasonId)
+				.returningAll()
+				.executeTakeFirst();
 		});
 	}
 
@@ -195,15 +190,13 @@ class SeasonService extends BaseEntityService {
 			throw new ValidationError('Only team admins can rotate tokens');
 		}
 
-		return await this.withTransaction(async (client) => {
-			const query = `
-        UPDATE seasons 
-        SET ics_token = gen_random_uuid(), updated_at = NOW()
-        WHERE id = $1
-        RETURNING *
-      `;
-			const result = await client.query(query, [seasonId]);
-			return result.rows[0];
+		return await this.withTransaction(async (trx) => {
+			return await trx
+				.updateTable('seasons')
+				.set({ ics_token: sql`gen_random_uuid()`, updated_at: sql`now()` })
+				.where('id', '=', seasonId)
+				.returningAll()
+				.executeTakeFirst();
 		});
 	}
 

@@ -1,13 +1,7 @@
 <script>
-	import { onMount } from 'svelte';
 	import { writable } from 'svelte/store';
-	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
-	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
-	import { z } from 'zod';
-	import { bulkUploadDrillInputSchema } from '$lib/validation/drillSchema';
-	import Papa from 'papaparse';
 
 	let fileInput;
 	let uploadedFile = writable(null);
@@ -193,7 +187,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 		});
 	}
 
-	function deleteDiagram(drillIndex, diagramIndex) {
+	function _deleteDiagram(drillIndex, diagramIndex) {
 		parsedDrills.update((drills) => {
 			drills[drillIndex].diagrams.splice(diagramIndex, 1);
 			return drills;
@@ -436,15 +430,15 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 							</div>
 
 							<div class="mb-4">
-								<label id="drill-type-label-{index}" class="block text-gray-700 font-medium mb-1"
-									>Drill Type</label
+								<span id="drill-type-label-{index}" class="block text-gray-700 font-medium mb-1"
+									>Drill Type</span
 								>
 								<div
 									role="group"
 									aria-labelledby="drill-type-label-{index}"
 									class="flex flex-wrap gap-2"
 								>
-									{#each drillTypeOptions as type}
+									{#each drillTypeOptions as type (type)}
 										<button
 											type="button"
 											class="px-3 py-1 rounded-full border border-gray-300"
@@ -470,7 +464,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 									>Skill Level(s)</label
 								>
 								<div class="flex flex-wrap gap-2">
-									{#each skillLevelOptions as level}
+									{#each skillLevelOptions as level (level)}
 										<button
 											type="button"
 											class="px-3 py-1 rounded-full border border-gray-300"
@@ -502,7 +496,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 									on:change={() => validateDrillLocal(index)}
 								>
 									<option value={null}>Select...</option>
-									{#each complexityOptions as option}
+									{#each complexityOptions as option (option)}
 										<option value={option}>{option}</option>
 									{/each}
 								</select>
@@ -628,7 +622,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 									>Positions Focused On</label
 								>
 								<div class="flex flex-wrap gap-2">
-									{#each positionOptions as pos}
+									{#each positionOptions as pos (pos)}
 										<button
 											type="button"
 											class="px-3 py-1 rounded-full border border-gray-300"
@@ -765,7 +759,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 								>
 									<strong class="font-bold">Errors:</strong>
 									<ul class="mt-1 list-disc list-inside text-sm">
-										{#each drill.errors as error}
+										{#each drill.errors as error, errIndex (errIndex)}
 											<li>{error}</li>
 										{/each}
 									</ul>

@@ -2,14 +2,12 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { device } from '$lib/stores/deviceStore';
-	import Card from '$lib/components/ui/Card.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import CreatePracticeSheet from '../mobile/CreatePracticeSheet.svelte';
 	import EditMarkerSheet from '../mobile/EditMarkerSheet.svelte';
 	import CreatePracticeDialog from '../desktop/CreatePracticeDialog.svelte';
 	import CreateMarkerDialog from '../desktop/CreateMarkerDialog.svelte';
-	import Dialog from '$lib/components/ui/Dialog.svelte';
 	import { Plus, Sparkles, ChevronLeft, ChevronRight } from 'lucide-svelte';
 
 	export let season = null;
@@ -280,7 +278,7 @@
 			</Button>
 
 			{#if isAdmin}
-				<div class="divider" />
+				<div class="divider"></div>
 				<Button variant="outline" size="sm" on:click={handleAddPractice}>
 					<Plus size={16} class="mr-1" />
 					Practice
@@ -302,7 +300,7 @@
 		<!-- Week View -->
 		<div class="week-view">
 			<div class="week-grid">
-				{#each currentWeek as date}
+				{#each currentWeek as date (date.toISOString())}
 					{@const dayPractices = getDayPractices(date)}
 					{@const dayMarkers = getDayMarkers(date)}
 					{@const daySections = getDaySections(date)}
@@ -326,13 +324,13 @@
 						<div class="day-content">
 							{#if daySections.length > 0}
 								<div class="section-badges" title={daySections.map((s) => s.name).join(', ')}>
-									{#each daySections as s}
+									{#each daySections as s (s.id)}
 										<span class="section-badge">{s.name}</span>
 									{/each}
 								</div>
 							{/if}
 							{#if dayPractices.length > 0}
-								{#each dayPractices as practice}
+								{#each dayPractices as practice (practice.id)}
 									<button class="practice-item" on:click={() => handlePracticeClick(practice)}>
 										<span class="practice-time">
 											{new Date(`2000-01-01T${practice.start_time}`).toLocaleTimeString('en-US', {
@@ -351,7 +349,7 @@
 							{/if}
 
 							{#if dayMarkers.length > 0}
-								{#each dayMarkers as marker}
+								{#each dayMarkers as marker (marker.id)}
 									<button
 										class="marker-item"
 										style="--marker-color: {marker.color}"
@@ -377,13 +375,13 @@
 		<!-- Month View -->
 		<div class="month-view">
 			<div class="weekday-headers">
-				{#each ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as day}
+				{#each ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as day (day)}
 					<div class="weekday-header">{day}</div>
 				{/each}
 			</div>
 
 			<div class="month-grid">
-				{#each currentMonth as { date, isCurrentMonth }}
+				{#each currentMonth as { date, isCurrentMonth } (date.toISOString())}
 					{@const dayPractices = getDayPractices(date)}
 					{@const dayMarkers = getDayMarkers(date)}
 					{@const daySections = getDaySections(date)}
@@ -401,19 +399,19 @@
 					>
 						<span class="month-day-number">{date.getDate()}</span>
 						{#if daySections.length > 0}
-							<div class="month-section-indicator" aria-hidden="true" />
+							<div class="month-section-indicator" aria-hidden="true"></div>
 						{/if}
 
 						{#if dayPractices.length > 0}
 							<div class="day-indicators">
-								{#each dayPractices.slice(0, 3) as practice}
-									<div class="practice-dot" class:published={practice.status === 'published'} />
+								{#each dayPractices.slice(0, 3) as practice (practice.id)}
+									<div class="practice-dot" class:published={practice.status === 'published'}></div>
 								{/each}
 							</div>
 						{/if}
 
 						{#if dayMarkers.length > 0}
-							<div class="marker-line" style="background-color: {dayMarkers[0].color}" />
+							<div class="marker-line" style="background-color: {dayMarkers[0].color}"></div>
 						{/if}
 					</button>
 				{/each}

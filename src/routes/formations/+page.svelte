@@ -1,10 +1,8 @@
 <script>
 	// import { onMount } from 'svelte'; // Removed
-	import { applyAction, enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { navigating } from '$app/stores';
 	import { onDestroy } from 'svelte';
-	import { page } from '$app/stores';
 	import {
 		formations,
 		// filteredFormations, // Removed
@@ -16,11 +14,9 @@
 		initializeFormations, // Added
 		currentPage, // Added
 		totalPages, // Added
-		totalItems, // Added
 		formationsPerPage, // Added
 		selectedSortOption, // Added (from store)
-		selectedSortOrder, // Added (from store)
-		resetFormationFilters // Added helper
+		selectedSortOrder // Added (from store)
 	} from '$lib/stores/formationsStore';
 	import { slide } from 'svelte/transition'; // Keep for potential sort dropdown
 
@@ -223,7 +219,7 @@
 			</div>
 			<!-- Sort -->
 			<div class="relative">
-				<label id="sort-label" class="block text-sm font-medium text-gray-700 mb-1">Sort</label>
+				<span id="sort-label" class="block text-sm font-medium text-gray-700 mb-1">Sort</span>
 					<button
 						aria-labelledby="sort-label"
 						on:click={toggleSortOptions}
@@ -253,7 +249,7 @@
 								aria-label="Sort by"
 								data-testid="sort-select"
 							>
-								{#each sortOptions as option}
+								{#each sortOptions as option (option.value)}
 									<option value={option.value}>{option.label}</option>
 								{/each}
 							</select>
@@ -366,7 +362,7 @@
 						<!-- Tags -->
 						{#if formation.tags && formation.tags.length > 0}
 							<div class="flex flex-wrap gap-1.5 mt-2 mb-4">
-								{#each formation.tags.slice(0, 3) as tag}
+								{#each formation.tags.slice(0, 3) as tag, tagIndex (tagIndex)}
 									<!-- Limit displayed tags -->
 									<span
 										class="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full border border-gray-200"

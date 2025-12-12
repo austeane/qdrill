@@ -1,7 +1,6 @@
 <script>
 	import { createEventDispatcher } from 'svelte';
 	import { goto } from '$app/navigation';
-	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
 	import EditSectionSheet from './EditSectionSheet.svelte';
 	import EditMarkerSheet from './EditMarkerSheet.svelte';
 	import { toLocalISO } from '$lib/utils/date.js';
@@ -137,7 +136,7 @@
 <div class="overview-container">
 	<!-- Sections -->
 	<div class="sections-list">
-		{#each sections as section}
+		{#each sections as section (section.id)}
 			{@const progress = calculateProgress(section)}
 			{@const practiceCount = getSectionPractices(section).length}
 			{@const nextPractice = getNextPractice(section)}
@@ -228,12 +227,12 @@
 		<div class="markers-section">
 			<h2 class="markers-title">Events & Milestones</h2>
 
-			{#each markerMonths as month}
+			{#each markerMonths as month (month)}
 				<div class="month-group">
 					<h3 class="month-header">{month}</h3>
 
 					<div class="markers-list">
-						{#each markerGroups[month] as marker}
+						{#each markerGroups[month] as marker (marker.id)}
 							<button
 								class="marker-item"
 								on:click={() => isAdmin && handleEditMarker(marker)}

@@ -8,19 +8,28 @@ export default defineConfig({
 		environment: 'node',
 		globals: true,
 		include: ['src/**/*.{test,spec}.js'],
-		coverage: {
-			provider: 'v8',
-			reporter: ['text', 'json', 'html'],
+			coverage: {
+				provider: 'v8',
+				reporter: ['text', 'json', 'html'],
 			exclude: ['node_modules/', 'tests/', '**/__tests__/**', '**/__mocks__/**', '**/*.test.js'],
 			include: [
 				'src/lib/server/services/*.js',
 				'src/routes/api/**/*.js',
 				'!src/routes/api/**/__tests__/**'
 			],
-			all: true,
-			reportsDirectory: './coverage'
-		}
-	},
+				all: true,
+				reportsDirectory: './coverage'
+			}
+			// Vitest 4: Browser Mode (stable) - uncomment to enable UI component testing
+			// browser: {
+			// 	enabled: true,
+			// 	provider: 'playwright', // or 'webdriverio'
+			// 	name: 'chromium',
+			// 	// Enable visual regression testing with toMatchScreenshot()
+			// 	// screenshotFailures: true,
+			// 	// trace: 'on-first-retry', // Playwright traces for debugging
+			// },
+		},
 	resolve: {
 		alias: {
 			$lib: resolve(__dirname, './src/lib'),

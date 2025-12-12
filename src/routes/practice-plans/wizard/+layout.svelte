@@ -44,7 +44,7 @@
 			<div class="py-4">
 				<nav class="flex items-center justify-between">
 					<ol class="flex items-center w-full">
-						{#each steps as step}
+						{#each steps as step (step.id)}
 							<li
 								class="relative flex-1 {step.id === $currentStep
 									? 'text-blue-600'

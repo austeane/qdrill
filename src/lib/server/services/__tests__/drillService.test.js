@@ -1,8 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DrillService } from '../drillService.js';
 import {
 	NotFoundError,
-	ValidationError,
 	ForbiddenError,
 	DatabaseError
 } from '../../../../lib/server/errors.js';
@@ -29,8 +28,9 @@ describe('DrillService', () => {
 		// Create a new service instance for each test
 		service = new DrillService();
 
-		// Reset mock function calls
-		vi.resetAllMocks();
+		// Clear mocks without wiping Kysely mock implementations
+		vi.clearAllMocks();
+		mockDb.kyselyDb.__setResults([]);
 	});
 
 	describe('constructor', () => {
@@ -263,10 +263,9 @@ describe('DrillService', () => {
 			// Mock authorization
 			vi.spyOn(service, 'canUserEdit').mockResolvedValue(true);
 
-			// Mock transaction function to pass a mock client
-			const mockClient = { query: vi.fn().mockResolvedValue({ rows: [] }) }; // Generic mock client
+			// Mock transaction function to pass a Kysely-like trx
 			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				return callback(mockClient);
+				return callback(mockDb.kyselyDb);
 			});
 
 			// Mock getById
@@ -349,19 +348,16 @@ describe('DrillService', () => {
 				name: 'Test Drill'
 			});
 
-			// Mock db query
-			mockDb.query.mockResolvedValue({
-				rows: [
-					{ id: 2, name: 'Variation 1' },
-					{ id: 3, name: 'Variation 2' }
-				]
-			});
+			mockDb.kyselyDb.__setResults([
+				[
+					{ id: 2, name: 'Variation 1', created_by: null },
+					{ id: 3, name: 'Variation 2', created_by: null }
+				],
+				[]
+			]);
 
 			const result = await service.getDrillWithVariations(1);
 
-			expect(mockDb.query).toHaveBeenCalled();
-			// First param is always the parent drill id; additional params may be added for visibility filters
-			expect(mockDb.query.mock.calls[0][1]).toEqual(expect.arrayContaining([1])); // Check query params
 			expect(result).toHaveProperty('id', 1);
 			expect(result).toHaveProperty('variations');
 			expect(result.variations).toHaveLength(2);
@@ -373,134 +369,80 @@ describe('DrillService', () => {
 				return;
 			}
 
-			// Mock getById
-			vi.spyOn(service, 'getById').mockResolvedValue(null);
+			vi.spyOn(service, 'getById').mockRejectedValue(new NotFoundError('Drill not found'));
 
-			const result = await service.getDrillWithVariations(999);
-
-			expect(result).toBeNull();
-			expect(mockDb.query).not.toHaveBeenCalled();
+			await expect(service.getDrillWithVariations(999)).rejects.toThrow(NotFoundError);
 		});
 	});
 
-	/*
-	 * The remaining tests are skipped for now until we can properly refactor
-	 * the implementation to make them work correctly.
-	 */
+		describe('getFilteredDrills', () => {
+			it('should filter drills by multiple criteria', async () => {
+				const mockDrills = [
+					{ id: 1, name: 'Filtered Drill 1' },
+					{ id: 2, name: 'Filtered Drill 2' }
+				];
+				// items (execute), variation counts (execute), total (executeTakeFirst)
+				mockDb.kyselyDb.__setResults([mockDrills, [], { total: String(mockDrills.length) }]);
 
-	describe.skip('getFilteredDrills', () => {
-		it('should filter drills by multiple criteria', async () => {
-			// Skip this test if the method doesn't exist in the actual implementation
-			if (typeof service.getFilteredDrills !== 'function') {
-				return;
-			}
+				const filters = {
+					skill_level: ['beginner'],
+					skills_focused_on: ['passing'],
+					positions_focused_on: ['chaser'],
+					suggested_length_min: 5,
+					suggested_length_max: 15
+				};
 
-			// Mock db.query for _executeFilteredQuery
-			const mockDrills = [
-				{ id: 1, name: 'Filtered Drill 1' },
-				{ id: 2, name: 'Filtered Drill 2' }
-			];
-			mockDb.query
-				.mockResolvedValueOnce({ rows: [{ count: mockDrills.length.toString() }] }) // For count query
-				.mockResolvedValueOnce({ rows: mockDrills }); // For data query
+				const result = await service.getFilteredDrills(filters, {
+					page: 1,
+					limit: 10,
+					userId: 'user123'
+				});
 
-			const filters = {
-				skill_level: ['beginner'],
-				skills_focused_on: ['passing'],
-				positions_focused_on: ['chaser'],
-				suggested_length_min: 5, // Changed from duration_min
-				suggested_length_max: 15 // Changed from duration_max
-			};
-
-			const result = await service.getFilteredDrills(filters, {
-				page: 1,
-				limit: 10,
-				userId: 'user123'
+				expect(result.items).toHaveLength(mockDrills.length);
+				expect(result.items.map(({ id, name }) => ({ id, name }))).toEqual(
+					mockDrills.map(({ id, name }) => ({ id, name }))
+				);
+				expect(result.items.every((d) => d.variation_count === 0)).toBe(true);
+				expect(result.pagination.totalItems).toBe(mockDrills.length);
 			});
 
-			expect(mockDb.query).toHaveBeenCalledTimes(2);
-			// Basic check for query construction (more detailed checks can be added if needed)
-			const countQueryCall = mockDb.query.mock.calls[0][0];
-			const dataQueryCall = mockDb.query.mock.calls[1][0];
+			it('should handle no filters', async () => {
+				const mockDrills = [
+					{ id: 1, name: 'Drill 1' },
+					{ id: 2, name: 'Drill 2' }
+				];
+				mockDb.kyselyDb.__setResults([mockDrills, [], { total: String(mockDrills.length) }]);
 
-			expect(countQueryCall).toContain('SELECT COUNT(*)');
-			expect(dataQueryCall).toContain('SELECT *'); // Assuming defaultColumns is ['*']
+				const result = await service.getFilteredDrills({}, { page: 1, limit: 10, userId: 'user123' });
 
-			// Check filter application (example for one filter)
-			// This is a simplified check. Actual SQL generation for array filters is complex.
-			// e.g. WHERE skill_level && $X or $X = ANY(skill_level) depending on _buildWhereClause logic
-			// For now, we trust _buildWhereClause (tested in baseEntityService.test.js) and focus on the result.
+				expect(result.items).toHaveLength(mockDrills.length);
+				expect(result.items.map(({ id, name }) => ({ id, name }))).toEqual(
+					mockDrills.map(({ id, name }) => ({ id, name }))
+				);
+			});
 
-			expect(result.items).toEqual(mockDrills);
-			expect(result.pagination.totalItems).toBe(mockDrills.length);
+			it('should handle errors', async () => {
+				mockDb.kyselyDb.execute.mockRejectedValueOnce(
+					new DatabaseError('Failed to retrieve filtered drills.')
+				);
+
+				await expect(service.getFilteredDrills({}, { userId: 'user123' })).rejects.toThrow(
+					'Failed to retrieve filtered drills.'
+				);
+			});
 		});
-
-		it('should handle no filters', async () => {
-			// Skip this test if the method doesn't exist in the actual implementation
-			if (typeof service.getFilteredDrills !== 'function') {
-				return;
-			}
-
-			const mockDrills = [
-				{ id: 1, name: 'Drill 1' },
-				{ id: 2, name: 'Drill 2' }
-			];
-			mockDb.query
-				.mockResolvedValueOnce({ rows: [{ count: mockDrills.length.toString() }] })
-				.mockResolvedValueOnce({ rows: mockDrills });
-
-			const result = await service.getFilteredDrills({}, { page: 1, limit: 10, userId: 'user123' });
-
-			expect(mockDb.query).toHaveBeenCalledTimes(2);
-			expect(result.items).toEqual(mockDrills);
-		});
-
-		it('should handle errors', async () => {
-			// Skip this test if the method doesn't exist in the actual implementation
-			if (typeof service.getFilteredDrills !== 'function') {
-				return;
-			}
-
-			// Mock db.query to throw an error
-			mockDb.query.mockRejectedValue(new DatabaseError('Failed to retrieve filtered drills.'));
-
-			await expect(service.getFilteredDrills({}, { userId: 'user123' })).rejects.toThrow(
-				'Failed to retrieve filtered drills.'
-			);
-		});
-	});
 
 	describe('toggleUpvote', () => {
 		it('should toggle upvote for a drill', async () => {
-			// Mock transaction function
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				const mockClient = {
-					query: vi.fn()
-				};
-
-				// Mock getById to simulate drill existence and public visibility for the initial check in toggleUpvote
-				vi.spyOn(service, 'getById').mockResolvedValue({
-					id: 1,
-					name: 'Test Drill',
-					created_by: 123,
-					visibility: 'public'
-				});
-
-				// Mock vote check query - no existing vote
-				mockClient.query.mockResolvedValueOnce({
-					rows: []
-				});
-
-				// Mock insert vote query
-				mockClient.query.mockResolvedValueOnce({});
-
-				// Mock get vote count query
-				mockClient.query.mockResolvedValueOnce({
-					rows: [{ upvotes: '5' }]
-				});
-
-				return callback(mockClient);
+			vi.spyOn(service, 'getById').mockResolvedValue({
+				id: 1,
+				name: 'Test Drill',
+				created_by: 123,
+				visibility: 'public'
 			});
+
+			// existingVote (executeTakeFirst), insert (execute), countRow (executeTakeFirst)
+			mockDb.kyselyDb.__setResults([undefined, [], { upvotes: '5' }]);
 
 			const result = await service.toggleUpvote(1, 123);
 
@@ -510,35 +452,15 @@ describe('DrillService', () => {
 		});
 
 		it('should remove upvote if user already voted', async () => {
-			// Mock transaction function
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				const mockClient = {
-					query: vi.fn()
-				};
-
-				// Mock getById to simulate drill existence and public visibility
-				vi.spyOn(service, 'getById').mockResolvedValue({
-					id: 1,
-					name: 'Test Drill',
-					created_by: 123,
-					visibility: 'public'
-				});
-
-				// Mock vote check query - existing vote
-				mockClient.query.mockResolvedValueOnce({
-					rows: [{ id: 1, user_id: 123, drill_id: 1, vote: 1 }]
-				});
-
-				// Mock delete vote query
-				mockClient.query.mockResolvedValueOnce({});
-
-				// Mock get vote count query
-				mockClient.query.mockResolvedValueOnce({
-					rows: [{ upvotes: '4' }]
-				});
-
-				return callback(mockClient);
+			vi.spyOn(service, 'getById').mockResolvedValue({
+				id: 1,
+				name: 'Test Drill',
+				created_by: 123,
+				visibility: 'public'
 			});
+
+			// existingVote (executeTakeFirst), delete (execute), countRow (executeTakeFirst)
+			mockDb.kyselyDb.__setResults([{ id: 1 }, [], { upvotes: '4' }]);
 
 			const result = await service.toggleUpvote(1, 123);
 
@@ -548,16 +470,7 @@ describe('DrillService', () => {
 		});
 
 		it('should throw error if drill not found', async () => {
-			// Mock transaction function
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				const mockClient = {
-					query: vi.fn()
-				};
-				// Mock getById to make it throw a NotFoundError
-				vi.spyOn(service, 'getById').mockRejectedValue(new NotFoundError('Drill not found'));
-
-				return callback(mockClient);
-			});
+			vi.spyOn(service, 'getById').mockRejectedValue(new NotFoundError('Drill not found'));
 
 			await expect(service.toggleUpvote(999, 123)).rejects.toThrow('Drill not found for upvoting');
 		});
@@ -575,36 +488,13 @@ describe('DrillService', () => {
 
 	describe('setVariant', () => {
 		it('should set variant relationship for a drill', async () => {
-			// Mock transaction function
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				const mockClient = {
-					query: vi.fn()
-				};
-
-				// Mock drill check query
-				mockClient.query.mockResolvedValueOnce({
-					rows: [{ id: 1, name: 'Test Drill', parent_drill_id: null, child_count: 0 }]
-				});
-
-				// Mock parent drill check query
-				mockClient.query.mockResolvedValueOnce({
-					rows: [{ id: 2, name: 'Parent Drill', parent_drill_id: null }]
-				});
-
-				// Mock update query
-				mockClient.query.mockResolvedValueOnce({
-					rows: [
-						{
-							id: 1,
-							name: 'Test Drill',
-							parent_drill_id: 2,
-							parent_drill_name: 'Parent Drill'
-						}
-					]
-				});
-
-				return callback(mockClient);
-			});
+			mockDb.kyselyDb.__setResults([
+				{ id: 1, name: 'Test Drill', parent_drill_id: null },
+				{ count: '0' },
+				{ id: 2, name: 'Parent Drill', parent_drill_id: null },
+				{ id: 1, name: 'Test Drill', parent_drill_id: 2 },
+				{ name: 'Parent Drill' }
+			]);
 
 			const result = await service.setVariant(1, 2);
 
@@ -614,30 +504,11 @@ describe('DrillService', () => {
 		});
 
 		it('should remove variant relationship when parentDrillId is null', async () => {
-			// Mock transaction function
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				const mockClient = {
-					query: vi.fn()
-				};
-
-				// Mock drill check query
-				mockClient.query.mockResolvedValueOnce({
-					rows: [{ id: 1, name: 'Test Drill', parent_drill_id: 2, child_count: 0 }]
-				});
-
-				// Mock update query
-				mockClient.query.mockResolvedValueOnce({
-					rows: [
-						{
-							id: 1,
-							name: 'Test Drill',
-							parent_drill_id: null
-						}
-					]
-				});
-
-				return callback(mockClient);
-			});
+			mockDb.kyselyDb.__setResults([
+				{ id: 1, name: 'Test Drill', parent_drill_id: 2 },
+				{ count: '0' },
+				{ id: 1, name: 'Test Drill', parent_drill_id: null }
+			]);
 
 			const result = await service.setVariant(1, null);
 
@@ -646,100 +517,36 @@ describe('DrillService', () => {
 		});
 
 		it('should throw error if drill not found', async () => {
-			// Mock transaction function
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				const mockClient = {
-					query: vi.fn().mockResolvedValueOnce({ rows: [] }) // Empty result
-				};
-
-				try {
-					await callback(mockClient);
-				} catch (e) {
-					throw e;
-				}
-			});
-
+			mockDb.kyselyDb.__setResults([undefined]);
 			await expect(service.setVariant(999, 2)).rejects.toThrow('Drill not found');
 		});
 
 		it('should throw error if parent drill not found', async () => {
-			// Mock transaction function
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				const mockClient = {
-					query: vi.fn()
-				};
-
-				// Mock drill check query
-				mockClient.query.mockResolvedValueOnce({
-					rows: [{ id: 1, name: 'Test Drill', parent_drill_id: null, child_count: 0 }]
-				});
-
-				// Mock parent drill check query - empty result
-				mockClient.query.mockResolvedValueOnce({ rows: [] });
-
-				try {
-					await callback(mockClient);
-				} catch (e) {
-					throw e;
-				}
-			});
-
+			mockDb.kyselyDb.__setResults([
+				{ id: 1, name: 'Test Drill', parent_drill_id: null },
+				{ count: '0' },
+				undefined
+			]);
 			await expect(service.setVariant(1, 999)).rejects.toThrow('Parent drill not found');
 		});
 
 		it('should throw error if attempting to make a parent into a variant', async () => {
-			// Mock transaction function
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				const mockClient = {
-					query: vi.fn()
-				};
-
-				// Mock drill check query - has children
-				mockClient.query.mockResolvedValueOnce({
-					rows: [{ id: 1, name: 'Test Drill', parent_drill_id: null, child_count: 2 }]
-				});
-
-				// Mock parent drill check query
-				mockClient.query.mockResolvedValueOnce({
-					rows: [{ id: 2, name: 'Parent Drill', parent_drill_id: null }]
-				});
-
-				try {
-					await callback(mockClient);
-				} catch (e) {
-					throw e;
-				}
-			});
-
+			mockDb.kyselyDb.__setResults([
+				{ id: 1, name: 'Test Drill', parent_drill_id: null },
+				{ count: '2' },
+				{ id: 2, name: 'Parent Drill', parent_drill_id: null }
+			]);
 			await expect(service.setVariant(1, 2)).rejects.toThrow(
 				'Cannot make a parent drill into a variant'
 			);
 		});
 
 		it('should throw error if attempting to use a variant as a parent', async () => {
-			// Mock transaction function
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				const mockClient = {
-					query: vi.fn()
-				};
-
-				// Mock drill check query
-				mockClient.query.mockResolvedValueOnce({
-					rows: [{ id: 1, name: 'Test Drill', parent_drill_id: null, child_count: 0 }]
-				});
-
-				// Mock parent drill check query - is a variant
-				mockClient.query.mockResolvedValueOnce({
-					rows: [{ id: 2, name: 'Variant Drill', parent_drill_id: 3 }]
-				});
-
-				try {
-					await callback(mockClient);
-				} catch (e) {
-					throw e;
-				}
-			});
-
+			mockDb.kyselyDb.__setResults([
+				{ id: 1, name: 'Test Drill', parent_drill_id: null },
+				{ count: '0' },
+				{ id: 2, name: 'Variant Drill', parent_drill_id: 3 }
+			]);
 			await expect(service.setVariant(1, 2)).rejects.toThrow('Cannot set a variant as a parent');
 		});
 

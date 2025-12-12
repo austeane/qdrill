@@ -25,7 +25,7 @@
 		</button>
 
 		<ul class="nav">
-			{#each navItems as item}
+			{#each navItems as item (item.href)}
 				<li>
 					<a
 						href={item.href}
@@ -63,7 +63,14 @@
 </aside>
 
 {#if open}
-	<div class="overlay md:hidden" on:click={() => (open = false)} />
+	<div
+		class="overlay md:hidden"
+		role="button"
+		tabindex="0"
+		aria-label="Close sidebar"
+		on:click={() => (open = false)}
+		on:keydown={(e) => e.key === 'Enter' && (open = false)}
+	></div>
 {/if}
 
 <style>

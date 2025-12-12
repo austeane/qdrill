@@ -285,7 +285,7 @@
 	<div class="space-y-4 pt-6 border-t border-gray-200">
 		<h3 class="text-sm font-medium text-gray-700">Add Predefined Section</h3>
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-			{#each sectionOptions as option}
+			{#each sectionOptions as option (option.name)}
 				<button
 					type="button"
 					on:click={() => addSection(option)}

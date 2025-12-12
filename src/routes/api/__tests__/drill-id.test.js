@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GET, PUT, DELETE } from '../drills/[id]/+server.js';
-import { NotFoundError, ValidationError, ForbiddenError } from '$lib/server/errors.js';
+import { NotFoundError } from '$lib/server/errors.js';
 
 // Mock the dependencies
 vi.mock('$lib/server/services/drillService', () => {
@@ -37,7 +37,7 @@ vi.mock('$app/environment', () => {
 
 // Import the mocked services
 import { drillService } from '$lib/server/services/drillService';
-import * as db from '$lib/server/db';
+import * as _db from '$lib/server/db';
 
 describe('Drill ID API Endpoints', () => {
 	beforeEach(() => {

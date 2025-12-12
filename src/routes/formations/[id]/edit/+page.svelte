@@ -1,6 +1,5 @@
 <script>
 	import FormationForm from '../../FormationForm.svelte';
-	import { page } from '$app/stores';
 
 	export let data;
 

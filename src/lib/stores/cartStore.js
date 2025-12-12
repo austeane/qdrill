@@ -19,9 +19,9 @@ function createCartStore() {
 			// Clear corrupted data
 			try {
 				localStorage.removeItem('cartDrills');
-			} catch (e) {
-				// Ignore if we can't clear it
-			}
+				} catch {
+					// Ignore if we can't clear it
+				}
 		}
 	}
 

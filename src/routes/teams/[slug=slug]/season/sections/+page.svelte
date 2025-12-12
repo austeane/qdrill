@@ -1,5 +1,4 @@
 <script>
-	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch';
@@ -7,7 +6,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Dialog from '$lib/components/ui/Dialog.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 
 	export let data;
 
@@ -126,8 +124,9 @@
 					required
 				/>
 				<div>
-					<label class="block text-sm font-medium mb-2">Color</label>
+					<label for="new-section-color" class="block text-sm font-medium mb-2">Color</label>
 					<input
+						id="new-section-color"
 						type="color"
 						bind:value={newSection.color}
 						class="h-10 w-32 rounded-md border border-input bg-background px-2 cursor-pointer"
@@ -156,14 +155,15 @@
 	{/if}
 
 	<div class="space-y-4">
-		{#each data.sections as section, index}
+		{#each data.sections as section, index (section.id)}
 			<Card>
 				{#if editingSection === section.id}
 					<div class="grid gap-4">
 						<Input bind:value={section.name} label="Section Name" error={editError} />
 						<div>
-							<label class="block text-sm font-medium mb-2">Color</label>
+							<label for="edit-section-color-{section.id}" class="block text-sm font-medium mb-2">Color</label>
 							<input
+								id="edit-section-color-{section.id}"
 								type="color"
 								bind:value={section.color}
 								class="h-10 w-32 rounded-md border border-input bg-background px-2 cursor-pointer"

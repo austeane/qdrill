@@ -1,18 +1,18 @@
 import { error } from '@sveltejs/kit';
-import { query } from '$lib/server/db';
+import { kyselyDb, sql } from '$lib/server/db';
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load() {
 	try {
 		// Load all drills for the drill selection step
-		const drills = await query(`
-            SELECT *
-            FROM drills
-            ORDER BY name ASC
-        `);
+		const drills = await kyselyDb
+			.selectFrom('drills')
+			.selectAll()
+			.orderBy('name', 'asc')
+			.execute();
 
 		return {
-			drills: drills.rows
+			drills
 		};
 	} catch (err) {
 		console.error('Error loading drills:', err);
@@ -38,24 +38,26 @@ export const actions = {
 			}
 
 			// For logged-in users, save to database
-			const result = await query(
-				`
-                INSERT INTO practice_plan_drafts (
-                    user_id,
-                    data,
-                    created_at,
-                    updated_at
-                ) VALUES ($1, $2, NOW(), NOW())
-                ON CONFLICT (user_id) DO UPDATE
-                SET data = $2, updated_at = NOW()
-                RETURNING id
-            `,
-				[locals.user.id, data]
-			);
+			const result = await kyselyDb
+				.insertInto('practice_plan_drafts')
+				.values({
+					user_id: locals.user.id,
+					data,
+					created_at: sql`now()`,
+					updated_at: sql`now()`
+				})
+				.onConflict((oc) =>
+					oc.column('user_id').doUpdateSet({
+						data,
+						updated_at: sql`now()`
+					})
+				)
+				.returning('id')
+				.executeTakeFirst();
 
 			return {
 				success: true,
-				id: result.rows[0].id
+				id: result.id
 			};
 		} catch (err) {
 			console.error('Error saving draft:', err);
@@ -66,18 +68,15 @@ export const actions = {
 	// Load draft
 	loadDraft: async ({ locals }) => {
 		try {
-			const result = await query(
-				`
-                SELECT data
-                FROM practice_plan_drafts
-                WHERE user_id = $1
-                ORDER BY updated_at DESC
-                LIMIT 1
-            `,
-				[locals.user.id]
-			);
+			const row = await kyselyDb
+				.selectFrom('practice_plan_drafts')
+				.select('data')
+				.where('user_id', '=', locals.user.id)
+				.orderBy('updated_at', 'desc')
+				.limit(1)
+				.executeTakeFirst();
 
-			if (result.rows.length === 0) {
+			if (!row) {
 				return {
 					success: true,
 					data: null
@@ -86,7 +85,7 @@ export const actions = {
 
 			return {
 				success: true,
-				data: result.rows[0].data
+				data: row.data
 			};
 		} catch (err) {
 			console.error('Error loading draft:', err);
@@ -97,13 +96,10 @@ export const actions = {
 	// Delete draft
 	deleteDraft: async ({ locals }) => {
 		try {
-			await query(
-				`
-                DELETE FROM practice_plan_drafts
-                WHERE user_id = $1
-            `,
-				[locals.user.id]
-			);
+			await kyselyDb
+				.deleteFrom('practice_plan_drafts')
+				.where('user_id', '=', locals.user.id)
+				.execute();
 
 			return {
 				success: true

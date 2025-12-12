@@ -1,7 +1,7 @@
 <script>
-import RangeSlider from 'svelte-range-slider-pips';
-import RangeFilter from '$lib/components/RangeFilter.svelte';
-import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
+	import RangeSlider from 'svelte-range-slider-pips';
+	import RangeFilter from '$lib/components/RangeFilter.svelte';
+	import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 	import {
 		selectedSkillLevels,
 		selectedComplexities,
@@ -13,8 +13,8 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 		selectedSuggestedLengthsMax,
 		selectedHasVideo,
 		selectedHasDiagrams,
-               selectedHasImages,
-               selectedDrillTypes
+		selectedHasImages,
+		selectedDrillTypes
 	} from '$lib/stores/drillsStore';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
@@ -52,7 +52,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 	// Practice Plans Filters
 	export let phaseOfSeasonOptions = [];
 	export let practiceGoalsOptions = [];
-	
+
 	// Sort options (passed in from parent)
 	export let sortOptions = [];
 
@@ -91,7 +91,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 	// Set up variables for the sliders
 	let numberOfPeopleRange = [$selectedNumberOfPeopleMin, $selectedNumberOfPeopleMax];
 	let suggestedLengthsRange = [$selectedSuggestedLengthsMin, $selectedSuggestedLengthsMax];
-        let estimatedParticipantsRange = [1, 100];
+	let estimatedParticipantsRange = [1, 100];
 
 	// Variables for Contains Drill filter
 	let drillSearchTerm = '';
@@ -99,27 +99,27 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 	let drillLoading = false;
 	let drillError = null;
 
-        // Reactive checks for active filters
-        $: hasActiveDrillFilters =
-                Object.keys($selectedSkillLevels).length > 0 ||
-                Object.keys($selectedComplexities).length > 0 ||
-                Object.keys($selectedSkillsFocusedOn).length > 0 ||
-                Object.keys($selectedPositionsFocusedOn).length > 0 ||
-                $selectedNumberOfPeopleMin !== effectiveNumberOfPeopleOptions.min ||
-                $selectedNumberOfPeopleMax !== effectiveNumberOfPeopleOptions.max ||
-                $selectedSuggestedLengthsMin !== effectiveSuggestedLengths.min ||
-                $selectedSuggestedLengthsMax !== effectiveSuggestedLengths.max ||
-                $selectedHasVideo !== null ||
-                $selectedHasDiagrams !== null ||
-                $selectedHasImages !== null ||
-                Object.keys($selectedDrillTypes).length > 0;
+	// Reactive checks for active filters
+	$: hasActiveDrillFilters =
+		Object.keys($selectedSkillLevels).length > 0 ||
+		Object.keys($selectedComplexities).length > 0 ||
+		Object.keys($selectedSkillsFocusedOn).length > 0 ||
+		Object.keys($selectedPositionsFocusedOn).length > 0 ||
+		$selectedNumberOfPeopleMin !== effectiveNumberOfPeopleOptions.min ||
+		$selectedNumberOfPeopleMax !== effectiveNumberOfPeopleOptions.max ||
+		$selectedSuggestedLengthsMin !== effectiveSuggestedLengths.min ||
+		$selectedSuggestedLengthsMax !== effectiveSuggestedLengths.max ||
+		$selectedHasVideo !== null ||
+		$selectedHasDiagrams !== null ||
+		$selectedHasImages !== null ||
+		Object.keys($selectedDrillTypes).length > 0;
 
-        $: hasActivePracticePlanFilters =
-                Object.keys($selectedPhaseOfSeason).length > 0 ||
-                Object.keys($selectedPracticeGoals).length > 0 ||
-                $selectedEstimatedParticipantsMin !== 1 ||
-                $selectedEstimatedParticipantsMax !== 100 ||
-                selectedDrills.length > 0;
+	$: hasActivePracticePlanFilters =
+		Object.keys($selectedPhaseOfSeason).length > 0 ||
+		Object.keys($selectedPracticeGoals).length > 0 ||
+		$selectedEstimatedParticipantsMin !== 1 ||
+		$selectedEstimatedParticipantsMax !== 100 ||
+		selectedDrills.length > 0;
 
 	let mounted = false;
 
@@ -168,7 +168,6 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 
 	// Function to handle toggling filters
 	function toggleFilter(filterName) {
-
 		let isCurrentlyOpen = false;
 		// Check the current state of the filter being toggled
 		switch (filterName) {
@@ -805,8 +804,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 				{/if}
 			</div>
 		{/if}
-
-        {/if}
+	{/if}
 
 	<!-- Practice Plans Filters -->
 	{#if filterType === 'practice-plans' && (phaseOfSeasonOptions.length || practiceGoalsOptions.length || selectedEstimatedParticipantsMin !== null || selectedEstimatedParticipantsMax !== null)}
@@ -1006,7 +1004,7 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 				</div>
 			{/if}
 		</div>
-        {/if}
+	{/if}
 
 	<!-- Sort Dropdown for Practice Plans -->
 	{#if filterType === 'practice-plans' && sortOptions.length > 0}
@@ -1017,7 +1015,8 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 				aria-expanded={showSortBy}
 				aria-controls="sortBy-content"
 			>
-				Sort by: {sortOptions.find(opt => opt.value === $selectedSortOption)?.label || 'Date Created'}
+				Sort by: {sortOptions.find((opt) => opt.value === $selectedSortOption)?.label ||
+					'Date Created'}
 				<span class="ml-2">
 					{#if $selectedSortOrder === 'desc'}
 						↓
@@ -1072,21 +1071,21 @@ import DrillSearchFilter from '$lib/components/DrillSearchFilter.svelte';
 		</div>
 	{/if}
 
-        {#if (filterType === 'drills' && hasActiveDrillFilters) || (filterType === 'practice-plans' && hasActivePracticePlanFilters)}
-                <button
-                        class="inline-flex items-center bg-red-500 text-white border border-red-600 rounded-full px-4 py-2 cursor-pointer hover:bg-red-600 transition-colors duration-300"
-                        on:click={resetFilters}
-                >
-                        Reset Filters
-                </button>
-        {/if}
+	{#if (filterType === 'drills' && hasActiveDrillFilters) || (filterType === 'practice-plans' && hasActivePracticePlanFilters)}
+		<button
+			class="inline-flex items-center bg-red-500 text-white border border-red-600 rounded-full px-4 py-2 cursor-pointer hover:bg-red-600 transition-colors duration-300"
+			on:click={resetFilters}
+		>
+			Reset Filters
+		</button>
+	{/if}
 
-        <!-- Overlay to close dropdown when clicking outside -->
-        {#if (filterType === 'drills' && (showSkillLevels || showDrillComplexity || showSkillsFocusedOn || showPositionsFocusedOn || showNumberOfPeople || showSuggestedLengths || showHasImages || showDrillTypes)) || (filterType === 'practice-plans' && (showPhaseOfSeason || showPracticeGoals || showEstimatedParticipants || showContainsDrill || showSortBy))}
-                <div
-                        class="fixed inset-0 bg-transparent z-0"
-                        on:click={closeAllFilters}
-                        aria-label="Close filters"
+	<!-- Overlay to close dropdown when clicking outside -->
+	{#if (filterType === 'drills' && (showSkillLevels || showDrillComplexity || showSkillsFocusedOn || showPositionsFocusedOn || showNumberOfPeople || showSuggestedLengths || showHasImages || showDrillTypes)) || (filterType === 'practice-plans' && (showPhaseOfSeason || showPracticeGoals || showEstimatedParticipants || showContainsDrill || showSortBy))}
+		<div
+			class="fixed inset-0 bg-transparent z-0"
+			on:click={closeAllFilters}
+			aria-label="Close filters"
 		></div>
 	{/if}
 </div>

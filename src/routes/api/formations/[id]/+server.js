@@ -3,7 +3,7 @@ import { formationService } from '$lib/server/services/formationService.js';
 import { authGuard } from '$lib/server/authGuard';
 import { dev } from '$app/environment';
 import { handleApiError } from '../../utils/handleApiError.js';
-import { NotFoundError, ForbiddenError } from '$lib/server/errors';
+import { ForbiddenError } from '$lib/server/errors';
 
 /**
  * GET handler for retrieving a specific formation

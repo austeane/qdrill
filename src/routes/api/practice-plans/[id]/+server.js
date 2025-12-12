@@ -32,20 +32,6 @@ export const PUT = authGuard(async ({ params, request, locals }) => {
 	}
 });
 
-// Define the core deletion logic as a separate async function
-const handleDelete = async ({ params, locals }) => {
-	const { id } = params;
-	const session = locals.session;
-	const userId = session?.user?.id;
-
-	try {
-		const result = await practicePlanService.deletePracticePlan(id, userId);
-		return json({ success: true, message: 'Practice plan deleted successfully' });
-	} catch (err) {
-		return handleApiError(err);
-	}
-};
-
 // Export the DELETE handler
 // Wrap DELETE handler with authGuard for consistent authentication
 export const DELETE = authGuard(async ({ params, locals }) => {

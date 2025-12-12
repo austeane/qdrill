@@ -805,7 +805,7 @@ export function handleEmptySectionDragOver(event, sectionIndex, element) {
 		}
 
 		// Check if the section is truly empty at this point
-                const secs = getSections();
+		const secs = getSections();
 		const currentItems = secs[sectionIndex]?.items || [];
 
 		// If not empty anymore, calculate the proper target index
@@ -1041,12 +1041,12 @@ export function handleDrop(event) {
 
 		// Record state before drop for history (only if needed)
 		let sectionsBeforeDrop;
-                if (shouldRecordHistory) {
-                        sectionsBeforeDrop = getSections();
-                }
+		if (shouldRecordHistory) {
+			sectionsBeforeDrop = getSections();
+		}
 
 		// Make a full backup of sections in case anything goes wrong during the drop operation
-                const sectionsBeforeAllDrops = JSON.parse(JSON.stringify(getSections()));
+		const sectionsBeforeAllDrops = JSON.parse(JSON.stringify(getSections()));
 
 		console.log('[DEBUG] About to process drop with type:', state.dragType);
 
@@ -1086,7 +1086,7 @@ export function handleDrop(event) {
 			// Try to recover state using the backup if anything went wrong
 			try {
 				console.warn('Trying to recover state from backup after drop error');
-                                setSections(sectionsBeforeAllDrops);
+				setSections(sectionsBeforeAllDrops);
 			} catch (recoveryError) {
 				console.error('Failed to recover state:', recoveryError);
 			}
@@ -1116,7 +1116,7 @@ function handleItemDrop(state) {
 		console.log('[DEBUG] handleItemDrop called with state:', state);
 
 		// Get the current sections
-                const allSections = getSections();
+		const allSections = getSections();
 
 		// Validate section indices
 		if (
@@ -1164,11 +1164,11 @@ function handleItemDrop(state) {
 		// Different handling based on drop type
 		if (state.targetTimeline) {
 			// Dropping into a timeline
-			handleTimelineDrop(state, movedItem, sourceItemIndex);
-		} else {
-			// Regular drop before/after another item
-			handleRegularDrop(state, movedItem, sourceItemIndex);
-		}
+				handleTimelineDrop(state, movedItem);
+			} else {
+				// Regular drop before/after another item
+				handleRegularDrop(state, movedItem);
+			}
 
 		// Final cleanup of any indicators
 		multiPhaseCleanup();
@@ -1205,247 +1205,136 @@ function prepareTimelineItem(movedItem, state, secs) {
 }
 
 /**
- * Handle reordering within the same timeline
- *
- * @param {Array} sectionItems - Items in the current section
- * @param {Object} movedItem - The item being moved
- * @param {Object} state - Current drag state
- * @param {Array} originalSectionItems - Original items before removing the source
- * @returns {Array} Updated section items
- */
-function handleSameTimelineReordering(sectionItems, movedItem, state, originalSectionItems) {
-	logger.debug('Reordering within same timeline at specific position');
-
-	// Get all items in the timeline before we made any modifications
-	const originalTimelineItems = originalSectionItems.filter(
-		(item) =>
-			item.parallel_group_id === state.targetGroupId &&
-			item.parallel_timeline === state.targetTimeline
-	);
-
-	// Look for target by timeline position if available
-	let targetItemIndex = -1;
-
-	if (
-		state.targetTimelineIndex !== null &&
-		state.targetTimelineIndex < originalTimelineItems.length
-	) {
-		// We have the position within the timeline - use it directly
-		const targetItem = originalTimelineItems[state.targetTimelineIndex];
-		targetItemIndex = originalSectionItems.indexOf(targetItem);
-		logger.debug(
-			`Found target by timelineIndex: ${state.targetTimelineIndex}, absoluteIndex: ${targetItemIndex}`
-		);
-	} else if (state.targetIndex !== null) {
-		// Fall back to using the absolute index
-		targetItemIndex = state.targetIndex;
-		logger.debug(`Using absolute targetIndex: ${targetItemIndex}`);
-	}
-
-	if (targetItemIndex === -1 || targetItemIndex >= originalSectionItems.length) {
-		logger.error('Could not find target item or index is out of bounds');
-		return appendToTimeline(sectionItems, movedItem, state);
-	}
-
-	if (targetItemIndex !== -1) {
-		// For same timeline reordering, we need to adjust the position
-		// based on whether the source was before or after the target
-		const sourceIndexInSectionItems = state.sourceIndex;
-		let insertAt;
-
-		if (state.dropPosition === 'before') {
-			// If dropping before the target
-			if (sourceIndexInSectionItems < targetItemIndex) {
-				// Source was before target, so target index shifted down by one
-				insertAt = targetItemIndex - 1;
-			} else {
-				// Source was after target, target index unchanged
-				insertAt = targetItemIndex;
-			}
-		} else {
-			// 'after'
-			// If dropping after the target
-			if (sourceIndexInSectionItems <= targetItemIndex) {
-				// Source was before or at target, target index shifted down by one
-				insertAt = targetItemIndex;
-			} else {
-				// Source was after target, target index unchanged + 1
-				insertAt = targetItemIndex + 1;
-			}
-		}
-
-		// Insert at the calculated position
-		logger.debug(
-			`Inserting at position ${insertAt} (${state.dropPosition} item at original index ${targetItemIndex})`
-		);
-		sectionItems.splice(insertAt, 0, movedItem);
-		return sectionItems;
-	}
-
-	// If we couldn't find the target, append to the end of the timeline items
-	return appendToTimeline(sectionItems, movedItem, state);
-}
-
-/**
- * Append an item to the end of a specific timeline
- */
-function appendToTimeline(sectionItems, movedItem, state) {
-	logger.debug('Appending to end of timeline');
-
-	// Find items in the same timeline and group
-	const sameTimelineItems = sectionItems.filter(
-		(item) =>
-			item.parallel_group_id === state.targetGroupId &&
-			item.parallel_timeline === state.targetTimeline
-	);
-
-	if (sameTimelineItems.length > 0) {
-		// Find the last item of this timeline
-		const lastItem = sameTimelineItems[sameTimelineItems.length - 1];
-		const lastItemIndex = sectionItems.indexOf(lastItem);
-
-		if (lastItemIndex !== -1) {
-			// Insert after the last item of this timeline
-			sectionItems.splice(lastItemIndex + 1, 0, movedItem);
-			return sectionItems;
-		}
-	}
-
-	// No items in this timeline or couldn't find last item, add to end
-	sectionItems.push(movedItem);
-	return sectionItems;
-}
-
-/**
  * Handle dropping an item into a timeline.
  */
-function handleTimelineDrop(state, movedItem, sourceItemIndex) {
-        logger.debug('Dropping into timeline:', {
-                targetTimeline: state.targetTimeline,
-                targetGroupId: state.targetGroupId,
-                targetIndex: state.targetIndex,
-                dropPosition: state.dropPosition
-        });
+function handleTimelineDrop(state, movedItem) {
+	logger.debug('Dropping into timeline:', {
+		targetTimeline: state.targetTimeline,
+		targetGroupId: state.targetGroupId,
+		targetIndex: state.targetIndex,
+		dropPosition: state.dropPosition
+	});
 
-        try {
-                const secs = getSections();
-                const targetSection = secs[state.targetSection];
-                if (!targetSection) return;
+	try {
+		const secs = getSections();
+		const targetSection = secs[state.targetSection];
+		if (!targetSection) return;
 
-                const targetItem = state.targetIndex !== null ? targetSection.items[state.targetIndex] : null;
+		const targetItem = state.targetIndex !== null ? targetSection.items[state.targetIndex] : null;
 
-                moveItem({
-                        itemId: movedItem.id,
-                        targetSectionId: targetSection.id,
-                        targetItemId: targetItem ? targetItem.id : null,
-                        position: state.dropPosition || 'after',
-                        transform: () => prepareTimelineItem(movedItem, state, secs)
-                });
-        } catch (error) {
-                logger.error('Error handling timeline drop:', error);
-                throw error;
-        }
+		moveItem({
+			itemId: movedItem.id,
+			targetSectionId: targetSection.id,
+			targetItemId: targetItem ? targetItem.id : null,
+			position: state.dropPosition || 'after',
+			transform: () => prepareTimelineItem(movedItem, state, secs)
+		});
+	} catch (error) {
+		logger.error('Error handling timeline drop:', error);
+		throw error;
+	}
 }
 
 /**
  * Handle dropping an item before or after another item (not into a timeline).
  */
-function handleRegularDrop(state, movedItem, sourceItemIndex) {
-        try {
-                const secs = getSections();
-                const targetSection = secs[state.targetSection];
-                if (!targetSection) return;
+function handleRegularDrop(state, movedItem) {
+	try {
+		const secs = getSections();
+		const targetSection = secs[state.targetSection];
+		if (!targetSection) return;
 
-                const targetItem = state.targetIndex !== null ? targetSection.items[state.targetIndex] : null;
+		const targetItem = state.targetIndex !== null ? targetSection.items[state.targetIndex] : null;
 
-                moveItem({
-                        itemId: movedItem.id,
-                        targetSectionId: targetSection.id,
-                        targetItemId: targetItem ? targetItem.id : null,
-                        position: state.dropPosition || 'after',
-                        transform: () => ({
-                                ...movedItem,
-                                parallel_group_id: null,
-                                parallel_timeline: null,
-                                groupTimelines: null
-                        })
-                });
-        } catch (error) {
-                console.error('Error handling regular drop:', error);
-                throw error;
-        }
+		moveItem({
+			itemId: movedItem.id,
+			targetSectionId: targetSection.id,
+			targetItemId: targetItem ? targetItem.id : null,
+			position: state.dropPosition || 'after',
+			transform: () => ({
+				...movedItem,
+				parallel_group_id: null,
+				parallel_timeline: null,
+				groupTimelines: null
+			})
+		});
+	} catch (error) {
+		console.error('Error handling regular drop:', error);
+		throw error;
+	}
 }
 
 /**
  * Handle dropping a group onto a target position.
  */
 function handleGroupDrop(state) {
-        try {
-                const secs = getSections();
-                const sourceSection = secs[state.sourceSection];
-                const targetSection = secs[state.targetSection];
+	try {
+		const secs = getSections();
+		const sourceSection = secs[state.sourceSection];
+		const targetSection = secs[state.targetSection];
 
-                if (!sourceSection || !targetSection || !state.sourceGroupId) {
-                        console.error('Invalid indices or group ID for group drop:', state);
-                        return;
-                }
+		if (!sourceSection || !targetSection || !state.sourceGroupId) {
+			console.error('Invalid indices or group ID for group drop:', state);
+			return;
+		}
 
-                const groupItems = sourceSection.items.filter(
-                        (item) => item.parallel_group_id === state.sourceGroupId
-                );
+		const groupItems = sourceSection.items.filter(
+			(item) => item.parallel_group_id === state.sourceGroupId
+		);
 
-                if (groupItems.length === 0) {
-                        console.error('No group items found for group ID:', state.sourceGroupId);
-                        return;
-                }
+		if (groupItems.length === 0) {
+			console.error('No group items found for group ID:', state.sourceGroupId);
+			return;
+		}
 
-                let insertAfterId = state.targetIndex !== null ? targetSection.items[state.targetIndex]?.id : null;
+		let insertAfterId =
+			state.targetIndex !== null ? targetSection.items[state.targetIndex]?.id : null;
 
-                groupItems.forEach((item, idx) => {
-                        moveItem({
-                                itemId: item.id,
-                                targetSectionId: targetSection.id,
-                                targetItemId: insertAfterId,
-                                position: idx === 0 ? state.dropPosition || 'after' : 'after'
-                        });
-                        insertAfterId = item.id;
-                });
+		groupItems.forEach((item, idx) => {
+			moveItem({
+				itemId: item.id,
+				targetSectionId: targetSection.id,
+				targetItemId: insertAfterId,
+				position: idx === 0 ? state.dropPosition || 'after' : 'after'
+			});
+			insertAfterId = item.id;
+		});
 
-                setTimeout(() => multiPhaseCleanup(), 50);
-        } catch (error) {
-                console.error('Error handling group drop:', error);
-                throw error;
-        }
+		setTimeout(() => multiPhaseCleanup(), 50);
+	} catch (error) {
+		console.error('Error handling group drop:', error);
+		throw error;
+	}
 }
 
 /**
  * Handle dropping a section before or after another section.
  */
 function handleSectionDrop(state) {
-        try {
-                if (state.sourceSection === null || state.targetSection === null) {
-                        console.error('Invalid source or target in section drag state:', state);
-                        return;
-                }
+	try {
+		if (state.sourceSection === null || state.targetSection === null) {
+			console.error('Invalid source or target in section drag state:', state);
+			return;
+		}
 
-                const secs = getSections();
-                const sourceSection = secs[state.sourceSection];
-                const targetSection = secs[state.targetSection];
+		const secs = getSections();
+		const sourceSection = secs[state.sourceSection];
+		const targetSection = secs[state.targetSection];
 
-                if (!sourceSection || !targetSection) {
-                        console.error('Section indices out of bounds:', state);
-                        return;
-                }
+		if (!sourceSection || !targetSection) {
+			console.error('Section indices out of bounds:', state);
+			return;
+		}
 
-                moveSection({
-                        sectionId: sourceSection.id,
-                        targetSectionId: targetSection.id,
-                        position: state.dropPosition || 'before'
-                });
+		moveSection({
+			sectionId: sourceSection.id,
+			targetSectionId: targetSection.id,
+			position: state.dropPosition || 'before'
+		});
 
-                setTimeout(() => multiPhaseCleanup(), 50);
-        } catch (error) {
-                console.error('Error handling section drop:', error);
-                throw error;
-        }
+		setTimeout(() => multiPhaseCleanup(), 50);
+	} catch (error) {
+		console.error('Error handling section drop:', error);
+		throw error;
+	}
 }

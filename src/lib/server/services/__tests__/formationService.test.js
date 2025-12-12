@@ -29,7 +29,7 @@ describe('FormationService', () => {
 		it('should initialize with correct values', () => {
 			expect(service.tableName).toBe('formations');
 			expect(service.primaryKey).toBe('id');
-			expect(service.defaultColumns).toEqual(['*']);
+			expect(service.defaultColumns).toContain('id');
 			expect(service.columnTypes).toHaveProperty('diagrams', 'json');
 			expect(service.columnTypes).toHaveProperty('tags', 'array');
 		});
@@ -147,6 +147,9 @@ describe('FormationService', () => {
 
 	describe('updateFormation', () => {
 		it('should update a formation with normalized data', async () => {
+			// Bypass permission check for this unit test
+			vi.spyOn(service, 'canUserEdit').mockResolvedValue(true);
+
 			// Mock the update method
 			vi.spyOn(service, 'update').mockResolvedValue({
 				id: 1,

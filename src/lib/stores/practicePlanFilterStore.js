@@ -25,4 +25,3 @@ export function updateFilterState(store) {
 		// dispatch('filterChange');
 	};
 }
-

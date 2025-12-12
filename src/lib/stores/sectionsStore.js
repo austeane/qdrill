@@ -1,6 +1,6 @@
 import { writable, get, derived } from 'svelte/store';
 import { toast } from '@zerodevx/svelte-toast';
-import { addToHistory } from './historyStore';
+import { addToHistory, setSnapshotGetter, setSnapshotApplier } from './historyStore';
 
 // Section counter for generating unique IDs
 let sectionCounter = 0;
@@ -84,6 +84,10 @@ export const selectedTimelines = writable(new Set(['BEATERS', 'CHASERS']));
 export const selectedSectionId = writable(null);
 export const customTimelineColors = writable({});
 export const customTimelineNames = writable({});
+
+// Inject snapshot getter for historyStore to avoid circular imports
+setSnapshotGetter(() => JSON.parse(JSON.stringify(get(sections))));
+setSnapshotApplier((snapshot) => sections.set(snapshot));
 
 // Helper function to get a timeline's color (custom or default)
 export function getTimelineColor(timeline) {
@@ -223,7 +227,6 @@ export function updateTimelineColor(timeline, color) {
 
 // Helper function to format drill items
 export function formatDrillItem(item, sectionId) {
-
 	// Determine if this is a one-off drill
 	// One-off drills have either:
 	// 1. type 'drill' with null drill_id and no drill object, or
@@ -512,7 +515,7 @@ export function addOneOffDrill(sectionId, name = 'Quick Activity') {
 
 export function addDrillToPlan(drill, sectionId, options = {}) {
 	const { parallel_timeline = null, parallel_group_id = null } = options;
-	
+
 	addToHistory('ADD_DRILL', { drill, sectionId }, `Added "${drill.name}" to plan`);
 
 	sections.update((currentSections) => {
@@ -547,7 +550,11 @@ export function addDrillToPlan(drill, sectionId, options = {}) {
 }
 
 export function addFormationToPlan(formation, sectionId) {
-	addToHistory('ADD_FORMATION', { formation, sectionId }, `Added "${formation.name}" formation reference`);
+	addToHistory(
+		'ADD_FORMATION',
+		{ formation, sectionId },
+		`Added "${formation.name}" formation reference`
+	);
 
 	sections.update((currentSections) => {
 		const newSections = [...currentSections];
@@ -611,12 +618,13 @@ export function removeItem(sectionIndex, itemIndex) {
 			// If only one item remains in the group, remove the group
 			if (remainingGroupItems.length === 1) {
 				section.items = section.items.map((item) => {
-					if (item.parallel_group_id === itemToRemove.parallel_group_id) {
-						const { parallel_group_id, ...rest } = item;
-						return {
-							...rest,
-							id: item.drill?.id || item.id,
-							drill: item.drill || { id: item.id, name: item.name }
+						if (item.parallel_group_id === itemToRemove.parallel_group_id) {
+							const rest = { ...item };
+							delete rest.parallel_group_id;
+							return {
+								...rest,
+								id: item.drill?.id || item.id,
+								drill: item.drill || { id: item.id, name: item.name }
 						};
 					}
 					return item;
@@ -702,7 +710,7 @@ export function handleTimelineChange(sectionIndex, itemIndex, newTimeline) {
 	sections.update((currentSections) => {
 		const newSections = [...currentSections];
 		const section = newSections[sectionIndex];
-		
+
 		section.items[itemIndex] = {
 			...section.items[itemIndex],
 			parallel_timeline: newTimeline
@@ -716,13 +724,17 @@ export function handleTimelineChange(sectionIndex, itemIndex, newTimeline) {
 export function addParallelActivities(sectionId, activities) {
 	const groupId = `parallel-${Date.now()}`;
 	const timelines = Object.keys(activities);
-	
-	addToHistory('ADD_PARALLEL_ACTIVITIES', { sectionId, activities, groupId }, 'Added parallel activities');
-	
+
+	addToHistory(
+		'ADD_PARALLEL_ACTIVITIES',
+		{ sectionId, activities, groupId },
+		'Added parallel activities'
+	);
+
 	sections.update((currentSections) => {
 		const newSections = [...currentSections];
 		const targetSection = newSections.find((s) => s.id === sectionId);
-		
+
 		if (targetSection) {
 			// Add each position's activity
 			Object.entries(activities).forEach(([timeline, drill]) => {
@@ -741,7 +753,7 @@ export function addParallelActivities(sectionId, activities) {
 					targetSection.items.push(newItem);
 				}
 			});
-			
+
 			toast.push('Added parallel activities', {
 				theme: {
 					'--toastBackground': '#4CAF50',
@@ -749,7 +761,7 @@ export function addParallelActivities(sectionId, activities) {
 				}
 			});
 		}
-		
+
 		return newSections;
 	});
 }
@@ -789,20 +801,24 @@ export function handleUngroup(groupId) {
 
 			// Update all items in the section
 			const updatedItems = section.items.map((item) => {
-				if (item.parallel_group_id === groupId) {
-					// Remove parallel group info but preserve drill information and important properties
-					const { parallel_group_id, parallel_timeline, groupTimelines, ...rest } = item;
-					return {
-						...rest,
-						id: item.drill?.id || item.id,
-						drill: item.drill || { id: item.id, name: item.name },
-						// Preserve these properties when ungrouping with prefixes
-						// This allows us to potentially recover them if the item is grouped again
-						// without interfering with the normal item structure
-						_previous_timeline: parallel_timeline,
-						_previous_color: item.timeline_color,
-						_previous_group_name: item.group_name
-					};
+					if (item.parallel_group_id === groupId) {
+						// Remove parallel group info but preserve drill information and important properties
+						const rest = { ...item };
+						const parallelTimeline = rest.parallel_timeline;
+						delete rest.parallel_group_id;
+						delete rest.parallel_timeline;
+						delete rest.groupTimelines;
+							return {
+								...rest,
+								id: item.drill?.id || item.id,
+								drill: item.drill || { id: item.id, name: item.name },
+								// Preserve these properties when ungrouping with prefixes
+								// This allows us to potentially recover them if the item is grouped again
+								// without interfering with the normal item structure
+								_previous_timeline: parallelTimeline,
+								_previous_color: item.timeline_color,
+								_previous_group_name: item.group_name
+							};
 				}
 				return item;
 			});
@@ -842,14 +858,12 @@ export function createParallelBlock() {
 			return currentSections;
 		}
 
-		const parallelGroupId = `group_${Date.now()}`;
-		// Capture the timelines at this moment
-		const groupTimelines = Array.from(get(selectedTimelines));
-		// Use a fixed group name now
-		const groupName = 'Parallel Activities';
+			const parallelGroupId = `group_${Date.now()}`;
+			// Capture the timelines at this moment
+			const groupTimelines = Array.from(get(selectedTimelines));
 
-		console.log(
-			'[DEBUG] createParallelBlock - captured groupTimelines for new block:',
+			console.log(
+				'[DEBUG] createParallelBlock - captured groupTimelines for new block:',
 			groupTimelines
 		);
 
@@ -1009,28 +1023,27 @@ export function handleTimelineSave() {
 
 export function removeTimelineFromGroup(sectionId, parallelGroupId, timeline) {
 	sections.update((currentSections) => {
-		const section = currentSections.find((s) => s.id === sectionId);
-		if (!section) return currentSections;
+			const section = currentSections.find((s) => s.id === sectionId);
+			if (!section) return currentSections;
 
-		// Find items in this timeline
-		const timelineItems = section.items.filter(
-			(item) => item.parallel_group_id === parallelGroupId && item.parallel_timeline === timeline
-		);
-
-		// If this is the last or second-to-last timeline, ungroup everything
-		const groupItems = section.items.filter((item) => item.parallel_group_id === parallelGroupId);
+			// If this is the last or second-to-last timeline, ungroup everything
+			const groupItems = section.items.filter((item) => item.parallel_group_id === parallelGroupId);
 		if (groupItems.length <= 2) {
 			return currentSections.map((s) => ({
 				...s,
-				items: s.items.map((item) => {
-					if (item.parallel_group_id === parallelGroupId) {
-						const { parallel_group_id, parallel_timeline, groupTimelines, ...rest } = item;
-						return {
-							...rest,
-							// Preserve these properties when ungrouping with prefixes
-							// This allows us to potentially recover them if the item is grouped again
-							// without interfering with the normal item structure
-							_previous_timeline: parallel_timeline,
+					items: s.items.map((item) => {
+						if (item.parallel_group_id === parallelGroupId) {
+							const rest = { ...item };
+							const parallelTimeline = rest.parallel_timeline;
+							delete rest.parallel_group_id;
+							delete rest.parallel_timeline;
+							delete rest.groupTimelines;
+							return {
+								...rest,
+								// Preserve these properties when ungrouping with prefixes
+								// This allows us to potentially recover them if the item is grouped again
+								// without interfering with the normal item structure
+								_previous_timeline: parallelTimeline,
 							_previous_color: item.timeline_color,
 							_previous_group_name: item.group_name
 						};
@@ -1329,25 +1342,31 @@ export function removeFromParallelGroup(itemId, items) {
 	// If only one item would remain, dissolve the group
 	if (remainingGroupItems.length <= 1) {
 		return items.map((item) => {
-			if (item.parallel_group_id === groupId) {
-				// Remove group properties
-				const { parallel_group_id, parallel_timeline, groupTimelines, ...rest } = item;
-				// Restore original duration? Or keep selected_duration?
-				// Let's keep selected_duration for now, assuming it was manually set.
-				return rest;
-			}
+				if (item.parallel_group_id === groupId) {
+					// Remove group properties
+					const rest = { ...item };
+					delete rest.parallel_group_id;
+					delete rest.parallel_timeline;
+					delete rest.groupTimelines;
+					// Restore original duration? Or keep selected_duration?
+					// Let's keep selected_duration for now, assuming it was manually set.
+					return rest;
+				}
 			return item;
 		});
 	}
 
 	// Otherwise, just remove the one item from the group
-	return items.map((item) => {
-		if (item.id === itemId) {
-			const { parallel_group_id, parallel_timeline, groupTimelines, ...rest } = item;
-			return rest;
-		}
-		return item;
-	});
+		return items.map((item) => {
+			if (item.id === itemId) {
+				const rest = { ...item };
+				delete rest.parallel_group_id;
+				delete rest.parallel_timeline;
+				delete rest.groupTimelines;
+				return rest;
+			}
+			return item;
+		});
 }
 
 // ------------------------------------------------------
@@ -1359,7 +1378,7 @@ export function removeFromParallelGroup(itemId, items) {
  * @returns {Array}
  */
 export function getSections() {
-        return get(sections);
+	return get(sections);
 }
 
 /**
@@ -1372,93 +1391,99 @@ export function getSections() {
  * @param {'before'|'after'} [params.position='after'] - Insert position
  * @param {(item:object)=>object} [params.transform] - Optional transform applied to the item
  */
-export function moveItem({ itemId, targetSectionId, targetItemId = null, position = 'after', transform }) {
-        // Create backup before operation
-        const backup = get(sections);
-        
-        try {
-                // Validate input parameters
-                if (!itemId) {
-                        console.error('moveItem: itemId is required');
-                        return false;
-                }
-                if (!targetSectionId) {
-                        console.error('moveItem: targetSectionId is required');
-                        return false;
-                }
-                if (position && !['before', 'after'].includes(position)) {
-                        console.error('moveItem: position must be "before" or "after"');
-                        return false;
-                }
-                
-                sections.update((secs) => {
-                        const newSecs = [...secs];
+export function moveItem({
+	itemId,
+	targetSectionId,
+	targetItemId = null,
+	position = 'after',
+	transform
+}) {
+	// Create backup before operation
+	const backup = get(sections);
 
-                        // Locate the item and its current section
-                        const srcSectionIndex = newSecs.findIndex((s) => s.items.some((i) => i.id === itemId));
-                        if (srcSectionIndex === -1) {
-                                console.error(`moveItem: Item with id ${itemId} not found`);
-                                throw new Error(`Item with id ${itemId} not found`);
-                        }
+	try {
+		// Validate input parameters
+		if (!itemId) {
+			console.error('moveItem: itemId is required');
+			return false;
+		}
+		if (!targetSectionId) {
+			console.error('moveItem: targetSectionId is required');
+			return false;
+		}
+		if (position && !['before', 'after'].includes(position)) {
+			console.error('moveItem: position must be "before" or "after"');
+			return false;
+		}
 
-                        const srcItems = [...newSecs[srcSectionIndex].items];
-                        const itemIndex = srcItems.findIndex((i) => i.id === itemId);
-                        if (itemIndex === -1) {
-                                console.error(`moveItem: Item with id ${itemId} not found in section`);
-                                throw new Error(`Item with id ${itemId} not found in section`);
-                        }
+		sections.update((secs) => {
+			const newSecs = [...secs];
 
-                        const [item] = srcItems.splice(itemIndex, 1);
+			// Locate the item and its current section
+			const srcSectionIndex = newSecs.findIndex((s) => s.items.some((i) => i.id === itemId));
+			if (srcSectionIndex === -1) {
+				console.error(`moveItem: Item with id ${itemId} not found`);
+				throw new Error(`Item with id ${itemId} not found`);
+			}
 
-                        newSecs[srcSectionIndex] = { ...newSecs[srcSectionIndex], items: srcItems };
+			const srcItems = [...newSecs[srcSectionIndex].items];
+			const itemIndex = srcItems.findIndex((i) => i.id === itemId);
+			if (itemIndex === -1) {
+				console.error(`moveItem: Item with id ${itemId} not found in section`);
+				throw new Error(`Item with id ${itemId} not found in section`);
+			}
 
-                        // Optionally transform the item before inserting
-                        let finalItem;
-                        try {
-                                finalItem = transform ? transform(item) : item;
-                        } catch (transformError) {
-                                console.error('moveItem: Error in transform function:', transformError);
-                                throw transformError;
-                        }
+			const [item] = srcItems.splice(itemIndex, 1);
 
-                        const targetSectionIndex = newSecs.findIndex((s) => s.id === targetSectionId);
-                        if (targetSectionIndex === -1) {
-                                console.error(`moveItem: Target section with id ${targetSectionId} not found`);
-                                throw new Error(`Target section with id ${targetSectionId} not found`);
-                        }
+			newSecs[srcSectionIndex] = { ...newSecs[srcSectionIndex], items: srcItems };
 
-                        const targetItems = [...newSecs[targetSectionIndex].items];
+			// Optionally transform the item before inserting
+			let finalItem;
+			try {
+				finalItem = transform ? transform(item) : item;
+			} catch (transformError) {
+				console.error('moveItem: Error in transform function:', transformError);
+				throw transformError;
+			}
 
-                        let insertIndex = targetItems.length;
-                        if (targetItemId !== null && targetItemId !== undefined) {
-                                const idx = targetItems.findIndex((i) => i.id === targetItemId);
-                                if (idx === -1) {
-                                        console.warn(`moveItem: Target item with id ${targetItemId} not found, adding to end`);
-                                } else {
-                                        insertIndex = position === 'before' ? idx : idx + 1;
-                                }
-                        }
+			const targetSectionIndex = newSecs.findIndex((s) => s.id === targetSectionId);
+			if (targetSectionIndex === -1) {
+				console.error(`moveItem: Target section with id ${targetSectionId} not found`);
+				throw new Error(`Target section with id ${targetSectionId} not found`);
+			}
 
-                        targetItems.splice(Math.min(insertIndex, targetItems.length), 0, finalItem);
-                        newSecs[targetSectionIndex] = { ...newSecs[targetSectionIndex], items: targetItems };
+			const targetItems = [...newSecs[targetSectionIndex].items];
 
-                        return newSecs;
-                });
+			let insertIndex = targetItems.length;
+			if (targetItemId !== null && targetItemId !== undefined) {
+				const idx = targetItems.findIndex((i) => i.id === targetItemId);
+				if (idx === -1) {
+					console.warn(`moveItem: Target item with id ${targetItemId} not found, adding to end`);
+				} else {
+					insertIndex = position === 'before' ? idx : idx + 1;
+				}
+			}
 
-                addToHistory('MOVE_ITEM', { itemId, targetSectionId, targetItemId, position }, 'Moved item');
-                return true;
-        } catch (error) {
-                console.error('moveItem failed:', error);
-                // Restore backup on error
-                sections.set(backup);
-                toast.push('Failed to move item: ' + error.message, {
-                        theme: {
-                                '--toastBackground': '#f44336',
-                                '--toastColor': 'white'
-                        }
-                });
-                return false;
-        }
+			targetItems.splice(Math.min(insertIndex, targetItems.length), 0, finalItem);
+			newSecs[targetSectionIndex] = { ...newSecs[targetSectionIndex], items: targetItems };
+
+			return newSecs;
+		});
+
+		addToHistory('MOVE_ITEM', { itemId, targetSectionId, targetItemId, position }, 'Moved item');
+		return true;
+	} catch (error) {
+		console.error('moveItem failed:', error);
+		// Restore backup on error
+		sections.set(backup);
+		toast.push('Failed to move item: ' + error.message, {
+			theme: {
+				'--toastBackground': '#f44336',
+				'--toastColor': 'white'
+			}
+		});
+		return false;
+	}
 }
 
 /**
@@ -1468,15 +1493,15 @@ export function moveItem({ itemId, targetSectionId, targetItemId = null, positio
  * @param {(item:object)=>object} updater
  */
 export function updateItem(itemId, updater) {
-        sections.update((secs) =>
-                secs.map((section) => {
-                        const idx = section.items.findIndex((i) => i.id === itemId);
-                        if (idx === -1) return section;
-                        const items = [...section.items];
-                        items[idx] = updater(items[idx]);
-                        return { ...section, items };
-                })
-        );
+	sections.update((secs) =>
+		secs.map((section) => {
+			const idx = section.items.findIndex((i) => i.id === itemId);
+			if (idx === -1) return section;
+			const items = [...section.items];
+			items[idx] = updater(items[idx]);
+			return { ...section, items };
+		})
+	);
 }
 
 /**
@@ -1488,71 +1513,71 @@ export function updateItem(itemId, updater) {
  * @param {'before'|'after'} [params.position='after']
  */
 export function moveSection({ sectionId, targetSectionId, position = 'after' }) {
-        // Create backup before operation
-        const backup = get(sections);
-        
-        try {
-                // Validate input parameters
-                if (!sectionId) {
-                        console.error('moveSection: sectionId is required');
-                        return false;
-                }
-                if (!targetSectionId) {
-                        console.error('moveSection: targetSectionId is required');
-                        return false;
-                }
-                if (sectionId === targetSectionId) {
-                        console.error('moveSection: Cannot move section to itself');
-                        return false;
-                }
-                if (position && !['before', 'after'].includes(position)) {
-                        console.error('moveSection: position must be "before" or "after"');
-                        return false;
-                }
-                
-                sections.update((secs) => {
-                        const newSecs = [...secs];
-                        const srcIndex = newSecs.findIndex((s) => s.id === sectionId);
-                        const targetIndex = newSecs.findIndex((s) => s.id === targetSectionId);
-                        
-                        if (srcIndex === -1) {
-                                console.error(`moveSection: Section with id ${sectionId} not found`);
-                                throw new Error(`Section with id ${sectionId} not found`);
-                        }
-                        if (targetIndex === -1) {
-                                console.error(`moveSection: Target section with id ${targetSectionId} not found`);
-                                throw new Error(`Target section with id ${targetSectionId} not found`);
-                        }
+	// Create backup before operation
+	const backup = get(sections);
 
-                        const [section] = newSecs.splice(srcIndex, 1);
+	try {
+		// Validate input parameters
+		if (!sectionId) {
+			console.error('moveSection: sectionId is required');
+			return false;
+		}
+		if (!targetSectionId) {
+			console.error('moveSection: targetSectionId is required');
+			return false;
+		}
+		if (sectionId === targetSectionId) {
+			console.error('moveSection: Cannot move section to itself');
+			return false;
+		}
+		if (position && !['before', 'after'].includes(position)) {
+			console.error('moveSection: position must be "before" or "after"');
+			return false;
+		}
 
-                        let insertIndex = targetIndex;
-                        if (position === 'after') {
-                                insertIndex = srcIndex < targetIndex ? targetIndex : targetIndex + 1;
-                        } else {
-                                insertIndex = srcIndex < targetIndex ? targetIndex - 1 : targetIndex;
-                        }
+		sections.update((secs) => {
+			const newSecs = [...secs];
+			const srcIndex = newSecs.findIndex((s) => s.id === sectionId);
+			const targetIndex = newSecs.findIndex((s) => s.id === targetSectionId);
 
-                        insertIndex = Math.max(0, Math.min(insertIndex, newSecs.length));
-                        newSecs.splice(insertIndex, 0, section);
+			if (srcIndex === -1) {
+				console.error(`moveSection: Section with id ${sectionId} not found`);
+				throw new Error(`Section with id ${sectionId} not found`);
+			}
+			if (targetIndex === -1) {
+				console.error(`moveSection: Target section with id ${targetSectionId} not found`);
+				throw new Error(`Target section with id ${targetSectionId} not found`);
+			}
 
-                        return newSecs.map((s, i) => ({ ...s, order: i }));
-                });
+			const [section] = newSecs.splice(srcIndex, 1);
 
-                addToHistory('MOVE_SECTION', { sectionId, targetSectionId, position }, 'Moved section');
-                return true;
-        } catch (error) {
-                console.error('moveSection failed:', error);
-                // Restore backup on error
-                sections.set(backup);
-                toast.push('Failed to move section: ' + error.message, {
-                        theme: {
-                                '--toastBackground': '#f44336',
-                                '--toastColor': 'white'
-                        }
-                });
-                return false;
-        }
+			let insertIndex = targetIndex;
+			if (position === 'after') {
+				insertIndex = srcIndex < targetIndex ? targetIndex : targetIndex + 1;
+			} else {
+				insertIndex = srcIndex < targetIndex ? targetIndex - 1 : targetIndex;
+			}
+
+			insertIndex = Math.max(0, Math.min(insertIndex, newSecs.length));
+			newSecs.splice(insertIndex, 0, section);
+
+			return newSecs.map((s, i) => ({ ...s, order: i }));
+		});
+
+		addToHistory('MOVE_SECTION', { sectionId, targetSectionId, position }, 'Moved section');
+		return true;
+	} catch (error) {
+		console.error('moveSection failed:', error);
+		// Restore backup on error
+		sections.set(backup);
+		toast.push('Failed to move section: ' + error.message, {
+			theme: {
+				'--toastBackground': '#f44336',
+				'--toastColor': 'white'
+			}
+		});
+		return false;
+	}
 }
 
 /**
@@ -1560,5 +1585,5 @@ export function moveSection({ sectionId, targetSectionId, position = 'after' }) 
  * @param {Array} newSections
  */
 export function setSections(newSections) {
-        sections.set(newSections);
+	sections.set(newSections);
 }

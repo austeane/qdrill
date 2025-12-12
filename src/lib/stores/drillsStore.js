@@ -1,7 +1,5 @@
 import { writable, derived } from 'svelte/store';
 import { PREDEFINED_SKILLS } from '$lib/constants/skills';
-import { selectedSortOption, selectedSortOrder } from './sortStore.js';
-import { FILTER_STATES } from '$lib/constants';
 
 // Pagination stores
 export const currentPage = writable(1);
@@ -30,4 +28,3 @@ export const allSkills = writable(PREDEFINED_SKILLS);
 export const sortedSkills = derived(allSkills, ($allSkills) =>
 	[...$allSkills].sort((a, b) => a.name.localeCompare(b.name))
 );
-

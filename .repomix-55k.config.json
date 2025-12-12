@@ -1,0 +1,47 @@
+{
+	"output": {
+		"filePath": "repomix-55k.xml",
+		"style": "xml",
+		"headerText": "QDrill Technical Review - Core Architecture (~55k tokens)\n\nThis package contains the essential architectural files for understanding QDrill:\n- Project configuration and setup\n- Database and authentication layer\n- Key service layer implementations\n- Core stores for state management\n- Representative route examples",
+		"showLineNumbers": false,
+		"removeComments": false,
+		"removeEmptyLines": false,
+		"topFilesLength": 10
+	},
+	"include": [
+		"CLAUDE.md",
+		"README.md",
+		"package.json",
+		"svelte.config.js",
+		"src/app.html",
+		"src/app.d.ts",
+		"src/hooks.server.js",
+		"src/lib/auth.js",
+		"src/lib/utils.ts",
+		"src/lib/server/db.js",
+		"src/lib/server/services/baseEntityService.js",
+		"src/lib/server/services/drillService.js",
+		"src/lib/stores/drillsStore.js",
+		"src/lib/stores/practiceStore.js",
+		"src/lib/validation/drillSchema.ts",
+		"src/lib/validation/practicePlanSchema.ts",
+		"src/routes/+layout.svelte",
+		"src/routes/+layout.server.js",
+		"src/routes/+page.svelte",
+		"src/routes/api/drills/+server.js",
+		"src/routes/api/drills/[id]/+server.js",
+		"src/routes/api/practice-plans/+server.js",
+		"src/routes/drills/+page.svelte",
+		"src/routes/practice-plans/+page.svelte",
+		"docs/architecture/index.md",
+		"docs/implementation/service-layer.md"
+	],
+	"ignore": {
+		"useGitignore": true,
+		"useDefaultPatterns": true,
+		"customPatterns": ["**/*.test.js", "**/*.spec.js", "**/__tests__/**"]
+	},
+	"security": {
+		"enableSecurityCheck": true
+	}
+}

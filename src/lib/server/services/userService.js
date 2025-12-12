@@ -3,8 +3,6 @@ import * as db from '$lib/server/db';
 import {
 	NotFoundError,
 	DatabaseError,
-	ForbiddenError,
-	InternalServerError,
 	ValidationError
 } from '$lib/server/errors';
 
@@ -58,7 +56,7 @@ export class UserService extends BaseEntityService {
 	 * @throws {NotFoundError} If user not found
 	 * @throws {DatabaseError} On database error
 	 */
-        async getUserProfile(userId, { limit = 10, offset = 0 } = {}) {
+	async getUserProfile(userId, { limit = 10, offset = 0 } = {}) {
 		try {
 			// Get user basic data using base method
 			// getById will throw NotFoundError if user doesn't exist.
@@ -76,7 +74,7 @@ export class UserService extends BaseEntityService {
 			// Now start transaction for related data
 			return this.withTransaction(async (client) => {
 				// Get drills created by user
-                                const drillsQuery = `
+				const drillsQuery = `
           SELECT id, name, brief_description, date_created,
                  visibility, is_editable_by_others,
                  (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
@@ -85,10 +83,10 @@ export class UserService extends BaseEntityService {
           ORDER BY date_created DESC
           LIMIT $2 OFFSET $3
         `;
-                                const drillsResult = await client.query(drillsQuery, [userId, limit, offset]);
+				const drillsResult = await client.query(drillsQuery, [userId, limit, offset]);
 
 				// Get practice plans created by user
-                                const plansQuery = `
+				const plansQuery = `
           SELECT id, name, description, created_at,
                  visibility, is_editable_by_others
           FROM practice_plans
@@ -96,10 +94,10 @@ export class UserService extends BaseEntityService {
           ORDER BY created_at DESC
           LIMIT $2 OFFSET $3
         `;
-                                const plansResult = await client.query(plansQuery, [userId, limit, offset]);
+				const plansResult = await client.query(plansQuery, [userId, limit, offset]);
 
 				// Get formations created by user
-                                const formationsQuery = `
+				const formationsQuery = `
           SELECT id, name, brief_description, created_at,
                  visibility, is_editable_by_others
           FROM formations
@@ -107,10 +105,10 @@ export class UserService extends BaseEntityService {
           ORDER BY created_at DESC
           LIMIT $2 OFFSET $3
         `;
-                                const formationsResult = await client.query(formationsQuery, [userId, limit, offset]);
+				const formationsResult = await client.query(formationsQuery, [userId, limit, offset]);
 
 				// Get votes by user
-                                const votesQuery = `
+				const votesQuery = `
           SELECT
             v.id,
             v.drill_id,
@@ -129,10 +127,10 @@ export class UserService extends BaseEntityService {
           ORDER BY v.created_at DESC
           LIMIT $2 OFFSET $3
         `;
-                                const votesResult = await client.query(votesQuery, [userId, limit, offset]);
+				const votesResult = await client.query(votesQuery, [userId, limit, offset]);
 
 				// Get comments by user
-                                const commentsQuery = `
+				const commentsQuery = `
           SELECT c.*,
             CASE
               WHEN c.drill_id IS NOT NULL THEN 'drill'
@@ -147,7 +145,7 @@ export class UserService extends BaseEntityService {
           ORDER BY c.created_at DESC
           LIMIT $2 OFFSET $3
         `;
-                                const commentsResult = await client.query(commentsQuery, [userId, limit, offset]);
+				const commentsResult = await client.query(commentsQuery, [userId, limit, offset]);
 
 				return {
 					user: profileUser, // Use the adjusted user object
@@ -232,7 +230,7 @@ export class UserService extends BaseEntityService {
 	async ensureUserExists(userObj) {
 		if (!userObj?.id) return;
 
-                const { id, name, email, image, emailVerified, role = 'user' } = userObj;
+		const { id, name, email, image, emailVerified, role = 'user' } = userObj;
 
 		// Quick existence check
 		const exists = await this.exists(id);
@@ -251,9 +249,9 @@ export class UserService extends BaseEntityService {
 				name ?? null,
 				email ?? null,
 				image ?? null,
-                                emailVerified ? new Date() : null,
-                                role
-                        ]);
+				emailVerified ? new Date() : null,
+				role
+			]);
 			console.info('Inserted new user row for Better‑Auth id', id);
 		} catch (err) {
 			console.error('Failed to insert user row for', id, err);

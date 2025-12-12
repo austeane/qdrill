@@ -3,6 +3,7 @@ import { formationService } from '$lib/server/services/formationService.js';
 import { authGuard } from '$lib/server/authGuard';
 import { dev } from '$app/environment';
 import { handleApiError } from '../utils/handleApiError.js';
+import { generateClaimToken } from '$lib/server/utils/claimTokens.js';
 
 /**
  * GET handler for formations
@@ -70,6 +71,9 @@ export async function POST({ request, locals }) {
 		console.log('User ID:', userId);
 
 		const newFormation = await formationService.createFormation(formationData, userId);
+		if (!userId && newFormation?.id) {
+			newFormation.claimToken = generateClaimToken('formation', newFormation.id);
+		}
 		return json(newFormation, { status: 201 });
 	} catch (err) {
 		// Use the centralized error handler

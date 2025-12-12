@@ -4,12 +4,6 @@ describe('Formation Detail Page', () => {
 	// const privateFormationId = 'test-private-formation-id'; // Removed
 	const invalidFormationId = 0;
 
-	// Placeholder Login - Replace with your actual Cypress login command if needed
-	const loginAsTestUser = () => {
-		cy.log('Logging in as test user...');
-		cy.setCookie('session_id', 'fake-test-user-session'); // Example cookie
-		cy.log('Placeholder login complete.');
-	};
 	const logout = () => {
 		cy.log('Logging out...');
 		cy.clearCookie('session_id');

@@ -145,7 +145,9 @@
 			<!-- Search (for 404s) -->
 			{#if errorConfig.showSearch}
 				<div class="mt-8 pt-6 border-t border-gray-200">
-					<p class="text-sm text-gray-500 dark:text-gray-400 mb-3">Looking for something specific?</p>
+					<p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
+						Looking for something specific?
+					</p>
 					<div class="flex">
 						<input
 							type="text"

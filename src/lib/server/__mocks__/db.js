@@ -3,14 +3,7 @@ import { vi } from 'vitest';
 // Mock for database operations
 // Provide a default implementation for query that returns empty rows if not overridden
 const mockQuery = vi.fn().mockResolvedValue({ rows: [] });
-const mockTransaction = vi.fn();
-const mockClient = {
-	query: mockQuery,
-	release: vi.fn()
-};
-
 // Basic mock for Kysely's fluent interface
-const mockKyselyExecute = vi.fn().mockResolvedValue({ rows: [] });
 const mockKyselyInterface = {
 	selectFrom: vi.fn().mockReturnThis(),
 	selectAll: vi.fn().mockReturnThis(),

@@ -4,26 +4,9 @@ import { handleApiError } from '../../../utils/handleApiError.js';
 import { authGuard } from '$lib/server/authGuard.js';
 import { ValidationError, NotFoundError } from '$lib/server/errors.js';
 
-const ERROR_MESSAGES = {
-	NOT_FOUND: 'Drill not found',
-	PARENT_NOT_FOUND: 'Parent drill not found',
-	FETCH_FAILED: 'Failed to fetch variations',
-	CREATE_FAILED: 'Failed to create variation'
-};
-
-// Helper function for consistent error responses
-function errorResponse(message, details = null, status = 500) {
-	console.error(`[Variations Error] ${message}`, details ? `: ${details}` : '');
-	return json(
-		{
-			error: message,
-			...(details && { details: details.toString() })
-		},
-		{ status }
-	);
-}
-
-export const GET = async ({ params }) => {
+export const GET = async ({ params, locals }) => {
+	const session = locals.session;
+	const userId = session?.user?.id;
 	try {
 		const drillId = parseInt(params.id);
 		if (!params.id || isNaN(drillId)) {
@@ -31,11 +14,11 @@ export const GET = async ({ params }) => {
 		}
 
 		// Service methods handle not found errors internally
-		const drill = await drillService.getById(drillId);
+		const drill = await drillService.getById(drillId, drillService.defaultColumns, userId);
 
 		// Handle parent drill case
 		if (!drill.parent_drill_id) {
-			const drillWithVariations = await drillService.getDrillWithVariations(drillId);
+			const drillWithVariations = await drillService.getDrillWithVariations(drillId, userId);
 			return json([drillWithVariations, ...(drillWithVariations.variations || [])]);
 		}
 
@@ -43,7 +26,7 @@ export const GET = async ({ params }) => {
 		const parentId = drill.parent_drill_id;
 		let parentDrill;
 		try {
-			parentDrill = await drillService.getById(parentId);
+			parentDrill = await drillService.getById(parentId, drillService.defaultColumns, userId);
 		} catch (err) {
 			if (err instanceof NotFoundError) {
 				console.warn(
@@ -55,7 +38,7 @@ export const GET = async ({ params }) => {
 		}
 
 		// Get all siblings
-		const drillWithVariations = await drillService.getDrillWithVariations(parentId);
+		const drillWithVariations = await drillService.getDrillWithVariations(parentId, userId);
 
 		// Reorder to put the current drill first after the parent
 		const otherVariations = (drillWithVariations.variations || []).filter((v) => v.id !== drillId);

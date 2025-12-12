@@ -31,7 +31,7 @@ describe('SkillService', () => {
 	describe('constructor', () => {
 		it('should initialize with the correct table name and columns', () => {
 			expect(skillService.tableName).toBe('skills');
-			expect(skillService.primaryKey).toBe('id');
+			expect(skillService.primaryKey).toBe('skill');
 			expect(skillService.allowedColumns).toContain('skill');
 			expect(skillService.allowedColumns).toContain('drills_used_in');
 			expect(skillService.allowedColumns).toContain('usage_count');
@@ -96,10 +96,7 @@ describe('SkillService', () => {
 
 		it('should return empty array if drill not found', async () => {
 			db.query.mockResolvedValueOnce({ rows: [] });
-
-			const result = await skillService.getSkillsForDrill(999);
-
-			expect(result).toEqual([]);
+			await expect(skillService.getSkillsForDrill(999)).rejects.toThrow(NotFoundError);
 		});
 
 		it('should handle null skills_focused_on', async () => {

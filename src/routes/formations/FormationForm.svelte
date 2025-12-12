@@ -2,11 +2,11 @@
 	import { onMount, tick } from 'svelte';
 	import { writable } from 'svelte/store';
 	import { goto } from '$app/navigation';
-        import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
-        import { page } from '$app/stores';
-        import { SvelteToast, toast } from '@zerodevx/svelte-toast';
-        import { authClient } from '$lib/auth-client';
-        import { apiFetch } from '$lib/utils/apiFetch.js';
+	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
+	import { page } from '$app/stores';
+	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
+	import { authClient } from '$lib/auth-client';
+	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { createForm } from 'svelte-forms-lib';
 
 	// Initialize stores
@@ -340,11 +340,11 @@
 				const { diagrams: _, ...loggableData } = requestBody;
 				console.log('Submitting formation data:', loggableData);
 
-                                const result = await apiFetch(url, {
-                                        method,
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(requestBody)
-                                });
+				const result = await apiFetch(url, {
+					method,
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(requestBody)
+				});
 
 				// After successful submission for non-logged in users
 				if (!isLoggedIn) {
@@ -356,7 +356,10 @@
 					);
 
 					if (confirmedAssociate) {
-						sessionStorage.setItem('formationToAssociate', result.id);
+						sessionStorage.setItem(
+							'formationToAssociate',
+							JSON.stringify({ id: result.id, claimToken: result.claimToken })
+						);
 						try {
 							// Use Better Auth sign in again
 							await authClient.signIn.social({ provider: 'google' });
@@ -442,25 +445,7 @@
 			sessionStorage.removeItem('pendingFormationData');
 		}
 
-		// Check for formation to associate
-		const formationToAssociate = sessionStorage.getItem('formationToAssociate');
-		if (formationToAssociate && isLoggedIn) {
-			// Use reactive boolean
-			// Call API to associate the formation with the current user
-                        apiFetch(`/api/formations/associate`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ formationId: formationToAssociate })
-                        })
-                                .then(() => {
-                                        toast.push('Formation successfully associated with your account!');
-                                })
-                                .catch((err) => {
-                                        console.error('Association API error:', err);
-                                        toast.push('Error associating formation.', { theme: { '--toastBackground': '#F56565' } });
-                                });
-			sessionStorage.removeItem('formationToAssociate');
-		}
+		// Formation association after login is handled centrally in +layout.svelte
 
 		// Load TinyMCE editor component dynamically
 		import('@tinymce/tinymce-svelte')
@@ -513,14 +498,20 @@
 							<input
 								id="name"
 								bind:value={$name}
-								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.name ? 'border-red-500 focus:ring-red-500' : ''}"
+								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.name
+									? 'border-red-500 focus:ring-red-500'
+									: ''}"
 								placeholder="Enter formation name"
 							/>
 						</div>
 						{#if $errors.name}
 							<p class="text-red-500 text-sm mt-1 flex items-center gap-1">
 								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+									<path
+										fill-rule="evenodd"
+										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+										clip-rule="evenodd"
+									/>
 								</svg>
 								{$errors.name}
 							</p>
@@ -534,14 +525,20 @@
 							<input
 								id="brief_description"
 								bind:value={$brief_description}
-								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.brief_description ? 'border-red-500 focus:ring-red-500' : ''}"
+								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.brief_description
+									? 'border-red-500 focus:ring-red-500'
+									: ''}"
 								placeholder="Brief summary of the formation"
 							/>
 						</div>
 						{#if $errors.brief_description}
 							<p class="text-red-500 text-sm mt-1 flex items-center gap-1">
 								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+									<path
+										fill-rule="evenodd"
+										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+										clip-rule="evenodd"
+									/>
 								</svg>
 								{$errors.brief_description}
 							</p>

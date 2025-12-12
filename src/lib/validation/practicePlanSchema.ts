@@ -13,20 +13,47 @@ const phaseOfSeasonOptions = [
 const visibilityOptions = ['public', 'unlisted', 'private'] as const;
 const practicePlanItemType = z.enum(['drill', 'break', 'one-off']); // Add 'one-off' if it's a valid type
 
-// Base schema for Practice Plan Item (reused in Create/Update)
-const practicePlanItemSchema = z.object({
+// Base schema for Practice Plan Item (shape only)
+const practicePlanItemBaseSchema = z.object({
 	id: z.number().optional(), // Optional for creation, required for update/association
 	type: z.enum(['drill', 'break', 'activity', 'formation']), // Added 'activity' and 'formation'
 	name: z.string().min(1, 'Item name is required'),
-	duration: z.number().int().min(1, 'Duration must be at least 1 minute'),
+	// Formation placeholders intentionally use duration 0
+	duration: z.number().int().min(0, 'Duration must be a non-negative integer'),
 	drill_id: z.number().int().nullable().optional(), // Null for breaks or one-offs/activities
 	formation_id: z.number().int().nullable().optional(), // For formation items
 	diagram_data: z.string().nullable().optional(),
 	parallel_group_id: z.string().nullable().optional(), // This identifies the item's role/timeline name
 	parallel_timeline: z.string().nullable().optional(), // Will be hydrated to be same as parallel_group_id
-	group_timelines: z.array(z.string()).nullable().optional(), // Will be hydrated with all timeline names in this item's parallel block
+	// Canonical wire shape is camelCase; accept snake_case for backward compatibility
+	groupTimelines: z.array(z.string()).nullable().optional(),
+	group_timelines: z.array(z.string()).nullable().optional(),
 	order: z.number().int().optional() // Handled server-side during creation/update usually
 });
+
+// Reused refined schema for reads/updates
+const practicePlanItemSchema = practicePlanItemBaseSchema.superRefine((item, ctx) => {
+	if (item.type !== 'formation' && item.duration < 1) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ['duration'],
+			message: 'Duration must be at least 1 minute'
+		});
+	}
+});
+
+// Schema for creation (no id)
+const practicePlanItemCreateSchema = practicePlanItemBaseSchema
+	.omit({ id: true })
+	.superRefine((item, ctx) => {
+		if (item.type !== 'formation' && item.duration < 1) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['duration'],
+				message: 'Duration must be at least 1 minute'
+			});
+		}
+	});
 
 // Base schema for Practice Plan Section (reused in Create/Update)
 const practicePlanSectionSchema = z.object({
@@ -99,7 +126,7 @@ export const createPracticePlanSchema = practicePlanSchema
 					// Omit section ID for creation
 					items: z
 						.array(
-							practicePlanItemSchema.omit({ id: true }) // Omit item ID for creation
+							practicePlanItemCreateSchema // Omit item ID for creation
 						)
 						.min(1, 'Each section must have at least one item')
 				})

@@ -5,7 +5,7 @@ import { ValidationError } from '$lib/server/errors.js';
 import { authGuard } from '$lib/server/authGuard.js'; // Import authGuard
 
 // Apply authGuard to protect the route
-export const PUT = authGuard(async ({ params, request, locals }) => {
+export const PUT = authGuard(async ({ params, request }) => {
 	// AuthGuard ensures locals.session.user.id exists
 
 	try {

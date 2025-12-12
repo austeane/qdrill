@@ -6,7 +6,6 @@ import { dev } from '$app/environment';
 export async function load({ params, locals }) {
 	const session = locals.session;
 	const userId = session?.user?.id;
-	const id = params.id;
 
 	try {
 		const formation = await formationService.getById(params.id, ['*'], userId);

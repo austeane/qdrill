@@ -68,17 +68,17 @@ export async function load({ fetch, url, locals }) {
 		const serviceOptions = { page, limit, sortBy, sortOrder, userId };
 
 		// Fetch drills using the parsed filters/options and filter options in parallel
-                const [drillsResult, filterOptionsResponse] = await Promise.all([
-                        drillService.getFilteredDrills(filters, serviceOptions), // Pass parsed filters here
-                        apiFetch('/api/drills/filter-options', {}, fetch).catch(error => {
-                                // Log the error but don't fail the page load
-                                console.error('Failed to fetch filter options:', error);
-                                return null; // Return null on error to allow graceful degradation
-                        })
-                ]);
+		const [drillsResult, filterOptionsResponse] = await Promise.all([
+			drillService.getFilteredDrills(filters, serviceOptions), // Pass parsed filters here
+			apiFetch('/api/drills/filter-options', {}, fetch).catch((error) => {
+				// Log the error but don't fail the page load
+				console.error('Failed to fetch filter options:', error);
+				return null; // Return null on error to allow graceful degradation
+			})
+		]);
 
-                const drillsData = drillsResult; // Service returns { items, pagination }
-                const filterOptions = filterOptionsResponse || {}; // Default to empty object if null/error
+		const drillsData = drillsResult; // Service returns { items, pagination }
+		const filterOptions = filterOptionsResponse || {}; // Default to empty object if null/error
 
 		return {
 			// Follow the structure { items: [], pagination: {} } for consistency

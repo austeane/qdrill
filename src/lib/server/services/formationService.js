@@ -1,6 +1,10 @@
 import { BaseEntityService } from './baseEntityService.js';
-import * as db from '$lib/server/db';
-import { NotFoundError, DatabaseError, ConflictError, ValidationError } from '$lib/server/errors';
+import {
+	NotFoundError,
+	DatabaseError,
+	ConflictError,
+	ForbiddenError
+} from '$lib/server/errors';
 import { kyselyDb, sql } from '$lib/server/db'; // Ensure sql is imported
 import { dev } from '$app/environment';
 
@@ -230,7 +234,8 @@ export class FormationService extends BaseEntityService {
 	 */
 	async createFormation(formationData, userId = null) {
 		// Make a copy of the data and remove the id field if it exists
-		const { id, ...dataWithoutId } = formationData;
+		const dataWithoutId = { ...formationData };
+		delete dataWithoutId.id;
 
 		// Normalize formation data
 		const normalizedData = this.normalizeFormationData({
@@ -297,13 +302,14 @@ export class FormationService extends BaseEntityService {
 			// throw new ValidationError('Invalid search term provided.');
 		}
 		// Consolidate into getAllFormations by passing searchTerm in filters
-		const combinedFilters = {
-			...(options.filters || {}),
-			searchQuery: searchTerm || null // Pass null if empty to avoid triggering search logic unnecessarily
-		};
-		const { filters, ...remainingOptions } = options; // remove original filters from options
-		return this.getAllFormations({ ...remainingOptions, filters: combinedFilters });
-	}
+			const combinedFilters = {
+				...(options.filters || {}),
+				searchQuery: searchTerm || null // Pass null if empty to avoid triggering search logic unnecessarily
+			};
+			const remainingOptions = { ...options };
+			delete remainingOptions.filters;
+			return this.getAllFormations({ ...remainingOptions, filters: combinedFilters });
+		}
 
 	/**
 	 * Get formations by created user

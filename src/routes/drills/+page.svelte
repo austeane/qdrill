@@ -9,11 +9,11 @@
 	import { dev } from '$app/environment';
 	import { page } from '$app/stores';
 	import { goto, invalidate } from '$app/navigation';
-import { navigating } from '$app/stores';
-import { onDestroy } from 'svelte';
+	import { navigating } from '$app/stores';
+	import { onDestroy } from 'svelte';
 	import { FILTER_STATES } from '$lib/constants';
-    import { apiFetch } from '$lib/utils/apiFetch.js';
-    import { sanitizeHtml } from '$lib/utils/sanitize.js';
+	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { sanitizeHtml } from '$lib/utils/sanitize.js';
 	import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
 
 	// Import only necessary stores (filter/sort state)
@@ -38,15 +38,15 @@ import { onDestroy } from 'svelte';
 
 	import Pagination from '$lib/components/Pagination.svelte';
 
-export let data;
+	export let data;
 
-let isNavigating = false;
-const unsubNavigating = navigating.subscribe((v) => (isNavigating = !!v));
-onDestroy(unsubNavigating);
+	let isNavigating = false;
+	const unsubNavigating = navigating.subscribe((v) => (isNavigating = !!v));
+	onDestroy(unsubNavigating);
 
 	// Filter options from load
 	$: filterOptions = data.filterOptions || {};
-	
+
 	// Check if user is admin
 	$: isAdmin = $page.data.session?.user?.role === 'admin';
 
@@ -61,7 +61,7 @@ onDestroy(unsubNavigating);
 		if (data && data.items) {
 			// Create a new buttonStates object without reading from the existing one
 			const newButtonStates = {};
-			data.items.forEach(drill => {
+			data.items.forEach((drill) => {
 				// Check if we already have a temporary state (added/removed)
 				const existingState = buttonStates[drill.id];
 				if (existingState === 'added' || existingState === 'removed') {
@@ -338,7 +338,9 @@ onDestroy(unsubNavigating);
 				href="/practice-plans/create"
 				class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-300"
 			>
-				Create Practice Plan with {($cart || []).length} Drill{($cart || []).length !== 1 ? 's' : ''}
+				Create Practice Plan with {($cart || []).length} Drill{($cart || []).length !== 1
+					? 's'
+					: ''}
 			</a>
 		</div>
 	</div>
@@ -410,16 +412,11 @@ onDestroy(unsubNavigating);
 	</div>
 
 	<!-- Loading and Empty States -->
-       {#if isNavigating && !data.items}
+	{#if isNavigating && !data.items}
 		<!-- Skeleton loaders for drills -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 			{#each Array(6) as _, i}
-				<SkeletonLoader 
-					lines={4} 
-					showCard={true}
-					showButton={true}
-					className="h-64"
-				/>
+				<SkeletonLoader lines={4} showCard={true} showButton={true} className="h-64" />
 			{/each}
 		</div>
 	{:else if !data.items || data.items.length === 0}
@@ -497,8 +494,10 @@ onDestroy(unsubNavigating);
 											{drill.name}
 										</a>
 									</h2>
-									<div class="prose prose-sm dark:prose-invert mt-2 text-gray-600 dark:text-gray-300 max-h-24 overflow-hidden">
-                    {@html sanitizeHtml(drill.brief_description)}
+									<div
+										class="prose prose-sm dark:prose-invert mt-2 text-gray-600 dark:text-gray-300 max-h-24 overflow-hidden"
+									>
+										{@html sanitizeHtml(drill.brief_description)}
 									</div>
 								</div>
 							</div>
@@ -517,7 +516,10 @@ onDestroy(unsubNavigating);
 								</p>
 							{/if}
 							{#if drill.suggested_length_min !== null && drill.suggested_length_min !== undefined}
-								<p class="text-sm text-gray-500 dark:text-gray-400 mt-1" data-testid="drill-card-duration">
+								<p
+									class="text-sm text-gray-500 dark:text-gray-400 mt-1"
+									data-testid="drill-card-duration"
+								>
 									<span class="font-medium">Duration:</span>
 									{#if drill.suggested_length_max !== null && drill.suggested_length_max !== undefined && drill.suggested_length_max > drill.suggested_length_min}
 										{drill.suggested_length_min} - {drill.suggested_length_max} mins

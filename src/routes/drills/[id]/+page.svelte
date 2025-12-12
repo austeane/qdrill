@@ -11,14 +11,14 @@
 	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
 	import { dev } from '$app/environment';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
-    import { sanitizeHtml } from '$lib/utils/sanitize.js';
+	import { sanitizeHtml } from '$lib/utils/sanitize.js';
 
 	export let data;
 	console.log('[Page Component] Initial data:', data);
 
 	// Create a local writable store for the current drill data
 	const drill = writable(data.drill || {});
-	
+
 	// Check if user is admin or owner
 	$: isAdmin = $page.data.session?.user?.role === 'admin';
 	$: canEdit = isAdmin || $drill.created_by === $page.data.session?.user?.id;
@@ -412,7 +412,10 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
 				<div>
 					<h2 class="text-lg font-semibold mb-2 dark:text-white">Drill Details</h2>
-					<p class="dark:text-gray-200"><strong>Skill Levels:</strong> {$drill.skill_level?.join(', ')}</p>
+					<p class="dark:text-gray-200">
+						<strong>Skill Levels:</strong>
+						{$drill.skill_level?.join(', ')}
+					</p>
 					<p class="dark:text-gray-200"><strong>Complexity:</strong> {$drill.complexity}</p>
 					<p class="dark:text-gray-200">
 						<strong>Suggested Length:</strong>
@@ -455,7 +458,9 @@
 				</div>
 				<div>
 					<h2 class="text-lg font-semibold mb-2 dark:text-white">Drill Types</h2>
-					<p class="dark:text-gray-200">{Array.isArray($drill.drill_type) ? $drill.drill_type.join(', ') : 'N/A'}</p>
+					<p class="dark:text-gray-200">
+						{Array.isArray($drill.drill_type) ? $drill.drill_type.join(', ') : 'N/A'}
+					</p>
 				</div>
 			</div>
 
@@ -496,7 +501,9 @@
 							{#each $drill.diagrams as diagramData, index}
 								<!-- Removed unused 'key' directive -->
 								<div class="border rounded-lg p-2">
-									<h3 class="text-center font-medium mb-2 dark:text-gray-200">Diagram {index + 1}</h3>
+									<h3 class="text-center font-medium mb-2 dark:text-gray-200">
+										Diagram {index + 1}
+									</h3>
 									<ExcalidrawWrapper
 										data={diagramData}
 										id={`diagram-${$drill.id}-${index}`}

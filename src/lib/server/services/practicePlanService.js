@@ -1,6 +1,5 @@
 import { BaseEntityService } from './baseEntityService.js';
 import { kyselyDb } from '$lib/server/db'; // Import Kysely instance
-import { jsonObjectFrom } from 'kysely/helpers/postgres';
 import { sql } from 'kysely'; // Import sql tag
 import {
 	NotFoundError,
@@ -9,7 +8,6 @@ import {
 	DatabaseError,
 	ConflictError
 } from '$lib/server/errors';
-import { z } from 'zod'; // Import Zod
 import { practicePlanSchema } from '$lib/validation/practicePlanSchema'; // Import the Zod schema
 import { dev } from '$app/environment';
 
@@ -88,7 +86,7 @@ export class PracticePlanService extends BaseEntityService {
 			let q = kyselyDb
 				.selectFrom('practice_plans as pp')
 				.leftJoin('practice_plan_drills as ppd', 'pp.id', 'ppd.practice_plan_id')
-				.leftJoin('votes as v', (join) => 
+				.leftJoin('votes as v', (join) =>
 					join.onRef('pp.id', '=', 'v.practice_plan_id').on('v.vote', '=', 1)
 				)
 				.select([
@@ -136,10 +134,10 @@ export class PracticePlanService extends BaseEntityService {
 			if (!filters.team_id) {
 				// Only exclude drafts that belong to teams (have team_id)
 				// Public practice plans without team_id can be shown even if draft
-				q = q.where((eb) => 
+				q = q.where((eb) =>
 					eb.or([
-						eb('pp.team_id', 'is', null),  // Public plans without teams
-						eb('pp.status', '!=', 'draft')  // Or non-draft plans
+						eb('pp.team_id', 'is', null), // Public plans without teams
+						eb('pp.status', '!=', 'draft') // Or non-draft plans
 					])
 				);
 			}
@@ -167,7 +165,9 @@ export class PracticePlanService extends BaseEntityService {
 				});
 			}
 			if (filters.practice_goals?.excluded?.length) {
-				q = q.where(sql`NOT (pp.practice_goals && ${sql.array(filters.practice_goals.excluded, 'text')})`);
+				q = q.where(
+					sql`NOT (pp.practice_goals && ${sql.array(filters.practice_goals.excluded, 'text')})`
+				);
 			}
 			if (filters.min_participants != null) {
 				q = q.where('pp.estimated_number_of_participants', '>=', filters.min_participants);
@@ -262,17 +262,17 @@ export class PracticePlanService extends BaseEntityService {
 			}
 			return eb.or(conditions);
 		});
-		
+
 		// For public listing count, exclude team-specific draft plans
 		if (!filters.team_id) {
-			countQuery = countQuery.where((eb) => 
+			countQuery = countQuery.where((eb) =>
 				eb.or([
-					eb('pp.team_id', 'is', null),  // Public plans without teams
-					eb('pp.status', '!=', 'draft')  // Or non-draft plans
+					eb('pp.team_id', 'is', null), // Public plans without teams
+					eb('pp.status', '!=', 'draft') // Or non-draft plans
 				])
 			);
 		}
-		
+
 		// Add support for team_id and scheduled_date filters in count query
 		if (filters.team_id) {
 			countQuery = countQuery.where('pp.team_id', '=', filters.team_id);
@@ -523,7 +523,9 @@ export class PracticePlanService extends BaseEntityService {
 								item.diagram_data,
 								item.parallel_group_id,
 								item.parallel_timeline,
-								item.groupTimelines ? `{${item.groupTimelines.join(',')}}` : null,
+								item.groupTimelines || item.group_timelines
+									? `{${(item.groupTimelines || item.group_timelines).join(',')}}`
+									: null,
 								// Save the name field
 								item.name ||
 									(item.type === 'drill' && item.drill?.name
@@ -773,14 +775,14 @@ export class PracticePlanService extends BaseEntityService {
 						});
 					}
 
-					// Insert section
-					const sectionResult = await client.query(
-						`INSERT INTO practice_plan_sections 
-             (practice_plan_id, id, name, "order", goals, notes)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             RETURNING id`,
-						[id, section.id, section.name, section.order, section.goals, section.notes]
-					);
+						// Insert section
+						await client.query(
+							`INSERT INTO practice_plan_sections 
+	             (practice_plan_id, id, name, "order", goals, notes)
+	             VALUES ($1, $2, $3, $4, $5, $6)
+	             RETURNING id`,
+							[id, section.id, section.name, section.order, section.goals, section.notes]
+						);
 
 					// Insert items with explicit ordering
 					if (section.items?.length > 0) {
@@ -823,7 +825,9 @@ export class PracticePlanService extends BaseEntityService {
 									item.type === 'one-off' || item.type === 'activity' ? 'drill' : item.type,
 									item.parallel_group_id,
 									item.parallel_timeline || null,
-									item.groupTimelines ? `{${item.groupTimelines.join(',')}}` : null,
+									item.groupTimelines || item.group_timelines
+										? `{${(item.groupTimelines || item.group_timelines).join(',')}}`
+										: null,
 									// Name field
 									item.name ||
 										(item.type === 'drill' && item.drill?.name
@@ -967,7 +971,8 @@ export class PracticePlanService extends BaseEntityService {
 				// The base delete method will also throw NotFoundError if the plan somehow disappeared.
 				await this.delete(id, client);
 
-				// No return value needed, implicit resolution indicates success
+				// Explicit success signal for callers/tests
+				return true;
 			});
 		} catch (error) {
 			// Re-throw known errors (NotFoundError, ForbiddenError from checks or base delete)
@@ -1312,46 +1317,40 @@ export class PracticePlanService extends BaseEntityService {
 			return result.rows[0];
 		});
 	}
-}
 
-// Create and export an instance of the service
-export const practicePlanService = new PracticePlanService();
+	// --- Season planning helpers (moved from prototype patching) ---
 
-// Additional methods for Season Planning (Phase 4)
+	async getByTeamAndDate(teamId, scheduledDate) {
+		const result = await this.getAll({
+			filters: {
+				team_id: teamId,
+				scheduled_date: scheduledDate
+			},
+			limit: 1
+		});
+		return result.items[0] || null;
+	}
 
-PracticePlanService.prototype.getByTeamAndDate = async function(teamId, scheduledDate) {
-  const result = await this.getAll({
-    filters: { 
-      team_id: teamId,
-      scheduled_date: scheduledDate
-    },
-    limit: 1
-  });
-  return result.items[0] || null;
-};
+	async getByIdWithContent(planId, existingClient = null) {
+		console.log('getByIdWithContent called with planId:', planId);
 
-PracticePlanService.prototype.getByIdWithContent = async function(planId, existingClient = null) {
-  console.log('getByIdWithContent called with planId:', planId);
-  const runWithClient = async (client) => {
-    // Get plan
-    const planQuery = 'SELECT * FROM practice_plans WHERE id = $1';
-    const planResult = await client.query(planQuery, [planId]);
-    console.log('getByIdWithContent query result rows:', planResult.rows.length);
-    if (planResult.rows.length === 0) return null;
+		const runWithClient = async (client) => {
+			const planQuery = 'SELECT * FROM practice_plans WHERE id = $1';
+			const planResult = await client.query(planQuery, [planId]);
+			console.log('getByIdWithContent query result rows:', planResult.rows.length);
+			if (planResult.rows.length === 0) return null;
 
-    const plan = planResult.rows[0];
+			const plan = planResult.rows[0];
 
-    // Get sections
-    const sectionsQuery = `
+			const sectionsQuery = `
       SELECT * FROM practice_plan_sections 
       WHERE practice_plan_id = $1 
       ORDER BY "order"
     `;
-    const sectionsResult = await client.query(sectionsQuery, [planId]);
-    plan.sections = sectionsResult.rows;
+			const sectionsResult = await client.query(sectionsQuery, [planId]);
+			plan.sections = sectionsResult.rows;
 
-    // Get drills with details
-    const drillsQuery = `
+			const drillsQuery = `
       SELECT 
         ppd.*,
         d.name as drill_name,
@@ -1366,45 +1365,46 @@ PracticePlanService.prototype.getByIdWithContent = async function(planId, existi
       WHERE ppd.practice_plan_id = $1
       ORDER BY ppd.order_in_plan
     `;
-    const drillsResult = await client.query(drillsQuery, [planId]);
-    plan.drills = drillsResult.rows;
+			const drillsResult = await client.query(drillsQuery, [planId]);
+			plan.drills = drillsResult.rows;
 
-    return plan;
-  };
+			return plan;
+		};
 
-  if (existingClient) {
-    // Use the provided transaction client (avoid nested transactions)
-    return await runWithClient(existingClient);
-  }
+		if (existingClient) {
+			return await runWithClient(existingClient);
+		}
 
-  // No client provided; run within our own transaction
-  return await this.withTransaction(async (client) => runWithClient(client));
-};
+		return await this.withTransaction(async (client) => runWithClient(client));
+	}
 
-PracticePlanService.prototype.createWithContent = async function(data, userId) {
-  try {
-    return await this.withTransaction(async (client) => {
-      // Create the practice plan
-      console.log('createWithContent starting with data:', JSON.stringify(data).substring(0, 300));
-      const planData = {
-      name: data.name,
-      description: data.description,
-      practice_goals: data.practice_goals || [],
-      phase_of_season: data.phase_of_season,
-      estimated_number_of_participants: data.estimated_number_of_participants,
-      created_by: userId,
-      visibility: data.visibility || 'private',
-      is_editable_by_others: false,
-      start_time: data.start_time,
-      team_id: data.team_id,
-      season_id: data.season_id,
-      scheduled_date: data.scheduled_date,
-      is_template: data.is_template || false,
-      template_plan_id: data.template_plan_id,
-      is_edited: data.is_edited || false
-    };
-    
-    const planQuery = `
+	async createWithContent(data, userId) {
+		try {
+			return await this.withTransaction(async (client) => {
+				console.log(
+					'createWithContent starting with data:',
+					JSON.stringify(data).substring(0, 300)
+				);
+
+				const planData = {
+					name: data.name,
+					description: data.description,
+					practice_goals: data.practice_goals || [],
+					phase_of_season: data.phase_of_season,
+					estimated_number_of_participants: data.estimated_number_of_participants,
+					created_by: userId,
+					visibility: data.visibility || 'private',
+					is_editable_by_others: false,
+					start_time: data.start_time,
+					team_id: data.team_id,
+					season_id: data.season_id,
+					scheduled_date: data.scheduled_date,
+					is_template: data.is_template || false,
+					template_plan_id: data.template_plan_id,
+					is_edited: data.is_edited || false
+				};
+
+				const planQuery = `
       INSERT INTO practice_plans (
         name, description, practice_goals, phase_of_season,
         estimated_number_of_participants, created_by, visibility,
@@ -1414,116 +1414,115 @@ PracticePlanService.prototype.createWithContent = async function(data, userId) {
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
       ) RETURNING *
     `;
-    
-    const planResult = await client.query(planQuery, [
-      planData.name,
-      planData.description,
-      planData.practice_goals || [],  // Pass array directly
-      planData.phase_of_season,
-      planData.estimated_number_of_participants,
-      planData.created_by,
-      planData.visibility,
-      planData.is_editable_by_others,
-      planData.start_time,
-      planData.team_id,
-      planData.season_id,
-      planData.scheduled_date,
-      planData.is_template,
-      planData.template_plan_id,
-      planData.is_edited
-    ]);
-    
-    const plan = planResult.rows[0];
-    
-    console.log('Created practice plan in DB with ID:', plan?.id, 'Full plan:', JSON.stringify(plan).substring(0, 200));
-    
-    // Create sections
-    const sectionMap = {};
-    for (const section of data.sections || []) {
-      const sectionQuery = `
+
+				const planResult = await client.query(planQuery, [
+					planData.name,
+					planData.description,
+					planData.practice_goals || [],
+					planData.phase_of_season,
+					planData.estimated_number_of_participants,
+					planData.created_by,
+					planData.visibility,
+					planData.is_editable_by_others,
+					planData.start_time,
+					planData.team_id,
+					planData.season_id,
+					planData.scheduled_date,
+					planData.is_template,
+					planData.template_plan_id,
+					planData.is_edited
+				]);
+
+				const plan = planResult.rows[0];
+
+				console.log(
+					'Created practice plan in DB with ID:',
+					plan?.id,
+					'Full plan:',
+					JSON.stringify(plan).substring(0, 200)
+				);
+
+				const sectionMap = {};
+				for (const section of data.sections || []) {
+					const sectionQuery = `
         INSERT INTO practice_plan_sections (
           practice_plan_id, name, "order", goals, notes
         ) VALUES ($1, $2, $3, $4, $5)
         RETURNING *
       `;
-      
-      const sectionResult = await client.query(sectionQuery, [
-        plan.id,
-        section.name,
-        section.order || 0,
-        JSON.stringify(section.goals || []),
-        section.notes
-      ]);
-      
-      sectionMap[section.name] = sectionResult.rows[0].id;
-    }
-    
-    // Create drills
-    for (const drill of data.drills || []) {
-      const sectionId = drill.section_name ? sectionMap[drill.section_name] : drill.section_id;
-      
-      const drillQuery = `
+
+					const sectionResult = await client.query(sectionQuery, [
+						plan.id,
+						section.name,
+						section.order || 0,
+						JSON.stringify(section.goals || []),
+						section.notes
+					]);
+
+					sectionMap[section.name] = sectionResult.rows[0].id;
+				}
+
+				for (const drill of data.drills || []) {
+					const sectionId = drill.section_name ? sectionMap[drill.section_name] : drill.section_id;
+
+					const drillQuery = `
         INSERT INTO practice_plan_drills (
           practice_plan_id, drill_id, formation_id, type, name,
           selected_duration, order_in_plan, section_id, parallel_group_id,
           parallel_timeline, group_timelines
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       `;
-      
-      await client.query(drillQuery, [
-        plan.id,
-        drill.drill_id,
-        drill.formation_id,
-        drill.type || 'drill',
-        drill.name,
-        drill.duration || 30,
-        drill.order_in_plan || 0,
-        sectionId,
-        drill.parallel_group_id,
-        drill.parallel_timeline,
-        JSON.stringify(drill.group_timelines || [])
-      ]);
-    }
-    
-    // Return the full plan using the same transaction client to avoid isolation issues
-    const result = await this.getByIdWithContent(plan.id, client);
-    
-    // If getByIdWithContent returns null, return the basic plan at least
-    if (!result) {
-      console.log('getByIdWithContent returned null, returning basic plan');
-      return {
-        ...plan,
-        sections: data.sections || [],
-        drills: data.drills || []
-      };
-    }
-    
-    return result;
-  });
-  } catch (error) {
-    console.error('Error in createWithContent:', error);
-    console.error('Error stack:', error.stack);
-    throw error;
-  }
-};
 
-PracticePlanService.prototype.publishPracticePlan = async function(planId, userId) {
-  const plan = await this.getById(planId);
-  
-  // Check permissions
-  const { teamMemberService } = await import('./teamMemberService.js');
-  if (plan.team_id) {
-    const member = await teamMemberService.getMember(plan.team_id, userId);
-    if (!member || (member.role !== 'admin' && plan.created_by !== userId)) {
-      throw new ForbiddenError('Only team admins or the creator can publish plans');
-    }
-  } else if (plan.created_by !== userId) {
-    throw new ForbiddenError('Only the creator can publish this plan');
-  }
-  
-  // Update published flag
-  return await this.withTransaction(async (client) => {
-    const query = `
+					await client.query(drillQuery, [
+						plan.id,
+						drill.drill_id,
+						drill.formation_id,
+						drill.type || 'drill',
+						drill.name,
+						drill.duration || 30,
+						drill.order_in_plan || 0,
+						sectionId,
+						drill.parallel_group_id,
+						drill.parallel_timeline,
+						JSON.stringify(drill.group_timelines || [])
+					]);
+				}
+
+				const result = await this.getByIdWithContent(plan.id, client);
+
+				if (!result) {
+					console.log('getByIdWithContent returned null, returning basic plan');
+					return {
+						...plan,
+						sections: data.sections || [],
+						drills: data.drills || []
+					};
+				}
+
+				return result;
+			});
+		} catch (error) {
+			console.error('Error in createWithContent:', error);
+			console.error('Error stack:', error.stack);
+			throw error;
+		}
+	}
+
+	async publishPracticePlan(planId, userId) {
+		const plan = await this.getById(planId);
+
+		const { teamMemberService } = await import('./teamMemberService.js');
+		if (plan.team_id) {
+			const member = await teamMemberService.getMember(plan.team_id, userId);
+			if (!member || (member.role !== 'admin' && plan.created_by !== userId)) {
+				throw new ForbiddenError('Only team admins or the creator can publish plans');
+			}
+		} else if (plan.created_by !== userId) {
+			throw new ForbiddenError('Only the creator can publish this plan');
+		}
+
+		return await this.withTransaction(async (client) => {
+			const query = `
       UPDATE practice_plans 
       SET is_published = true,
           published_at = NOW(),
@@ -1531,29 +1530,27 @@ PracticePlanService.prototype.publishPracticePlan = async function(planId, userI
       WHERE id = $1
       RETURNING *
     `;
-    
-    const result = await client.query(query, [planId]);
-    return result.rows[0];
-  });
-};
 
-PracticePlanService.prototype.unpublishPracticePlan = async function(planId, userId) {
-  const plan = await this.getById(planId);
-  
-  // Check permissions
-  const { teamMemberService } = await import('./teamMemberService.js');
-  if (plan.team_id) {
-    const member = await teamMemberService.getMember(plan.team_id, userId);
-    if (!member || (member.role !== 'admin' && plan.created_by !== userId)) {
-      throw new ForbiddenError('Only team admins or the creator can unpublish plans');
-    }
-  } else if (plan.created_by !== userId) {
-    throw new ForbiddenError('Only the creator can unpublish this plan');
-  }
-  
-  // Update published flag back to false
-  return await this.withTransaction(async (client) => {
-    const query = `
+			const result = await client.query(query, [planId]);
+			return result.rows[0];
+		});
+	}
+
+	async unpublishPracticePlan(planId, userId) {
+		const plan = await this.getById(planId);
+
+		const { teamMemberService } = await import('./teamMemberService.js');
+		if (plan.team_id) {
+			const member = await teamMemberService.getMember(plan.team_id, userId);
+			if (!member || (member.role !== 'admin' && plan.created_by !== userId)) {
+				throw new ForbiddenError('Only team admins or the creator can unpublish plans');
+			}
+		} else if (plan.created_by !== userId) {
+			throw new ForbiddenError('Only the creator can unpublish this plan');
+		}
+
+		return await this.withTransaction(async (client) => {
+			const query = `
       UPDATE practice_plans 
       SET is_published = false,
           published_at = NULL,
@@ -1561,8 +1558,12 @@ PracticePlanService.prototype.unpublishPracticePlan = async function(planId, use
       WHERE id = $1
       RETURNING *
     `;
-    
-    const result = await client.query(query, [planId]);
-    return result.rows[0];
-  });
-};
+
+			const result = await client.query(query, [planId]);
+			return result.rows[0];
+		});
+	}
+}
+
+// Create and export an instance of the service
+export const practicePlanService = new PracticePlanService();

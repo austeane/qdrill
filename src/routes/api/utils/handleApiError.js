@@ -2,6 +2,7 @@
 // Moved to src/routes/api/utils/handleApiError.js
 import { json } from '@sveltejs/kit';
 import { AppError, ValidationError } from '$lib/server/errors';
+import { ZodError } from 'zod';
 
 /**
  * Handles known application errors (AppError) and unexpected errors.
@@ -11,6 +12,23 @@ import { AppError, ValidationError } from '$lib/server/errors';
  * @returns {Response} A SvelteKit JSON response.
  */
 export function handleApiError(err) {
+	// Handle Zod validation errors specifically
+	if (err instanceof ZodError) {
+		console.warn(`[API Warn] Validation failed:`, err.flatten());
+		const details = err.flatten().fieldErrors;
+		const validationError = new ValidationError('Validation failed', details);
+		return json(
+			{
+				error: {
+					code: validationError.code,
+					message: validationError.message,
+					details: validationError.details
+				}
+			},
+			{ status: validationError.status }
+		);
+	}
+
 	if (err instanceof AppError) {
 		console.warn(`[API Warn] (${err.status} ${err.code}): ${err.message}`);
 		const body = { error: { code: err.code, message: err.message } };

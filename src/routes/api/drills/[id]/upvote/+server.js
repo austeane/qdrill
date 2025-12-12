@@ -3,7 +3,7 @@ import { json } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService';
 import { authGuard } from '$lib/server/authGuard'; // Import authGuard
 import { handleApiError } from '../../../utils/handleApiError.js'; // Import the helper
-import { UnauthorizedError, ValidationError } from '$lib/server/errors.js';
+import { ValidationError } from '$lib/server/errors.js';
 
 // Apply authGuard
 export const POST = authGuard(async ({ params, locals }) => {

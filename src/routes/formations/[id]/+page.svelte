@@ -1,19 +1,19 @@
 <script>
 	// import { onMount } from 'svelte'; // Removed
-        import { page } from '$app/stores';
-        import { goto } from '$app/navigation';
-        import { toast } from '@zerodevx/svelte-toast';
-        import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
-        import { dev } from '$app/environment';
-        import { slide } from 'svelte/transition'; // Added for transitions
-        import { apiFetch } from '$lib/utils/apiFetch.js';
-        import { sanitizeHtml } from '$lib/utils/sanitize.js';
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
+	import { toast } from '@zerodevx/svelte-toast';
+	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
+	import { dev } from '$app/environment';
+	import { slide } from 'svelte/transition'; // Added for transitions
+	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { sanitizeHtml } from '$lib/utils/sanitize.js';
 
 	export let data;
 
 	// Use formation data directly from the load function
 	$: formation = data.formation;
-	
+
 	// Check if user is admin
 	$: isAdmin = $page.data.session?.user?.role === 'admin';
 
@@ -31,11 +31,11 @@
 		if (!confirm('Are you sure you want to delete this formation? This action cannot be undone.')) {
 			return;
 		}
-                try {
-                        await apiFetch(`/api/formations/${formation.id}`, {
-                                method: 'DELETE'
-                        });
-                        goto('/formations');
+		try {
+			await apiFetch(`/api/formations/${formation.id}`, {
+				method: 'DELETE'
+			});
+			goto('/formations');
 			// Optionally add a success toast notification here
 		} catch (err) {
 			console.error('Error deleting formation:', err);
@@ -45,11 +45,11 @@
 
 	// Function to handle formation duplication
 	async function handleDuplicate() {
-                try {
-                        const result = await apiFetch(`/api/formations/${formation.id}/duplicate`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' }
-                        });
+		try {
+			const result = await apiFetch(`/api/formations/${formation.id}/duplicate`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' }
+			});
 
 			toast.push('Formation duplicated successfully', {
 				theme: {
@@ -159,7 +159,7 @@
 				<div class="border-t border-gray-200 pt-6 mb-8">
 					<h2 class="text-xl font-semibold mb-4">Description</h2>
 					<div class="prose max-w-none prose-indigo">
-            {@html sanitizeHtml(formation.detailed_description)}
+						{@html sanitizeHtml(formation.detailed_description)}
 					</div>
 				</div>
 			{/if}

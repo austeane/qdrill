@@ -13,7 +13,7 @@
 
 	export let data;
 
-	let newMarker = { 
+	let newMarker = {
 		type: 'milestone',
 		name: '',
 		date: '',
@@ -48,10 +48,8 @@
 				body: JSON.stringify(newMarker)
 			});
 
-			data.markers = [...data.markers, marker].sort((a, b) => 
-				new Date(a.date) - new Date(b.date)
-			);
-			newMarker = { 
+			data.markers = [...data.markers, marker].sort((a, b) => new Date(a.date) - new Date(b.date));
+			newMarker = {
 				type: 'milestone',
 				name: '',
 				date: '',
@@ -76,10 +74,8 @@
 				body: JSON.stringify(marker)
 			});
 
-            editingMarker = null;
-            data.markers = [...data.markers].sort((a, b) => 
-                new Date(a.date) - new Date(b.date)
-            );
+			editingMarker = null;
+			data.markers = [...data.markers].sort((a, b) => new Date(a.date) - new Date(b.date));
 			toast.push('Marker updated successfully', { theme: { '--toastBackground': '#10b981' } });
 		} catch (error) {
 			editError = error.message || 'Failed to update marker';
@@ -95,7 +91,7 @@
 				method: 'DELETE'
 			});
 
-			data.markers = data.markers.filter(m => m.id !== markerId);
+			data.markers = data.markers.filter((m) => m.id !== markerId);
 			toast.push('Marker deleted successfully', { theme: { '--toastBackground': '#10b981' } });
 		} catch (error) {
 			const errorMsg = error.message || 'Failed to delete marker';
@@ -114,7 +110,7 @@
 	}
 
 	function onTypeChange() {
-		const type = markerTypes.find(t => t.value === newMarker.type);
+		const type = markerTypes.find((t) => t.value === newMarker.type);
 		if (type) {
 			newMarker.color = type.color;
 		}
@@ -122,7 +118,7 @@
 </script>
 
 <svelte:head>
-  <title>Season Markers - {data?.team?.name || $page.params.slug}</title>
+	<title>Season Markers - {data?.team?.name || $page.params.slug}</title>
 </svelte:head>
 
 <div class="container mx-auto px-4 py-8">
@@ -138,18 +134,16 @@
 
 	{#if data.canEdit}
 		<div class="mb-6">
-			<Button variant="primary" on:click={() => showAddDialog = true}>
-				+ Add Marker
-			</Button>
+			<Button variant="primary" on:click={() => (showAddDialog = true)}>+ Add Marker</Button>
 		</div>
-		
+
 		<Dialog bind:open={showAddDialog} title="Add New Marker">
 			<div class="grid gap-4">
 				<Select
 					label="Marker Type"
 					bind:value={newMarker.type}
 					on:change={onTypeChange}
-					options={markerTypes.map(t => ({ value: t.value, label: t.label }))}
+					options={markerTypes.map((t) => ({ value: t.value, label: t.label }))}
 				/>
 				<Input
 					label="Name"
@@ -177,14 +171,20 @@
 				</div>
 			</div>
 			<div slot="footer" class="flex gap-2">
-				<Button 
-					variant="primary" 
+				<Button
+					variant="primary"
 					on:click={addMarker}
 					disabled={isSubmitting || !newMarker.name.trim() || !newMarker.date}
 				>
 					{isSubmitting ? 'Adding...' : 'Add Marker'}
 				</Button>
-				<Button variant="ghost" on:click={() => { showAddDialog = false; addError = ''; }}>
+				<Button
+					variant="ghost"
+					on:click={() => {
+						showAddDialog = false;
+						addError = '';
+					}}
+				>
 					Cancel
 				</Button>
 			</div>
@@ -199,14 +199,10 @@
 						<Select
 							label="Marker Type"
 							bind:value={marker.type}
-							options={markerTypes.map(t => ({ value: t.value, label: t.label }))}
+							options={markerTypes.map((t) => ({ value: t.value, label: t.label }))}
 							error={editError}
 						/>
-						<Input
-							label="Name"
-							bind:value={marker.name}
-							error={editError}
-						/>
+						<Input label="Name" bind:value={marker.name} error={editError} />
 						<Input
 							label="Date"
 							type="date"
@@ -227,7 +223,14 @@
 							<Button size="sm" variant="primary" on:click={() => updateMarker(marker)}>
 								Save
 							</Button>
-							<Button size="sm" variant="ghost" on:click={() => { editingMarker = null; editError = ''; }}>
+							<Button
+								size="sm"
+								variant="ghost"
+								on:click={() => {
+									editingMarker = null;
+									editError = '';
+								}}
+							>
 								Cancel
 							</Button>
 						</div>
@@ -235,7 +238,7 @@
 				{:else}
 					<div class="flex items-center justify-between">
 						<div class="flex items-center gap-3">
-							<div 
+							<div
 								class="w-2 h-8 rounded"
 								style="background-color: {marker.color}"
 								aria-label="Marker color"
@@ -252,18 +255,10 @@
 						</div>
 						{#if data.canEdit}
 							<div class="flex gap-2">
-								<Button
-									size="sm"
-									variant="ghost"
-									on:click={() => editingMarker = marker.id}
-								>
+								<Button size="sm" variant="ghost" on:click={() => (editingMarker = marker.id)}>
 									Edit
 								</Button>
-								<Button
-									size="sm"
-									variant="destructive"
-									on:click={() => deleteMarker(marker.id)}
-								>
+								<Button size="sm" variant="destructive" on:click={() => deleteMarker(marker.id)}>
 									Delete
 								</Button>
 							</div>
@@ -278,7 +273,9 @@
 				<div class="text-center py-8">
 					<p class="text-gray-500 dark:text-gray-400">No markers defined for this season yet.</p>
 					{#if data.canEdit}
-						<p class="text-gray-500 dark:text-gray-400 mt-2">Click "Add Marker" to add important dates and milestones.</p>
+						<p class="text-gray-500 dark:text-gray-400 mt-2">
+							Click "Add Marker" to add important dates and milestones.
+						</p>
 					{/if}
 				</div>
 			</Card>

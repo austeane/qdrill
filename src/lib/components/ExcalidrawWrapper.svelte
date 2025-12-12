@@ -10,12 +10,11 @@
 	export let data = null;
 	export let id = '';
 	export let showSaveButton = false;
-	export let index;
 	export let readonly = false;
 	export let viewOnly = false; // Support both viewOnly and readonly props
 	export let template = 'blank';
 	export let startFullscreen = false;
-	
+
 	// Use either viewOnly or readonly to determine if the diagram is read-only
 	$: isReadOnly = viewOnly || readonly;
 
@@ -30,14 +29,6 @@
 
 	let fullscreenExcalidrawComponent;
 	let fullscreenContainer;
-
-	function openEditor() {
-		showModal = true;
-	}
-
-	function closeEditor() {
-		showModal = false;
-	}
 
 	if (browser) {
 		window.process = {
@@ -140,52 +131,6 @@
 				console.error('Error initializing fullscreen mode:', error);
 				isFullscreen = false;
 			}
-		}
-	}
-
-	async function createFullscreenComponent() {
-		try {
-			const React = await import('react');
-			const ReactDOM = await import('react-dom/client');
-			const { Excalidraw } = await import('@excalidraw/excalidraw');
-
-			const excalidrawProps = {
-				onReady: (api) => {
-					fullscreenExcalidrawAPI = api;
-					if (initialSceneData) {
-						api.updateScene(initialSceneData);
-					}
-				},
-				initialData: initialSceneData,
-				viewModeEnabled: isReadOnly,
-				onChange: handleChange,
-				gridModeEnabled: false,
-				theme: 'light',
-				name: `${id}-fullscreen`,
-				UIOptions: {
-					canvasActions: {
-						export: false,
-						loadScene: false,
-						saveAsImage: false,
-						theme: false
-					}
-				}
-			};
-
-			fullscreenExcalidrawComponent = {
-				render: (node) => {
-					const root = ReactDOM.createRoot(node);
-					root.render(
-						React.createElement(Excalidraw, { ...excalidrawProps, portalContainer: node })
-					);
-					return {
-						destroy: () => root.unmount()
-					};
-				}
-			};
-		} catch (error) {
-			console.error('Error creating fullscreen component:', error);
-			isFullscreen = false;
 		}
 	}
 
@@ -301,25 +246,6 @@
 		return elements;
 	}
 
-	function handleImageElements(elements, files) {
-		elements.forEach((element) => {
-			if (element.type === 'image') {
-				const file = files[element.fileId];
-				if (file?.staticPath) {
-					element.staticImagePath = file.staticPath;
-				} else if (file?.dataURL) {
-					element.dataURL = file.dataURL;
-				} else {
-					console.warn('Image element missing both staticPath and dataURL:', {
-						elementId: element.fileId,
-						element: element
-					});
-				}
-			}
-		});
-		return elements;
-	}
-
 	onMount(async () => {
 		if (!browser) return;
 		if (hasInitialized) return;
@@ -336,18 +262,16 @@
 				initialSceneData = await createInitialImageElements(template);
 			} else {
 				const fixedElements = fixGuideRectanglePosition([...data.elements]);
-				initialSceneData = {
-					elements: fixedElements,
-					appState: {
-						viewBackgroundColor: '#ffffff',
-						gridSize: 20,
-						collaborators: [],
-						...(data.appState || {}),
-						// Ensure we have a collaborators array
-						collaborators: Array.isArray(data.appState?.collaborators)
-							? data.appState.collaborators
-							: []
-					},
+					initialSceneData = {
+						elements: fixedElements,
+						appState: {
+							viewBackgroundColor: '#ffffff',
+							gridSize: 20,
+							...(data.appState || {}),
+							collaborators: Array.isArray(data.appState?.collaborators)
+								? data.appState.collaborators
+								: []
+						},
 					files: data.files || {}
 				};
 			}
@@ -380,14 +304,14 @@
 						}
 					}
 				};
-				
+
 				// Hide all UI elements when in read-only mode
 				if (isReadOnly) {
 					// Hide the toolbar by providing empty render functions
 					props.renderTopRightUI = () => null;
 					props.renderSidebar = () => null;
 				}
-				
+
 				return props;
 			};
 
@@ -453,10 +377,10 @@
 	{#if browser && ExcalidrawComponent}
 		<div class="excalidraw-container" style="height: 600px;">
 			<div class="excalidraw-mount-point relative w-full h-full">
-				{#if !isReadOnly}
-					<button
-						type="button"
-						class="absolute top-2 right-2 z-10 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md flex items-center gap-1"
+					{#if !isReadOnly && showSaveButton}
+						<button
+							type="button"
+							class="absolute top-2 right-2 z-10 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md flex items-center gap-1"
 						on:click={() => {
 							toggleFullscreen();
 						}}

@@ -1,10 +1,8 @@
 import { json } from '@sveltejs/kit';
 import { practicePlanService } from '$lib/server/services/practicePlanService.js';
-import { FILTER_STATES } from '$lib/constants'; // Import FILTER_STATES
-import { z } from 'zod'; // Import zod
 import { createPracticePlanSchema } from '$lib/validation/practicePlanSchema'; // Import Zod schema
-import { AppError, DatabaseError, ValidationError, NotFoundError } from '$lib/server/errors'; // Import error types
 import { handleApiError } from '../utils/handleApiError.js';
+import { generateClaimToken } from '$lib/server/utils/claimTokens.js';
 
 // Previously contained a local copy of handleApiError and a custom
 // PracticePlanError class. All routes now import the shared utility
@@ -168,7 +166,12 @@ export const POST = async ({ request, locals }) => {
 		// Pass validated data (now with ordered sections) to the service
 		const result = await practicePlanService.createPracticePlan(validatedData, userId);
 
-		return json({ id: result.id, message: 'Practice plan created successfully' }, { status: 201 });
+		const body = { id: result.id, message: 'Practice plan created successfully' };
+		if (!userId && result?.id) {
+			body.claimToken = generateClaimToken('practice-plan', result.id);
+		}
+
+		return json(body, { status: 201 });
 	} catch (err) {
 		// Use the centralized error handler
 		return handleApiError(err);

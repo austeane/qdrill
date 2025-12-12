@@ -2,7 +2,7 @@ import { writable } from 'svelte/store';
 
 function createCartStore() {
 	let initialDrills = [];
-	
+
 	// Safely parse localStorage with error handling
 	if (typeof window !== 'undefined') {
 		try {

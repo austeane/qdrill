@@ -293,30 +293,27 @@ export class BaseEntityService {
 		}
 
 		try {
-			return this.withTransaction(async (client) => {
-				let results;
-				let pagination = {};
+			let results;
+			let pagination = {};
 
-				if (!all) {
-					// Get total count for pagination
-					const countQuery = `
+			if (!all) {
+				const countQuery = `
             SELECT COUNT(*)
             FROM ${this.tableName}
             ${whereClause}
           `;
 
-					const countResult = await client.query(countQuery, queryParams);
-					const totalItems = parseInt(countResult.rows[0].count);
+				const countResult = await db.query(countQuery, queryParams);
+				const totalItems = parseInt(countResult.rows[0].count);
 
-					pagination = {
-						page: parseInt(page),
-						limit: parseInt(limit),
-						totalItems,
-						totalPages: Math.ceil(totalItems / limit)
-					};
+				pagination = {
+					page: parseInt(page),
+					limit: parseInt(limit),
+					totalItems,
+					totalPages: Math.ceil(totalItems / limit)
+				};
 
-					// Main query with pagination
-					const query = `
+				const query = `
             SELECT ${validColumns.join(', ')}
             FROM ${this.tableName}
             ${whereClause}
@@ -324,28 +321,25 @@ export class BaseEntityService {
             LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
           `;
 
-					// Add pagination parameters
-					const allParams = [...queryParams, limit, offset];
-					const result = await client.query(query, allParams);
-					results = result.rows;
-				} else {
-					// Query without pagination
-					const query = `
+				const allParams = [...queryParams, limit, offset];
+				const result = await db.query(query, allParams);
+				results = result.rows;
+			} else {
+				const query = `
             SELECT ${validColumns.join(', ')}
             FROM ${this.tableName}
             ${whereClause}
             ${orderBy}
           `;
 
-					const result = await client.query(query, queryParams);
-					results = result.rows;
-				}
+				const result = await db.query(query, queryParams);
+				results = result.rows;
+			}
 
-				return {
-					items: results,
-					pagination: all ? null : pagination
-				};
-			});
+			return {
+				items: results,
+				pagination: all ? null : pagination
+			};
 		} catch (error) {
 			console.error(`Error in ${this.tableName}.getAll():`, error);
 			throw new DatabaseError(`Failed to retrieve ${this.tableName}`, error);

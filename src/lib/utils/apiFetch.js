@@ -15,49 +15,51 @@ import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 
 export async function apiFetch(url, opts = {}, fetchInstance = fetch) {
-       // Merge defaults
-       const defaultOptions = {
-               credentials: 'include',
-               headers: {
-                       'Content-Type': 'application/json',
-                       ...(opts.headers || {})
-               }
-       };
+	// Merge defaults
+	const defaultOptions = {
+		credentials: 'include',
+		headers: {
+			'Content-Type': 'application/json',
+			...(opts.headers || {})
+		}
+	};
 
-       const options = {
-               ...defaultOptions,
-               ...opts,
-               headers: {
-                       ...defaultOptions.headers,
-                       ...(opts.headers || {})
-               }
-       };
+	const options = {
+		...defaultOptions,
+		...opts,
+		headers: {
+			...defaultOptions.headers,
+			...(opts.headers || {})
+		}
+	};
 
-       // Avoid "body used" issues when reusing Responses as bodies
-       if (options.body instanceof Response) {
-               options.body = options.body.clone();
-       }
+	// Avoid "body used" issues when reusing Responses as bodies
+	if (options.body instanceof Response) {
+		options.body = options.body.clone();
+	}
 
-       let response;
-       try {
-               response = await fetchInstance(url, options);
-       } catch (networkError) {
-               console.error('Network error in apiFetch:', networkError);
-               throw new APIError(
-                       `Network error: ${networkError.message || 'Failed to connect to server'}`,
-                       0,
-                       'NETWORK_ERROR'
-               );
-       }
+	let response;
+	try {
+		response = await fetchInstance(url, options);
+	} catch (networkError) {
+		console.error('Network error in apiFetch:', networkError);
+		throw new APIError(
+			`Network error: ${networkError.message || 'Failed to connect to server'}`,
+			0,
+			'NETWORK_ERROR'
+		);
+	}
 
 	let body = null;
 	const contentType = response.headers.get('content-type');
 	const isJson = contentType?.includes('application/json');
 
-       // Handle unauthorized consistently
-       if (response.status === 401 && browser) {
-               try { goto('/login'); } catch {}
-       }
+	// Handle unauthorized consistently
+	if (response.status === 401 && browser) {
+		goto('/login').catch((redirectError) => {
+			console.error('Failed to redirect to login:', redirectError);
+		});
+	}
 
 	if (!response.ok) {
 		// Try to parse body for error message even if not ok
@@ -85,10 +87,10 @@ export async function apiFetch(url, opts = {}, fetchInstance = fetch) {
 			message = `${response.status} ${response.statusText}`;
 		}
 
-               console.error(`API Fetch Error (${url}): ${message}`, { status: response.status, body });
-               const code = typeof body === 'object' && body?.error?.code ? body.error.code : 'HTTP_ERROR';
-               const details = typeof body === 'object' && body?.error?.details ? body.error.details : null;
-               throw new APIError(message, response.status, code, details);
+		console.error(`API Fetch Error (${url}): ${message}`, { status: response.status, body });
+		const code = typeof body === 'object' && body?.error?.code ? body.error.code : 'HTTP_ERROR';
+		const details = typeof body === 'object' && body?.error?.details ? body.error.details : null;
+		throw new APIError(message, response.status, code, details);
 	}
 
 	// Response is OK
@@ -131,29 +133,29 @@ export async function apiFetch(url, opts = {}, fetchInstance = fetch) {
 
 // Convenience helpers
 apiFetch.get = (url, options = {}, fetchInstance) =>
-  apiFetch(url, { ...options, method: 'GET' }, fetchInstance);
+	apiFetch(url, { ...options, method: 'GET' }, fetchInstance);
 
 apiFetch.post = (url, body, options = {}, fetchInstance) =>
-  apiFetch(
-    url,
-    {
-      ...options,
-      method: 'POST',
-      body: typeof body === 'string' ? body : JSON.stringify(body)
-    },
-    fetchInstance
-  );
+	apiFetch(
+		url,
+		{
+			...options,
+			method: 'POST',
+			body: typeof body === 'string' ? body : JSON.stringify(body)
+		},
+		fetchInstance
+	);
 
 apiFetch.put = (url, body, options = {}, fetchInstance) =>
-  apiFetch(
-    url,
-    {
-      ...options,
-      method: 'PUT',
-      body: typeof body === 'string' ? body : JSON.stringify(body)
-    },
-    fetchInstance
-  );
+	apiFetch(
+		url,
+		{
+			...options,
+			method: 'PUT',
+			body: typeof body === 'string' ? body : JSON.stringify(body)
+		},
+		fetchInstance
+	);
 
 apiFetch.delete = (url, options = {}, fetchInstance) =>
-  apiFetch(url, { ...options, method: 'DELETE' }, fetchInstance);
+	apiFetch(url, { ...options, method: 'DELETE' }, fetchInstance);

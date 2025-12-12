@@ -20,8 +20,8 @@
 		isEditableByOthers,
 		startTime,
 		errors as metadataErrors, // Rename to avoid conflict with form errors
-                initializeForm, // Keep initializeForm for setting initial state
-                addPracticeGoal,
+		initializeForm, // Keep initializeForm for setting initial state
+		addPracticeGoal,
 		removePracticeGoal,
 		updatePracticeGoal,
 		validateMetadataForm
@@ -55,12 +55,12 @@
 	let Editor;
 
 	// Add proper prop definitions with defaults
-import PlanMetadataFields from "$lib/components/practice-plan/PlanMetadataFields.svelte";
-import PracticePlanActions from "$lib/components/practice-plan/PracticePlanActions.svelte";
-import PracticePlanSectionsEditor from "$lib/components/practice-plan/PracticePlanSectionsEditor.svelte";
-import { Button } from "$lib/components/ui/button";
-import Spinner from "$lib/components/Spinner.svelte";
-import { practicePlanAuthHandler } from "$lib/utils/actions/practicePlanAuthHandler.js";
+	import PlanMetadataFields from '$lib/components/practice-plan/PlanMetadataFields.svelte';
+	import PracticePlanActions from '$lib/components/practice-plan/PracticePlanActions.svelte';
+	import PracticePlanSectionsEditor from '$lib/components/practice-plan/PracticePlanSectionsEditor.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import Spinner from '$lib/components/Spinner.svelte';
+	import { practicePlanAuthHandler } from '$lib/utils/actions/practicePlanAuthHandler.js';
 	export let practicePlan = null;
 	export let mode = practicePlan ? 'edit' : 'create';
 	export let skillOptions = [];
@@ -85,7 +85,7 @@ import { practicePlanAuthHandler } from "$lib/utils/actions/practicePlanAuthHand
 			initializeHistory(); // Initialize history for existing plan too
 		} else {
 			// If creating a new plan (practicePlan is null), ensure form is reset
-                       // This might happen if navigating back/forth
+			// This might happen if navigating back/forth
 		}
 	}
 
@@ -103,12 +103,12 @@ import { practicePlanAuthHandler } from "$lib/utils/actions/practicePlanAuthHand
 		showDrillSearch = true;
 	}
 
-       function handleOpenTimelineSelector(event) {
-               const { sectionId, parallelGroupId } = event.detail;
-               if (handleTimelineSelect(sectionId, parallelGroupId)) {
-                       showTimelineSelector = true;
-               }
-       }
+	function handleOpenTimelineSelector(event) {
+		const { sectionId, parallelGroupId } = event.detail;
+		if (handleTimelineSelect(sectionId, parallelGroupId)) {
+			showTimelineSelector = true;
+		}
+	}
 
 	function handleAddDrillEvent(event) {
 		const { drill, sectionId } = event.detail;
@@ -253,7 +253,7 @@ import { practicePlanAuthHandler } from "$lib/utils/actions/practicePlanAuthHand
 		}
 		// Clean up event listener on component destruction
 		return () => {
-                       window.removeEventListener('keydown', handleKeydown);
+			window.removeEventListener('keydown', handleKeydown);
 		};
 	});
 
@@ -279,7 +279,7 @@ import { practicePlanAuthHandler } from "$lib/utils/actions/practicePlanAuthHand
 
 <!-- Wrap form in <form> tag and apply enhance -->
 <form
-        use:practicePlanAuthHandler
+	use:practicePlanAuthHandler
 	method="POST"
 	action="?"
 	use:enhance={({ formElement, formData, action, cancel, submitter }) => {
@@ -371,18 +371,17 @@ import { practicePlanAuthHandler } from "$lib/utils/actions/practicePlanAuthHand
 	</h1>
 
 	<!-- Duration Summary -->
-        <PracticePlanActions />
+	<PracticePlanActions />
 
 	<!-- Metadata Fields -->
 	<PlanMetadataFields {skillOptions} {focusAreaOptions} />
 
-        <PracticePlanSectionsEditor
-            on:openDrillSearch={handleOpenDrillSearch}
-            on:openTimelineSelector={handleOpenTimelineSelector}
-        />
+	<PracticePlanSectionsEditor
+		on:openDrillSearch={handleOpenDrillSearch}
+		on:openTimelineSelector={handleOpenTimelineSelector}
+	/>
 
 	<!-- Visibility controls are handled within PlanMetadataFields -->
-
 
 	<!-- Submit button -->
 	<div class="flex justify-end mt-8">
@@ -412,16 +411,16 @@ import { practicePlanAuthHandler } from "$lib/utils/actions/practicePlanAuthHand
 	on:addOneOff={handleAddOneOffEvent}
 />
 <TimelineSelectorModal
-        bind:show={showTimelineSelector}
-        {selectedTimelines}
-        {getTimelineColor}
-        {getTimelineName}
-        {customTimelineNames}
-        parallelTimelines={PARALLEL_TIMELINES}
-        timelineColors={TIMELINE_COLORS}
-        on:updateTimelineName={handleUpdateTimelineNameEvent}
-        on:updateTimelineColor={handleUpdateTimelineColorEvent}
-        on:saveTimelines={handleSaveTimelinesEvent}
+	bind:show={showTimelineSelector}
+	{selectedTimelines}
+	{getTimelineColor}
+	{getTimelineName}
+	{customTimelineNames}
+	parallelTimelines={PARALLEL_TIMELINES}
+	timelineColors={TIMELINE_COLORS}
+	on:updateTimelineName={handleUpdateTimelineNameEvent}
+	on:updateTimelineColor={handleUpdateTimelineColorEvent}
+	on:saveTimelines={handleSaveTimelinesEvent}
 />
 
 <!-- Display general form errors from server action -->

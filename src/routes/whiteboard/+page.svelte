@@ -49,7 +49,9 @@
 						/>
 					</svg>
 				</div>
-				<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Whiteboard Loading Error</h2>
+				<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+					Whiteboard Loading Error
+				</h2>
 				<p class="text-gray-600 dark:text-gray-400 mb-6">
 					The whiteboard failed to load. This might be due to a browser compatibility issue or
 					network problem.
@@ -69,7 +71,9 @@
 						Go Home
 					</a>
 				</div>
-				<div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-blue-800 dark:text-blue-300">
+				<div
+					class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-blue-800 dark:text-blue-300"
+				>
 					<p class="font-medium mb-1">Troubleshooting tips:</p>
 					<ul class="text-left space-y-1">
 						<li>&bull; Try refreshing the page</li>

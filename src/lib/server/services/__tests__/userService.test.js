@@ -37,23 +37,25 @@ describe('UserService', () => {
 			expect(result).toEqual(mockUser);
 		});
 
-                it('should throw NotFoundError when user not found', async () => {
-                        db.query.mockResolvedValueOnce({ rows: [] });
-                        await expect(userService.getUserByEmail('nonexistent@example.com')).rejects.toThrow(NotFoundError);
-                });
+		it('should throw NotFoundError when user not found', async () => {
+			db.query.mockResolvedValueOnce({ rows: [] });
+			await expect(userService.getUserByEmail('nonexistent@example.com')).rejects.toThrow(
+				NotFoundError
+			);
+		});
 
-                it('should handle errors properly', async () => {
-                        const mockError = new Error('Database error');
-                        db.query.mockRejectedValueOnce(mockError);
-                        await expect(userService.getUserByEmail('test@example.com')).rejects.toThrow(DatabaseError);
-                });
+		it('should handle errors properly', async () => {
+			const mockError = new Error('Database error');
+			db.query.mockRejectedValueOnce(mockError);
+			await expect(userService.getUserByEmail('test@example.com')).rejects.toThrow(DatabaseError);
+		});
 	});
 
 	describe('isAdmin', () => {
 		it('should return true for admin role', async () => {
 			const mockUser = { id: '123', role: 'admin' };
 			vi.spyOn(userService, 'getById').mockResolvedValueOnce(mockUser);
-			
+
 			const result = await userService.isAdmin('123');
 			expect(result).toBe(true);
 			expect(userService.getById).toHaveBeenCalledWith('123', ['role']);
@@ -62,21 +64,21 @@ describe('UserService', () => {
 		it('should return false for user role', async () => {
 			const mockUser = { id: '123', role: 'user' };
 			vi.spyOn(userService, 'getById').mockResolvedValueOnce(mockUser);
-			
+
 			const result = await userService.isAdmin('123');
 			expect(result).toBe(false);
 		});
 
 		it('should return false when user not found', async () => {
 			vi.spyOn(userService, 'getById').mockRejectedValueOnce(new NotFoundError('User not found'));
-			
+
 			const result = await userService.isAdmin('nonexistent');
 			expect(result).toBe(false);
 		});
 
 		it('should return false on database error', async () => {
 			vi.spyOn(userService, 'getById').mockRejectedValueOnce(new Error('Database error'));
-			
+
 			const result = await userService.isAdmin('123');
 			expect(result).toBe(false);
 		});
@@ -86,7 +88,7 @@ describe('UserService', () => {
 		it('should update user role successfully', async () => {
 			const mockUser = { id: '123', name: 'Test User', email: 'test@example.com', role: 'admin' };
 			db.query.mockResolvedValueOnce({ rows: [mockUser] });
-			
+
 			const result = await userService.setUserRole('123', 'admin');
 			expect(result).toEqual(mockUser);
 			expect(db.query).toHaveBeenCalledWith(
@@ -113,31 +115,39 @@ describe('UserService', () => {
 
 	describe('getUserProfile', () => {
 		it('should return complete user profile with related data', async () => {
-                        // Mock getById instead of db.query for the user fetch
-                        vi.spyOn(userService, 'getById').mockResolvedValueOnce({
-                                id: '123',
-                                name: 'Test User',
-                                email: 'test@example.com',
-                                image: null,
-                                email_verified: null
-                        });
-                        
-                        // Mock withTransaction to return test data directly
-                        vi.spyOn(userService, 'withTransaction').mockResolvedValueOnce({
-                                user: {
-                                        id: '123',
-                                        name: 'Test User',
-                                        email: 'test@example.com',
-                                        emailVerified: null
-                                },
-                                drills: [{ id: 1, name: 'Drill 1', variation_count: 2 }],
-                                practicePlans: [{ id: 1, name: 'Plan 1' }],
-                                formations: [{ id: 1, name: 'Formation 1' }],
-                                votes: [{ id: 1, type: 'drill', item_name: 'Drill 1' }],
-                                comments: [{ id: 1, drill_id: 1, drill_name: 'Drill 1', content: 'Great drill!', created_at: new Date() }]
-                        });
+			// Mock getById instead of db.query for the user fetch
+			vi.spyOn(userService, 'getById').mockResolvedValueOnce({
+				id: '123',
+				name: 'Test User',
+				email: 'test@example.com',
+				image: null,
+				email_verified: null
+			});
 
-                        const result = await userService.getUserProfile('123');
+			// Mock withTransaction to return test data directly
+			vi.spyOn(userService, 'withTransaction').mockResolvedValueOnce({
+				user: {
+					id: '123',
+					name: 'Test User',
+					email: 'test@example.com',
+					emailVerified: null
+				},
+				drills: [{ id: 1, name: 'Drill 1', variation_count: 2 }],
+				practicePlans: [{ id: 1, name: 'Plan 1' }],
+				formations: [{ id: 1, name: 'Formation 1' }],
+				votes: [{ id: 1, type: 'drill', item_name: 'Drill 1' }],
+				comments: [
+					{
+						id: 1,
+						drill_id: 1,
+						drill_name: 'Drill 1',
+						content: 'Great drill!',
+						created_at: new Date()
+					}
+				]
+			});
+
+			const result = await userService.getUserProfile('123');
 
 			expect(result).toHaveProperty('user');
 			expect(result.user).toHaveProperty('emailVerified');
@@ -149,9 +159,9 @@ describe('UserService', () => {
 			expect(result).toHaveProperty('comments');
 		});
 
-                it('should throw NotFoundError if user not found', async () => {
-                        vi.spyOn(userService, 'getById').mockRejectedValueOnce(new NotFoundError('User not found'));
-                        await expect(userService.getUserProfile('nonexistent')).rejects.toThrow(NotFoundError);
-                });
+		it('should throw NotFoundError if user not found', async () => {
+			vi.spyOn(userService, 'getById').mockRejectedValueOnce(new NotFoundError('User not found'));
+			await expect(userService.getUserProfile('nonexistent')).rejects.toThrow(NotFoundError);
+		});
 	});
 });

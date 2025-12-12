@@ -14,12 +14,12 @@ export async function load({ params, fetch }) {
 		if (err instanceof APIError && err.status === 404) {
 			throw error(404, 'Practice plan not found');
 		}
-		
+
 		// Check for other 404 indicators
 		if (err.status === 404 || err.message?.includes('not found') || err.message?.includes('404')) {
 			throw error(404, 'Practice plan not found');
 		}
-		
+
 		// Log other errors
 		console.error('Error loading practice plan:', err);
 		throw error(500, 'Failed to load practice plan');

@@ -1,0 +1,70 @@
+{
+	"output": {
+		"filePath": "repomix-200k.xml",
+		"style": "xml",
+		"headerText": "QDrill Comprehensive Technical Review (~200k tokens)\n\nThis package contains a comprehensive view of the QDrill application:\n- Configuration files\n- Service layer and stores\n- All API route handlers\n- Key page components\n- Implementation documentation",
+		"showLineNumbers": false,
+		"removeComments": false,
+		"removeEmptyLines": false,
+		"topFilesLength": 15
+	},
+	"include": [
+		"CLAUDE.md",
+		"README.md",
+		"package.json",
+		"svelte.config.js",
+		"tailwind.config.js",
+		"src/app.html",
+		"src/app.d.ts",
+		"src/hooks.server.js",
+		"src/lib/auth.js",
+		"src/lib/utils.ts",
+		"src/lib/server/db.js",
+		"src/lib/server/services/*.js",
+		"src/lib/stores/*.js",
+		"src/lib/validation/*.ts",
+		"src/lib/validation/*.js",
+		"src/lib/components/FilterPanel.svelte",
+		"src/lib/components/DrillItem.svelte",
+		"src/lib/components/practice-plan/PracticePlanEditor.svelte",
+		"src/lib/components/practice-plan/DrillSelectorPanel.svelte",
+		"src/lib/components/practice-plan/timeline/*.svelte",
+		"src/routes/+layout.svelte",
+		"src/routes/+layout.server.js",
+		"src/routes/+page.svelte",
+		"src/routes/+error.svelte",
+		"src/routes/api/drills/**/*.js",
+		"src/routes/api/practice-plans/+server.js",
+		"src/routes/api/practice-plans/[id]/*.js",
+		"src/routes/api/teams/**/*.js",
+		"src/routes/api/seasons/**/*.js",
+		"src/routes/drills/+page.svelte",
+		"src/routes/drills/+page.server.js",
+		"src/routes/drills/DrillForm.svelte",
+		"src/routes/drills/[id]/+page.svelte",
+		"src/routes/practice-plans/+page.svelte",
+		"src/routes/practice-plans/+page.server.js",
+		"src/routes/practice-plans/[id]/+page.svelte",
+		"src/routes/practice-plans/viewer/*.svelte",
+		"src/routes/practice-plans/wizard/+layout.svelte",
+		"src/routes/practice-plans/wizard/basic-info/+page.svelte",
+		"src/routes/practice-plans/wizard/drills/+page.svelte",
+		"src/routes/teams/+page.svelte",
+		"src/routes/teams/[slug=slug]/plans/+page.svelte",
+		"docs/architecture/**/*.md",
+		"docs/implementation/**/*.md"
+	],
+	"ignore": {
+		"useGitignore": true,
+		"useDefaultPatterns": true,
+		"customPatterns": [
+			"**/*.test.js",
+			"**/*.spec.js",
+			"**/__tests__/**",
+			"src/routes/api/practice-plans/generate-ai/deep_research_response.md"
+		]
+	},
+	"security": {
+		"enableSecurityCheck": true
+	}
+}

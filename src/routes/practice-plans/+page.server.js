@@ -1,7 +1,4 @@
-import { json } from '@sveltejs/kit';
-import { practicePlanService } from '$lib/server/services/practicePlanService.js';
 import { drillService } from '$lib/server/services/drillService.js';
-import { redirect } from '@sveltejs/kit';
 import { apiFetch } from '$lib/utils/apiFetch.js';
 // Import predefined skills/focus areas - assuming this is the source
 import { PREDEFINED_SKILLS } from '$lib/constants/skills.js';
@@ -104,7 +101,7 @@ export async function load({ fetch, url, locals }) {
 			initialSelectedDrills = await Promise.all(
 				selectedDrillIds.map(async (id) => {
 					try {
-						const drill = await drillService.getById(id, ['id', 'name']); // Fetch only id and name
+						const drill = await drillService.getById(id, ['id', 'name'], userId); // Fetch only id and name
 						return drill ? { id: drill.id, name: drill.name } : null;
 					} catch (drillError) {
 						console.warn(`Failed to fetch drill name for ID ${id}:`, drillError);

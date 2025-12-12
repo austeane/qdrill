@@ -1,10 +1,10 @@
 <script>
-       import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher } from 'svelte';
 
-       export let show = false;
-       export let selectedTimelines;
-       export let parallelTimelines = {};
-       export let timelineColors = {};
+	export let show = false;
+	export let selectedTimelines;
+	export let parallelTimelines = {};
+	export let timelineColors = {};
 	export let getTimelineColor = (timeline) => 'bg-gray-500';
 	export let getTimelineName = (timeline) => timeline;
 	export let customTimelineNames;
@@ -44,18 +44,18 @@
 	// Refresh timeline names whenever show changes to true (modal opens)
 	$: if (show) {
 		console.log('[DEBUG] Modal opened, refreshing timeline names from store');
-               // Force a refresh of the parallelTimelines when the modal opens
-               for (const [key, _] of Object.entries(parallelTimelines)) {
-                       // Update the name in parallelTimelines from custom or default
-                       const currentName = getTimelineName(key);
-                       parallelTimelines[key] = {
-                               ...parallelTimelines[key],
-                               name: currentName
-                       };
+		// Force a refresh of the parallelTimelines when the modal opens
+		for (const [key, _] of Object.entries(parallelTimelines)) {
+			// Update the name in parallelTimelines from custom or default
+			const currentName = getTimelineName(key);
+			parallelTimelines[key] = {
+				...parallelTimelines[key],
+				name: currentName
+			};
 			// Update our cache for comparison
-                       timelineNamesCache[key] = currentName;
-               }
-       }
+			timelineNamesCache[key] = currentName;
+		}
+	}
 
 	function openColorPicker(timeline) {
 		activeTimeline = timeline;
@@ -95,18 +95,18 @@
 	}
 
 	function selectColor(color) {
-               if (activeTimeline) {
-                       if (Object.keys(timelineColors).includes(color)) {
-                               dispatch('updateTimelineColor', { timeline: activeTimeline, color });
-                       } else {
-                               console.warn(
-                                       `Invalid color class "${color}" selected in TimelineSelectorModal. Must be one of: ${Object.keys(timelineColors).join(', ')}`
-                               );
-                       }
-                       showColorPicker = false;
-                       activeTimeline = null;
-               }
-       }
+		if (activeTimeline) {
+			if (Object.keys(timelineColors).includes(color)) {
+				dispatch('updateTimelineColor', { timeline: activeTimeline, color });
+			} else {
+				console.warn(
+					`Invalid color class "${color}" selected in TimelineSelectorModal. Must be one of: ${Object.keys(timelineColors).join(', ')}`
+				);
+			}
+			showColorPicker = false;
+			activeTimeline = null;
+		}
+	}
 </script>
 
 {#if show}
@@ -127,7 +127,7 @@
 				<!-- Timeline Selection -->
 				<h4 class="text-md font-medium text-gray-800 mb-2">Select Timelines</h4>
 				<div class="space-y-4">
-                                       {#each Object.entries(parallelTimelines) as [key, _]}
+					{#each Object.entries(parallelTimelines) as [key, _]}
 						<div class="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
 							<label class="flex items-center space-x-3 flex-grow cursor-pointer">
 								<input
@@ -149,7 +149,7 @@
 									class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
 								/>
 								<span class="text-gray-700"
-                                                                        >{timelineNamesStore ? getTimelineName(key) : parallelTimelines[key].name}</span
+									>{timelineNamesStore ? getTimelineName(key) : parallelTimelines[key].name}</span
 								>
 							</label>
 
@@ -162,7 +162,7 @@
 											type="button"
 											on:click={() => openNameEditor(key)}
 											class="text-sm text-blue-600 hover:text-blue-800"
-                                                                       title={`Rename from '${timelineNamesStore ? getTimelineName(key) : parallelTimelines[key].name}'`}
+											title={`Rename from '${timelineNamesStore ? getTimelineName(key) : parallelTimelines[key].name}'`}
 										>
 											Rename
 										</button>
@@ -187,8 +187,8 @@
 						<h5 class="text-sm font-medium mb-2">
 							Rename Timeline: {activeTimeline
 								? timelineNamesStore
-                                                                ? getTimelineName(activeTimeline)
-                                                                        : parallelTimelines[activeTimeline]?.name || activeTimeline
+									? getTimelineName(activeTimeline)
+									: parallelTimelines[activeTimeline]?.name || activeTimeline
 								: ''}
 						</h5>
 						<div class="flex items-center">
@@ -215,12 +215,12 @@
 						<h5 class="text-sm font-medium mb-2">
 							Select Color for {activeTimeline
 								? timelineNamesStore
-                                                                ? getTimelineName(activeTimeline)
-                                                                        : parallelTimelines[activeTimeline]?.name || activeTimeline
+									? getTimelineName(activeTimeline)
+									: parallelTimelines[activeTimeline]?.name || activeTimeline
 								: ''} Timeline
 						</h5>
 						<div class="grid grid-cols-5 gap-2">
-                                                        {#each Object.entries(timelineColors) as [colorClass, colorName]}
+							{#each Object.entries(timelineColors) as [colorClass, colorName]}
 								<button
 									type="button"
 									class={`w-8 h-8 rounded cursor-pointer hover:opacity-80 ${colorClass}`}

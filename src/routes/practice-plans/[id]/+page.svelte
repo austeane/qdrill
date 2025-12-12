@@ -9,19 +9,19 @@
 	import Timeline from '../viewer/Timeline.svelte';
 	import Section from '../viewer/Section.svelte';
 	import DeletePracticePlan from '$lib/components/DeletePracticePlan.svelte';
-       import GroupFilter from '$lib/components/practice-plan/GroupFilter.svelte';
-       import { filterSectionsByGroup } from '$lib/utils/groupFilter.js';
+	import GroupFilter from '$lib/components/practice-plan/GroupFilter.svelte';
+	import { filterSectionsByGroup } from '$lib/utils/groupFilter.js';
 	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
-    import { apiFetch } from '$lib/utils/apiFetch.js';
-    import { sanitizeHtml } from '$lib/utils/sanitize.js';
+	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { sanitizeHtml } from '$lib/utils/sanitize.js';
 
 	export let data;
 	const { practicePlan } = data;
 
 	// Store for tracking the current section
 	const currentSectionId = writable(null);
-	
+
 	// Group filter state
 	let selectedGroupFilter = 'All Groups';
 
@@ -93,7 +93,7 @@
 			date.getMinutes().toString().padStart(2, '0')
 		);
 	}
-	
+
 	// Handle group filter change
 	function handleGroupFilterChange(event) {
 		selectedGroupFilter = event.detail.filter;
@@ -169,7 +169,7 @@
 							class="text-gray-600 dark:text-gray-300 prose prose-sm sm:prose lg:prose-lg dark:prose-invert"
 							class:truncate={!$isDescriptionExpanded}
 						>
-                    {@html sanitizeHtml(practicePlan.description)}
+							{@html sanitizeHtml(practicePlan.description)}
 						</div>
 						<div class="flex justify-end mt-1">
 							{#if $isDescriptionExpanded}
@@ -300,7 +300,7 @@
 						isActive={section.id === $currentSectionId}
 						canEdit={false}
 						sectionIndex={index}
-                                               startTime={calculateSectionStartTime(filteredSections, index)}
+						startTime={calculateSectionStartTime(filteredSections, index)}
 					/>
 				</div>
 			{/each}
@@ -323,7 +323,7 @@
 		align-items: center;
 		gap: 0.75rem;
 	}
-	
+
 	:global(.dark) .stat-card {
 		background-color: rgb(55 65 81);
 	}
@@ -343,7 +343,7 @@
 		line-height: 1.25rem;
 		color: rgb(107, 114, 128);
 	}
-	
+
 	:global(.dark) .stat-label {
 		color: rgb(209, 213, 219);
 	}
@@ -352,7 +352,7 @@
 		font-weight: 600;
 		color: rgb(17, 24, 39);
 	}
-	
+
 	:global(.dark) .stat-value {
 		color: rgb(243, 244, 246);
 	}

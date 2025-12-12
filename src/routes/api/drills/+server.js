@@ -1,52 +1,10 @@
-import { json, error as svelteKitError } from '@sveltejs/kit';
-import { authGuard } from '$lib/server/authGuard';
+import { json } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService';
-import { AppError, DatabaseError, ValidationError, NotFoundError } from '$lib/server/errors'; // Import NotFoundError
-import { z } from 'zod'; // Import zod
-import { createDrillSchema, updateDrillSchema } from '$lib/validation/drillSchema'; // Import Zod schemas
+import { createDrillSchema } from '$lib/validation/drillSchema'; // Import Zod schemas
+import { handleApiError } from '../utils/handleApiError.js';
+import { generateClaimToken } from '$lib/server/utils/claimTokens.js';
 
-// Helper function to convert AppError to SvelteKit error response
-function handleApiError(err) {
-	// Handle Zod validation errors specifically
-	if (err instanceof z.ZodError) {
-		console.warn(`[API Warn] Validation failed:`, err.flatten());
-		// Convert Zod errors to the format expected by the frontend/ValidationError
-		const details = err.flatten().fieldErrors;
-		const validationError = new ValidationError('Validation failed', details);
-		return json(
-			{
-				error: {
-					code: validationError.code,
-					message: validationError.message,
-					details: validationError.details
-				}
-			},
-			{ status: validationError.status }
-		);
-	}
-	// Handle custom AppErrors
-	else if (err instanceof AppError) {
-		console.warn(`[API Warn] (${err.status} ${err.code}): ${err.message}`);
-		const body = { error: { code: err.code, message: err.message } };
-		if (err instanceof ValidationError && err.details) {
-			body.error.details = err.details;
-		}
-		return json(body, { status: err.status });
-	}
-	// Handle generic errors
-	else {
-		console.error('[API Error] Unexpected error:', err);
-		return json(
-			{
-				error: {
-					code: 'INTERNAL_SERVER_ERROR',
-					message: 'An unexpected internal server error occurred'
-				}
-			},
-			{ status: 500 }
-		);
-	}
-}
+// Centralized error handler imported from ../utils/handleApiError.js
 
 export const GET = async ({ url, locals }) => {
 	// Get session info to pass userId for filtering
@@ -71,9 +29,14 @@ export const GET = async ({ url, locals }) => {
 					.map((t) => t.trim().toLowerCase())
 					.filter((t) => t)
 			: undefined;
+	const toTitleCase = (value) =>
+		typeof value === 'string' && value.length
+			? value.charAt(0).toUpperCase() + value.slice(1)
+			: value;
 
 	filters.skill_level = parseCommaSeparated('skillLevel');
-	filters.complexity = url.searchParams.get('complexity')?.toLowerCase();
+	const complexities = parseCommaSeparated('complexity');
+	filters.complexity = complexities ? complexities.map(toTitleCase) : undefined;
 	filters.skills_focused_on = parseCommaSeparated('skills');
 	filters.positions_focused_on = parseCommaSeparated('positions');
 	filters.drill_type = parseCommaSeparated('types');
@@ -99,9 +62,6 @@ export const GET = async ({ url, locals }) => {
 
 	filters.searchQuery = url.searchParams.get('q');
 
-	// Add userId to filters
-	if (userId) filters.userId = userId;
-
 	// Remove undefined filters
 	Object.keys(filters).forEach((key) => filters[key] === undefined && delete filters[key]);
 
@@ -110,7 +70,8 @@ export const GET = async ({ url, locals }) => {
 		page,
 		limit,
 		sortBy,
-		sortOrder
+		sortOrder,
+		userId
 	};
 
 	try {
@@ -162,6 +123,11 @@ export const POST = async (event) => {
 		// Use the DrillService to create the drill
 		const drill = await drillService.createDrill(validatedData, userId); // Pass validatedData
 
+		// If created anonymously, issue a claim token so the creator can later associate ownership
+		if (!userId && drill?.id) {
+			drill.claimToken = generateClaimToken('drill', drill.id);
+		}
+
 		return json(drill, { status: 201 }); // Return 201 Created
 	} catch (err) {
 		// Renamed variable to err
@@ -170,96 +136,4 @@ export const POST = async (event) => {
 	}
 };
 
-export const PUT = authGuard(async ({ request, locals }) => {
-	try {
-		const rawData = await request.json();
-		const session = locals.session;
-		const userId = session.user.id;
-
-		console.log('--- RAW DATA for Zod Validation (PUT) ---', JSON.stringify(rawData, null, 2)); // Log rawData
-
-		// Validate data using Zod schema
-		const validationResult = updateDrillSchema.safeParse(rawData);
-
-		// --- TEMPORARY LOGGING ---
-		console.log('--- Zod Validation Result (PUT) ---', JSON.stringify(validationResult, null, 2));
-		if (validationResult.success) {
-			console.log(
-				'--- Zod Validated Data (PUT) ---',
-				JSON.stringify(validationResult.data, null, 2)
-			);
-		} else {
-			console.error(
-				'--- Zod Validation Errors (PUT) ---',
-				JSON.stringify(validationResult.error.flatten(), null, 2)
-			);
-		}
-		// --- END TEMPORARY LOGGING ---
-
-		if (!validationResult.success) {
-			console.error(
-				'Zod validation failed in PUT /api/drills, throwing error:',
-				validationResult.error.flatten()
-			);
-			throw validationResult.error;
-		}
-
-		// Use the validated data
-		const validatedData = validationResult.data;
-
-		// Use the DrillService to update the drill
-		// Pass the drill ID and the rest of the validated data separately
-		const updatedDrill = await drillService.updateDrill(validatedData.id, validatedData, userId);
-
-		return json(updatedDrill);
-	} catch (err) {
-		// Renamed variable to err
-		// Use the helper function
-		return handleApiError(err);
-	}
-});
-
-export const DELETE = authGuard(async ({ params, request, locals }) => {
-	// Prefer ID from URL parameter if available (e.g., if route was /api/drills/[id])
-	let drillId = params.id ? parseInt(params.id) : null;
-
-	// If ID not in params, try getting from body (less standard for DELETE)
-	if (!drillId) {
-		try {
-			const { id } = await request.json();
-			if (id) drillId = parseInt(id);
-		} catch (e) {
-			// Ignore errors reading body if it's empty or not JSON
-		}
-	}
-
-	if (!drillId || isNaN(drillId)) {
-		return handleApiError(
-			new ValidationError(
-				'Valid Drill ID must be provided either in the URL or request body for DELETE'
-			)
-		);
-	}
-
-	const session = locals.session;
-	const userId = session.user.id;
-
-	try {
-		// Use the DrillService to delete the drill
-		const success = await drillService.deleteDrill(drillId, userId, { deleteRelated: false }); // Default to not deleting related
-
-		if (!success) {
-			// If deleteDrill returns false, it means not found or not permitted
-			// Distinguish between NotFound and Forbidden if possible, otherwise default to NotFound
-			return handleApiError(
-				new NotFoundError(`Drill with ID ${drillId} not found or access denied for deletion.`)
-			);
-		}
-
-		return json({ message: 'Drill deleted successfully' }, { status: 200 }); // Use 200 OK or 204 No Content
-	} catch (err) {
-		// Renamed variable to err
-		// Use the helper function
-		return handleApiError(err);
-	}
-});
+// PUT and DELETE are handled in src/routes/api/drills/[id]/+server.js

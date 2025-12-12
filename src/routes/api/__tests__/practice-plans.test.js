@@ -48,7 +48,7 @@ describe('Practice Plans API Endpoints', () => {
 				userId: 'user123',
 				page: 1,
 				limit: 10,
-				sortBy: 'created_at',
+				sortBy: 'upvotes',
 				sortOrder: 'desc',
 				filters: {
 					searchQuery: undefined,
@@ -89,7 +89,7 @@ describe('Practice Plans API Endpoints', () => {
 				userId: undefined,
 				page: 1,
 				limit: 10,
-				sortBy: 'created_at',
+				sortBy: 'upvotes',
 				sortOrder: 'desc',
 				filters: {
 					searchQuery: undefined,
@@ -139,7 +139,7 @@ describe('Practice Plans API Endpoints', () => {
 				sections: [
 					{
 						name: 'Warm up',
-						items: [{ type: 'drill', drill_id: 1, duration: 10 }]
+						items: [{ type: 'drill', drill_id: 1, name: 'Test Drill', duration: 10 }]
 					}
 				]
 			};
@@ -161,7 +161,12 @@ describe('Practice Plans API Endpoints', () => {
 			const data = await response.json();
 
 			// Verify the service was called correctly
-			expect(practicePlanService.createPracticePlan).toHaveBeenCalledWith(mockPlanData, 'user123');
+			expect(practicePlanService.createPracticePlan).toHaveBeenCalledWith(
+				expect.objectContaining({ name: mockPlanData.name, sections: expect.any(Array) }),
+				'user123'
+			);
+			const calledPlan = practicePlanService.createPracticePlan.mock.calls[0][0];
+			expect(calledPlan.sections[0].order).toBe(0);
 
 			// Verify the response
 			expect(response.status).toBe(201);
@@ -209,7 +214,7 @@ describe('Practice Plans API Endpoints', () => {
 				sections: [
 					{
 						name: 'Warm up',
-						items: [{ type: 'drill', drill_id: 1, duration: 10 }]
+						items: [{ type: 'drill', drill_id: 1, name: 'Test Drill', duration: 10 }]
 					}
 				],
 				visibility: 'public'
@@ -230,14 +235,18 @@ describe('Practice Plans API Endpoints', () => {
 			const data = await response.json();
 
 			// Verify the service was called with undefined userId
-			expect(practicePlanService.createPracticePlan).toHaveBeenCalledWith(mockPlanData, undefined);
+			expect(practicePlanService.createPracticePlan).toHaveBeenCalledWith(
+				expect.objectContaining({ name: mockPlanData.name, sections: expect.any(Array) }),
+				undefined
+			);
+			const calledPlan = practicePlanService.createPracticePlan.mock.calls[0][0];
+			expect(calledPlan.sections[0].order).toBe(0);
 
 			// Verify the response
 			expect(response.status).toBe(201);
-			expect(data).toEqual({
-				id: 1,
-				message: 'Practice plan created successfully'
-			});
+			expect(data.id).toBe(1);
+			expect(data.message).toBe('Practice plan created successfully');
+			expect(data.claimToken).toBeDefined();
 		});
 	});
 });

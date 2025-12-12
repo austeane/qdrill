@@ -108,7 +108,9 @@
 						</svg>
 					</div>
 					<h3 class="text-xl font-semibold mb-2 dark:text-white">AI Plan Generator</h3>
-					<p class="text-gray-600 dark:text-gray-300 mb-4">Have AI generate you a personalized practice plan.</p>
+					<p class="text-gray-600 dark:text-gray-300 mb-4">
+						Have AI generate you a personalized practice plan.
+					</p>
 				</div>
 				<div class="mt-auto">
 					<a

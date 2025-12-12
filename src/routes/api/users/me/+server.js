@@ -43,7 +43,9 @@ export const GET = authGuard(async ({ locals }) => {
 				try {
 					Object.assign(processedError, err);
 					processedError.message = message;
-				} catch (assignError) {}
+				} catch (assignError) {
+					console.warn('Failed to assign error properties:', assignError);
+				}
 			}
 		} else if (err.message && typeof err.message !== 'string') {
 			try {

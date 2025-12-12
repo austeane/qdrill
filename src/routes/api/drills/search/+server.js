@@ -14,11 +14,11 @@ export const GET = async ({ url, locals }) => {
 	try {
 		// Use getFilteredDrills for consistency, applying search via filters.searchQuery
 		const filters = { searchQuery: query };
-		if (userId) filters.userId = userId; // Apply userId for visibility
 
 		const options = {
 			page,
 			limit,
+			userId,
 			columns: ['id', 'name', 'brief_description'] // Return id, name, and brief description
 		};
 

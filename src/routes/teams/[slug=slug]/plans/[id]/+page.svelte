@@ -19,7 +19,7 @@
 
 	// Store for tracking the current section
 	const currentSectionId = writable(null);
-	
+
 	// Group filter state
 	let selectedGroupFilter = 'All Groups';
 
@@ -29,7 +29,7 @@
 	// Check edit permissions - in team context, use team role
 	$: isAdmin = userRole === 'admin';
 	$: userCanEdit = isAdmin || userRole === 'coach';
-	
+
 	// Add this near the other state variables
 	const isDescriptionExpanded = writable(true);
 
@@ -88,19 +88,23 @@
 			date.getMinutes().toString().padStart(2, '0')
 		);
 	}
-	
+
 	// Handle group filter change
 	function handleGroupFilterChange(event) {
 		selectedGroupFilter = event.detail.filter;
 	}
-	
+
 	// Filter sections based on selected group
 	$: filteredSections = filterSectionsByGroup(practicePlan.sections, selectedGroupFilter);
-	
+
 	// Extract unique groups from sections
-	$: uniqueGroups = [...new Set(practicePlan.sections.flatMap(s => 
-		s.parallel_groups ? s.parallel_groups.map(g => g.group_name) : []
-	))].filter(Boolean);
+	$: uniqueGroups = [
+		...new Set(
+			practicePlan.sections.flatMap((s) =>
+				s.parallel_groups ? s.parallel_groups.map((g) => g.group_name) : []
+			)
+		)
+	].filter(Boolean);
 </script>
 
 <main class="page-container">
@@ -124,7 +128,11 @@
 				{#if practicePlan.scheduled_date}
 					<span class="meta-item">
 						<svg class="meta-icon" viewBox="0 0 20 20" fill="currentColor">
-							<path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+							<path
+								fill-rule="evenodd"
+								d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+								clip-rule="evenodd"
+							/>
 						</svg>
 						{new Date(practicePlan.scheduled_date + 'T00:00:00').toLocaleDateString('en-US', {
 							weekday: 'long',
@@ -137,14 +145,24 @@
 				{#if practicePlan.start_time}
 					<span class="meta-item">
 						<svg class="meta-icon" viewBox="0 0 20 20" fill="currentColor">
-							<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+							<path
+								fill-rule="evenodd"
+								d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+								clip-rule="evenodd"
+							/>
 						</svg>
-						{formatTime(practicePlan.start_time)} - {formatTime(addMinutes(practicePlan.start_time, totalDuration))}
+						{formatTime(practicePlan.start_time)} - {formatTime(
+							addMinutes(practicePlan.start_time, totalDuration)
+						)}
 					</span>
 				{/if}
 				<span class="meta-item">
 					<svg class="meta-icon" viewBox="0 0 20 20" fill="currentColor">
-						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+						<path
+							fill-rule="evenodd"
+							d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+							clip-rule="evenodd"
+						/>
 					</svg>
 					{totalDuration} minutes
 				</span>
@@ -156,30 +174,19 @@
 			</div>
 		</div>
 		<div class="header-actions">
-				{#if userCanEdit}
-					<a
-						href={`/teams/${team.slug}/plans/${practicePlan.id}/edit`}
-						class="btn btn-secondary"
-					>
-						Edit
-					</a>
-				{/if}
-				<a
-					href={`/teams/${team.slug}/season`}
-					class="btn btn-secondary"
-				>
-					Back to Season
+			{#if userCanEdit}
+				<a href={`/teams/${team.slug}/plans/${practicePlan.id}/edit`} class="btn btn-secondary">
+					Edit
 				</a>
+			{/if}
+			<a href={`/teams/${team.slug}/season`} class="btn btn-secondary"> Back to Season </a>
 		</div>
 	</div>
 
 	<!-- Description -->
 	{#if practicePlan.description}
 		<div class="practice-plan-description">
-			<button
-				class="description-header"
-				on:click={() => isDescriptionExpanded.update(n => !n)}
-			>
+			<button class="description-header" on:click={() => isDescriptionExpanded.update((n) => !n)}>
 				<h2>Description</h2>
 				<svg
 					class="chevron"
@@ -187,7 +194,11 @@
 					viewBox="0 0 20 20"
 					fill="currentColor"
 				>
-					<path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+					<path
+						fill-rule="evenodd"
+						d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+						clip-rule="evenodd"
+					/>
 				</svg>
 			</button>
 			{#if $isDescriptionExpanded}
@@ -199,17 +210,14 @@
 	<!-- Group Filter (if there are groups) -->
 	{#if uniqueGroups.length > 0}
 		<div class="mb-6">
-			<GroupFilter 
-				groups={uniqueGroups} 
-				on:filterChange={handleGroupFilterChange}
-			/>
+			<GroupFilter groups={uniqueGroups} on:filterChange={handleGroupFilterChange} />
 		</div>
 	{/if}
 
 	<!-- Timeline -->
 	<div class="timeline-container">
-		<Timeline 
-			sections={filteredSections} 
+		<Timeline
+			sections={filteredSections}
 			currentSectionId={$currentSectionId}
 			on:sectionSelect={handleSectionSelect}
 		/>
@@ -227,11 +235,7 @@
 	<!-- Actions -->
 	{#if userCanEdit}
 		<div class="practice-plan-actions">
-			<DeletePracticePlan 
-				planId={practicePlan.id}
-				teamId={team.id}
-				isTeamContext={true}
-			/>
+			<DeletePracticePlan planId={practicePlan.id} teamId={team.id} isTeamContext={true} />
 		</div>
 	{/if}
 </main>

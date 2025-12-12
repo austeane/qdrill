@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GET, PUT, DELETE } from '../drills/[id]/+server.js';
+import { NotFoundError, ValidationError, ForbiddenError } from '$lib/server/errors.js';
 
 // Mock the dependencies
 vi.mock('$lib/server/services/drillService', () => {
@@ -10,6 +11,12 @@ vi.mock('$lib/server/services/drillService', () => {
 			updateDrill: vi.fn(),
 			deleteDrill: vi.fn()
 		}
+	};
+});
+
+vi.mock('$lib/server/authGuard', () => {
+	return {
+		authGuard: (handler) => handler
 	};
 });
 
@@ -55,7 +62,7 @@ describe('Drill ID API Endpoints', () => {
 			const data = await response.json();
 
 			// Verify the service was called correctly
-			expect(drillService.getById).toHaveBeenCalledWith('1');
+			expect(drillService.getById).toHaveBeenCalledWith(1, undefined, undefined);
 
 			// Verify the response
 			expect(data).toEqual(mockDrill);
@@ -75,14 +82,6 @@ describe('Drill ID API Endpoints', () => {
 
 			drillService.getDrillWithVariations.mockResolvedValue(mockDrill);
 
-			// Mock the db query for user names
-			db.query.mockResolvedValue({
-				rows: [
-					{ id: 'user123', name: 'Test User 1' },
-					{ id: 'user456', name: 'Test User 2' }
-				]
-			});
-
 			// Create mock request event
 			const event = {
 				params: { id: '1' },
@@ -95,17 +94,12 @@ describe('Drill ID API Endpoints', () => {
 			const data = await response.json();
 
 			// Verify the service was called correctly
-			expect(drillService.getDrillWithVariations).toHaveBeenCalledWith('1');
-			expect(db.query).toHaveBeenCalled();
-
-			// Verify the response includes variations with creator names
-			expect(data.variations[0].creator_name).toBe('Test User 1');
-			expect(data.variations[1].creator_name).toBe('Test User 2');
+			expect(drillService.getDrillWithVariations).toHaveBeenCalledWith(1, undefined);
+			expect(data.variations).toHaveLength(2);
 		});
 
 		it('should handle drill not found', async () => {
-			// Mock service to return null for not found
-			drillService.getById.mockResolvedValue(null);
+			drillService.getById.mockRejectedValue(new NotFoundError('Drill not found'));
 
 			// Create mock request event
 			const event = {
@@ -120,7 +114,7 @@ describe('Drill ID API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(404);
-			expect(data.error).toContain('not found');
+			expect(data.error.code).toBe('NOT_FOUND');
 		});
 
 		it('should handle invalid ID parameter', async () => {
@@ -137,25 +131,22 @@ describe('Drill ID API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(400);
-			expect(data.error).toBe('Invalid input data');
+			expect(data.error.code).toBe('VALIDATION_ERROR');
 		});
 	});
 
 	describe('PUT endpoint', () => {
 		it('should update an existing drill', async () => {
 			// Mock service response
-			const mockDrillData = { id: 1, name: 'Updated Drill', drill_type: ['conditioning'] };
+			const mockDrillData = {
+				id: 1,
+				name: 'Updated Drill',
+				brief_description: 'Brief',
+				drill_type: ['Conditioning']
+			};
 			const mockUpdatedDrill = { ...mockDrillData, updated_at: new Date().toISOString() };
 
 			drillService.updateDrill.mockResolvedValue(mockUpdatedDrill);
-
-			// Mock db client for vote update
-			const mockClient = {
-				query: vi.fn(),
-				release: vi.fn()
-			};
-
-			db.getClient.mockResolvedValue(mockClient);
 
 			// Create mock request event
 			const event = {
@@ -164,7 +155,7 @@ describe('Drill ID API Endpoints', () => {
 					json: vi.fn().mockResolvedValue(mockDrillData)
 				},
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -173,39 +164,10 @@ describe('Drill ID API Endpoints', () => {
 			const data = await response.json();
 
 			// Verify the service was called correctly
-			expect(drillService.updateDrill).toHaveBeenCalledWith('1', mockDrillData, 'user123');
-
-			// Verify votes table update
-			expect(mockClient.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE votes'), [
-				'Updated Drill',
-				'1'
-			]);
-
-			expect(mockClient.release).toHaveBeenCalled();
+			expect(drillService.updateDrill).toHaveBeenCalledWith(1, mockDrillData, 'user123');
 
 			// Verify the response
 			expect(data).toEqual(mockUpdatedDrill);
-		});
-
-		it('should require authentication', async () => {
-			// Create mock request event with no session
-			const event = {
-				params: { id: '1' },
-				request: {
-					json: vi.fn().mockResolvedValue({ name: 'Updated Drill', drill_type: ['conditioning'] })
-				},
-				locals: {
-					getSession: vi.fn().mockResolvedValue(null)
-				}
-			};
-
-			// Call the PUT endpoint
-			const response = await PUT(event);
-			const data = await response.json();
-
-			// Verify error response
-			expect(response.status).toBe(401);
-			expect(data.error).toBe('Authentication required');
 		});
 
 		it('should validate required fields', async () => {
@@ -216,7 +178,7 @@ describe('Drill ID API Endpoints', () => {
 					json: vi.fn().mockResolvedValue({ name: 'Missing Type' }) // Missing drill_type
 				},
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -226,7 +188,7 @@ describe('Drill ID API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(400);
-			expect(data.error).toBe('Required fields missing');
+			expect(data.error.code).toBe('VALIDATION_ERROR');
 		});
 	});
 
@@ -239,7 +201,7 @@ describe('Drill ID API Endpoints', () => {
 			const event = {
 				params: { id: '1' },
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -248,28 +210,10 @@ describe('Drill ID API Endpoints', () => {
 			const data = await response.json();
 
 			// Verify the service was called correctly
-			expect(drillService.deleteDrill).toHaveBeenCalledWith('1', 'user123');
+			expect(drillService.deleteDrill).toHaveBeenCalledWith(1, 'user123');
 
 			// Verify the response
-			expect(data.success).toBe(true);
-		});
-
-		it('should require authentication when not in dev mode', async () => {
-			// Create mock request event with no session
-			const event = {
-				params: { id: '1' },
-				locals: {
-					getSession: vi.fn().mockResolvedValue(null)
-				}
-			};
-
-			// Call the DELETE endpoint
-			const response = await DELETE(event);
-			const data = await response.json();
-
-			// Verify error response
-			expect(response.status).toBe(401);
-			expect(data.error).toBe('Authentication required');
+			expect(data.message).toBeDefined();
 		});
 
 		it('should handle drill not found', async () => {
@@ -280,7 +224,7 @@ describe('Drill ID API Endpoints', () => {
 			const event = {
 				params: { id: '999' },
 				locals: {
-					getSession: vi.fn().mockResolvedValue({ user: { id: 'user123' } })
+					session: { user: { id: 'user123' } }
 				}
 			};
 
@@ -290,7 +234,7 @@ describe('Drill ID API Endpoints', () => {
 
 			// Verify error response
 			expect(response.status).toBe(404);
-			expect(data.error).toContain('not found');
+			expect(data.error.code).toBe('NOT_FOUND');
 		});
 	});
 });

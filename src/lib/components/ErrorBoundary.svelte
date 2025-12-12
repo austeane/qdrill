@@ -26,7 +26,7 @@
 
 			// Log to monitoring service
 			console.error('Error boundary caught error:', error);
-			
+
 			// Prevent default error handling
 			event.preventDefault();
 		};

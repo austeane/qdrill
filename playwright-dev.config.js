@@ -14,8 +14,8 @@ const config = {
 
 // Allow bypassing webServer spawn if a server is already running
 if (process.env.PW_NO_WEBSERVER) {
-  // @ts-ignore
-  delete config.webServer;
+	// @ts-ignore
+	delete config.webServer;
 }
 
 export default config;

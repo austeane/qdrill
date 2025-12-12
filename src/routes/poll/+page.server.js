@@ -1,4 +1,3 @@
-import { error } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService.js';
 import { apiFetch } from '$lib/utils/apiFetch.js';
 // Assuming a service exists for poll options or direct DB access is needed

@@ -197,13 +197,16 @@ export class SkillService extends BaseEntityService {
 			// Get drill IDs
 			const drillIds = result.rows.map((row) => row.id);
 
-			// Find other skills used in these drills
+			// Find other skills used in these drills, excluding the current skills
 			const skillsQuery = `
-        SELECT DISTINCT unnest(skills_focused_on) as skill,
-               COUNT(id) as drill_count
-        FROM drills
-        WHERE id = ANY($1)
-        AND NOT (skills_focused_on && $2::varchar[])
+        SELECT skill,
+               COUNT(*) as drill_count
+        FROM (
+          SELECT unnest(COALESCE(skills_focused_on, '{}'::varchar[])) as skill
+          FROM drills
+          WHERE id = ANY($1)
+        ) s
+        WHERE NOT (skill = ANY($2::varchar[]))
         GROUP BY skill
         ORDER BY drill_count DESC
         LIMIT $3

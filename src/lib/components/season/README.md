@@ -6,34 +6,42 @@ This directory contains the redesigned season management system for QDrill. The 
 
 ```svelte
 <script>
-  import SeasonShell from '$lib/components/season/SeasonShell.svelte';
-  import Overview from '$lib/components/season/views/Overview.svelte';
-  import Schedule from '$lib/components/season/views/Schedule.svelte';
-  import Manage from '$lib/components/season/views/Manage.svelte';
-  
-  let activeTab = 'overview';
-  let season = { /* season data */ };
-  let sections = [/* season sections */];
-  let markers = [/* events/milestones */];
-  let practices = [/* practice plans */];
+	import SeasonShell from '$lib/components/season/SeasonShell.svelte';
+	import Overview from '$lib/components/season/views/Overview.svelte';
+	import Schedule from '$lib/components/season/views/Schedule.svelte';
+	import Manage from '$lib/components/season/views/Manage.svelte';
+
+	let activeTab = 'overview';
+	let season = {
+		/* season data */
+	};
+	let sections = [
+		/* season sections */
+	];
+	let markers = [
+		/* events/milestones */
+	];
+	let practices = [
+		/* practice plans */
+	];
 </script>
 
 <SeasonShell
-  {season}
-  {sections}
-  {markers}
-  {practices}
-  isAdmin={true}
-  teamId="team-123"
-  bind:activeTab
+	{season}
+	{sections}
+	{markers}
+	{practices}
+	isAdmin={true}
+	teamId="team-123"
+	bind:activeTab
 >
-  {#if activeTab === 'overview'}
-    <Overview {...props} />
-  {:else if activeTab === 'schedule'}
-    <Schedule {...props} />
-  {:else if activeTab === 'manage'}
-    <Manage {...props} />
-  {/if}
+	{#if activeTab === 'overview'}
+		<Overview {...props} />
+	{:else if activeTab === 'schedule'}
+		<Schedule {...props} />
+	{:else if activeTab === 'manage'}
+		<Manage {...props} />
+	{/if}
 </SeasonShell>
 ```
 
@@ -42,15 +50,18 @@ This directory contains the redesigned season management system for QDrill. The 
 ### Core Components
 
 #### `SeasonShell.svelte`
+
 The main container that provides responsive navigation and layout.
 
 **Features:**
+
 - Responsive navigation (bottom tabs on mobile, top tabs on desktop)
 - Automatic device detection
 - Season header with date range
 - Admin-only tab visibility
 
 **Props:**
+
 - `season`: Season object with `name`, `start_date`, `end_date`
 - `sections`: Array of season sections (training phases)
 - `markers`: Array of events/milestones
@@ -62,27 +73,33 @@ The main container that provides responsive navigation and layout.
 ### View Components
 
 #### `views/Overview.svelte`
+
 Dashboard view showing season summary and quick actions.
 
 **Features:**
+
 - Section progress cards
 - Upcoming events timeline
 - Quick practice creation
 - Timeline visualization link
 
 #### `views/Schedule.svelte`
+
 Calendar-based practice scheduling interface.
 
 **Features:**
+
 - Week and month view modes
 - Drag-to-create practices
 - Visual event indicators
 - Responsive grid layout
 
 #### `views/Manage.svelte`
+
 Administrative interface for managing sections and events.
 
 **Features:**
+
 - Drag-to-reorder sections
 - CRUD operations for sections/events
 - Visual color coding
@@ -91,9 +108,11 @@ Administrative interface for managing sections and events.
 ### Utility Components
 
 #### `SeasonTimelineViewer.svelte`
+
 Read-only timeline visualization for the full season.
 
 **Features:**
+
 - Zoomable timeline
 - Stacked sections
 - Event markers
@@ -113,6 +132,7 @@ These components use the `BottomSheet` UI component for mobile-friendly forms.
 ## Data Structures
 
 ### Season Object
+
 ```javascript
 {
   id: 'season-123',
@@ -125,6 +145,7 @@ These components use the `BottomSheet` UI component for mobile-friendly forms.
 ```
 
 ### Section Object
+
 ```javascript
 {
   id: 'section-456',
@@ -138,6 +159,7 @@ These components use the `BottomSheet` UI component for mobile-friendly forms.
 ```
 
 ### Marker Object
+
 ```javascript
 {
   id: 'marker-789',
@@ -151,6 +173,7 @@ These components use the `BottomSheet` UI component for mobile-friendly forms.
 ```
 
 ### Practice Object
+
 ```javascript
 {
   id: 'practice-012',
@@ -178,12 +201,12 @@ All view components emit these events:
 
 ```svelte
 <Overview
-  on:sectionChange={handleSectionChange}
-  on:markerChange={handleMarkerChange}
-  on:createPractice={(e) => {
-    const { date, sectionId } = e.detail;
-    // Handle practice creation
-  }}
+	on:sectionChange={handleSectionChange}
+	on:markerChange={handleMarkerChange}
+	on:createPractice={(e) => {
+		const { date, sectionId } = e.detail;
+		// Handle practice creation
+	}}
 />
 ```
 
@@ -192,16 +215,17 @@ All view components emit these events:
 The components use the `deviceStore` for responsive behavior:
 
 ```svelte
-import { device } from '$lib/stores/deviceStore';
+import {device} from '$lib/stores/deviceStore';
 
 {#if $device.isMobile}
-  <!-- Mobile layout -->
+	<!-- Mobile layout -->
 {:else}
-  <!-- Desktop layout -->
+	<!-- Desktop layout -->
 {/if}
 ```
 
 ### Breakpoints
+
 - Mobile: < 768px
 - Tablet: 768px - 1024px
 - Desktop: > 1024px
@@ -218,9 +242,9 @@ Components support dark mode via CSS custom properties:
 
 /* Dark mode */
 :global(.dark) {
-  --bg-primary: #111827;
-  --text-primary: #f3f4f6;
-  --border-color: #374151;
+	--bg-primary: #111827;
+	--text-primary: #f3f4f6;
+	--border-color: #374151;
 }
 ```
 
@@ -266,30 +290,30 @@ POST   /api/seasons/{id}/instantiate
 ```svelte
 <!-- routes/teams/[teamId]/season/+page.svelte -->
 <script>
-  import SeasonShell from '$lib/components/season/SeasonShell.svelte';
-  import Overview from '$lib/components/season/views/Overview.svelte';
-  // ... other imports
-  
-  export let data;
-  
-  let activeTab = 'overview';
-  let sections = [];
-  let markers = [];
-  let practices = [];
-  
-  // Load data...
+	import SeasonShell from '$lib/components/season/SeasonShell.svelte';
+	import Overview from '$lib/components/season/views/Overview.svelte';
+	// ... other imports
+
+	export let data;
+
+	let activeTab = 'overview';
+	let sections = [];
+	let markers = [];
+	let practices = [];
+
+	// Load data...
 </script>
 
 <SeasonShell
-  season={data.season}
-  {sections}
-  {markers}
-  {practices}
-  isAdmin={data.userRole === 'admin'}
-  teamId={data.teamId}
-  bind:activeTab
+	season={data.season}
+	{sections}
+	{markers}
+	{practices}
+	isAdmin={data.userRole === 'admin'}
+	teamId={data.teamId}
+	bind:activeTab
 >
-  <!-- Content based on activeTab -->
+	<!-- Content based on activeTab -->
 </SeasonShell>
 ```
 
@@ -297,13 +321,13 @@ POST   /api/seasons/{id}/instantiate
 
 ```svelte
 <SeasonShell {...props}>
-  {#if activeTab === 'custom'}
-    <div class="custom-view">
-      <!-- Your custom content -->
-    </div>
-  {:else}
-    <!-- Default views -->
-  {/if}
+	{#if activeTab === 'custom'}
+		<div class="custom-view">
+			<!-- Your custom content -->
+		</div>
+	{:else}
+		<!-- Default views -->
+	{/if}
 </SeasonShell>
 ```
 
@@ -325,7 +349,7 @@ Enable debug logging:
 const DEBUG = true;
 
 function log(...args) {
-  if (DEBUG) console.log('[SeasonComponent]', ...args);
+	if (DEBUG) console.log('[SeasonComponent]', ...args);
 }
 ```
 

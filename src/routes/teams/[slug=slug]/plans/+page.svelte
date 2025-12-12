@@ -2,18 +2,18 @@
 	import { page } from '$app/stores';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import { goto } from '$app/navigation';
-import { Search, Calendar, Filter } from 'lucide-svelte';
-import { formatInTz } from '$lib/utils/formatInTz.js';
+	import { Search, Calendar, Filter } from 'lucide-svelte';
+	import { formatInTz } from '$lib/utils/formatInTz.js';
 
-export let data;
-const { team, practicePlans, userRole } = data;
+	export let data;
+	const { team, practicePlans, userRole } = data;
 
 	$: canCreatePractice = userRole === 'admin' || userRole === 'coach';
-	
+
 	let searchQuery = '';
 	let selectedType = 'all';
 	let dateFilter = 'all';
-	
+
 	const practiceTypes = [
 		{ value: 'all', label: 'All Types' },
 		{ value: 'regular', label: 'Regular' },
@@ -21,7 +21,7 @@ const { team, practicePlans, userRole } = data;
 		{ value: 'tournament', label: 'Tournament' },
 		{ value: 'special', label: 'Special' }
 	];
-	
+
 	const dateFilters = [
 		{ value: 'all', label: 'All Dates' },
 		{ value: 'upcoming', label: 'Upcoming' },
@@ -29,65 +29,69 @@ const { team, practicePlans, userRole } = data;
 		{ value: 'this-week', label: 'This Week' },
 		{ value: 'this-month', label: 'This Month' }
 	];
-	
+
 	$: filteredPlans = filterPlans(practicePlans, searchQuery, selectedType, dateFilter);
-	
+
 	function filterPlans(plans, search, type, date) {
 		let filtered = [...plans];
-		
+
 		// Search filter
 		if (search.trim()) {
 			const query = search.toLowerCase();
-			filtered = filtered.filter(plan => 
-				(plan.name || '').toLowerCase().includes(query) ||
-				(plan.description || '').toLowerCase().includes(query)
+			filtered = filtered.filter(
+				(plan) =>
+					(plan.name || '').toLowerCase().includes(query) ||
+					(plan.description || '').toLowerCase().includes(query)
 			);
 		}
-		
+
 		// Type filter
 		if (type !== 'all') {
-			filtered = filtered.filter(plan => plan.practice_type === type);
+			filtered = filtered.filter((plan) => plan.practice_type === type);
 		}
-		
+
 		// Date filter
 		if (date !== 'all') {
 			const today = new Date();
 			today.setHours(0, 0, 0, 0);
-			
-			filtered = filtered.filter(plan => {
+
+			filtered = filtered.filter((plan) => {
 				if (!plan.scheduled_date) return false;
 				const planDate = new Date(plan.scheduled_date + 'T00:00:00');
-				
-				switch (date) {
-					case 'upcoming':
-						return planDate >= today;
-					case 'past':
-						return planDate < today;
-					case 'this-week':
-						const weekStart = new Date(today);
-						weekStart.setDate(today.getDate() - today.getDay());
-						const weekEnd = new Date(weekStart);
-						weekEnd.setDate(weekStart.getDate() + 6);
-						return planDate >= weekStart && planDate <= weekEnd;
-					case 'this-month':
-						return planDate.getMonth() === today.getMonth() && 
-						       planDate.getFullYear() === today.getFullYear();
+
+					switch (date) {
+						case 'upcoming':
+							return planDate >= today;
+						case 'past':
+							return planDate < today;
+						case 'this-week': {
+							const weekStart = new Date(today);
+							weekStart.setDate(today.getDate() - today.getDay());
+							const weekEnd = new Date(weekStart);
+							weekEnd.setDate(weekStart.getDate() + 6);
+							return planDate >= weekStart && planDate <= weekEnd;
+						}
+						case 'this-month':
+							return (
+								planDate.getMonth() === today.getMonth() &&
+								planDate.getFullYear() === today.getFullYear()
+						);
 					default:
 						return true;
 				}
 			});
 		}
-		
+
 		// Sort by date (most recent first)
 		filtered.sort((a, b) => {
 			const dateA = a.scheduled_date ? new Date(a.scheduled_date) : new Date(0);
 			const dateB = b.scheduled_date ? new Date(b.scheduled_date) : new Date(0);
 			return dateB - dateA;
 		});
-		
+
 		return filtered;
 	}
-	
+
 	function clearFilters() {
 		searchQuery = '';
 		selectedType = 'all';
@@ -125,7 +129,7 @@ const { team, practicePlans, userRole } = data;
 </script>
 
 <svelte:head>
-  <title>Practice Plans - {data?.team?.name || 'Team'}</title>
+	<title>Practice Plans - {data?.team?.name || 'Team'}</title>
 </svelte:head>
 
 <main class="page-container">
@@ -145,18 +149,16 @@ const { team, practicePlans, userRole } = data;
 		<div>
 			<h1 class="page-title">Practice Plans</h1>
 			<p class="page-subtitle">
-				{filteredPlans.length} of {practicePlans.length} practice {practicePlans.length === 1 ? 'plan' : 'plans'} for {team.name}
+				{filteredPlans.length} of {practicePlans.length} practice {practicePlans.length === 1
+					? 'plan'
+					: 'plans'} for {team.name}
 			</p>
 		</div>
 		<div class="header-actions">
 			{#if canCreatePractice}
-				<a href={`/teams/${team.slug}/season`} class="btn btn-primary">
-					Create Practice
-				</a>
+				<a href={`/teams/${team.slug}/season`} class="btn btn-primary"> Create Practice </a>
 			{/if}
-			<a href={`/teams/${team.slug}/season`} class="btn btn-secondary">
-				Back to Season
-			</a>
+			<a href={`/teams/${team.slug}/season`} class="btn btn-secondary"> Back to Season </a>
 		</div>
 	</div>
 
@@ -171,7 +173,7 @@ const { team, practicePlans, userRole } = data;
 				class="search-input"
 			/>
 		</div>
-		
+
 		<div class="filter-group">
 			<select bind:value={selectedType} class="filter-select">
 				{#each practiceTypes as type}
@@ -179,7 +181,7 @@ const { team, practicePlans, userRole } = data;
 				{/each}
 			</select>
 		</div>
-		
+
 		<div class="filter-group">
 			<select bind:value={dateFilter} class="filter-select">
 				{#each dateFilters as filter}
@@ -187,7 +189,7 @@ const { team, practicePlans, userRole } = data;
 				{/each}
 			</select>
 		</div>
-		
+
 		{#if selectedType !== 'all' || dateFilter !== 'all' || searchQuery}
 			<button class="clear-filters" on:click={clearFilters}>
 				<Filter size={16} />
@@ -200,7 +202,7 @@ const { team, practicePlans, userRole } = data;
 	{#if filteredPlans.length > 0}
 		<div class="practice-plans-grid">
 			{#each filteredPlans as plan}
-					<a href={`/teams/${team.slug}/plans/${plan.id}`} class="practice-plan-card">
+				<a href={`/teams/${team.slug}/plans/${plan.id}`} class="practice-plan-card">
 					<div class="card-header">
 						<h3 class="plan-name">{plan.name || 'Untitled Practice'}</h3>
 						{#if plan.practice_type}
@@ -209,31 +211,43 @@ const { team, practicePlans, userRole } = data;
 							</span>
 						{/if}
 					</div>
-					
+
 					<div class="card-meta">
 						{#if plan.scheduled_date}
 							<div class="meta-item">
 								<svg class="meta-icon" viewBox="0 0 20 20" fill="currentColor">
-									<path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+									<path
+										fill-rule="evenodd"
+										d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+										clip-rule="evenodd"
+									/>
 								</svg>
 								<span>{formatPracticeDate(plan.scheduled_date)}</span>
 							</div>
 						{/if}
-						
+
 						{#if plan.start_time}
 							<div class="meta-item">
 								<svg class="meta-icon" viewBox="0 0 20 20" fill="currentColor">
-									<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+									<path
+										fill-rule="evenodd"
+										d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+										clip-rule="evenodd"
+									/>
 								</svg>
 								<span>{formatTime(plan.start_time)}</span>
 							</div>
 						{/if}
-						
+
 						{#if plan.duration}
 							<div class="meta-item">
 								<svg class="meta-icon" viewBox="0 0 20 20" fill="currentColor">
 									<path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-									<path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 000 2H6a2 2 0 00-2 2v6h1v4a1 1 0 001 1h8a1 1 0 001-1v-4h1V7a2 2 0 00-2-2h.01a1 1 0 100-2H6a2 2 0 00-2 2zm3 4h6v2H7V9z" clip-rule="evenodd" />
+									<path
+										fill-rule="evenodd"
+										d="M4 5a2 2 0 012-2 1 1 0 000 2H6a2 2 0 00-2 2v6h1v4a1 1 0 001 1h8a1 1 0 001-1v-4h1V7a2 2 0 00-2-2h.01a1 1 0 100-2H6a2 2 0 00-2 2zm3 4h6v2H7V9z"
+										clip-rule="evenodd"
+									/>
 								</svg>
 								<span>{formatDuration(plan.duration)}</span>
 							</div>
@@ -262,25 +276,31 @@ const { team, practicePlans, userRole } = data;
 	{:else if practicePlans.length > 0}
 		<div class="empty-state">
 			<svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+				/>
 			</svg>
 			<h2>No matching practice plans</h2>
 			<p>Try adjusting your search or filters</p>
-			<button class="btn btn-secondary" on:click={clearFilters}>
-				Clear Filters
-			</button>
+			<button class="btn btn-secondary" on:click={clearFilters}> Clear Filters </button>
 		</div>
 	{:else}
 		<div class="empty-state">
 			<svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+				/>
 			</svg>
 			<h2>No practice plans yet</h2>
 			<p>Create your first practice plan to get started</p>
 			{#if canCreatePractice}
-				<a href="/teams/{team.slug}/season" class="btn btn-primary">
-					Go to Season View
-				</a>
+				<a href="/teams/{team.slug}/season" class="btn btn-primary"> Go to Season View </a>
 			{/if}
 		</div>
 	{/if}
@@ -348,7 +368,7 @@ const { team, practicePlans, userRole } = data;
 	.btn-secondary:hover {
 		background-color: var(--color-bg-hover);
 	}
-	
+
 	/* Search and Filter Styles */
 	.search-filters {
 		display: flex;
@@ -356,7 +376,7 @@ const { team, practicePlans, userRole } = data;
 		margin-bottom: 1.5rem;
 		flex-wrap: wrap;
 	}
-	
+
 	.search-bar {
 		flex: 1;
 		min-width: 250px;
@@ -364,14 +384,14 @@ const { team, practicePlans, userRole } = data;
 		display: flex;
 		align-items: center;
 	}
-	
+
 	:global(.search-icon) {
 		position: absolute;
 		left: 1rem;
 		color: #6b7280;
 		pointer-events: none;
 	}
-	
+
 	.search-input {
 		width: 100%;
 		padding: 0.75rem 1rem 0.75rem 3rem;
@@ -382,19 +402,19 @@ const { team, practicePlans, userRole } = data;
 		color: var(--color-text);
 		transition: all 0.2s;
 	}
-	
+
 	.search-input:focus {
 		outline: none;
 		border-color: var(--color-primary);
 		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 	}
-	
+
 	.filter-group {
 		display: flex;
 		gap: 0.5rem;
 		align-items: center;
 	}
-	
+
 	.filter-select {
 		padding: 0.75rem 1rem;
 		border: 1px solid var(--color-border);
@@ -406,13 +426,13 @@ const { team, practicePlans, userRole } = data;
 		transition: all 0.2s;
 		min-width: 150px;
 	}
-	
+
 	.filter-select:focus {
 		outline: none;
 		border-color: var(--color-primary);
 		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 	}
-	
+
 	.clear-filters {
 		padding: 0.75rem 1rem;
 		background: var(--color-bg-secondary);
@@ -426,7 +446,7 @@ const { team, practicePlans, userRole } = data;
 		align-items: center;
 		gap: 0.5rem;
 	}
-	
+
 	.clear-filters:hover {
 		background: var(--color-bg-hover);
 		border-color: var(--color-primary);

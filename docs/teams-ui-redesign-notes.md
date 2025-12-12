@@ -9,12 +9,14 @@ Goal: align the Teams feature (teams list + creation, team settings + members, s
 ## Summary of Improvements (Completed)
 
 ### UI Component Migration
+
 - **Replaced DaisyUI classes** with modern UI components (Card, Button, Input, Select, Dialog, Badge, Tabs)
 - **Consistent theming** with dark mode support via Tailwind CSS variables
 - **Improved accessibility** with proper ARIA labels and semantic HTML
 - **Enhanced visual hierarchy** using Cards for content grouping
 
 ### Member Management Enhancements
+
 - **Full CRUD operations** for team members with email-based user search
 - **Visual member list** with avatars, names, and email addresses
 - **Inline role management** with dropdown selection
@@ -22,12 +24,14 @@ Goal: align the Teams feature (teams list + creation, team settings + members, s
 - **Tabbed interface** separating General settings from Members management
 
 ### API Standardization
+
 - **Unified error handling** via `apiFetch` utility across all components
 - **Consistent loading states** with disabled buttons during operations
 - **Toast notifications** for success/error feedback
 - **Proper data refresh** using SvelteKit's `invalidate` function
 
 ### Season Management Updates
+
 - **Sections page**: Drag-and-drop reordering with color coding
 - **Markers page**: Timeline markers with type categorization and badges
 - **Dialog-based forms** replacing inline editing for better UX
@@ -36,11 +40,13 @@ Goal: align the Teams feature (teams list + creation, team settings + members, s
 ## Current State — Key Findings
 
 - Backend
+
   - API routes are complete and consistent: `src/routes/api/teams/*`, `src/routes/api/teams/[teamId]/*`, and season-related APIs.
   - Services and permissions look good: `teamService`, `teamMemberService`, and `teamPermissions` provide required operations and guards.
   - Validation schemas exist and are in TS/JS mix; `teamSchema.ts` enforces expected shapes and regex for `default_start_time`.
 
 - Frontend pages (Teams)
+
   - Teams list/create: `src/routes/teams/+page.svelte` — previously raw Tailwind + manual modal; now migrated to component library.
   - Team settings: `src/routes/teams/[teamId]/settings/+page.svelte` — previously raw Tailwind; now migrated to component library. Members section still basic (lists `user_id` and role only).
   - Season overview: `src/routes/teams/[teamId]/season/+page.svelte` — now uses `Button`, `Card`, `Dialog`, `Input`, `Checkbox`, and `apiFetch` for create/activate flows.
@@ -51,6 +57,7 @@ Goal: align the Teams feature (teams list + creation, team settings + members, s
     - Week view: `src/routes/teams/[teamId]/season/week/+page.svelte` — action links and alerts in Tailwind; not migrated.
 
 - Navigation/Scaffold
+
   - App shell and sidebar use the new design. Teams appears in nav and routes are integrated.
 
 - Tests and MCP
@@ -59,17 +66,19 @@ Goal: align the Teams feature (teams list + creation, team settings + members, s
 
 ## Changes Implemented
 
-1) Teams list/create — `src/routes/teams/+page.svelte`
+1. Teams list/create — `src/routes/teams/+page.svelte`
+
    - Replaced manual modal and raw inputs with `Dialog`, `Input`, `Textarea`, `Select`, `Button`, `Card`.
    - Standardized API calls via `apiFetch` with consistent error handling.
    - Added `timezoneOptions` for `Select` component.
 
-2) Team settings — `src/routes/teams/[teamId]/settings/+page.svelte`
+2. Team settings — `src/routes/teams/[teamId]/settings/+page.svelte`
+
    - Replaced raw form elements with `Input`, `Textarea`, `Select`, wrapped in `Card`.
    - Standardized update via `apiFetch`.
    - Kept basic members list intact (to be enhanced in next pass).
 
-3) Season overview — `src/routes/teams/[teamId]/season/+page.svelte`
+3. Season overview — `src/routes/teams/[teamId]/season/+page.svelte`
    - Replaced create season modal with `Dialog` and new form inputs.
    - Migrated actions to `Button` components and wrapped sections in `Card`.
    - Switched data fetches to `apiFetch` and improved UX states.
@@ -79,16 +88,20 @@ Note: Migration for Season subpages (Sections, Markers, Recurrences, Week) is pl
 ## Gaps vs. Redesign (Outstanding)
 
 - Component usage
+
   - Sections/Markers/Recurrences/Week still rely on Daisy/Tailwind classes; need conversion to shared components.
 
 - Members management UX
+
   - Team settings currently show `user_id` and role only. No add/remove/invite UI.
   - Should support: add by email/ID, change role (admin/member), remove (with safeguards), and surface user display info.
 
 - Error/empty states
+
   - Some pages hand-roll alerts. Should switch to consistent patterns (inline error props and/or toast convention used elsewhere).
 
 - Accessibility
+
   - Ensure aria labels/roles are applied through the shared components, remove bespoke interactive patterns.
 
 - Tests
@@ -97,14 +110,17 @@ Note: Migration for Season subpages (Sections, Markers, Recurrences, Week) is pl
 ## Proposed UI/UX Improvements
 
 - Teams list
+
   - Use `Card` for team tiles; include secondary metadata (member count, next practice date if available).
   - Replace inline text links with `Button` link variants for consistency.
 
 - Create Team dialog
+
   - Validate on blur and submit, show inline errors beneath inputs.
   - Default timezone dropdown; optionally remember last used timezone.
 
 - Team settings
+
   - Split into tabs: “General”, “Members”, “Integrations” (future), using `Tabs` component.
   - Members tab:
     - Display members with avatar + name + email + role chip.
@@ -112,6 +128,7 @@ Note: Migration for Season subpages (Sections, Markers, Recurrences, Week) is pl
     - Respect constraints from `teamMemberService` (last admin safeguards).
 
 - Season overview
+
   - Surface “Active” banner as `Card` header; unify the management links as a compact button group.
   - Provide a small overview of upcoming practices/events for the week.
 
@@ -121,25 +138,30 @@ Note: Migration for Season subpages (Sections, Markers, Recurrences, Week) is pl
 
 ## Migration Plan (Next Steps)
 
-1) Season Sections page migration
+1. Season Sections page migration
+
    - Replace Daisy classes with `Card`, `Button`, and input components.
    - Standardize CRUD operations using `apiFetch` and inline error display.
 
-2) Season Markers page migration
+2. Season Markers page migration
+
    - Convert add/edit UI to `Card` and UI components; replace Toasts with inline errors + optional toasts for success.
 
-3) Recurrences page migration
+3. Recurrences page migration
+
    - Replace table header/actions with tokens; inputs with `Input` components; action buttons to `Button` variants.
    - Switch all fetches to `apiFetch` with consistent error handling.
 
-4) Week view polish
+4. Week view polish
+
    - Replace text links with `Button` link variant; unify alert styles; ensure navigation controls align with tokens.
 
-5) Members management enhancements
+5. Members management enhancements
+
    - Add server loader enrichment for member user info (name, email, image) and render in UI.
    - Add add/change role/remove controls with client-side constraints and confirmations.
 
-6) Playwright tests
+6. Playwright tests
    - Add Teams flows coverage:
      - Teams list renders, open/submit Create Team dialog, required validation, redirect to settings.
      - Team settings update success/failure messaging.
@@ -163,6 +185,7 @@ Note: Migration for Season subpages (Sections, Markers, Recurrences, Week) is pl
 ## Work Completed (this branch)
 
 - Migrated pages:
+
   - `src/routes/teams/+page.svelte` - Uses Dialog, Input, Select, Button, Card components
   - `src/routes/teams/[teamId]/settings/+page.svelte` - Enhanced with Tabs, Dialog, Badge, member avatars
   - `src/routes/teams/[teamId]/season/+page.svelte` - Uses new UI components
@@ -170,6 +193,7 @@ Note: Migration for Season subpages (Sections, Markers, Recurrences, Week) is pl
   - `src/routes/teams/[teamId]/season/markers/+page.svelte` - Migrated to Card, Button, Input, Select, Dialog, Badge
 
 - Enhanced features:
+
   - **Members Management**: Added full CRUD functionality with user search by email
   - **Tab Navigation**: Team settings now use tabbed interface for General/Members
   - **User Avatars**: Display user profile images and names in member list
@@ -177,6 +201,7 @@ Note: Migration for Season subpages (Sections, Markers, Recurrences, Week) is pl
   - **API Integration**: All pages now use `apiFetch` for consistent error handling
 
 - New API endpoints:
+
   - `/api/users/search` - Search users by email for member addition
 
 - Not migrated yet:
@@ -194,4 +219,3 @@ Note: Migration for Season subpages (Sections, Markers, Recurrences, Week) is pl
 - [ ] Polish Week view actions and alerts
 - [x] Implement Members management UI (add/change role/remove)
 - [ ] Add Teams Playwright tests for key flows
-

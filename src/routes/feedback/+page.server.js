@@ -1,4 +1,3 @@
-import { error } from '@sveltejs/kit';
 // Assuming a FeedbackService exists or direct DB access / fetch is needed.
 // Using fetch for now.
 import { dev } from '$app/environment'; // To check if running locally for delete button

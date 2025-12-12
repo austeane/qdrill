@@ -1,11 +1,11 @@
 import { apiFetch } from '$lib/utils/apiFetch.js';
 import { error } from '@sveltejs/kit';
 
-export async function load({ params, fetch, parent }) {
+export async function load({ fetch, parent }) {
 	try {
 		// Get team data from parent layout
-		const { team, userRole } = await parent();
-		
+		const { team } = await parent();
+
 		// Fetch practice plans for this team (API returns { items, count })
 		const res = await apiFetch(`/api/teams/${team.slug}/practice-plans`, {}, fetch);
 		const practicePlans = Array.isArray(res) ? res : (res?.items ?? []);

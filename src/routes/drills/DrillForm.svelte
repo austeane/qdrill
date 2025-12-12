@@ -15,11 +15,11 @@
 	// Component Props
 	export let drill = {};
 	export let allSkills = [];
-export let allDrillNames = [];
-export let prefilledName = null;
-export let practicePlanId = null;
-export let practicePlanItemId = null;
-export let parentId = null;
+	export let allDrillNames = [];
+	export let prefilledName = null;
+	export let practicePlanId = null;
+	export let practicePlanItemId = null;
+	export let parentId = null;
 
 	// Initialize stores based on props
 	let name = writable(prefilledName || drill.name || '');
@@ -69,8 +69,8 @@ export let parentId = null;
 	let modalSkillSearchTerm = writable('');
 	let isSubmitting = false;
 
-let isVariation = writable(!!drill.parent_drill_id || !!parentId);
-let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(parentId, 10) : null));
+	let isVariation = writable(!!drill.parent_drill_id || !!parentId);
+	let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(parentId, 10) : null));
 
 	// Derived store for available skills - depends on selectedSkills store and allSkills prop
 	const availableSkills = derived(selectedSkills, ($selectedSkills) => {
@@ -375,7 +375,7 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 
 	async function handleSubmit() {
 		if (isSubmitting) return; // Prevent double submission
-		
+
 		diagramRefs.forEach((ref) => {
 			if (ref && typeof ref.saveDiagram === 'function') {
 				ref.saveDiagram();
@@ -385,7 +385,7 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 		await tick();
 
 		if (!validateForm()) return;
-		
+
 		isSubmitting = true;
 
 		if (!$page.data.session && $visibility !== 'public') {
@@ -448,8 +448,10 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 				skill_level: $skill_level,
 				complexity: $complexity ? $complexity.charAt(0).toUpperCase() + $complexity.slice(1) : null,
 				suggested_length: parseLengthRange($suggested_length),
-				number_of_people_min: minParticipants,
-				number_of_people_max: maxParticipants,
+				number_of_people: {
+					min: minParticipants,
+					max: maxParticipants
+				},
 				skills_focused_on: $selectedSkills,
 				positions_focused_on: $positions_focused_on,
 				video_link: $video_link || null,
@@ -508,7 +510,10 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 
 				if (confirmed) {
 					console.log('Setting drillToAssociate:', result.id);
-					sessionStorage.setItem('drillToAssociate', result.id);
+					sessionStorage.setItem(
+						'drillToAssociate',
+						JSON.stringify({ id: result.id, claimToken: result.claimToken })
+					);
 					isSubmitting = false;
 					await authClient.signIn.social({ provider: 'google' });
 					return;
@@ -652,14 +657,20 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 							<input
 								id="name"
 								bind:value={$name}
-								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.name ? 'border-red-500 focus:ring-red-500' : ''}"
+								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.name
+									? 'border-red-500 focus:ring-red-500'
+									: ''}"
 								placeholder="Enter drill name"
 							/>
 						</div>
 						{#if $errors.name}
 							<p class="text-red-500 text-sm mt-1 flex items-center gap-1">
 								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+									<path
+										fill-rule="evenodd"
+										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+										clip-rule="evenodd"
+									/>
 								</svg>
 								{$errors.name}
 							</p>
@@ -673,14 +684,20 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 							<input
 								id="brief_description"
 								bind:value={$brief_description}
-								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.brief_description ? 'border-red-500 focus:ring-red-500' : ''}"
+								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.brief_description
+									? 'border-red-500 focus:ring-red-500'
+									: ''}"
 								placeholder="Brief summary of the drill"
 							/>
 						</div>
 						{#if $errors.brief_description}
 							<p class="text-red-500 text-sm mt-1 flex items-center gap-1">
 								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+									<path
+										fill-rule="evenodd"
+										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+										clip-rule="evenodd"
+									/>
 								</svg>
 								{$errors.brief_description}
 							</p>
@@ -764,7 +781,11 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 							{#if $errors.drill_type}
 								<p class="text-red-500 text-sm mt-1 flex items-center gap-1">
 									<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-										<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+										<path
+											fill-rule="evenodd"
+											d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+											clip-rule="evenodd"
+										/>
 									</svg>
 									{$errors.drill_type}
 								</p>
@@ -815,7 +836,11 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 						{#if $errors.skill_level}
 							<p class="text-red-500 text-sm mt-1 flex items-center gap-1">
 								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+									<path
+										fill-rule="evenodd"
+										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+										clip-rule="evenodd"
+									/>
 								</svg>
 								{$errors.skill_level}
 							</p>
@@ -859,7 +884,11 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 						{#if $errors.suggested_length}
 							<p class="text-red-500 text-sm mt-1 flex items-center gap-1">
 								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+									<path
+										fill-rule="evenodd"
+										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+										clip-rule="evenodd"
+									/>
 								</svg>
 								{$errors.suggested_length}
 							</p>
@@ -874,7 +903,9 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 								type="number"
 								bind:value={$number_of_people_min}
 								on:input={() => validateNumber($number_of_people_min, 'number_of_people_min')}
-								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.number_of_people_min ? 'border-red-500 focus:ring-red-500' : ''}"
+								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.number_of_people_min
+									? 'border-red-500 focus:ring-red-500'
+									: ''}"
 								placeholder="e.g., 4"
 								min="1"
 							/>
@@ -896,7 +927,9 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 								type="number"
 								bind:value={$number_of_people_max}
 								on:input={() => validateNumber($number_of_people_max, 'number_of_people_max')}
-								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.number_of_people_max ? 'border-red-500 focus:ring-red-500' : ''}"
+								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.number_of_people_max
+									? 'border-red-500 focus:ring-red-500'
+									: ''}"
 								placeholder="e.g., 20 (or leave empty)"
 								min="0"
 							/>
@@ -1004,7 +1037,11 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 						{#if $errors.positions_focused_on}
 							<p class="text-red-500 text-sm mt-1 flex items-center gap-1">
 								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-									<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+									<path
+										fill-rule="evenodd"
+										d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+										clip-rule="evenodd"
+									/>
 								</svg>
 								{$errors.positions_focused_on}
 							</p>
@@ -1106,7 +1143,9 @@ let parentDrillId = writable(drill.parent_drill_id ?? (parentId ? parseInt(paren
 						class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mb-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
 					>
 						{#if isSubmitting}
-							<div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+							<div
+								class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"
+							></div>
 							{drill?.id ? 'Saving...' : 'Creating...'}
 						{:else}
 							{drill?.id ? 'Save Changes' : 'Create Drill'}

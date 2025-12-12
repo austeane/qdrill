@@ -7,6 +7,7 @@ This document describes the redesigned season management feature that replaces t
 ## Problem Statement
 
 The original `SeasonTimelineEnhanced.svelte` component (1,776 lines) had become too complex:
+
 - Combined visualization, editing, creation, and management in one interface
 - Poor mobile experience requiring separate components
 - Steep learning curve for users
@@ -42,11 +43,13 @@ src/lib/components/season/
 ### 1. SeasonShell (`SeasonShell.svelte`)
 
 The universal container that provides:
+
 - Responsive navigation (bottom tabs on mobile, top tabs on desktop)
 - Consistent header with season information
 - Slot-based content area for view components
 
 **Props:**
+
 - `season`: Current season object
 - `sections`: Array of season sections
 - `markers`: Array of events/milestones
@@ -58,12 +61,14 @@ The universal container that provides:
 ### 2. Overview View (`views/Overview.svelte`)
 
 The default landing view providing:
+
 - Section cards with progress indicators
 - Next practice quick access
 - Upcoming events timeline
 - Quick actions for admins
 
 **Key Features:**
+
 - Visual progress bars for each section
 - Practice count per section
 - One-click practice creation
@@ -72,18 +77,21 @@ The default landing view providing:
 ### 3. Schedule View (`views/Schedule.svelte`)
 
 Calendar-based interface for practice management:
+
 - Week and month view modes
 - Visual indicators for practices and events
 - Click-to-create functionality
 - Responsive grid layout
 
 **View Modes:**
+
 - **Week View**: Detailed 7-day view with time slots
 - **Month View**: Traditional calendar grid
 
 ### 4. Manage View (`views/Manage.svelte`)
 
 Administrative interface for data management:
+
 - Section management with drag-to-reorder
 - Event/milestone CRUD operations
 - Visual preview of colors and dates
@@ -115,19 +123,19 @@ The redesign maintains the same API structure:
 
 ```javascript
 // Season sections
-GET    /api/seasons/{id}/sections
-POST   /api/seasons/{id}/sections
-PATCH  /api/seasons/{id}/sections/{sectionId}
-DELETE /api/seasons/{id}/sections/{sectionId}
+GET / api / seasons / { id } / sections;
+POST / api / seasons / { id } / sections;
+PATCH / api / seasons / { id } / sections / { sectionId };
+DELETE / api / seasons / { id } / sections / { sectionId };
 
 // Season markers (events)
-GET    /api/seasons/{id}/markers
-POST   /api/seasons/{id}/markers
-PATCH  /api/seasons/{id}/markers/{markerId}
-DELETE /api/seasons/{id}/markers/{markerId}
+GET / api / seasons / { id } / markers;
+POST / api / seasons / { id } / markers;
+PATCH / api / seasons / { id } / markers / { markerId };
+DELETE / api / seasons / { id } / markers / { markerId };
 
 // Practice instantiation
-POST   /api/seasons/{id}/instantiate
+POST / api / seasons / { id } / instantiate;
 ```
 
 ## Mobile Considerations
@@ -157,17 +165,19 @@ import { device } from '$lib/stores/deviceStore';
 ### For Developers
 
 1. **Remove Dependencies**:
+
    - Delete imports of `SeasonTimelineEnhanced`
    - Remove `SeasonMobileShell` usage
 
 2. **Update Routes**:
+
    ```svelte
    <!-- Old -->
    <SeasonTimelineEnhanced ... />
-   
+
    <!-- New -->
    <SeasonShell ...>
-     <Overview ... />
+   	<Overview ... />
    </SeasonShell>
    ```
 
@@ -185,18 +195,21 @@ import { device } from '$lib/stores/deviceStore';
 ## Benefits
 
 ### User Experience
+
 - 75% reduction in cognitive load
 - Familiar calendar interface
 - Clear task separation
 - Better mobile experience
 
 ### Development
+
 - Modular architecture
 - Easier testing
 - Clear separation of concerns
 - Reusable components
 
 ### Performance
+
 - Smaller component bundles
 - Lazy loading potential
 - Reduced re-renders

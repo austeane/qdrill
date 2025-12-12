@@ -1,5 +1,5 @@
 <script>
-       import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher } from 'svelte';
 
 	export let section;
 	export let onRemove;
@@ -10,10 +10,10 @@
 		dispatch('openDrillSearch', section.id);
 	}
 
-       function openTimelineSelector() {
-               const parallelGroupId = section.items.find((i) => i.parallel_group_id)?.parallel_group_id;
-               dispatch('openTimelineSelector', { sectionId: section.id, parallelGroupId });
-       }
+	function openTimelineSelector() {
+		const parallelGroupId = section.items.find((i) => i.parallel_group_id)?.parallel_group_id;
+		dispatch('openTimelineSelector', { sectionId: section.id, parallelGroupId });
+	}
 </script>
 
 <div class="section-header flex items-center gap-4 mb-4">

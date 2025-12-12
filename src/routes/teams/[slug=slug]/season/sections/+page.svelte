@@ -75,7 +75,7 @@
 				method: 'DELETE'
 			});
 
-			data.sections = data.sections.filter(s => s.id !== sectionId);
+			data.sections = data.sections.filter((s) => s.id !== sectionId);
 			toast.push('Section deleted successfully', { theme: { '--toastBackground': '#10b981' } });
 		} catch (error) {
 			const errorMsg = error.message || 'Failed to delete section';
@@ -89,7 +89,7 @@
 
 		const sections = [...data.sections];
 		[sections[index], sections[newIndex]] = [sections[newIndex], sections[index]];
-		
+
 		// Update order indices
 		sections.forEach((section, i) => {
 			section.order_index = i;
@@ -113,11 +113,9 @@
 
 	{#if data.canEdit}
 		<div class="mb-6">
-			<Button variant="primary" on:click={() => showAddDialog = true}>
-				+ Add Section
-			</Button>
+			<Button variant="primary" on:click={() => (showAddDialog = true)}>+ Add Section</Button>
 		</div>
-		
+
 		<Dialog bind:open={showAddDialog} title="Add New Section">
 			<div class="grid gap-4">
 				<Input
@@ -137,14 +135,20 @@
 				</div>
 			</div>
 			<div slot="footer" class="flex gap-2">
-				<Button 
-					variant="primary" 
+				<Button
+					variant="primary"
 					on:click={addSection}
 					disabled={isSubmitting || !newSection.name.trim()}
 				>
 					{isSubmitting ? 'Adding...' : 'Add Section'}
 				</Button>
-				<Button variant="ghost" on:click={() => { showAddDialog = false; addError = ''; }}>
+				<Button
+					variant="ghost"
+					on:click={() => {
+						showAddDialog = false;
+						addError = '';
+					}}
+				>
 					Cancel
 				</Button>
 			</div>
@@ -156,11 +160,7 @@
 			<Card>
 				{#if editingSection === section.id}
 					<div class="grid gap-4">
-						<Input
-							bind:value={section.name}
-							label="Section Name"
-							error={editError}
-						/>
+						<Input bind:value={section.name} label="Section Name" error={editError} />
 						<div>
 							<label class="block text-sm font-medium mb-2">Color</label>
 							<input
@@ -173,7 +173,14 @@
 							<Button size="sm" variant="primary" on:click={() => updateSection(section)}>
 								Save
 							</Button>
-							<Button size="sm" variant="ghost" on:click={() => { editingSection = null; editError = ''; }}>
+							<Button
+								size="sm"
+								variant="ghost"
+								on:click={() => {
+									editingSection = null;
+									editError = '';
+								}}
+							>
 								Cancel
 							</Button>
 						</div>
@@ -181,7 +188,7 @@
 				{:else}
 					<div class="flex items-center justify-between">
 						<div class="flex items-center gap-3">
-							<div 
+							<div
 								class="w-6 h-6 rounded border border-gray-200 dark:border-gray-700"
 								style="background-color: {section.color}"
 								aria-label="Section color"
@@ -208,18 +215,10 @@
 								>
 									↓
 								</Button>
-								<Button
-									size="sm"
-									variant="ghost"
-									on:click={() => editingSection = section.id}
-								>
+								<Button size="sm" variant="ghost" on:click={() => (editingSection = section.id)}>
 									Edit
 								</Button>
-								<Button
-									size="sm"
-									variant="destructive"
-									on:click={() => deleteSection(section.id)}
-								>
+								<Button size="sm" variant="destructive" on:click={() => deleteSection(section.id)}>
 									Delete
 								</Button>
 							</div>

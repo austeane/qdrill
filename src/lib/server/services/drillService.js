@@ -10,8 +10,54 @@ import {
 	AppError
 } from '$lib/server/errors.js'; // Added import
 import { dev } from '$app/environment'; // Import dev environment variable
-import { json } from '@sveltejs/kit';
 import { kyselyDb, sql } from '$lib/server/db';
+import { PREDEFINED_SKILLS } from '$lib/constants/skills';
+
+// Canonical display labels for enum-like arrays
+const SKILL_LEVEL_LABELS = ['New to Sport', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
+const POSITION_LABELS = ['Chaser', 'Beater', 'Keeper', 'Seeker'];
+const DRILL_TYPE_LABELS = [
+	'Competitive',
+	'Skill-focus',
+	'Tactic-focus',
+	'Warmup',
+	'Conditioning',
+	'Cooldown',
+	'Contact',
+	'Match-like situation'
+];
+
+const SKILL_LEVEL_MAP = Object.fromEntries(
+	SKILL_LEVEL_LABELS.map((label) => [label.toLowerCase(), label])
+);
+const POSITION_MAP = Object.fromEntries(
+	POSITION_LABELS.map((label) => [label.toLowerCase(), label])
+);
+const DRILL_TYPE_MAP = Object.fromEntries(
+	DRILL_TYPE_LABELS.map((label) => [label.toLowerCase(), label])
+);
+const PREDEFINED_SKILL_MAP = Object.fromEntries(
+	PREDEFINED_SKILLS.map((label) => [label.toLowerCase(), label])
+);
+
+function mapEnumArray(values, map) {
+	if (!Array.isArray(values)) return values;
+	return values.map((v) => {
+		if (typeof v !== 'string') return v;
+		const key = v.toLowerCase();
+		return map[key] || v;
+	});
+}
+
+function denormalizeDrillForResponse(drill) {
+	if (!drill || typeof drill !== 'object') return drill;
+	const copy = { ...drill };
+	copy.skill_level = mapEnumArray(copy.skill_level, SKILL_LEVEL_MAP);
+	copy.positions_focused_on = mapEnumArray(copy.positions_focused_on, POSITION_MAP);
+	copy.drill_type = mapEnumArray(copy.drill_type, DRILL_TYPE_MAP);
+	copy.skills_focused_on = mapEnumArray(copy.skills_focused_on, PREDEFINED_SKILL_MAP);
+	return copy;
+}
 
 /**
  * Service for managing drills
@@ -125,7 +171,7 @@ export class DrillService extends BaseEntityService {
 			const drill = await this.create(normalizedData, client); // Pass client
 			const skills = normalizedData.skills_focused_on || [];
 			await this.updateSkills(skills, drill.id, client); // Pass client
-			return drill;
+			return denormalizeDrillForResponse(drill);
 		});
 	}
 
@@ -168,7 +214,7 @@ export class DrillService extends BaseEntityService {
 					id
 				]);
 			}
-			return updatedDrill;
+			return denormalizeDrillForResponse(updatedDrill);
 		});
 	}
 
@@ -184,9 +230,9 @@ export class DrillService extends BaseEntityService {
 	async deleteDrill(id, userId, options = { deleteRelated: false }) {
 		return this.withTransaction(async (client) => {
 			let drill;
-			if (options.deleteRelated && dev) {
-				// Check for dev environment as well
-				// In dev mode with deleteRelated, fetch without user ID check
+			const allowDevBypass = dev && process.env.ALLOW_DEV_DELETE_BYPASS === 'true';
+			if (options.deleteRelated && allowDevBypass) {
+				// In dev mode with explicit bypass enabled, fetch without user ID check
 				console.log(`[DEV MODE - deleteDrill] Bypassing permission checks for drill ${id}`);
 				try {
 					// Directly fetch the needed columns to avoid permission checks in getById
@@ -250,24 +296,49 @@ export class DrillService extends BaseEntityService {
 	/**
 	 * Get a drill with its variations and creator names
 	 * @param {number} id - Drill ID
+	 * @param {number|null} [userId=null] - User ID for permission filtering
 	 * @returns {Promise<Object>} - Drill with variations and creator names
 	 */
-	async getDrillWithVariations(id) {
-		const drill = await this.getById(id);
+	async getDrillWithVariations(id, userId = null) {
+		const drill = await this.getById(id, this.defaultColumns, userId);
 		if (!drill) {
 			return null;
 		}
 
 		// Get variations of this drill
-		const variationsQuery = `
+		let variationsQuery = `
       SELECT d.*, 
              (SELECT COUNT(*) FROM drills v WHERE v.parent_drill_id = d.id) as variation_count
       FROM drills d
       WHERE d.parent_drill_id = $1
+    `;
+
+		const variationsParams = [id];
+
+		// Apply standard visibility/ownership filtering for variations
+		if (this.useStandardPermissions && this.permissionConfig) {
+			const { visibilityColumn, publicValue, unlistedValue, privateValue, userIdColumn } =
+				this.permissionConfig;
+
+			variationsQuery += `
+      AND (
+        d.${visibilityColumn} = $2
+        OR d.${visibilityColumn} = $3
+        ${userId ? `OR (d.${visibilityColumn} = $4 AND d.${userIdColumn} = $5)` : ''}
+      )
+    `;
+
+			variationsParams.push(publicValue, unlistedValue);
+			if (userId) {
+				variationsParams.push(privateValue, userId);
+			}
+		}
+
+		variationsQuery += `
       ORDER BY d.date_created DESC
     `;
 
-		const variationsResult = await db.query(variationsQuery, [id]);
+		const variationsResult = await db.query(variationsQuery, variationsParams);
 		drill.variations = variationsResult.rows;
 
 		// Fetch creator names for variations if any exist
@@ -303,7 +374,12 @@ export class DrillService extends BaseEntityService {
 			}
 		}
 
-		return drill;
+		// Denormalize for client display
+		if (drill.variations && Array.isArray(drill.variations)) {
+			drill.variations = drill.variations.map(denormalizeDrillForResponse);
+		}
+
+		return denormalizeDrillForResponse(drill);
 	}
 
 	/**
@@ -315,7 +391,7 @@ export class DrillService extends BaseEntityService {
 	 * @throws {NotFoundError} - If parent drill not found
 	 */
 	async createVariation(parentId, variationData, userId) {
-		const parentDrill = await this.getById(parentId);
+		const parentDrill = await this.getById(parentId, this.defaultColumns, userId);
 		if (!parentDrill) {
 			// Throw NotFoundError instead of generic Error
 			throw new NotFoundError('Parent drill not found');
@@ -336,7 +412,7 @@ export class DrillService extends BaseEntityService {
 			await this.updateSkills(normalizedData.skills_focused_on, variation.id);
 		}
 
-		return variation;
+		return denormalizeDrillForResponse(variation);
 	}
 
 	/**
@@ -426,16 +502,16 @@ export class DrillService extends BaseEntityService {
 	 * @param {Object} options - Search options including filters
 	 * @returns {Promise<Object>} - Search results with pagination
 	 */
-	async searchDrills(searchTerm, options = {}) {
-		// Consolidate search logic into getFilteredDrills
-		const filters = {
-			...(options.filters || {}), // Preserve any existing filters from options
-			searchQuery: searchTerm
-		};
-		// Remove options.filters if it exists, as it's merged into the main filters object
-		const { filters: _, ...remainingOptions } = options;
-		return this.getFilteredDrills(filters, remainingOptions);
-	}
+		async searchDrills(searchTerm, options = {}) {
+			// Consolidate search logic into getFilteredDrills
+			const filters = {
+				...(options.filters || {}), // Preserve any existing filters from options
+				searchQuery: searchTerm
+			};
+			const remainingOptions = { ...options };
+			delete remainingOptions.filters;
+			return this.getFilteredDrills(filters, remainingOptions);
+		}
 
 	/**
 	 * Get drills with advanced filtering, sorting, and pagination
@@ -466,12 +542,11 @@ export class DrillService extends BaseEntityService {
 	async getFilteredDrills(filters = {}, options = {}) {
 		const {
 			page = 1,
-			limit = 10,
-			sortBy = 'date_created',
-			sortOrder = 'desc',
-			columns = ['*'],
-			userId = null
-		} = options;
+				limit = 10,
+				sortBy = 'date_created',
+				sortOrder = 'desc',
+				userId = null
+			} = options;
 
 		const offset = (page - 1) * limit;
 
@@ -499,22 +574,25 @@ export class DrillService extends BaseEntityService {
 				});
 			}
 
-            // Apply specific drill filters using Kysely
-            if (filters.skill_level?.length)
-                qb = qb.where(sql`skill_level && ARRAY[${sql.join(filters.skill_level.map(s => sql.literal(s)), sql`, `)}]::text[]`); // Array overlap
+			// Apply specific drill filters using Kysely
+			if (filters.skill_level?.length)
+				qb = qb.where(sql`skill_level && ${sql.array(filters.skill_level, 'text')}`); // Array overlap
 			// Handle complexity as either array or string for backward compatibility
 			if (Array.isArray(filters.complexity) && filters.complexity.length) {
 				qb = qb.where('complexity', 'in', filters.complexity);
 			} else if (typeof filters.complexity === 'string' && filters.complexity) {
 				qb = qb.where('complexity', '=', filters.complexity);
 			}
-            if (filters.skills_focused_on?.length)
-                qb = qb.where(sql`skills_focused_on && ARRAY[${sql.join(filters.skills_focused_on.map(s => sql.literal(s)), sql`, `)}]::text[]`);
-            if (filters.positions_focused_on?.length)
-                qb = qb.where(sql`positions_focused_on && ARRAY[${sql.join(filters.positions_focused_on.map(s => sql.literal(s)), sql`, `)}]::text[]`);
-            if (filters.drill_type?.length) qb = qb.where(sql`drill_type && ARRAY[${sql.join(filters.drill_type.map(s => sql.literal(s)), sql`, `)}]::text[]`);
-            if (filters.number_of_people_min != null)
-                qb = qb.where('number_of_people_min', '>=', filters.number_of_people_min);
+			if (filters.skills_focused_on?.length)
+				qb = qb.where(sql`skills_focused_on && ${sql.array(filters.skills_focused_on, 'text')}`);
+			if (filters.positions_focused_on?.length)
+				qb = qb.where(
+					sql`positions_focused_on && ${sql.array(filters.positions_focused_on, 'text')}`
+				);
+			if (filters.drill_type?.length)
+				qb = qb.where(sql`drill_type && ${sql.array(filters.drill_type, 'text')}`);
+			if (filters.number_of_people_min != null)
+				qb = qb.where('number_of_people_min', '>=', filters.number_of_people_min);
 			if (filters.number_of_people_max != null)
 				qb = qb.where('number_of_people_max', '<=', filters.number_of_people_max);
 			if (filters.suggested_length_min != null)
@@ -525,16 +603,19 @@ export class DrillService extends BaseEntityService {
 				qb = qb.where('video_link', 'is not', null).where('video_link', '!=', '');
 			if (filters.hasVideo === false)
 				qb = qb.where((eb) => eb.or([eb('video_link', 'is', null), eb('video_link', '=', '')]));
-			if (filters.hasDiagrams === true)
-				qb = qb.where(sql`array_length(diagrams, 1) > 0`);
+			if (filters.hasDiagrams === true) qb = qb.where(sql`array_length(diagrams, 1) > 0`);
 			if (filters.hasDiagrams === false)
-				qb = qb.where(sql`diagrams IS NULL OR array_length(diagrams, 1) IS NULL OR array_length(diagrams, 1) = 0`);
+				qb = qb.where(
+					sql`diagrams IS NULL OR array_length(diagrams, 1) IS NULL OR array_length(diagrams, 1) = 0`
+				);
 			if (filters.hasImages === true) qb = qb.where(sql`array_length(images, 1) > 0`);
-            if (filters.hasImages === false)
-                qb = qb.where(sql`images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0`);
+			if (filters.hasImages === false)
+				qb = qb.where(
+					sql`images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0`
+				);
 
-            return qb;
-        };
+			return qb;
+		};
 
 		const baseQuery = buildDrillBaseQuery();
 		const baseQueryForFallback = buildDrillBaseQuery(); // Separate instance for fallback path
@@ -566,8 +647,7 @@ export class DrillService extends BaseEntityService {
 
 		await this._addVariationCounts(items); // Add variation counts to results
 
-		// Count total items matching the successful search strategy
-		let countQueryBaseForFiltersOnly = buildDrillBaseQuery(); // Rebuild for count to ensure filters are clean
+			// Count total items matching the successful search strategy
 		// We need a new Kysely instance for count that doesn't have prior .selectAll()
 		let countQuery = kyselyDb
 			.selectFrom('drills')
@@ -595,20 +675,24 @@ export class DrillService extends BaseEntityService {
 			});
 		}
 		// Re-apply specific drill filters
-        if (filters.skill_level?.length)
-            countQuery = countQuery.where(sql`skill_level && ARRAY[${sql.join(filters.skill_level.map(s => sql.literal(s)), sql`, `)}]::text[]`);
+		if (filters.skill_level?.length)
+			countQuery = countQuery.where(sql`skill_level && ${sql.array(filters.skill_level, 'text')}`);
 		// Handle complexity as either array or string for backward compatibility
 		if (Array.isArray(filters.complexity) && filters.complexity.length) {
 			countQuery = countQuery.where('complexity', 'in', filters.complexity);
 		} else if (typeof filters.complexity === 'string' && filters.complexity) {
 			countQuery = countQuery.where('complexity', '=', filters.complexity);
 		}
-        if (filters.skills_focused_on?.length)
-            countQuery = countQuery.where(sql`skills_focused_on && ARRAY[${sql.join(filters.skills_focused_on.map(s => sql.literal(s)), sql`, `)}]::text[]`);
-        if (filters.positions_focused_on?.length)
-            countQuery = countQuery.where(sql`positions_focused_on && ARRAY[${sql.join(filters.positions_focused_on.map(s => sql.literal(s)), sql`, `)}]::text[]`);
-        if (filters.drill_type?.length)
-            countQuery = countQuery.where(sql`drill_type && ARRAY[${sql.join(filters.drill_type.map(s => sql.literal(s)), sql`, `)}]::text[]`);
+		if (filters.skills_focused_on?.length)
+			countQuery = countQuery.where(
+				sql`skills_focused_on && ${sql.array(filters.skills_focused_on, 'text')}`
+			);
+		if (filters.positions_focused_on?.length)
+			countQuery = countQuery.where(
+				sql`positions_focused_on && ${sql.array(filters.positions_focused_on, 'text')}`
+			);
+		if (filters.drill_type?.length)
+			countQuery = countQuery.where(sql`drill_type && ${sql.array(filters.drill_type, 'text')}`);
 		if (filters.number_of_people_min != null)
 			countQuery = countQuery.where('number_of_people_min', '>=', filters.number_of_people_min);
 		if (filters.number_of_people_max != null)
@@ -624,16 +708,16 @@ export class DrillService extends BaseEntityService {
 				eb.or([eb('video_link', 'is', null), eb('video_link', '=', '')])
 			);
 		if (filters.hasDiagrams === true)
-			countQuery = countQuery.where(
-				sql`array_length(diagrams, 1) > 0`
-			);
+			countQuery = countQuery.where(sql`array_length(diagrams, 1) > 0`);
 		if (filters.hasDiagrams === false)
 			countQuery = countQuery.where(
 				sql`diagrams IS NULL OR array_length(diagrams, 1) IS NULL OR array_length(diagrams, 1) = 0`
 			);
 		if (filters.hasImages === true) countQuery = countQuery.where(sql`array_length(images, 1) > 0`);
 		if (filters.hasImages === false)
-			countQuery = countQuery.where(sql`images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0`);
+			countQuery = countQuery.where(
+				sql`images IS NULL OR array_length(images, 1) IS NULL OR array_length(images, 1) = 0`
+			);
 
 		if (filters.searchQuery) {
 			const cleanedSearchTerm = filters.searchQuery.trim();
@@ -664,8 +748,10 @@ export class DrillService extends BaseEntityService {
 		const countResult = await countQuery.executeTakeFirst();
 		const totalItems = parseInt(countResult?.total ?? '0', 10);
 
+		const formattedItems = items.map(denormalizeDrillForResponse);
+
 		return {
-			items: items,
+			items: formattedItems,
 			pagination: {
 				page: parseInt(page),
 				limit: parseInt(limit),
@@ -716,11 +802,11 @@ export class DrillService extends BaseEntityService {
 			console.error('Error while adding variation counts:', error);
 			// Don't let variation count errors disrupt the main functionality
 			// Just ensure all drills have a variation_count property
-			drills.forEach((drill) => {
-				if (!drill.hasOwnProperty('variation_count')) {
-					drill.variation_count = 0;
-				}
-			});
+				drills.forEach((drill) => {
+					if (!Object.prototype.hasOwnProperty.call(drill, 'variation_count')) {
+						drill.variation_count = 0;
+					}
+				});
 		}
 	}
 
@@ -1089,6 +1175,29 @@ export class DrillService extends BaseEntityService {
 		// Use base helper to normalize array fields to ensure they are arrays
 		normalizedData = this.normalizeArrayFields(normalizedData, this.arrayFields);
 
+		// --- Map number_of_people object to min/max columns ---
+		if (normalizedData.number_of_people && typeof normalizedData.number_of_people === 'object') {
+			const { min, max } = normalizedData.number_of_people;
+
+			if (
+				normalizedData.number_of_people_min === undefined ||
+				normalizedData.number_of_people_min === ''
+			) {
+				const parsedMin = parseInt(min);
+				normalizedData.number_of_people_min = !isNaN(parsedMin) ? parsedMin : null;
+			}
+
+			if (
+				normalizedData.number_of_people_max === undefined ||
+				normalizedData.number_of_people_max === ''
+			) {
+				const parsedMax = parseInt(max);
+				normalizedData.number_of_people_max = !isNaN(parsedMax) ? parsedMax : null;
+			}
+
+			delete normalizedData.number_of_people;
+		}
+
 		// Convert diagrams to JSON strings (only if not already strings)
 		if (normalizedData.diagrams && Array.isArray(normalizedData.diagrams)) {
 			normalizedData.diagrams = normalizedData.diagrams.map((diagram) =>
@@ -1152,16 +1261,16 @@ export class DrillService extends BaseEntityService {
 			delete normalizedData.suggested_length;
 		} else {
 			// Ensure columns exist even if input object is missing/invalid
-			if (!normalizedData.hasOwnProperty('suggested_length_min')) {
-				normalizedData.suggested_length_min = null;
-			}
-			if (!normalizedData.hasOwnProperty('suggested_length_max')) {
-				normalizedData.suggested_length_max = null;
-			}
-			// Still remove the original field if it existed but wasn't an object
-			if (normalizedData.hasOwnProperty('suggested_length')) {
-				delete normalizedData.suggested_length;
-			}
+				if (!Object.prototype.hasOwnProperty.call(normalizedData, 'suggested_length_min')) {
+					normalizedData.suggested_length_min = null;
+				}
+				if (!Object.prototype.hasOwnProperty.call(normalizedData, 'suggested_length_max')) {
+					normalizedData.suggested_length_max = null;
+				}
+				// Still remove the original field if it existed but wasn't an object
+				if (Object.prototype.hasOwnProperty.call(normalizedData, 'suggested_length')) {
+					delete normalizedData.suggested_length;
+				}
 		}
 
 		return normalizedData;

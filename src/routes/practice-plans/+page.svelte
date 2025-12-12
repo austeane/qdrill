@@ -3,7 +3,7 @@
 	import { onDestroy, onMount, afterUpdate } from 'svelte';
 	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
-        import { page, navigating } from '$app/stores';
+	import { page, navigating } from '$app/stores';
 	import debounce from 'lodash/debounce';
 	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
@@ -314,12 +314,7 @@
 		<!-- Loading skeletons -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 			{#each Array(6) as _, i}
-				<SkeletonLoader 
-					lines={3} 
-					showCard={true}
-					showButton={true}
-					className="h-56"
-				/>
+				<SkeletonLoader lines={3} showCard={true} showButton={true} className="h-56" />
 			{/each}
 		</div>
 	{:else if practicePlans.length > 0}

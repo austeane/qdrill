@@ -1,6 +1,18 @@
 import { writable, get } from 'svelte/store';
 import { toast } from '@zerodevx/svelte-toast';
-import { sections } from './sectionsStore';
+
+let snapshotGetter = null;
+let snapshotApplier = null;
+
+// Allow the sections store to inject a snapshot getter to avoid circular deps
+export function setSnapshotGetter(getter) {
+	snapshotGetter = getter;
+}
+
+// Allow the sections store to inject how to apply snapshots (undo/redo)
+export function setSnapshotApplier(applier) {
+	snapshotApplier = applier;
+}
 
 // Create history stores
 export const commandHistory = writable([]);
@@ -27,7 +39,13 @@ function updateCanUndoRedo() {
 
 // Snapshot the current state
 function createSnapshot() {
-	return JSON.parse(JSON.stringify(get(sections)));
+	if (typeof snapshotGetter !== 'function') return null;
+	try {
+		return snapshotGetter();
+	} catch (err) {
+		console.warn('[historyStore] Failed to create snapshot:', err);
+		return null;
+	}
 }
 
 // Add a command to history
@@ -63,7 +81,12 @@ export function undo() {
 	const currentSnapshot = createSnapshot();
 
 	// Apply the previous state
-	sections.set(lastCommand.snapshot);
+	if (typeof snapshotApplier === 'function' && lastCommand.snapshot) {
+		snapshotApplier(lastCommand.snapshot);
+	} else {
+		console.warn('[historyStore] Cannot apply snapshot (missing applier or snapshot).');
+		return;
+	}
 
 	// Move the command to the redo stack
 	redoStack.update((stack) => [
@@ -98,7 +121,12 @@ export function redo() {
 	const currentSnapshot = createSnapshot();
 
 	// Apply the redone state
-	sections.set(lastCommand.snapshot);
+	if (typeof snapshotApplier === 'function' && lastCommand.snapshot) {
+		snapshotApplier(lastCommand.snapshot);
+	} else {
+		console.warn('[historyStore] Cannot apply snapshot (missing applier or snapshot).');
+		return;
+	}
 
 	// Move the command back to history
 	commandHistory.update((history) => [

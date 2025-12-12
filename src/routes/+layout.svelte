@@ -3,8 +3,8 @@
 	import { page } from '$app/stores';
 	import { navigating } from '$app/stores';
 	import { onDestroy } from 'svelte';
-    import '../app.css';
-    import AppShell from '$lib/components/AppShell.svelte';
+	import '../app.css';
+	import AppShell from '$lib/components/AppShell.svelte';
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
 	import FeedbackButton from '$lib/components/FeedbackButton.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
@@ -13,19 +13,19 @@
 	import { inject } from '@vercel/analytics';
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import { dev } from '$app/environment';
-    import { onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { useSession } from '$lib/auth-client';
-    import { theme } from '$lib/stores/themeStore';
+	import { theme } from '$lib/stores/themeStore';
 
 	inject({ mode: dev ? 'development' : 'production' });
 	injectSpeedInsights();
 
 	// Get session using Better Auth
-const session = useSession();
+	const session = useSession();
 
-let isNavigating = false;
-const unsubNavigating = navigating.subscribe((v) => (isNavigating = !!v));
-onDestroy(unsubNavigating);
+	let isNavigating = false;
+	const unsubNavigating = navigating.subscribe((v) => (isNavigating = !!v));
+	onDestroy(unsubNavigating);
 
 	/** @type {import('./$types').LayoutData} */
 	export let data;
@@ -41,34 +41,48 @@ onDestroy(unsubNavigating);
 		];
 
 		for (const item of itemsToAssociate) {
-			const entityId = sessionStorage.getItem(item.key);
-			if (entityId) {
-                                try {
-                                        console.log(`Found ${item.key} with ID ${entityId}, attempting to associate...`);
-                                        await apiFetch(`${item.endpoint}/${entityId}/associate`, { method: 'POST' });
-                                        console.log(`${item.key} ${entityId} associated successfully.`);
-                                        // Optional: Show success toast
-                                        // toast.push(`Successfully claimed your ${item.key.replace('ToAssociate', '')}.`);
-                                } catch (error) {
-                                        console.error(`Error during association call for ${item.key} ${entityId}:`, error);
-                                        // Optional: Show error toast
-                                        // toast.push('An error occurred while claiming your item.', { theme: { '--toastBackground': '#F56565', '--toastColor': 'white' } });
-                                } finally {
-                                        // Remove the item from sessionStorage regardless of success/failure
-                                        sessionStorage.removeItem(item.key);
-                                        console.log(`Removed ${item.key} from sessionStorage.`);
-                                }
+			const rawValue = sessionStorage.getItem(item.key);
+			if (rawValue) {
+				let entityId = rawValue;
+				let claimToken = null;
+				try {
+					const parsed = JSON.parse(rawValue);
+					if (parsed && typeof parsed === 'object') {
+						entityId = parsed.id ?? rawValue;
+						claimToken = parsed.claimToken ?? null;
+					}
+				} catch {
+					// Legacy plain-id storage
+				}
+				try {
+					console.log(`Found ${item.key} with ID ${entityId}, attempting to associate...`);
+					await apiFetch(`${item.endpoint}/${entityId}/associate`, {
+						method: 'POST',
+						body: JSON.stringify({ claimToken })
+					});
+					console.log(`${item.key} ${entityId} associated successfully.`);
+					// Optional: Show success toast
+					// toast.push(`Successfully claimed your ${item.key.replace('ToAssociate', '')}.`);
+				} catch (error) {
+					console.error(`Error during association call for ${item.key} ${entityId}:`, error);
+					// Optional: Show error toast
+					// toast.push('An error occurred while claiming your item.', { theme: { '--toastBackground': '#F56565', '--toastColor': 'white' } });
+				} finally {
+					// Remove the item from sessionStorage regardless of success/failure
+					sessionStorage.removeItem(item.key);
+					console.log(`Removed ${item.key} from sessionStorage.`);
+				}
 			}
 		}
 	}
 
-    // Initialize theme and check for any pending entity associations
-    onMount(() => {
-        theme.init();
-        if ($session.data) {
-            checkAndAssociateEntities($session.data);
-        }
-    });
+	// Initialize theme and check for any pending entity associations
+	onMount(() => {
+		theme.init();
+		if ($session.data) {
+			checkAndAssociateEntities($session.data);
+		}
+	});
 
 	// Check whenever the session data changes (e.g., after login)
 	$: {
@@ -80,31 +94,33 @@ onDestroy(unsubNavigating);
 </script>
 
 <div class="flex flex-col min-h-screen">
-  <a href="#main-content" class="skip-to-content">Skip to main content</a>
+	<a href="#main-content" class="skip-to-content">Skip to main content</a>
 
-  {#if isNavigating}
-    <div class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 animate-pulse">
-      <div class="h-full bg-blue-400 animate-pulse opacity-75"></div>
-    </div>
-  {/if}
+	{#if isNavigating}
+		<div
+			class="fixed top-0 left-0 right-0 z-50 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-500 animate-pulse"
+		>
+			<div class="h-full bg-blue-400 animate-pulse opacity-75"></div>
+		</div>
+	{/if}
 
-  <AppShell>
-    <ErrorBoundary>
-      <slot />
-    </ErrorBoundary>
-  </AppShell>
+	<AppShell>
+		<ErrorBoundary>
+			<slot />
+		</ErrorBoundary>
+	</AppShell>
 
-  <FeedbackButton />
-  <SvelteToast />
+	<FeedbackButton />
+	<SvelteToast />
 
-  {#if $page.url.pathname === '/'}
-    <footer class="py-4 bg-gray-100">
-      <div class="container mx-auto text-center">
-        <a href="/privacy-policy" class="text-blue-500 hover:text-blue-700 mr-4">Privacy Policy</a>
-        <a href="/terms-of-service" class="text-blue-500 hover:text-blue-700">Terms of Service</a>
-      </div>
-    </footer>
-  {/if}
+	{#if $page.url.pathname === '/'}
+		<footer class="py-4 bg-gray-100">
+			<div class="container mx-auto text-center">
+				<a href="/privacy-policy" class="text-blue-500 hover:text-blue-700 mr-4">Privacy Policy</a>
+				<a href="/terms-of-service" class="text-blue-500 hover:text-blue-700">Terms of Service</a>
+			</div>
+		</footer>
+	{/if}
 </div>
 
 <style>
@@ -120,5 +136,7 @@ onDestroy(unsubNavigating);
 	.flex-1 {
 		flex: 1;
 	}
-    main { display: contents; }
+	main {
+		display: contents;
+	}
 </style>

@@ -1,0 +1,33 @@
+{
+	"output": {
+		"filePath": "repomix-baseservice-55k.xml",
+		"style": "xml",
+		"headerText": "QDrill BaseEntityService ↔ Kysely Unification Context (~55k tokens)\n\nThis package is focused on the service/data-access architecture decision:\n- BaseEntityService raw-SQL CRUD + Kysely search helpers\n- Representative entity services that extend BaseEntityService\n- Kysely-heavy list/search services (Drills, Practice Plans)\n- DB layer exports (pool + Kysely)\n- Representative API routes showing current usage patterns\n- Service-layer documentation relevant to migration\n",
+		"showLineNumbers": false,
+		"removeComments": false,
+		"removeEmptyLines": false,
+		"topFilesLength": 10
+	},
+	"include": [
+		"src/lib/server/db.js",
+		"src/lib/server/errors.js",
+		"src/lib/server/services/baseEntityService.js",
+		"src/lib/server/services/drillService.js",
+		"src/lib/server/services/practicePlanService.js",
+		"src/lib/server/services/formationService.js",
+		"src/lib/server/services/userService.js",
+		"src/routes/api/drills/+server.js",
+		"src/routes/api/drills/[id]/+server.js",
+		"src/routes/api/practice-plans/+server.js",
+		"src/routes/api/practice-plans/[id]/+server.js",
+		"docs/implementation/service-layer.md"
+	],
+	"ignore": {
+		"useGitignore": true,
+		"useDefaultPatterns": true,
+		"customPatterns": ["**/*.test.js", "**/*.spec.js", "**/__tests__/**"]
+	},
+	"security": {
+		"enableSecurityCheck": true
+	}
+}

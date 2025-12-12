@@ -1,5 +1,4 @@
 import { error } from '@sveltejs/kit';
-import { userService } from '$lib/server/services/userService';
 
 /**
  * Create a middleware that requires a specific role
@@ -11,7 +10,7 @@ export function requireRole(role) {
 		if (!locals.user) {
 			throw error(401, 'Unauthorized - Please sign in');
 		}
-		
+
 		if (locals.user.role !== role) {
 			throw error(403, `Forbidden - ${role} access required`);
 		}

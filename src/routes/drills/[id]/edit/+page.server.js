@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import { drillService } from '$lib/server/services/drillService.js';
 import { skillService } from '$lib/server/services/skillService.js';
 
-export async function load({ params, fetch, locals }) {
+export async function load({ params, locals }) {
 	const { id } = params;
 	const userId = locals.user?.id;
 
@@ -12,7 +12,7 @@ export async function load({ params, fetch, locals }) {
 			throw error(400, 'Invalid Drill ID');
 		}
 
-		const drill = await drillService.getById(drillId);
+		const drill = await drillService.getById(drillId, drillService.defaultColumns, userId);
 
 		if (!drill) {
 			throw error(404, 'Drill not found');

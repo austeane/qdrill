@@ -1,20 +1,25 @@
 # UI Redesign Implementation Guide
 
 ## Overview
+
 This directory contains the complete UI redesign implementation plan for QDrill, consisting of 11 actionable tickets that transform the application's user interface with modern design patterns, improved accessibility, and better performance.
 
 ## 📦 Quick Access
+
 - **Full Implementation Bundle**: `ui-redesign-repomix.md` - Contains all tickets and key files in a single document
 - **Tickets Directory**: `docs/ui-audit/tickets/` - Individual actionable ticket files
 
 ## 🎯 Implementation Order
 
 ### Foundation (Complete these first)
+
 1. **[001 - Design Tokens and Theme](tickets/001-design-tokens-and-theme-actionable.md)**
+
    - CSS variables, typography scale, light/dark theme switching
    - **Required for**: All other tickets
 
 2. **[002 - AppShell and Navigation](tickets/002-appshell-and-navigation-actionable.md)**
+
    - Application shell, sidebar, topbar, breadcrumbs, mobile nav
    - **Required for**: Navigation consistency across all pages
 
@@ -23,26 +28,34 @@ This directory contains the complete UI redesign implementation plan for QDrill,
    - **Required for**: Tickets 004-011
 
 ### Feature Enhancements (Can be done in parallel after foundation)
+
 4. **[004 - Drills Library Revamp](tickets/004-drills-library-revamp-actionable.md)**
+
    - Enhanced search, filters, grid/list views, virtual scrolling
 
 5. **[005 - Drill Detail Improvements](tickets/005-drill-detail-improvements-actionable.md)**
+
    - Tabbed interface, related drills, enhanced metadata
 
 6. **[006 - Practice Plan Viewer Revamp](tickets/006-practice-plan-viewer-revamp-actionable.md)**
+
    - Two-pane layout, scrollspy, drill overlays
 
 7. **[007 - Practice Plan Wizard UX](tickets/007-practice-plan-wizard-ux-actionable.md)**
    - Stepper, validation, autosave functionality
 
 ### Polish & Optimization (Can be done anytime after foundation)
+
 8. **[008 - Accessibility and Keyboard](tickets/008-accessibility-and-keyboard-actionable.md)**
+
    - WCAG AA compliance, focus management, screen reader support
 
 9. **[009 - Performance and Polish](tickets/009-performance-and-polish-actionable.md)**
+
    - Content visibility, lazy loading, logging system
 
 10. **[010 - Command Palette Enhancement](tickets/010-command-palette-actionable.md)**
+
     - Full-featured command palette with search providers
 
 11. **[011 - Reduce Tints and Anchor Links](tickets/011-reduce-tints-and-anchor-links-actionable.md)**
@@ -57,6 +70,7 @@ pnpm add @radix-ui/colors mode-watcher sveltekit-superforms
 ```
 
 Already installed dependencies that will be used:
+
 - `bits-ui` - Headless UI components
 - `cmdk-sv` - Command palette
 - `lucide-svelte` - Icons
@@ -114,7 +128,7 @@ Already installed dependencies that will be used:
 Use this checklist to track implementation progress:
 
 - [ ] Ticket 001 - Design Tokens and Theme
-- [ ] Ticket 002 - AppShell and Navigation  
+- [ ] Ticket 002 - AppShell and Navigation
 - [ ] Ticket 003 - Core UI Components
 - [ ] Ticket 004 - Drills Library Revamp
 - [ ] Ticket 005 - Drill Detail Improvements
@@ -128,6 +142,7 @@ Use this checklist to track implementation progress:
 ## 🤝 Contributing
 
 When implementing tickets:
+
 1. Create a feature branch: `feat/ui-revamp-ticket-XXX`
 2. Implement the ticket following the provided code
 3. Run tests and verify against the checklist

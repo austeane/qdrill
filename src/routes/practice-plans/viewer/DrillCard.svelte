@@ -1,9 +1,9 @@
 <script>
-import { createEventDispatcher } from 'svelte';
-import { slide } from 'svelte/transition';
-import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
-import { sanitizeHtml } from '$lib/utils/sanitize.js';
-import { getGroupColor } from '$lib/utils/groupColors.js';
+	import { createEventDispatcher } from 'svelte';
+	import { slide } from 'svelte/transition';
+	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
+	import { sanitizeHtml } from '$lib/utils/sanitize.js';
+	import { getGroupColor } from '$lib/utils/groupColors.js';
 
 	export let item;
 	export let isInParallelGroup = false;
@@ -75,7 +75,7 @@ import { getGroupColor } from '$lib/utils/groupColors.js';
 		const hour12 = hour % 12 || 12;
 		return `${hour12}:${minutes} ${ampm}`;
 	}
-	
+
 	// Helper functions for group badges
 
 	function formatGroupName(name) {
@@ -175,9 +175,9 @@ import { getGroupColor } from '$lib/utils/groupColors.js';
 				<div class="detailed-description">
 					<h4 class="info-subtitle">Detailed Description</h4>
 					<div class="description-text prose prose-sm">
-    {#if normalizedItem.detailedDescription}
-      {@html sanitizeHtml(normalizedItem.detailedDescription)}
-    {/if}
+						{#if normalizedItem.detailedDescription}
+							{@html sanitizeHtml(normalizedItem.detailedDescription)}
+						{/if}
 					</div>
 				</div>
 

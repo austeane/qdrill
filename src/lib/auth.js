@@ -27,7 +27,7 @@ const createAuthConfig = () => {
 	const NODE_ENV = process.env.NODE_ENV;
 	const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 	const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-	
+
 	return {
 		secret: AUTH_SECRET,
 		url: NODE_ENV === 'production' ? AUTH_URL : 'http://localhost:3000',
@@ -45,66 +45,69 @@ const createAuthConfig = () => {
 			db: kyselyDb, // Use the imported Kysely instance
 			type: 'postgres' // Add type hint for the CLI
 		},
-    // Ensure user exists on sign-in, attach role once, and avoid per-request DB work
-    callbacks: {
-      // Runs on social or credential sign-in
-      async signIn({ user }) {
-        if (!user?.id) return true;
-        // Upsert minimal user row in our own users table (separate from auth internals)
-        try {
-          const existing = await kyselyDb
-            .selectFrom('users')
-            .select(['id'])
-            .where('id', '=', user.id)
-            .executeTakeFirst();
-          if (!existing) {
-            await kyselyDb
-              .insertInto('users')
-              .values({
-                id: user.id,
-                email: user.email ?? null,
-                name: user.name ?? null,
-                image: user.image ?? null,
-                role: 'user'
-              })
-              .onConflict((oc) => oc.column('id').doNothing())
-              .execute();
-            console.log('[auth callbacks.signIn] Successfully created user record for:', user.id);
-          }
-        } catch (err) {
-          console.error('[auth callbacks.signIn] CRITICAL: Failed to ensure user exists in users table:', err);
-          console.error('[auth callbacks.signIn] User details:', {
-            id: user.id,
-            email: user.email,
-            name: user.name
-          });
-          // LONG-TERM FIX: Fail sign-in if we can't create the user record
-          // This prevents foreign key violations later
-          return false;
-        }
-        return true;
-      },
-      // Include role in the session without extra DB queries
-      async session({ session, user }) {
-        if (session.user) {
-          session.user.id = user.id;
-          if (!session.user.role) {
-            // Try to fetch once during session creation; fallback to 'user'
-            try {
-              const roleRes = await kyselyDb
-                .selectFrom('users')
-                .select('role')
-                .where('id', '=', user.id)
-                .executeTakeFirst();
-              session.user.role = roleRes?.role ?? 'user';
-            } catch (err) {
-              session.user.role = 'user';
-            }
-          }
-        }
-        return session;
-      }
-    },
+		// Ensure user exists on sign-in, attach role once, and avoid per-request DB work
+		callbacks: {
+			// Runs on social or credential sign-in
+			async signIn({ user }) {
+				if (!user?.id) return true;
+				// Upsert minimal user row in our own users table (separate from auth internals)
+				try {
+					const existing = await kyselyDb
+						.selectFrom('users')
+						.select(['id'])
+						.where('id', '=', user.id)
+						.executeTakeFirst();
+					if (!existing) {
+						await kyselyDb
+							.insertInto('users')
+							.values({
+								id: user.id,
+								email: user.email ?? null,
+								name: user.name ?? null,
+								image: user.image ?? null,
+								role: 'user'
+							})
+							.onConflict((oc) => oc.column('id').doNothing())
+							.execute();
+						console.log('[auth callbacks.signIn] Successfully created user record for:', user.id);
+					}
+				} catch (err) {
+					console.error(
+						'[auth callbacks.signIn] CRITICAL: Failed to ensure user exists in users table:',
+						err
+					);
+					console.error('[auth callbacks.signIn] User details:', {
+						id: user.id,
+						email: user.email,
+						name: user.name
+					});
+					// LONG-TERM FIX: Fail sign-in if we can't create the user record
+					// This prevents foreign key violations later
+					return false;
+				}
+				return true;
+			},
+			// Include role in the session without extra DB queries
+			async session({ session, user }) {
+				if (session.user) {
+					session.user.id = user.id;
+					if (!session.user.role) {
+						// Try to fetch once during session creation; fallback to 'user'
+						try {
+							const roleRes = await kyselyDb
+								.selectFrom('users')
+								.select('role')
+								.where('id', '=', user.id)
+								.executeTakeFirst();
+							session.user.role = roleRes?.role ?? 'user';
+						} catch (err) {
+							session.user.role = 'user';
+						}
+					}
+				}
+				return session;
+			}
+		},
 
 		debug: NODE_ENV !== 'production'
 	};

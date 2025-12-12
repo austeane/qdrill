@@ -1,11 +1,13 @@
 import { json } from '@sveltejs/kit';
 import { formationService } from '$lib/server/services/formationService';
 import { handleApiError } from '../../../utils/handleApiError.js';
+import { verifyClaimToken } from '$lib/server/utils/claimTokens.js';
+import { ForbiddenError } from '$lib/server/errors.js';
 
 /**
  * @type {import('./$types').RequestHandler}
  */
-export async function POST({ params, locals }) {
+export async function POST({ params, locals, request }) {
 	try {
 		const { id } = params;
 		const session = locals.session;
@@ -22,6 +24,14 @@ export async function POST({ params, locals }) {
 		}
 
 		const userId = session.user.id;
+
+		const body = await request.json().catch(() => ({}));
+		const claimToken = body?.claimToken;
+
+		if (!verifyClaimToken('formation', formationId, claimToken)) {
+			throw new ForbiddenError('Invalid or missing claim token for formation association');
+		}
+
 		// Service method handles NotFoundError and ConflictError
 		const updatedFormation = await formationService.associateFormation(formationId, userId);
 

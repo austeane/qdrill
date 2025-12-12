@@ -73,7 +73,9 @@
 
 <div class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
 	<!-- User Profile Header -->
-	<header class="flex flex-col sm:flex-row items-center gap-4 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm relative">
+	<header
+		class="flex flex-col sm:flex-row items-center gap-4 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm relative"
+	>
 		<img src={userImage} alt={userName} class="w-24 h-24 rounded-full shadow-md" />
 		<div class="text-center sm:text-left flex-grow">
 			<h1 class="text-2xl sm:text-3xl font-bold">{userName}</h1>
@@ -115,7 +117,9 @@
 										>{drill.name}</a
 									>
 								</h3>
-								<p class="text-gray-600 dark:text-gray-300 text-sm mt-1">{drill.brief_description}</p>
+								<p class="text-gray-600 dark:text-gray-300 text-sm mt-1">
+									{drill.brief_description}
+								</p>
 								<div class="mt-2">
 									<!-- <UpvoteDownvote drillId={drill.id} /> -->
 									<EntityScore drillId={drill.id} />
@@ -184,7 +188,9 @@
 						</div>
 					{/if}
 				{:else}
-					<p class="text-gray-500 dark:text-gray-400 italic">You haven't created any practice plans yet.</p>
+					<p class="text-gray-500 dark:text-gray-400 italic">
+						You haven't created any practice plans yet.
+					</p>
 				{/if}
 			</section>
 		</div>

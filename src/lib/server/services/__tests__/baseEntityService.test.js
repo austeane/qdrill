@@ -159,16 +159,10 @@ describe('BaseEntityService', () => {
 
 	describe('getAll', () => {
 		it('should return all items with default options', async () => {
-			const mockClientQuery = vi.fn();
-			// Mock withTransaction to immediately call the callback with our mockClientQuery
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				return callback({ query: mockClientQuery, release: vi.fn() });
-			});
-
 			// Mock for the COUNT query
-			mockClientQuery.mockResolvedValueOnce({ rows: [{ count: '10' }] });
+			mockDb.query.mockResolvedValueOnce({ rows: [{ count: '10' }] });
 			// Mock for the data query
-			mockClientQuery.mockResolvedValueOnce({
+			mockDb.query.mockResolvedValueOnce({
 				rows: [
 					{ id: 1, name: 'Item 1' },
 					{ id: 2, name: 'Item 2' }
@@ -177,8 +171,7 @@ describe('BaseEntityService', () => {
 
 			const result = await service.getAll();
 
-			expect(service.withTransaction).toHaveBeenCalledTimes(1);
-			expect(mockClientQuery).toHaveBeenCalledTimes(2);
+			expect(mockDb.query).toHaveBeenCalledTimes(2);
 			expect(result.items).toHaveLength(2);
 			expect(result.pagination.totalItems).toBe(10);
 			expect(result.pagination.page).toBe(1);
@@ -186,23 +179,17 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should handle filters correctly', async () => {
-			const mockClientQuery = vi.fn();
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				return callback({ query: mockClientQuery, release: vi.fn() });
-			});
-
-			mockClientQuery.mockResolvedValueOnce({ rows: [{ count: '1' }] }); // For COUNT
-			mockClientQuery.mockResolvedValueOnce({ rows: [{ id: 1, name: 'Test Item' }] }); // For data
+			mockDb.query.mockResolvedValueOnce({ rows: [{ count: '1' }] }); // For COUNT
+			mockDb.query.mockResolvedValueOnce({ rows: [{ id: 1, name: 'Test Item' }] }); // For data
 
 			const result = await service.getAll({
 				filters: { name: 'Test Item' }
 			});
 
-			expect(service.withTransaction).toHaveBeenCalledTimes(1);
-			expect(mockClientQuery).toHaveBeenCalledTimes(2);
+			expect(mockDb.query).toHaveBeenCalledTimes(2);
 			// Check that the WHERE clause was included in the query (for both count and data)
-			expect(mockClientQuery.mock.calls[0][0]).toContain('WHERE'); // Count query
-			expect(mockClientQuery.mock.calls[1][0]).toContain('WHERE'); // Data query
+			expect(mockDb.query.mock.calls[0][0]).toContain('WHERE'); // Count query
+			expect(mockDb.query.mock.calls[1][0]).toContain('WHERE'); // Data query
 			expect(result.items).toHaveLength(1);
 		});
 
@@ -250,13 +237,8 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should handle custom sorting', async () => {
-			const mockClientQuery = vi.fn();
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				return callback({ query: mockClientQuery, release: vi.fn() });
-			});
-
-			mockClientQuery.mockResolvedValueOnce({ rows: [{ count: '10' }] }); // COUNT
-			mockClientQuery.mockResolvedValueOnce({
+			mockDb.query.mockResolvedValueOnce({ rows: [{ count: '10' }] }); // COUNT
+			mockDb.query.mockResolvedValueOnce({
 				// Data
 				rows: [
 					{ id: 2, name: 'A Item' },
@@ -269,19 +251,13 @@ describe('BaseEntityService', () => {
 				sortOrder: 'asc'
 			});
 
-			expect(service.withTransaction).toHaveBeenCalledTimes(1);
-			expect(mockClientQuery).toHaveBeenCalledTimes(2);
-			expect(mockClientQuery.mock.calls[1][0]).toContain('ORDER BY name ASC'); // Data query
+			expect(mockDb.query).toHaveBeenCalledTimes(2);
+			expect(mockDb.query.mock.calls[1][0]).toContain('ORDER BY name ASC'); // Data query
 			expect(result.items).toHaveLength(2);
 		});
 
 		it('should return all records when all=true', async () => {
-			const mockClientQuery = vi.fn();
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				return callback({ query: mockClientQuery, release: vi.fn() });
-			});
-
-			mockClientQuery.mockResolvedValueOnce({
+			mockDb.query.mockResolvedValueOnce({
 				// Data query (no count query when all=true)
 				rows: [
 					{ id: 1, name: 'Item 1' },
@@ -292,24 +268,13 @@ describe('BaseEntityService', () => {
 
 			const result = await service.getAll({ all: true });
 
-			expect(service.withTransaction).toHaveBeenCalledTimes(1);
-			expect(mockClientQuery).toHaveBeenCalledTimes(1); // Only data query
+			expect(mockDb.query).toHaveBeenCalledTimes(1); // Only data query
 			expect(result.items).toHaveLength(3);
 			expect(result.pagination).toBeNull();
 		});
 
 		it('should handle database errors', async () => {
-			// Mock withTransaction to pass a client whose query method throws an error
-			vi.spyOn(service, 'withTransaction').mockImplementation(async (callback) => {
-				const mockClientThatThrows = {
-					query: vi.fn().mockRejectedValue(new DatabaseError('Failed to retrieve test_table')),
-					release: vi.fn()
-				};
-				// Note: The actual transaction begin/commit won't happen here,
-				// but the error from client.query inside the callback should propagate.
-				return callback(mockClientThatThrows);
-			});
-
+			mockDb.query.mockRejectedValueOnce(new Error('db down'));
 			await expect(service.getAll()).rejects.toThrow('Failed to retrieve test_table');
 		});
 	});
@@ -653,6 +618,9 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should allow editing by the creator', async () => {
+			// First query: admin role check
+			mockDb.query.mockResolvedValueOnce({ rows: [] });
+			// Second query: entity permission check
 			mockDb.query.mockResolvedValueOnce({
 				rows: [{ created_by: 'user123', is_editable_by_others: false }]
 			});
@@ -661,6 +629,7 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should allow editing if is_editable_by_others is true', async () => {
+			mockDb.query.mockResolvedValueOnce({ rows: [] }); // admin check
 			mockDb.query.mockResolvedValueOnce({
 				rows: [{ created_by: 'otherUser', is_editable_by_others: true }]
 			});
@@ -669,6 +638,7 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should allow editing if entity has no creator', async () => {
+			mockDb.query.mockResolvedValueOnce({ rows: [] }); // admin check
 			mockDb.query.mockResolvedValueOnce({
 				rows: [{ created_by: null, is_editable_by_others: false }]
 			});
@@ -677,6 +647,7 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should deny editing for non-creators when not editable by others', async () => {
+			mockDb.query.mockResolvedValueOnce({ rows: [] }); // admin check
 			mockDb.query.mockResolvedValueOnce({
 				rows: [{ created_by: 'otherUser', is_editable_by_others: false }]
 			});
@@ -686,13 +657,15 @@ describe('BaseEntityService', () => {
 		});
 
 		it('should return false when entity not found', async () => {
-			mockDb.query.mockResolvedValueOnce({ rows: [] }); // Simulate entity not found
+			mockDb.query.mockResolvedValueOnce({ rows: [] }); // admin check
+			mockDb.query.mockResolvedValueOnce({ rows: [] }); // entity not found
 			// The service now throws NotFoundError in this case
 			await expect(service.canUserEdit('nonexistent', 'user123')).rejects.toThrow(NotFoundError);
 			// expect(result).toBe(false); // Old expectation
 		});
 
 		it('should throw DatabaseError if query fails', async () => {
+			mockDb.query.mockResolvedValueOnce({ rows: [] }); // admin check
 			mockDb.query.mockRejectedValueOnce(new Error('DB Query Failed'));
 			await expect(service.canUserEdit('entity1', 'user123')).rejects.toThrow(DatabaseError);
 		});
@@ -700,6 +673,7 @@ describe('BaseEntityService', () => {
 		it('should throw error if entityId is missing', async () => {
 			// TODO: Service should ideally throw a ValidationError before DB call.
 			// For now, test current behavior where it attempts DB call, leading to DatabaseError if not mocked.
+			mockDb.query.mockResolvedValueOnce({ rows: [] }); // admin check
 			mockDb.query.mockRejectedValueOnce(
 				new DatabaseError('Simulated DB error for missing entityId')
 			); // Ensure query mock leads to DatabaseError for this path

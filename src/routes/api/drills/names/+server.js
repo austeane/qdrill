@@ -9,10 +9,9 @@ export const GET = async (event) => {
 	try {
 		// Service method handles filtering and potential DB errors
 		const result = await drillService.getFilteredDrills(
+			{},
 			{
-				userId: userId // Pass userId for filtering private drills
-			},
-			{
+				userId,
 				limit: 10000, // Increased limit, consider cursor pagination if list grows very large
 				sortBy: 'name',
 				sortOrder: 'asc',

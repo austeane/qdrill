@@ -27,19 +27,29 @@
 		<table class="min-w-full divide-y divide-gray-200">
 			<thead class="bg-gray-50">
 				<tr>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+					<th
+						class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+					>
 						Name
 					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+					<th
+						class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+					>
 						Email
 					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+					<th
+						class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+					>
 						Role
 					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+					<th
+						class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+					>
 						Joined
 					</th>
-					<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+					<th
+						class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+					>
 						Actions
 					</th>
 				</tr>
@@ -58,7 +68,12 @@
 							</div>
 						</td>
 						<td class="px-6 py-4 whitespace-nowrap">
-							<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {user.role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+							<span
+								class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {user.role ===
+								'admin'
+									? 'bg-red-100 text-red-800'
+									: 'bg-green-100 text-green-800'}"
+							>
 								{user.role}
 							</span>
 						</td>
@@ -66,13 +81,17 @@
 							{new Date(user.created_at).toLocaleDateString()}
 						</td>
 						<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-							<form method="POST" action="?/updateRole" use:enhance={() => {
-								return async ({ result }) => {
-									if (result.type === 'success') {
-										await invalidateAll();
-									}
-								};
-							}}>
+							<form
+								method="POST"
+								action="?/updateRole"
+								use:enhance={() => {
+									return async ({ result }) => {
+										if (result.type === 'success') {
+											await invalidateAll();
+										}
+									};
+								}}
+							>
 								<input type="hidden" name="userId" value={user.id} />
 								<select name="role" class="mr-2 rounded border-gray-300">
 									<option value="user" selected={user.role === 'user'}>User</option>

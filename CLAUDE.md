@@ -1,19 +1,22 @@
 # QDrill Project Guide
 
+## Always read AGENTS.md
+
 ## Project Overview
 
 QDrill is a web-based application designed as a sports drill bank and practice planning tool for a niche sport. It allows users to create, manage, and share drills, as well as plan practices with timeline-based organization.
 
 ## Technology Stack
 
-- **Frontend**: SvelteKit
+- **Frontend**: SvelteKit (Svelte 5 with runes disabled, using Svelte 4-style reactivity)
 - **Backend**: SvelteKit (API routes)
-- **Database**: PostgreSQL (via Vercel Postgres)
+- **Database**: PostgreSQL (via Vercel Postgres/Neon) with Kysely query builder
 - **Styling**: Tailwind CSS
-- **Authentication**: Auth.js (Google OAuth)
+- **Authentication**: Better Auth (Google OAuth)
 - **Deployment**: Vercel
 - **Diagramming**: Excalidraw
-- **Testing**: Playwright, Cypress
+- **Testing**: Playwright, Vitest, Cypress
+- **AI**: Claude Opus 4.5 for practice plan generation
 
 ## Core Features
 
@@ -112,10 +115,11 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 
 ### Authentication
 
-- Auth.js (formerly NextAuth) integration
+- Better Auth integration (replaced Auth.js)
 - Google OAuth provider
-- Session-based authentication
-- Authorization middleware
+- Session-based authentication via `locals.session` / `locals.user`
+- Authorization middleware (`authGuard`, team permission helpers)
+- User IDs are strings (TEXT), not integers
 
 ### Drag and Drop
 

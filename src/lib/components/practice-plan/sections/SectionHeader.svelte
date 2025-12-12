@@ -7,7 +7,7 @@
 	const dispatch = createEventDispatcher();
 
 	function openDrillSearch() {
-		dispatch('openDrillSearch', section.id);
+		dispatch('openDrillSearch', { sectionId: section.id });
 	}
 
 	function openTimelineSelector() {

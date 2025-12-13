@@ -1,6 +1,12 @@
 import { browser } from '$app/environment';
 import { createSubscriber } from 'svelte/reactivity';
 
+function normalizeSectionId(value) {
+	if (typeof value !== 'string') return value;
+	if (/^\d+$/.test(value)) return Number(value);
+	return value;
+}
+
 /**
  * Tracks which `[data-section-id]` element is currently intersecting the viewport.
  *
@@ -21,7 +27,7 @@ export class SectionObserver {
 		selector = '[data-section-id]',
 		getScope = () => document,
 		options = {},
-		getSectionId = (element) => element.getAttribute('data-section-id')
+		getSectionId = (element) => normalizeSectionId(element.getAttribute('data-section-id'))
 	} = {}) {
 		this.#selector = selector;
 		this.#getScope = getScope;
@@ -81,4 +87,3 @@ export class SectionObserver {
 		return this.#currentSectionId;
 	}
 }
-

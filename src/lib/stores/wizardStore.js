@@ -1,4 +1,4 @@
-export { maxSteps, wizardStore } from './wizardStore.svelte';
+export { maxSteps, wizardStore } from './wizardStore.svelte.js';
 
 export function validateBasicInfo() {
 	return wizardStore.validateBasicInfo();

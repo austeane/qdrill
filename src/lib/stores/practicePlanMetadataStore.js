@@ -1,4 +1,4 @@
-export { PracticePlanMetadataStore, practicePlanMetadataStore } from './practicePlanMetadataStore.svelte';
+export { PracticePlanMetadataStore, practicePlanMetadataStore } from './practicePlanMetadataStore.svelte.js';
 
 export function addPracticeGoal() {
 	practicePlanMetadataStore.addPracticeGoal();

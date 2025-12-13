@@ -1,1 +1,1 @@
-export * from './dragManager.svelte';
+export * from './dragManager.svelte.js';

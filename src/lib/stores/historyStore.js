@@ -1,1 +1,1 @@
-export * from './historyStore.svelte';
+export * from './historyStore.svelte.js';

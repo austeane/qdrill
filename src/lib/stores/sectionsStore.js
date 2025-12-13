@@ -1,1 +1,1 @@
-export * from './sectionsStore.svelte';
+export * from './sectionsStore.svelte.js';

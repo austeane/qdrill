@@ -4,6 +4,10 @@
 
 	let { open = $bindable(false), title = '', description = '', children, footer, onClose } = $props();
 
+	const baseId = $props.id();
+	const titleId = $derived(`dialog-title-${baseId}`);
+	const descriptionId = $derived(`dialog-description-${baseId}`);
+
 	let dialogRef = $state(null);
 
 	function handleClose() {
@@ -52,14 +56,14 @@
 			class="dialog-content"
 			role="dialog"
 			aria-modal="true"
-			aria-labelledby={title ? 'dialog-title' : undefined}
-			aria-describedby={description ? 'dialog-description' : undefined}
+			aria-labelledby={title ? titleId : undefined}
+			aria-describedby={description ? descriptionId : undefined}
 			bind:this={dialogRef}
 			transition:scale={{ duration: 150, start: 0.96 }}
 		>
 			<div class="dialog-header">
 				{#if title}
-					<h2 id="dialog-title" class="dialog-title">
+					<h2 id={titleId} class="dialog-title">
 						{title}
 					</h2>
 				{/if}
@@ -69,7 +73,7 @@
 			</div>
 
 			{#if description}
-				<p id="dialog-description" class="dialog-description">
+				<p id={descriptionId} class="dialog-description">
 					{description}
 				</p>
 			{/if}

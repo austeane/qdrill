@@ -71,10 +71,8 @@
 	});
 
 	function calculateSectionDuration(items) {
-		// console.log('Calculating duration for items:', items);
 		return items.reduce((acc, item) => {
 			if (item.type === 'parallel') {
-				console.log('Parallel group duration:', item.duration);
 				return acc + item.duration;
 			}
 			return acc + (item.selected_duration || item.duration || 0);

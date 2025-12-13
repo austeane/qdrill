@@ -1,8 +1,5 @@
 <script>
-	export let variant = 'rect'; // rect, line, circle
-	export let width = '100%';
-	export let height = '20px';
-	export let rounded = false;
+	let { variant = 'rect', width = '100%', height = '20px', rounded = false } = $props(); // rect|line|circle
 </script>
 
 <div

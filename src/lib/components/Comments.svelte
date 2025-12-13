@@ -1,37 +1,44 @@
 <script>
-	import { onMount } from 'svelte';
-	import { writable } from 'svelte/store';
-	import { page } from '$app/stores';
-	import { get } from 'svelte/store';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { page } from '$app/state';
 
-	export let drillId = null;
-	export let practicePlanId = null;
+	let { drillId = null, practicePlanId = null } = $props();
 
-	let comments = writable([]);
-	let newComment = writable('');
-	let user = get(page).data.session?.user;
+	let comments = $state([]);
+	let newComment = $state('');
+	const user = $derived(page.data.session?.user);
 
-	onMount(async () => {
-		if (!drillId && !practicePlanId) return;
-
-		let url = '/api/comments?';
-		if (drillId) {
-			url += `drillId=${drillId}`;
-		} else {
-			url += `practicePlanId=${practicePlanId}`;
+	$effect(() => {
+		if (!drillId && !practicePlanId) {
+			comments = [];
+			return;
 		}
 
-		try {
-			const result = await apiFetch(url);
-			comments.set(result);
-		} catch (error) {
-			console.error('Failed to load comments:', error);
-		}
+		let cancelled = false;
+
+		(async () => {
+			let url = '/api/comments?';
+			if (drillId) {
+				url += `drillId=${drillId}`;
+			} else {
+				url += `practicePlanId=${practicePlanId}`;
+			}
+
+			try {
+				const result = await apiFetch(url);
+				if (!cancelled) comments = result;
+			} catch (error) {
+				console.error('Failed to load comments:', error);
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	async function addComment() {
-		const content = get(newComment).trim();
+		const content = newComment.trim();
 		if (!content) return;
 
 		try {
@@ -40,8 +47,8 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ drillId, practicePlanId, content })
 			});
-			comments.update((curr) => [...curr, comment]);
-			newComment.set('');
+			comments = [...comments, comment];
+			newComment = '';
 		} catch (error) {
 			console.error('Failed to add comment:', error);
 		}
@@ -50,7 +57,7 @@
 	async function deleteComment(id) {
 		try {
 			await apiFetch(`/api/comments?id=${id}`, { method: 'DELETE' });
-			comments.update((curr) => curr.filter((comment) => comment.id !== id));
+			comments = comments.filter((comment) => comment.id !== id);
 		} catch (error) {
 			console.error('Failed to delete comment:', error);
 		}
@@ -63,13 +70,13 @@
 	{#if user}
 		<div class="mb-4">
 			<textarea
-				bind:value={$newComment}
+				bind:value={newComment}
 				placeholder="Add a comment..."
 				class="w-full p-2 border border-gray-300 rounded-md"
 				rows="3"
 			></textarea>
 			<button
-				on:click={addComment}
+				onclick={addComment}
 				class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
 			>
 				Submit
@@ -80,13 +87,13 @@
 	{/if}
 
 	<ul>
-		{#each $comments as comment (comment.id)}
+		{#each comments as comment (comment.id)}
 			<li class="mb-4 p-4 border border-gray-200 rounded-md">
 				<div class="flex justify-between">
 					<span class="font-semibold">{comment.user_name}</span>
 					{#if user && user.id === comment.user_id}
 						<button
-							on:click={() => deleteComment(comment.id)}
+							onclick={() => deleteComment(comment.id)}
 							class="text-red-500 hover:text-red-700"
 						>
 							Delete

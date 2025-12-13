@@ -9,39 +9,41 @@
 	} from '$lib/stores/dragManager';
 	import TimelineColumn from './TimelineColumn.svelte';
 
-	export let groupId;
-	export let items = [];
-	export let sectionIndex;
-	export let sectionId;
-	export let onUngroup = (groupId) => {
+	let {
+		groupId,
+		items = [],
+		sectionIndex,
+		sectionId,
+		onUngroup = (groupId) => {
 		console.warn('onUngroup prop not provided to ParallelGroup', groupId);
-	};
-	export let onDurationChange = (sectionIndex, itemIndex, newDuration) => {
+		},
+		onDurationChange = (sectionIndex, itemIndex, newDuration) => {
 		console.warn(
 			'onDurationChange prop not provided to ParallelGroup',
 			sectionIndex,
 			itemIndex,
 			newDuration
 		);
-	};
-	export let onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
+		},
+		onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
 		console.warn(
 			'onTimelineChange prop not provided to ParallelGroup',
 			sectionIndex,
 			itemIndex,
 			newTimeline
 		);
-	};
-	export let onRemoveItem = (sectionIndex, itemIndex) => {
+		},
+		onRemoveItem = (sectionIndex, itemIndex) => {
 		console.warn('onRemoveItem prop not provided to ParallelGroup', sectionIndex, itemIndex);
-	};
-	export let timelineNameGetter = (timeline) => timeline;
-	export let customTimelineNamesData = {};
+		},
+		timelineNameGetter = (timeline) => timeline,
+		customTimelineNamesData = {}
+	} = $props();
 
-	$: firstGroupItem = items.find((item) => item.parallel_group_id === groupId);
-	$: groupTimelines = firstGroupItem?.groupTimelines || [];
+	const firstGroupItem = $derived(items.find((item) => item.parallel_group_id === groupId));
+	const groupTimelines = $derived(firstGroupItem?.groupTimelines || []);
 
-	$: groupName = (() => {
+	const groupName = $derived.by(() => {
 		if (firstGroupItem?.group_name && firstGroupItem.group_name !== 'Parallel Activities') {
 			return firstGroupItem.group_name;
 		}
@@ -57,22 +59,6 @@
 		}
 
 		return 'Parallel Activities';
-	})();
-
-	$: console.log('[DEBUG] ParallelGroup - groupTimelines:', {
-		groupId,
-		groupName,
-		timelines: groupTimelines,
-		firstItem: firstGroupItem
-			? {
-					id: firstGroupItem.id,
-					name: firstGroupItem.name,
-					parallel_timeline: firstGroupItem.parallel_timeline,
-					groupTimelines: firstGroupItem.groupTimelines,
-					group_name: firstGroupItem.group_name
-				}
-			: null,
-		itemsCount: items.filter((item) => item.parallel_group_id === groupId).length
 	});
 
 	function calculateLocalTimelineDurations(groupItems, groupId) {
@@ -94,16 +80,18 @@
 		return durations;
 	}
 
-	$: durations = calculateLocalTimelineDurations(items, groupId);
+	const durations = $derived(calculateLocalTimelineDurations(items, groupId));
 
-	$: isBeingDragged =
-		$dragState.isDragging &&
-		$dragState.dragType === 'group' &&
-		$dragState.sourceSection === sectionIndex &&
-		$dragState.sourceGroupId === groupId;
+	const isBeingDragged = $derived(
+		dragState.isDragging &&
+		dragState.dragType === 'group' &&
+		dragState.sourceSection === sectionIndex &&
+		dragState.sourceGroupId === groupId
+	);
 
-	$: _isDropTarget =
-		$dragState.targetSection === sectionIndex && $dragState.targetGroupId === groupId;
+	const _isDropTarget = $derived(
+		dragState.targetSection === sectionIndex && dragState.targetGroupId === groupId
+	);
 </script>
 
 <div
@@ -111,18 +99,18 @@
 		? 'dragging'
 		: ''}"
 	draggable="true"
-	on:dragstart={(e) => startGroupDrag(e, sectionIndex, groupId)}
-	on:dragover={(e) => handleGroupDragOver(e, sectionIndex, groupId, e.currentTarget)}
-	on:dragleave={handleDragLeave}
-	on:drop={handleDrop}
-	on:dragend={handleDragEnd}
+	ondragstart={(e) => startGroupDrag(e, sectionIndex, groupId)}
+	ondragover={(e) => handleGroupDragOver(e, sectionIndex, groupId, e.currentTarget)}
+	ondragleave={handleDragLeave}
+	ondrop={handleDrop}
+	ondragend={handleDragEnd}
 >
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-2">
 			<div class="group-drag-handle">Drag Entire Block</div>
 			<h3 class="text-md font-medium">{groupName}</h3>
 		</div>
-		<button type="button" on:click={() => onUngroup(groupId)}>Ungroup</button>
+		<button type="button" onclick={() => onUngroup(groupId)}>Ungroup</button>
 	</div>
 
 	{#if groupTimelines?.length > 0}

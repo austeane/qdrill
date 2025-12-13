@@ -8,7 +8,7 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 
 ## Technology Stack
 
-- **Frontend**: SvelteKit (Svelte 5 with runes disabled, using Svelte 4-style reactivity)
+- **Frontend**: SvelteKit (Svelte 5 with runes enabled — use `$state/$derived/$effect` + `$props`)
 - **Backend**: SvelteKit (API routes)
 - **Database**: PostgreSQL (via Vercel Postgres/Neon) with Kysely query builder
 - **Styling**: Tailwind CSS
@@ -84,10 +84,12 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 
 ### State Management
 
-- Extensive use of Svelte stores
-- Separate stores for different domain concerns
-- Custom store implementation with methods
-- History tracking with undo/redo support
+- Use runes-first state:
+  - Component-local state via `$state(...)`
+  - Derived values via `$derived(...)` / `$derived.by(...)`
+  - Side-effects via `$effect(...)`
+  - Shared state in `.svelte.js` / `.svelte.ts` modules (store-like objects/classes with `$state` fields)
+- In runes mode, avoid `$store` auto-subscriptions and `svelte/store` in app code.
 
 ### API Design
 
@@ -141,7 +143,8 @@ QDrill is a web-based application designed as a sports drill bank and practice p
 - **Comments**: Include purpose explanations, input/output expectations, and logic clarifications
 - **Imports**: Group imports by source (svelte, lib, components)
 - **Components**: Use Svelte components with script/markup/style structure
-- **Stores**: Use reactive declarations with $ prefix for store values
+- **Runes**: Prefer `$state/$derived/$effect` + `$props()`; prefer `$app/state` over `$app/stores`
+- **Events/Slots**: Use event attributes (`onclick`, `oninput`, …) and snippet props + `{@render ...}` (no `on:` directives, no `<slot>`)
 - **Error Handling**: Use try/catch with specific error messages
 - **API Endpoints**: Return standardized JSON responses with proper status codes
 - **Database**: Use parameterized queries to prevent SQL injection

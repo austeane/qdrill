@@ -1,24 +1,18 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { toLocalISO } from '$lib/utils/date.js';
 	import { toast } from '@zerodevx/svelte-toast';
 	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
 
-	export let season = null;
-	export let sections = [];
-	export let date = null;
-	export let teamId = '';
+	let { season = null, sections = [], date = null, teamId = '', onSave, onClose } = $props();
 
-	const dispatch = createEventDispatcher();
+	let open = $state(true);
+	let loading = $state(false);
+	let selectedDate = $state(date || toLocalISO(new Date()));
+	let startTime = $state('18:00'); // Default 6 PM
+	let seedDefaults = $state(true);
 
-	let loading = false;
-	import { toLocalISO } from '$lib/utils/date.js';
-	let selectedDate = date || toLocalISO(new Date());
-	let startTime = '18:00'; // Default 6 PM
-	let seedDefaults = true;
-
-	$: open = true;
-	$: overlappingSections = getOverlappingSections(selectedDate);
+	const overlappingSections = $derived(getOverlappingSections(selectedDate));
 
 	function getOverlappingSections(dateStr) {
 		if (!dateStr) return [];
@@ -74,7 +68,7 @@
 				}
 			});
 
-			dispatch('save', practiceResponse);
+			onSave?.(practiceResponse);
 			handleClose();
 		} catch (error) {
 			console.error('Failed to create practice:', error);
@@ -91,7 +85,7 @@
 
 	function handleClose() {
 		open = false;
-		setTimeout(() => dispatch('close'), 200);
+		setTimeout(() => onClose?.(), 200);
 	}
 
 	function formatDate(dateStr) {
@@ -104,11 +98,22 @@
 	}
 
 	// Get min/max dates from season
-	$: minDate = season?.start_date || toLocalISO(new Date());
-	$: maxDate = season?.end_date || '';
+	const minDate = $derived(season?.start_date || toLocalISO(new Date()));
+	const maxDate = $derived(season?.end_date || '');
 </script>
 
-<BottomSheet bind:open title="Create Practice" on:close={handleClose}>
+{#snippet footer()}
+	<div class="footer-buttons">
+		<button class="button button-secondary" onclick={handleClose} disabled={loading}>
+			Cancel
+		</button>
+		<button class="button button-primary" onclick={handleCreate} disabled={loading}>
+			{loading ? 'Creating...' : 'Create Practice'}
+		</button>
+	</div>
+{/snippet}
+
+<BottomSheet bind:open title="Create Practice" onClose={handleClose} {footer}>
 	<div class="form-content">
 		<!-- Date Selection -->
 		<div class="form-group">
@@ -144,14 +149,14 @@
 			<div class="sections-preview">
 				<h3 class="preview-title">Overlapping Sections</h3>
 				<p class="preview-description">This practice will be prefilled with content from:</p>
-				<div class="section-list">
-					{#each overlappingSections as section (section.id)}
-						<div class="section-item">
-							<div class="section-color" style="background-color: {section.color}" />
-							<span class="section-name">{section.name}</span>
-						</div>
-					{/each}
-				</div>
+					<div class="section-list">
+						{#each overlappingSections as section (section.id)}
+							<div class="section-item">
+								<div class="section-color" style="background-color: {section.color}"></div>
+								<span class="section-name">{section.name}</span>
+							</div>
+						{/each}
+					</div>
 
 				<label class="checkbox-label">
 					<input type="checkbox" bind:checked={seedDefaults} disabled={loading} />
@@ -164,15 +169,6 @@
 				<p class="hint">The practice will be created empty.</p>
 			</div>
 		{/if}
-	</div>
-
-	<div slot="footer" class="footer-buttons">
-		<button class="button button-secondary" on:click={handleClose} disabled={loading}>
-			Cancel
-		</button>
-		<button class="button button-primary" on:click={handleCreate} disabled={loading}>
-			{loading ? 'Creating...' : 'Create Practice'}
-		</button>
 	</div>
 </BottomSheet>
 

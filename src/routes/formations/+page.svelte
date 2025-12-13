@@ -1,42 +1,33 @@
 <script>
 	// import { onMount } from 'svelte'; // Removed
 	import { goto } from '$app/navigation';
-	import { navigating } from '$app/stores';
-	import { onDestroy } from 'svelte';
+	import { navigating } from '$app/state';
 	import {
-		formations,
-		// filteredFormations, // Removed
-		// fetchAllFormations, // Removed
-		// isLoading, // Removed
-		searchQuery,
-		selectedTags,
-		selectedFormationType,
+		formationsStore,
 		initializeFormations, // Added
-		currentPage, // Added
-		totalPages, // Added
-		formationsPerPage, // Added
-		selectedSortOption, // Added (from store)
-		selectedSortOrder // Added (from store)
+		resetFormationFilters
 	} from '$lib/stores/formationsStore';
 	import { slide } from 'svelte/transition'; // Keep for potential sort dropdown
 
-	export let data;
+	let { data } = $props();
 
 	// Initialize data from load function
-	$: initializeFormations(data);
+	$effect(() => {
+		initializeFormations(data);
+	});
 
 	// REMOVED: searchInput local variable (use store directly)
 	// REMOVED: tagsList and onMount logic fetching all and extracting tags
 
 	// Filter options from load (Placeholder - implement in +page.server.js if needed)
-	const filterOptions = data.filterOptions || { tags: [], types: ['offense', 'defense'] }; // Example structure
+	const filterOptions = $derived(
+		data.filterOptions || { tags: [], types: ['offense', 'defense'] }
+	); // Example structure
 
 	// --- Navigation Logic ---
 
 	let debounceTimer;
-	let isNavigating = false;
-	const unsubNavigating = navigating.subscribe((v) => (isNavigating = !!v));
-	onDestroy(unsubNavigating);
+	const isNavigating = $derived(navigating.type !== null);
 	function debounce(func, delay = 300) {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(func, delay);
@@ -46,24 +37,24 @@
 		const params = new URLSearchParams(window.location.search); // Start with existing
 
 		// Pagination
-		const pageToNavigate = resetPage ? 1 : $currentPage;
+		const pageToNavigate = resetPage ? 1 : formationsStore.currentPage;
 		params.set('page', pageToNavigate.toString());
-		params.set('limit', $formationsPerPage.toString());
+		params.set('limit', formationsStore.formationsPerPage.toString());
 
 		// Sorting
-		if ($selectedSortOption) {
-			params.set('sort', $selectedSortOption);
+		if (formationsStore.selectedSortOption) {
+			params.set('sort', formationsStore.selectedSortOption);
 		} else {
 			params.delete('sort');
 		}
-		if ($selectedSortOrder) {
-			params.set('order', $selectedSortOrder);
+		if (formationsStore.selectedSortOrder) {
+			params.set('order', formationsStore.selectedSortOrder);
 		} else {
 			params.delete('order');
 		}
 
 		// Filters
-		const activeTags = Object.entries($selectedTags || {})
+		const activeTags = Object.entries(formationsStore.selectedTags || {})
 			.filter(([, selected]) => selected)
 			.map(([tag]) => tag);
 		if (activeTags.length > 0) {
@@ -72,14 +63,14 @@
 			params.delete('tags');
 		}
 
-		if ($selectedFormationType) {
-			params.set('type', $selectedFormationType);
+		if (formationsStore.selectedFormationType) {
+			params.set('type', formationsStore.selectedFormationType);
 		} else {
 			params.delete('type');
 		}
 
-		if ($searchQuery) {
-			params.set('q', $searchQuery);
+		if (formationsStore.searchQuery) {
+			params.set('q', formationsStore.searchQuery);
 		} else {
 			params.delete('q');
 		}
@@ -94,12 +85,13 @@
 	}
 
 	function handleTagToggle(tag) {
-		selectedTags.update((tags) => ({ ...tags, [tag]: !tags[tag] }));
+		formationsStore.selectedTags[tag] = !formationsStore.selectedTags[tag];
 		applyFiltersAndNavigate({ resetPage: true });
 	}
 
 	function handleFormationTypeChange(type) {
-		selectedFormationType.update((current) => (type === current ? null : type));
+		formationsStore.selectedFormationType =
+			type === formationsStore.selectedFormationType ? null : type;
 		applyFiltersAndNavigate({ resetPage: true });
 	}
 
@@ -110,22 +102,22 @@
 
 	// Pagination Handlers
 	function nextPage() {
-		if ($currentPage < $totalPages) {
-			currentPage.update((p) => p + 1);
+		if (formationsStore.currentPage < formationsStore.totalPages) {
+			formationsStore.currentPage += 1;
 			applyFiltersAndNavigate();
 		}
 	}
 
 	function prevPage() {
-		if ($currentPage > 1) {
-			currentPage.update((p) => p - 1);
+		if (formationsStore.currentPage > 1) {
+			formationsStore.currentPage -= 1;
 			applyFiltersAndNavigate();
 		}
 	}
 
 	// --- Sort Controls ---
-	let showSortOptions = false;
-	let sortOptionsRef;
+	let showSortOptions = $state(false);
+	let sortOptionsRef = $state(null);
 	const sortOptions = [
 		{ value: 'created_at', label: 'Date Created' },
 		{ value: 'name', label: 'Name' },
@@ -138,12 +130,13 @@
 	}
 
 	function handleSortChange(event) {
-		selectedSortOption.set(event.target.value);
+		formationsStore.selectedSortOption = event.target.value;
 		applyFiltersAndNavigate({ resetPage: true });
 	}
 
 	function toggleSortOrder() {
-		selectedSortOrder.update((order) => (order === 'asc' ? 'desc' : 'asc'));
+		formationsStore.selectedSortOrder =
+			formationsStore.selectedSortOrder === 'asc' ? 'desc' : 'asc';
 		applyFiltersAndNavigate({ resetPage: true });
 	}
 	// Close dropdown on click outside
@@ -176,7 +169,7 @@
 		</div>
 		<button
 			class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md"
-			on:click={() => goto('/formations/create')}
+			onclick={() => goto('/formations/create')}
 		>
 			Create Formation
 		</button>
@@ -192,8 +185,8 @@
 					<input
 						id="search"
 						type="text"
-						bind:value={$searchQuery}
-						on:input={handleSearchInput}
+						bind:value={formationsStore.searchQuery}
+						oninput={handleSearchInput}
 						placeholder="Search formations..."
 						class="block w-full border border-gray-300 rounded-md py-2 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
 						aria-label="Search formations"
@@ -222,13 +215,13 @@
 				<span id="sort-label" class="block text-sm font-medium text-gray-700 mb-1">Sort</span>
 					<button
 						aria-labelledby="sort-label"
-						on:click={toggleSortOptions}
+						onclick={toggleSortOptions}
 						class="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-blue-500"
 					>
 					<span class="font-medium"
-						>{$selectedSortOption
-							? sortOptions.find((o) => o.value === $selectedSortOption)?.label
-							: 'Select Sort'} ({$selectedSortOrder === 'asc' ? 'Asc' : 'Desc'})</span
+						>{formationsStore.selectedSortOption
+							? sortOptions.find((o) => o.value === formationsStore.selectedSortOption)?.label
+							: 'Select Sort'} ({formationsStore.selectedSortOrder === 'asc' ? 'Asc' : 'Desc'})</span
 					>
 					<span
 						class="transform transition-transform duration-300"
@@ -244,8 +237,8 @@
 						<div class="flex flex-col space-y-2">
 							<select
 								class="p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-gray-200 w-full"
-								on:change={handleSortChange}
-								value={$selectedSortOption}
+								onchange={handleSortChange}
+								value={formationsStore.selectedSortOption}
 								aria-label="Sort by"
 								data-testid="sort-select"
 							>
@@ -255,11 +248,11 @@
 							</select>
 							<button
 								class="px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-300 w-full dark:text-gray-200"
-								on:click={toggleSortOrder}
+								onclick={toggleSortOrder}
 								aria-label="Toggle sort order"
 								data-testid="sort-order-toggle"
 							>
-								{$selectedSortOrder === 'asc' ? '↑ Ascending' : '↓ Descending'}
+								{formationsStore.selectedSortOrder === 'asc' ? '↑ Ascending' : '↓ Descending'}
 							</button>
 						</div>
 					</div>
@@ -274,11 +267,11 @@
 				{#each filterOptions.types as typeOption (typeOption)}
 					<button
 						class="px-3 py-1 text-sm rounded-full border transition-colors"
-						class:bg-blue-100={$selectedFormationType === typeOption}
-						class:border-blue-300={$selectedFormationType === typeOption}
-						class:text-blue-800={$selectedFormationType === typeOption}
-						class:border-gray-300={$selectedFormationType !== typeOption}
-						on:click={() => handleFormationTypeChange(typeOption)}
+						class:bg-blue-100={formationsStore.selectedFormationType === typeOption}
+						class:border-blue-300={formationsStore.selectedFormationType === typeOption}
+						class:text-blue-800={formationsStore.selectedFormationType === typeOption}
+						class:border-gray-300={formationsStore.selectedFormationType !== typeOption}
+						onclick={() => handleFormationTypeChange(typeOption)}
 						data-testid={`checkbox-control-${typeOption.toLowerCase()}`}
 					>
 						{typeOption.charAt(0).toUpperCase() + typeOption.slice(1)}
@@ -296,11 +289,11 @@
 					{#each filterOptions.tags as tag (tag)}
 						<button
 							class="px-3 py-1 text-sm rounded-full border transition-colors"
-							class:bg-blue-100={$selectedTags[tag]}
-							class:border-blue-300={$selectedTags[tag]}
-							class:text-blue-800={$selectedTags[tag]}
-							class:border-gray-300={!$selectedTags[tag]}
-							on:click={() => handleTagToggle(tag)}
+							class:bg-blue-100={formationsStore.selectedTags[tag]}
+							class:border-blue-300={formationsStore.selectedTags[tag]}
+							class:text-blue-800={formationsStore.selectedTags[tag]}
+							class:border-gray-300={!formationsStore.selectedTags[tag]}
+							onclick={() => handleTagToggle(tag)}
 							data-testid={`tag-${tag.toLowerCase()}`}
 						>
 							{tag}
@@ -312,7 +305,7 @@
 
 		<!-- Clear Filters Button -->
 		<div class="mt-4 flex justify-end">
-			<button class="text-sm text-blue-600 hover:text-blue-800" on:click={handleClearFilters}>
+			<button class="text-sm text-blue-600 hover:text-blue-800" onclick={handleClearFilters}>
 				Clear All Filters
 			</button>
 		</div>
@@ -324,7 +317,7 @@
 			<div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
 		</div>
 		<!-- Empty State -->
-	{:else if !$formations || $formations.length === 0}
+	{:else if formationsStore.formations.length === 0}
 		<div class="bg-white rounded-lg shadow-sm p-8 text-center">
 			<h3 class="text-xl font-medium text-gray-800 mb-2">No formations found</h3>
 			<p class="text-gray-600 mb-4">
@@ -332,7 +325,7 @@
 			</p>
 			<button
 				class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md"
-				on:click={() => goto('/formations/create')}
+				onclick={() => goto('/formations/create')}
 			>
 				Create Formation
 			</button>
@@ -340,8 +333,7 @@
 		<!-- Formations Grid -->
 	{:else}
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-			{#each $formations as formation (formation.id)}
-				<!-- Iterate over $formations -->
+			{#each formationsStore.formations as formation (formation.id)}
 				<a
 					href="/formations/{formation.id}"
 					data-testid="formation-card"
@@ -398,25 +390,25 @@
 		</div>
 
 		<!-- Pagination Controls -->
-		{#if $totalPages > 1}
+		{#if formationsStore.totalPages > 1}
 			<div
 				class="flex justify-center items-center mt-8 space-x-4"
 				data-testid="pagination-controls"
 			>
 				<button
-					on:click={prevPage}
-					disabled={$currentPage === 1 || isNavigating}
+					onclick={prevPage}
+					disabled={formationsStore.currentPage === 1 || isNavigating}
 					class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors duration-300"
 					data-testid="pagination-prev-button"
 				>
 					Previous
 				</button>
 				<span class="text-gray-700" data-testid="pagination-current-page"
-					>Page {$currentPage} of {$totalPages}</span
+					>Page {formationsStore.currentPage} of {formationsStore.totalPages}</span
 				>
 				<button
-					on:click={nextPage}
-					disabled={$currentPage === $totalPages || isNavigating}
+					onclick={nextPage}
+					disabled={formationsStore.currentPage === formationsStore.totalPages || isNavigating}
 					class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors duration-300"
 					data-testid="pagination-next-button"
 				>

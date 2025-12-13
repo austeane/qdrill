@@ -1,8 +1,7 @@
 <script>
-	import { createEventDispatcher, onMount } from 'svelte';
-	import { dev } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { toLocalISO } from '$lib/utils/date.js';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { Button } from '$lib/components/ui/button';
 	import Input from '$lib/components/ui/Input.svelte';
@@ -10,28 +9,24 @@
 	import Checkbox from '$lib/components/ui/Checkbox.svelte';
 	import Dialog from '$lib/components/ui/Dialog.svelte';
 
-	export let open = false;
-	export let season = null;
-	export let sections = [];
-	export let date = null;
-	export let teamId = '';
+	let { open = $bindable(false), season = null, sections = [], date = null, teamId = '', onSave, onClose } =
+		$props();
 
-	const dispatch = createEventDispatcher();
+	let loading = $state(false);
+	let selectedDate = $state(date || toLocalISO(new Date()));
+	let startTime = $state('18:00');
+	let seedDefaults = $state(true);
+	let practiceType = $state('regular');
+	let createAndEdit = $state(false);
 
-	let loading = false;
-	import { toLocalISO } from '$lib/utils/date.js';
-	let selectedDate = date || toLocalISO(new Date());
-	let startTime = '18:00';
-	let seedDefaults = true;
-	let practiceType = 'regular';
-	let createAndEdit = false;
+	const overlappingSections = $derived(getOverlappingSections(selectedDate));
 
-	$: overlappingSections = getOverlappingSections(selectedDate);
-
-	// Keep selectedDate in sync when parent updates the date while dialog is open
-	$: if (open && date && date !== selectedDate) {
-		selectedDate = date;
-	}
+	$effect(() => {
+		// Keep selectedDate in sync when parent updates the date while dialog is open
+		if (open && date && date !== selectedDate) {
+			selectedDate = date;
+		}
+	});
 
 	const practiceTypeOptions = [
 		{ value: 'regular', label: 'Regular Practice' },
@@ -100,20 +95,13 @@
 				}
 			});
 
-			console.log('Practice created:', {
-				responseId: practiceResponse?.id,
-				createAndEdit,
-				teamId,
-				navigateTo: createAndEdit ? `/teams/${teamId}/plans/${practiceResponse.id}/edit` : 'reload'
-			});
-
 			if (createAndEdit) {
 				// Navigate first, then close the dialog to avoid resetting createAndEdit
 				const editUrl = `/teams/${teamId}/plans/${practiceResponse.id}/edit`;
 				await goto(editUrl);
 				handleClose();
 			} else {
-				dispatch('save', practiceResponse);
+				onSave?.(practiceResponse);
 				handleClose();
 			}
 		} catch (error) {
@@ -130,7 +118,8 @@
 	}
 
 	function handleClose() {
-		dispatch('close');
+		open = false;
+		onClose?.();
 		resetForm();
 	}
 
@@ -162,19 +151,29 @@
 		});
 		return `${section.name} (${start} - ${end})`;
 	}
-
-	onMount(() => {
-		if (dev) {
-			console.log('[CreatePracticeDialog] mounted', { open, date, seasonId: season?.id });
-		}
-	});
 </script>
+
+{#snippet footer()}
+	<div class="flex justify-end gap-2">
+		<Button variant="ghost" onclick={handleClose} disabled={loading}>Cancel</Button>
+		<Button variant="primary" onclick={handleCreate} disabled={!selectedDate || loading}>
+			{#if loading}
+				Creating...
+			{:else if createAndEdit}
+				Create & Edit
+			{:else}
+				Create Practice
+			{/if}
+		</Button>
+	</div>
+{/snippet}
 
 <Dialog
 	bind:open
 	title="Create Practice"
 	description="Schedule a new practice for your team"
-	on:close={handleClose}
+	onClose={handleClose}
+	{footer}
 >
 	<div class="grid gap-4">
 		<Input
@@ -237,18 +236,5 @@
 				Creating practice for: <strong>{formatDate(selectedDate)}</strong>
 			</div>
 		{/if}
-	</div>
-
-	<div slot="footer" class="flex justify-end gap-2">
-		<Button variant="ghost" on:click={handleClose} disabled={loading}>Cancel</Button>
-		<Button variant="primary" on:click={handleCreate} disabled={!selectedDate || loading}>
-			{#if loading}
-				Creating...
-			{:else if createAndEdit}
-				Create & Edit
-			{:else}
-				Create Practice
-			{/if}
-		</Button>
 	</div>
 </Dialog>

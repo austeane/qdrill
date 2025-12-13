@@ -1,10 +1,5 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-
-	export let preview = null;
-	export let loading = false;
-
-	const dispatch = createEventDispatcher();
+	let { preview = null, loading = false, onGenerate, onCancel } = $props();
 
 	function formatDate(dateStr) {
 		const date = new Date(dateStr);
@@ -17,14 +12,12 @@
 	}
 
 	function handleGenerate() {
-		dispatch('generate');
+		onGenerate?.();
 	}
 
 	function handleCancel() {
-		dispatch('cancel');
+		onCancel?.();
 	}
-
-	$: groupedPreview = preview ? groupByMonth(preview.preview) : {};
 
 	function groupByMonth(dates) {
 		const groups = {};
@@ -43,6 +36,8 @@
 		});
 		return groups;
 	}
+
+	const groupedPreview = $derived(preview ? groupByMonth(preview.preview) : {});
 </script>
 
 {#if preview}
@@ -72,7 +67,7 @@
 						{monthData.label}
 					</div>
 					<div class="divide-y">
-						{#each monthData.dates as dateInfo (dateInfo.date.toISOString())}
+						{#each monthData.dates as dateInfo (new Date(dateInfo.date).toISOString())}
 							<div
 								class="px-4 py-2 flex items-center justify-between
                          {dateInfo.willCreate ? 'bg-white' : 'bg-gray-50'}"
@@ -110,7 +105,7 @@
 		<div class="flex justify-end space-x-2 pt-4 border-t">
 			<button
 				type="button"
-				on:click={handleCancel}
+				onclick={handleCancel}
 				disabled={loading}
 				class="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50"
 			>
@@ -118,7 +113,7 @@
 			</button>
 			<button
 				type="button"
-				on:click={handleGenerate}
+				onclick={handleGenerate}
 				disabled={loading || preview.willCreate === 0}
 				class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
 			>

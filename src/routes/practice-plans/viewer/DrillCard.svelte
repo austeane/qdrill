@@ -1,62 +1,62 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
 	import { sanitizeHtml } from '$lib/utils/sanitize.js';
 	import { getGroupColor } from '$lib/utils/groupColors.js';
 
-	export let item;
-	export let isInParallelGroup = false;
-	export let editable = false;
-	export let startTime = null;
+	let {
+		item,
+		isInParallelGroup = false,
+		editable = false,
+		startTime = null,
+		onEdit,
+		onDurationChange
+	} = $props();
 
-	const dispatch = createEventDispatcher();
-	let isExpanded = false;
+	let isExpanded = $state(false);
 
-	$: {
-		console.log('[DrillCard] Full item data:', item);
-		console.log('[DrillCard] Drill data:', item?.drill);
-	}
+	const normalizedItem = $derived.by(() => {
+		const baseItem = item ?? {};
+		const drill = baseItem.drill ?? baseItem;
 
-	$: normalizedItem = {
-		...item,
-		name: item?.name || (item?.type === 'break' ? 'Break' : item?.drill?.name || 'Unnamed Item'),
-		duration: item?.selected_duration || item?.duration || item?.drill?.duration || 15,
-		description: item?.brief_description || item?.drill?.brief_description || '',
-		detailedDescription: item?.detailed_description || item?.drill?.detailed_description || '',
-		skillLevel: item?.skill_level || item?.drill?.skill_level || [],
-		skillsFocusedOn: item?.skills_focused_on || item?.drill?.skills_focused_on || [],
-		positionsFocusedOn: item?.positions_focused_on || item?.drill?.positions_focused_on || [],
-		complexity: item?.complexity || item?.drill?.complexity || '',
-		suggestedLengthMin: item?.suggested_length_min ?? item?.drill?.suggested_length_min ?? null,
-		suggestedLengthMax: item?.suggested_length_max ?? item?.drill?.suggested_length_max ?? null,
-		numberOfPeopleMin: item?.number_of_people_min || item?.drill?.number_of_people_min,
-		numberOfPeopleMax: item?.number_of_people_max || item?.drill?.number_of_people_max,
-		drillType: item?.drill_type || item?.drill?.drill_type || [],
-		drill: item?.drill || item,
-		hasDiagrams: item?.drill?.diagrams?.length > 0 || item?.diagrams?.length > 0,
-		hasVideo: Boolean(item?.drill?.video_link || item?.video_link),
-		isBreak: item?.type === 'break'
-	};
-
-	$: {
-		console.log('[DrillCard] Normalized item:', normalizedItem);
-	}
+		return {
+			...baseItem,
+			name:
+				baseItem.name ||
+				(baseItem.type === 'break' ? 'Break' : baseItem.drill?.name || 'Unnamed Item'),
+			duration: baseItem.selected_duration || baseItem.duration || baseItem.drill?.duration || 15,
+			description: baseItem.brief_description || baseItem.drill?.brief_description || '',
+			detailedDescription:
+				baseItem.detailed_description || baseItem.drill?.detailed_description || '',
+			skillLevel: baseItem.skill_level || baseItem.drill?.skill_level || [],
+			skillsFocusedOn: baseItem.skills_focused_on || baseItem.drill?.skills_focused_on || [],
+			positionsFocusedOn:
+				baseItem.positions_focused_on || baseItem.drill?.positions_focused_on || [],
+			complexity: baseItem.complexity || baseItem.drill?.complexity || '',
+			suggestedLengthMin:
+				baseItem.suggested_length_min ?? baseItem.drill?.suggested_length_min ?? null,
+			suggestedLengthMax:
+				baseItem.suggested_length_max ?? baseItem.drill?.suggested_length_max ?? null,
+			numberOfPeopleMin: baseItem.number_of_people_min || baseItem.drill?.number_of_people_min,
+			numberOfPeopleMax: baseItem.number_of_people_max || baseItem.drill?.number_of_people_max,
+			drillType: baseItem.drill_type || baseItem.drill?.drill_type || [],
+			drill,
+			hasDiagrams: (baseItem.drill?.diagrams?.length ?? 0) > 0 || (baseItem.diagrams?.length ?? 0) > 0,
+			hasVideo: Boolean(baseItem.drill?.video_link || baseItem.video_link),
+			isBreak: baseItem.type === 'break'
+		};
+	});
 
 	function toggleExpand() {
 		isExpanded = !isExpanded;
-		console.log('[DrillCard] Toggled expansion:', isExpanded);
 	}
 
-	function _handleEdit() {
-		dispatch('edit', { item });
+	function handleEdit() {
+		onEdit?.({ item });
 	}
 
 	function handleDurationChange(newDuration) {
-		dispatch('durationChange', {
-			itemId: item.id,
-			duration: parseInt(newDuration)
-		});
+		onDurationChange?.({ itemId: item?.id, duration: parseInt(newDuration) });
 	}
 
 	function handleDurationInput(event) {
@@ -92,10 +92,10 @@
 >
 	<div
 		class="card-header"
-		on:click={toggleExpand}
+		onclick={toggleExpand}
 		role="button"
 		tabindex="0"
-		on:keydown={(e) => e.key === 'Enter' && toggleExpand()}
+		onkeydown={(e) => e.key === 'Enter' && toggleExpand()}
 	>
 		<!-- Main Info -->
 		<div class="header-content">
@@ -138,15 +138,15 @@
 			<!-- Duration Control -->
 			<div class="duration-control">
 				{#if editable}
-					<input
-						type="number"
-						min="1"
-						class="duration-input"
-						value={normalizedItem.duration}
-						on:input={handleDurationInput}
-						on:blur={handleDurationInput}
-						on:click|stopPropagation={() => {}}
-					/>
+						<input
+							type="number"
+							min="1"
+							class="duration-input"
+							value={normalizedItem.duration}
+							oninput={handleDurationInput}
+							onblur={handleDurationInput}
+							onclick={(e) => e.stopPropagation()}
+						/>
 					<span class="duration-label">min</span>
 				{:else}
 					<div class="flex flex-col items-end">

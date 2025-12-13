@@ -3,14 +3,16 @@
 	import { Search, Filter } from 'lucide-svelte';
 	import { formatInTz } from '$lib/utils/formatInTz.js';
 
-	export let data;
-	const { team, practicePlans, userRole } = data;
+	let { data } = $props();
+	const team = $derived(data.team);
+	const practicePlans = $derived(data.practicePlans || []);
+	const userRole = $derived(data.userRole);
 
-	$: canCreatePractice = userRole === 'admin' || userRole === 'coach';
+	const canCreatePractice = $derived(userRole === 'admin' || userRole === 'coach');
 
-	let searchQuery = '';
-	let selectedType = 'all';
-	let dateFilter = 'all';
+	let searchQuery = $state('');
+	let selectedType = $state('all');
+	let dateFilter = $state('all');
 
 	const practiceTypes = [
 		{ value: 'all', label: 'All Types' },
@@ -28,7 +30,7 @@
 		{ value: 'this-month', label: 'This Month' }
 	];
 
-	$: filteredPlans = filterPlans(practicePlans, searchQuery, selectedType, dateFilter);
+	const filteredPlans = $derived(filterPlans(practicePlans, searchQuery, selectedType, dateFilter));
 
 	function filterPlans(plans, search, type, date) {
 		let filtered = [...plans];
@@ -189,7 +191,7 @@
 		</div>
 
 		{#if selectedType !== 'all' || dateFilter !== 'all' || searchQuery}
-			<button class="clear-filters" on:click={clearFilters}>
+			<button class="clear-filters" onclick={clearFilters}>
 				<Filter size={16} />
 				Clear Filters
 			</button>
@@ -283,7 +285,7 @@
 			</svg>
 			<h2>No matching practice plans</h2>
 			<p>Try adjusting your search or filters</p>
-			<button class="btn btn-secondary" on:click={clearFilters}> Clear Filters </button>
+			<button class="btn btn-secondary" onclick={clearFilters}> Clear Filters </button>
 		</div>
 	{:else}
 		<div class="empty-state">

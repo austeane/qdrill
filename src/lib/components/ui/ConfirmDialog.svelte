@@ -1,39 +1,42 @@
 <script>
 	import Dialog from './Dialog.svelte';
-	import { createEventDispatcher } from 'svelte';
 
-	export let open = false;
-	export let title = 'Confirm Action';
-	export let message = 'Are you sure you want to proceed?';
-	export let confirmText = 'Confirm';
-	export let cancelText = 'Cancel';
-	export let confirmVariant = 'destructive'; // 'primary', 'secondary', 'destructive'
-	export let loading = false;
-
-	const dispatch = createEventDispatcher();
+	let {
+		open = $bindable(false),
+		title = 'Confirm Action',
+		message = 'Are you sure you want to proceed?',
+		confirmText = 'Confirm',
+		cancelText = 'Cancel',
+		confirmVariant = 'destructive', // 'primary'|'secondary'|'destructive'
+		loading = false,
+		onConfirm,
+		onCancel
+	} = $props();
 
 	function handleConfirm() {
-		dispatch('confirm');
+		onConfirm?.();
 	}
 
 	function handleCancel() {
-		dispatch('cancel');
 		open = false;
+		onCancel?.();
 	}
 </script>
 
-<Dialog bind:open {title} description="">
-	<div class="confirm-content">
-		<p class="confirm-message">{message}</p>
-	</div>
-
-	<div slot="footer" class="confirm-footer">
-		<button class="button button-secondary" on:click={handleCancel} disabled={loading}>
+{#snippet footer()}
+	<div class="confirm-footer">
+		<button class="button button-secondary" onclick={handleCancel} disabled={loading}>
 			{cancelText}
 		</button>
-		<button class="button button-{confirmVariant}" on:click={handleConfirm} disabled={loading}>
+		<button class="button button-{confirmVariant}" onclick={handleConfirm} disabled={loading}>
 			{loading ? 'Processing...' : confirmText}
 		</button>
+	</div>
+{/snippet}
+
+<Dialog bind:open {title} description="" {footer}>
+	<div class="confirm-content">
+		<p class="confirm-message">{message}</p>
 	</div>
 </Dialog>
 

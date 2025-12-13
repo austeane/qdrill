@@ -1,10 +1,12 @@
 <script>
-	export let lines = 3;
-	export let showAvatar = false;
-	export let showButton = false;
-	export let showCard = false;
-	export let className = '';
-	export let height = 'auto';
+	let {
+		lines = 3,
+		showAvatar = false,
+		showButton = false,
+		showCard = false,
+		className = '',
+		height = 'auto'
+	} = $props();
 </script>
 
 <div class="animate-pulse {className}" style="height: {height}">

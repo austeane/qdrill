@@ -1,12 +1,15 @@
 <script>
 	import { Check } from 'lucide-svelte';
 
-	export let id = '';
-	export let label = '';
-	export let checked = false;
-	export let disabled = false;
-	export let error = '';
-	export let description = '';
+	let {
+		id = '',
+		label = '',
+		checked = $bindable(false),
+		disabled = false,
+		error = '',
+		description = '',
+		...restProps
+	} = $props();
 </script>
 
 <div class="checkbox-wrapper">
@@ -20,7 +23,7 @@
 			class:error
 			aria-invalid={!!error}
 			aria-describedby={error ? `${id}-error` : description ? `${id}-description` : undefined}
-			{...$$restProps}
+			{...restProps}
 		/>
 
 		<span class="checkbox-box">

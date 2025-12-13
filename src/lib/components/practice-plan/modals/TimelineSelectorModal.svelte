@@ -1,60 +1,80 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-
-	export let show = false;
-	export let selectedTimelines;
-	export let parallelTimelines = {};
-	export let timelineColors = {};
-	export let getTimelineColor = (_timeline) => 'bg-gray-500';
-	export let getTimelineName = (timeline) => timeline;
-	export let customTimelineNames;
-
-	const dispatch = createEventDispatcher();
+	let {
+		show = $bindable(false),
+		selectedTimelines = new Set(),
+		parallelTimelines = {},
+		timelineColors = {},
+		getTimelineColor = (_timeline) => 'bg-gray-500',
+		getTimelineName = (timeline) => timeline,
+		customTimelineNames = {},
+		onClose,
+		onSaveTimelines,
+		onUpdateTimelineName,
+		onUpdateTimelineColor
+	} = $props();
 
 	function close() {
 		show = false;
-		dispatch('close');
+		onClose?.();
 	}
 
 	function save() {
-		dispatch('saveTimelines', {
-			selected: Array.from($selectedTimelines || []),
-			customNames: $customTimelineNames || {}
+		onSaveTimelines?.({
+			selected: Array.from(selectedTimelines || []),
+			customNames: customTimelineNames || {}
 		});
 		close();
 	}
 
 	// Track locally which timeline is being configured
-	let activeTimeline = null;
-	let showColorPicker = false;
-	let showNameEditor = false;
-	let editingName = '';
+	let activeTimeline = $state(null);
+	let showColorPicker = $state(false);
+	let showNameEditor = $state(false);
+	let editingName = $state('');
 
-	// Subscribe to customTimelineNames to make the component reactive to changes
-	// Use a local variable for the custom timeline names store
-	let timelineNamesStore;
-	$: timelineNamesStore = $customTimelineNames;
+	let currentTimelineColors = $state({});
+	let wasOpen = $state(false);
 
-	// Force component updates when customTimelineNames changes
-	$: console.log('[DEBUG] customTimelineNames changed:', timelineNamesStore);
+	$effect(() => {
+		if (show && !wasOpen) {
+			activeTimeline = null;
+			showColorPicker = false;
+			showNameEditor = false;
+			editingName = '';
 
-	// Track if we need to refresh timeline names
-	let timelineNamesCache = {};
-
-	// Refresh timeline names whenever show changes to true (modal opens)
-	$: if (show) {
-		console.log('[DEBUG] Modal opened, refreshing timeline names from store');
-		// Force a refresh of the parallelTimelines when the modal opens
-		for (const [key, _] of Object.entries(parallelTimelines)) {
-			// Update the name in parallelTimelines from custom or default
-			const currentName = getTimelineName(key);
-			parallelTimelines[key] = {
-				...parallelTimelines[key],
-				name: currentName
-			};
-			// Update our cache for comparison
-			timelineNamesCache[key] = currentName;
+			const nextColors = {};
+			for (const key of Object.keys(parallelTimelines || {})) {
+				nextColors[key] =
+					parallelTimelines?.[key]?.color || getTimelineColor(key) || 'bg-gray-500';
+			}
+			currentTimelineColors = nextColors;
 		}
+
+		wasOpen = show;
+	});
+
+	function timelineName(timeline) {
+		return (
+			customTimelineNames?.[timeline] ||
+			parallelTimelines?.[timeline]?.name ||
+			getTimelineName(timeline) ||
+			timeline
+		);
+	}
+
+	function timelineColor(timeline) {
+		return (
+			currentTimelineColors?.[timeline] ||
+			parallelTimelines?.[timeline]?.color ||
+			getTimelineColor(timeline) ||
+			'bg-gray-500'
+		);
+	}
+
+	function toggleTimelineSelection(timeline, checked) {
+		if (!selectedTimelines) return;
+		if (checked) selectedTimelines.add(timeline);
+		else selectedTimelines.delete(timeline);
 	}
 
 	function openColorPicker(timeline) {
@@ -65,47 +85,36 @@
 
 	function openNameEditor(timeline) {
 		activeTimeline = timeline;
-
-		// Always get the freshest name from the store using getTimelineName
-		// This ensures we get current custom names from customTimelineNames store
-		editingName = getTimelineName(timeline);
-		console.log(`[DEBUG] Opening name editor for ${timeline} with current name: ${editingName}`);
+		editingName = timelineName(timeline);
 
 		showNameEditor = true;
 		showColorPicker = false;
 	}
 
 	function saveTimelineName() {
-		if (activeTimeline && editingName) {
-			dispatch('updateTimelineName', {
-				timeline: activeTimeline,
-				name: editingName
-			});
-			showNameEditor = false;
+		if (!activeTimeline) return;
+		const name = editingName?.trim();
+		if (!name) return;
 
-			// Update the cached name locally for display
-			timelineNamesCache[activeTimeline] = editingName;
-
-			// Force local refresh
-			setTimeout(() => {
-				timelineNamesStore = { ...timelineNamesStore };
-				activeTimeline = null;
-			}, 50);
-		}
+		onUpdateTimelineName?.({ timeline: activeTimeline, name });
+		showNameEditor = false;
+		activeTimeline = null;
 	}
 
 	function selectColor(color) {
-		if (activeTimeline) {
-			if (Object.keys(timelineColors).includes(color)) {
-				dispatch('updateTimelineColor', { timeline: activeTimeline, color });
-			} else {
-				console.warn(
-					`Invalid color class "${color}" selected in TimelineSelectorModal. Must be one of: ${Object.keys(timelineColors).join(', ')}`
-				);
-			}
-			showColorPicker = false;
-			activeTimeline = null;
+		if (!activeTimeline) return;
+
+		if (Object.keys(timelineColors).includes(color)) {
+			onUpdateTimelineColor?.({ timeline: activeTimeline, color });
+			currentTimelineColors = { ...currentTimelineColors, [activeTimeline]: color };
+		} else {
+			console.warn(
+				`Invalid color class "${color}" selected in TimelineSelectorModal. Must be one of: ${Object.keys(timelineColors).join(', ')}`
+			);
 		}
+
+		showColorPicker = false;
+		activeTimeline = null;
 	}
 </script>
 
@@ -116,7 +125,7 @@
 		aria-modal="true"
 		aria-labelledby="timeline-selector-title"
 		tabindex="-1"
-		on:keydown={(e) => e.key === 'Escape' && close()}
+		onkeydown={(e) => e.key === 'Escape' && close()}
 	>
 		<div class="relative top-20 mx-auto p-5 border w-[32rem] shadow-lg rounded-md bg-white">
 			<div class="mt-3">
@@ -132,43 +141,29 @@
 							<label class="flex items-center space-x-3 flex-grow cursor-pointer">
 								<input
 									type="checkbox"
-									checked={$selectedTimelines.has(key)}
-									on:change={(e) => {
-										if (e.target.checked) {
-											$selectedTimelines.add(key);
-										} else {
-											$selectedTimelines.delete(key);
-										}
-										// Trigger reactivity by reassigning
-										$selectedTimelines = $selectedTimelines;
-										console.log(
-											'[DEBUG] Global selectedTimelines updated:',
-											Array.from($selectedTimelines)
-										);
-									}}
+									checked={selectedTimelines.has(key)}
+									onchange={(e) => toggleTimelineSelection(key, e.currentTarget.checked)}
 									class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
 								/>
-								<span class="text-gray-700"
-									>{timelineNamesStore ? getTimelineName(key) : parallelTimelines[key].name}</span
-								>
+								<span class="text-gray-700">{timelineName(key)}</span>
 							</label>
 
 							<!-- Color preview and edit buttons -->
-							{#if $selectedTimelines.has(key)}
+							{#if selectedTimelines.has(key)}
 								<div class="flex items-center space-x-2">
-									<div class={`w-6 h-6 rounded ${getTimelineColor(key)}`}></div>
+									<div class={`w-6 h-6 rounded ${timelineColor(key)}`}></div>
 									<div class="flex space-x-2">
 										<button
 											type="button"
-											on:click={() => openNameEditor(key)}
+											onclick={() => openNameEditor(key)}
 											class="text-sm text-blue-600 hover:text-blue-800"
-											title={`Rename from '${timelineNamesStore ? getTimelineName(key) : parallelTimelines[key].name}'`}
+											title={`Rename from '${timelineName(key)}'`}
 										>
 											Rename
 										</button>
 										<button
 											type="button"
-											on:click={() => openColorPicker(key)}
+											onclick={() => openColorPicker(key)}
 											class="text-sm text-blue-600 hover:text-blue-800"
 											title="Change Color"
 										>
@@ -185,11 +180,7 @@
 				{#if showNameEditor}
 					<div class="mt-4 p-3 border rounded bg-gray-50">
 						<h5 class="text-sm font-medium mb-2">
-							Rename Timeline: {activeTimeline
-								? timelineNamesStore
-									? getTimelineName(activeTimeline)
-									: parallelTimelines[activeTimeline]?.name || activeTimeline
-								: ''}
+							Rename Timeline: {activeTimeline ? timelineName(activeTimeline) : ''}
 						</h5>
 						<div class="flex items-center">
 							<input
@@ -200,7 +191,7 @@
 							/>
 							<button
 								type="button"
-								on:click={saveTimelineName}
+								onclick={saveTimelineName}
 								class="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
 							>
 								Save
@@ -213,11 +204,7 @@
 				{#if showColorPicker}
 					<div class="mt-4 p-3 border rounded bg-gray-50">
 						<h5 class="text-sm font-medium mb-2">
-							Select Color for {activeTimeline
-								? timelineNamesStore
-									? getTimelineName(activeTimeline)
-									: parallelTimelines[activeTimeline]?.name || activeTimeline
-								: ''} Timeline
+							Select Color for {activeTimeline ? timelineName(activeTimeline) : ''} Timeline
 						</h5>
 						<div class="grid grid-cols-5 gap-2">
 							{#each Object.entries(timelineColors) as [colorClass, colorName] (colorClass)}
@@ -225,7 +212,7 @@
 									type="button"
 									class={`w-8 h-8 rounded cursor-pointer hover:opacity-80 ${colorClass}`}
 									title={colorName}
-									on:click={() => selectColor(colorClass)}
+									onclick={() => selectColor(colorClass)}
 								>
 								</button>
 							{/each}
@@ -237,7 +224,7 @@
 					<button
 						type="button"
 						class="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
-						on:click={close}
+						onclick={close}
 						aria-label="Cancel"
 					>
 						Cancel
@@ -245,7 +232,7 @@
 					<button
 						type="button"
 						class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-						on:click={save}
+						onclick={save}
 						aria-label="Save"
 					>
 						Save

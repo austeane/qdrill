@@ -3,9 +3,9 @@
 	import ExcalidrawRenderer from '$lib/components/ExcalidrawRenderer.svelte';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
-	let isMigrating = false;
-	let migrationResult = null;
-	let testError = null;
+	let isMigrating = $state(false);
+	let migrationResult = $state(null);
+	let testError = $state(null);
 
 	async function migrateDiagrams() {
 		if (
@@ -152,7 +152,7 @@
 				Test the migration with a single diagram before running it on all diagrams.
 			</p>
 			<button
-				on:click={testMigration}
+				onclick={testMigration}
 				class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
 			>
 				Test Migration
@@ -169,7 +169,7 @@
 				sure to backup your database before proceeding.
 			</p>
 			<button
-				on:click={migrateDiagrams}
+				onclick={migrateDiagrams}
 				disabled={isMigrating}
 				class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
 			>

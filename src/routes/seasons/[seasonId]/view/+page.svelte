@@ -1,9 +1,12 @@
 <script>
 	import SeasonTimelineViewer from '$lib/components/season/SeasonTimelineViewer.svelte';
 
-	export let data;
-
-	$: ({ season, practices, markers, sections, _isPublicView, icsUrl } = data);
+	let { data } = $props();
+	const season = $derived(data.season);
+	const practices = $derived(data.practices ?? []);
+	const markers = $derived(data.markers ?? []);
+	const sections = $derived(data.sections ?? []);
+	const icsUrl = $derived(data.icsUrl);
 
 	function downloadIcs() {
 		window.location.href = icsUrl;
@@ -39,7 +42,7 @@
 				<p class="text-xs text-blue-600 mt-1">This is a read-only view of the season schedule</p>
 			</div>
 			<button
-				on:click={downloadIcs}
+				onclick={downloadIcs}
 				class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
 			>
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

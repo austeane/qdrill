@@ -3,7 +3,7 @@
 <script>
 	import { goto } from '$app/navigation';
 	import Spinner from '$lib/components/Spinner.svelte';
-	let isNavigating = false;
+	let isNavigating = $state(false);
 
 	async function navigateToWizard() {
 		isNavigating = true;
@@ -38,7 +38,7 @@
 			</p>
 			<div class="flex flex-col sm:flex-row sm:flex-wrap gap-4">
 				<button
-					on:click={navigateToWizard}
+					onclick={navigateToWizard}
 					disabled={isNavigating}
 					class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full sm:w-auto text-center relative"
 				>

@@ -1,9 +1,8 @@
 <script>
 	import PracticePlanForm from '../../PracticePlanForm.svelte';
 
-	export let data;
-	$: ({ practicePlan } = data);
-	$: console.log('[Edit Page] Practice Plan Data:', practicePlan);
+	let { data } = $props();
+	const practicePlan = $derived(data?.practicePlan);
 </script>
 
 <section class="container mx-auto p-4">

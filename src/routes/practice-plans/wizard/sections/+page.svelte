@@ -44,7 +44,7 @@
 	];
 
 	// Custom section name input
-	let customSectionName = '';
+	let customSectionName = $state('');
 
 	// Handle adding a predefined section
 	function addSection(sectionOption) {
@@ -52,15 +52,12 @@
 		addStoreSection(); // Adds a generic section
 
 		// Update the last added section with the predefined details
-		sectionsStore.update((current) => {
-			const lastSectionIndex = current.length - 1;
-			if (lastSectionIndex >= 0) {
-				// We don't store description or icon in the main store, only name
-				current[lastSectionIndex].name = sectionOption.name;
-				// Optionally add default goals or notes if needed based on sectionOption
-			}
-			return current;
-		});
+		const lastSection = sectionsStore[sectionsStore.length - 1];
+		if (lastSection) {
+			// We don't store description or icon in the main store, only name
+			lastSection.name = sectionOption.name;
+			// Optionally add default goals or notes if needed based on sectionOption
+		}
 		// scheduleAutoSave(); // Removed
 	}
 
@@ -72,13 +69,8 @@
 		addStoreSection(); // Adds a generic section
 
 		// Update the last added section with the custom name
-		sectionsStore.update((current) => {
-			const lastSectionIndex = current.length - 1;
-			if (lastSectionIndex >= 0) {
-				current[lastSectionIndex].name = customSectionName;
-			}
-			return current;
-		});
+		const lastSection = sectionsStore[sectionsStore.length - 1];
+		if (lastSection) lastSection.name = customSectionName;
 
 		customSectionName = '';
 		// scheduleAutoSave(); // Removed
@@ -104,12 +96,13 @@
 		const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'));
 		if (sourceIndex === targetIndex) return;
 
-		sectionsStore.update((current) => {
-			const updated = [...current];
-			const [removed] = updated.splice(sourceIndex, 1);
-			updated.splice(targetIndex, 0, removed);
-			// Update order property for consistency
-			return updated.map((section, i) => ({ ...section, order: i }));
+		const [removed] = sectionsStore.splice(sourceIndex, 1);
+		if (!removed) return;
+		sectionsStore.splice(targetIndex, 0, removed);
+
+		// Update order property for consistency
+		sectionsStore.forEach((section, i) => {
+			section.order = i;
 		});
 		// scheduleAutoSave(); // Removed
 	}
@@ -118,29 +111,19 @@
 	// These assume direct binding works or call functions in sectionsStore if needed
 
 	function addGoal(sectionId) {
-		sectionsStore.update((current) => {
-			const sectionIndex = current.findIndex((s) => s.id === sectionId);
-			if (sectionIndex > -1) {
-				// Ensure goals array exists
-				if (!Array.isArray(current[sectionIndex].goals)) {
-					current[sectionIndex].goals = [];
-				}
-				current[sectionIndex].goals.push(''); // Add empty goal
-			}
-			return current;
-		});
+		const section = sectionsStore.find((s) => s.id === sectionId);
+		if (!section) return;
+		if (!Array.isArray(section.goals)) section.goals = [];
+		section.goals.push(''); // Add empty goal
 		// Call scheduleAutoSave() if needed for other wizard state changes
 		// Autosave is handled globally or potentially removed if draft saving covers it
 	}
 
 	function removeGoal(sectionId, goalIndex) {
-		sectionsStore.update((current) => {
-			const sectionIndex = current.findIndex((s) => s.id === sectionId);
-			if (sectionIndex > -1 && current[sectionIndex].goals?.[goalIndex] !== undefined) {
-				current[sectionIndex].goals.splice(goalIndex, 1);
-			}
-			return current;
-		});
+		const section = sectionsStore.find((s) => s.id === sectionId);
+		if (!section || !Array.isArray(section.goals)) return;
+		if (section.goals[goalIndex] === undefined) return;
+		section.goals.splice(goalIndex, 1);
 		// Call scheduleAutoSave() if needed for other wizard state changes
 		// Autosave is handled globally or potentially removed if draft saving covers it
 	}
@@ -166,20 +149,20 @@
 	<div class="space-y-4">
 		<h3 class="text-sm font-medium text-gray-700">Plan Sections</h3>
 		<h3 class="text-lg font-medium text-gray-900 mb-4">Current Sections</h3>
-		{#if $sectionsStore.length === 0}
+		{#if sectionsStore.length === 0}
 			<p class="text-sm text-gray-500 italic">No sections added yet. Use the options below.</p>
 		{:else}
 			<div role="list" class="space-y-4">
-				{#each $sectionsStore as section (section.id)}
-					{@const sectionIndex = $sectionsStore.findIndex((s) => s.id === section.id)}
+				{#each sectionsStore as section (section.id)}
+					{@const sectionIndex = sectionsStore.findIndex((s) => s.id === section.id)}
 					<!-- Find index for drag/drop -->
 					<div
 						role="listitem"
 						class="flex flex-col space-y-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
 						draggable="true"
-						on:dragstart={(e) => handleDragStart(e, sectionIndex)}
-						on:dragover={handleDragOver}
-						on:drop={(e) => handleDrop(e, sectionIndex)}
+						ondragstart={(e) => handleDragStart(e, sectionIndex)}
+						ondragover={handleDragOver}
+						ondrop={(e) => handleDrop(e, sectionIndex)}
 					>
 						<div class="flex items-start justify-between">
 							<div class="flex items-center space-x-3">
@@ -199,7 +182,7 @@
 							</div>
 							<button
 								type="button"
-								on:click={() => removeSection(section.id)}
+								onclick={() => removeSection(section.id)}
 								class="p-1 text-gray-400 hover:text-red-500"
 								aria-label="Remove section"
 							>
@@ -240,7 +223,7 @@
 											/>
 											<button
 												type="button"
-												on:click={() => removeGoal(section.id, goalIndex)}
+												onclick={() => removeGoal(section.id, goalIndex)}
 												class="text-xs text-red-600 hover:text-red-800"
 												aria-label="Remove goal"
 											>
@@ -253,7 +236,7 @@
 								{/if}
 								<button
 									type="button"
-									on:click={() => addGoal(section.id)}
+									onclick={() => addGoal(section.id)}
 									class="text-xs text-blue-600 hover:text-blue-800"
 								>
 									+ Add Goal
@@ -288,7 +271,7 @@
 			{#each sectionOptions as option (option.name)}
 				<button
 					type="button"
-					on:click={() => addSection(option)}
+					onclick={() => addSection(option)}
 					class="relative flex items-center space-x-3 p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-left"
 				>
 					<span class="text-xl flex-shrink-0">{option.icon}</span>
@@ -314,7 +297,7 @@
 			/>
 			<button
 				type="button"
-				on:click={addCustomSection}
+				onclick={addCustomSection}
 				disabled={!customSectionName.trim()}
 				class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
 			>

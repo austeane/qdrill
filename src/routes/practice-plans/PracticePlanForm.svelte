@@ -2,22 +2,21 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { enhance } from '$app/forms'; // Import enhance
 	import { cart } from '$lib/stores/cartStore';
-	import { undo, redo, canUndo, canRedo, initializeHistory } from '$lib/stores/historyStore';
-	import { get } from 'svelte/store'; // Import get
+	import { undo, redo, getCanUndo, getCanRedo, initializeHistory } from '$lib/stores/historyStore';
 
 	// Import NEW stores and utils
 	import {
-		visibility,
-		isEditableByOthers,
+		practicePlanMetadataStore,
 		initializeForm, // Keep initializeForm for setting initial state
 		validateMetadataForm
 	} from '$lib/stores/practicePlanMetadataStore';
 
 	import {
 		sections,
+		setSections,
 		initializeSections,
 		initializeTimelinesFromPlan,
 		getTimelineName,
@@ -49,77 +48,81 @@
 	import { Button } from '$lib/components/ui/button';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import { practicePlanAuthHandler } from '$lib/utils/actions/practicePlanAuthHandler.js';
-	export let practicePlan = null;
-	export let mode = practicePlan ? 'edit' : 'create';
-	export let skillOptions = [];
-	export let focusAreaOptions = [];
+
+	let {
+		practicePlan = null,
+		mode = undefined,
+		skillOptions = [],
+		focusAreaOptions = []
+	} = $props();
+
+	const effectiveMode = $derived(mode ?? (practicePlan ? 'edit' : 'create'));
+	const canUndo = $derived(getCanUndo());
+	const canRedo = $derived(getCanRedo());
 
 	// UI state
-	let showDrillSearch = false;
-	let showTimelineSelector = false;
-	let selectedSectionForDrill = null;
-	let submitting = false; // State for progressive enhancement
+	let showDrillSearch = $state(false);
+	let showTimelineSelector = $state(false);
+	let selectedSectionForDrill = $state(null);
+	let submitting = $state(false); // State for progressive enhancement
 
 	// Initialize the form when practice plan or pending data is provided
 	// NOTE: Pending plan data logic might need re-evaluation after store refactor.
 	// The `load` function in `create/+page.server.js` was removed.
 	// For now, focus on initializing from `practicePlan` prop (for edit).
-	$: {
+	$effect(() => {
 		// Only initialize from practicePlan prop (edit mode)
-		if (practicePlan) {
-			console.log('[PracticePlanForm] Initializing with EXISTING plan data:', practicePlan);
-			initializeForm(practicePlan);
-			initializeSections(practicePlan);
-			initializeHistory(); // Initialize history for existing plan too
-		} else {
-			// If creating a new plan (practicePlan is null), ensure form is reset
-			// This might happen if navigating back/forth
-		}
-	}
+		if (!practicePlan) return;
+
+		console.log('[PracticePlanForm] Initializing with EXISTING plan data:', practicePlan);
+		initializeForm(practicePlan);
+		initializeSections(practicePlan);
+		initializeHistory(); // Initialize history for existing plan too
+	});
 
 	// Update visibility based on user session
-	$: {
-		if (!$page.data.session) {
-			visibility.set('public');
-			isEditableByOthers.set(true);
-		}
-	}
+	$effect(() => {
+		if (page.data.session) return;
+
+		practicePlanMetadataStore.visibility = 'public';
+		practicePlanMetadataStore.isEditableByOthers = true;
+	});
 
 	// Handle modal controls
-	function handleOpenDrillSearch(event) {
-		selectedSectionForDrill = event.detail.sectionId;
+	function handleOpenDrillSearch(detail) {
+		selectedSectionForDrill = detail.sectionId;
 		showDrillSearch = true;
 	}
 
-	function handleOpenTimelineSelector(event) {
-		const { sectionId, parallelGroupId } = event.detail;
+	function handleOpenTimelineSelector(detail) {
+		const { sectionId, parallelGroupId } = detail;
 		if (handleTimelineSelect(sectionId, parallelGroupId)) {
 			showTimelineSelector = true;
 		}
 	}
 
-	function handleAddDrillEvent(event) {
-		const { drill, sectionId } = event.detail;
+	function handleAddDrillEvent(detail) {
+		const { drill, sectionId } = detail;
 		addDrillToPlan(drill, sectionId);
 	}
 
-	function handleAddBreakEvent(event) {
-		const { sectionId } = event.detail;
+	function handleAddBreakEvent(detail) {
+		const { sectionId } = detail;
 		addBreak(sectionId);
 	}
 
-	function handleAddOneOffEvent(event) {
-		const { sectionId, name } = event.detail;
+	function handleAddOneOffEvent(detail) {
+		const { sectionId, name } = detail;
 		addOneOffDrill(sectionId, name);
 	}
 
 	function handleUpdateTimelineNameEvent(event) {
-		const { timeline, name } = event.detail;
+		const { timeline, name } = event;
 		updateTimelineName(timeline, name);
 	}
 
 	function handleUpdateTimelineColorEvent(event) {
-		const { timeline, color } = event.detail;
+		const { timeline, color } = event;
 		updateTimelineColor(timeline, color);
 	}
 
@@ -141,8 +144,8 @@
 
 		// Removed pendingPlanData logic
 		if (!practicePlan) {
-			if ($cart.length > 0) {
-				const cartItems = $cart.map((drill) => ({
+			if (cart.drills.length > 0) {
+				const cartItems = cart.drills.map((drill) => ({
 					id: drill.id,
 					type: 'drill',
 					name: drill.name,
@@ -151,48 +154,37 @@
 					selected_duration: 15,
 					diagram_data: null,
 					parallel_group_id: null
-				}));
+					}));
 
-				// Add cart items to sections
-				if (cartItems.length > 0 && $sections.length > 0) {
-					sections.update((currentSections) => {
-						const newSections = [...currentSections];
+					// Add cart items to sections
+					if (cartItems.length > 0 && sections.length > 0) {
+						const nextSections = $state.snapshot(sections);
 
-						// Add all drills to the "Skill Building" section (index 1) if it exists
-						const skillBuildingIndex =
-							newSections.findIndex((s) => s.name === 'Skill Building') ?? 1; // Default to 1 if not found
+						const skillBuildingIndex = nextSections.findIndex((s) => s.name === 'Skill Building');
+						const targetIndex =
+							skillBuildingIndex !== -1
+								? skillBuildingIndex
+								: Math.min(1, nextSections.length - 1);
 
-						if (newSections[skillBuildingIndex]) {
-							// Add all drills to the Skill Building section
-							cartItems.forEach((item) => {
-								newSections[skillBuildingIndex].items.push({
-									id: item.id,
-									type: 'drill',
-									name: item.name,
-									drill: item.drill,
-									duration: 15,
-									selected_duration: 15
-								});
-							});
-						} else {
-							// Fallback: Add to the first section if Skill Building doesn't exist
-							cartItems.forEach((item) => {
-								newSections[0].items.push({
-									id: item.id,
-									type: 'drill',
-									name: item.name,
-									drill: item.drill,
-									duration: 15,
-									selected_duration: 15
-								});
-							});
-						}
+						const targetSection = nextSections[targetIndex] ?? nextSections[0];
+						if (!targetSection) return;
 
-						return newSections;
-					});
+						targetSection.items = [
+							...targetSection.items,
+							...cartItems.map((item) => ({
+								id: item.id,
+								type: 'drill',
+								name: item.name,
+								drill: item.drill,
+								duration: 15,
+								selected_duration: 15
+							}))
+						];
+
+						setSections(nextSections);
+					}
 				}
-			}
-		} else if (practicePlan) {
+			} else if (practicePlan) {
 			// If editing an existing plan (and not restoring pending), initialize timelines
 			initializeTimelinesFromPlan(practicePlan);
 		}
@@ -213,7 +205,7 @@
 				// Undo: Ctrl/Cmd + Z
 				if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
 					e.preventDefault();
-					if ($canUndo) undo();
+					if (canUndo) undo();
 				}
 
 				// Redo: Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y
@@ -222,7 +214,7 @@
 					((e.ctrlKey || e.metaKey) && e.key === 'y')
 				) {
 					e.preventDefault();
-					if ($canRedo) redo();
+					if (canRedo) redo();
 				}
 			}
 		}
@@ -248,13 +240,13 @@
 	// Modal event handlers
 	// handleAddDrillEvent is already defined above
 
-	function handleAddFormationEvent(event) {
-		const { formation, sectionId } = event.detail;
+	function handleAddFormationEvent(detail) {
+		const { formation, sectionId } = detail;
 		addFormationToPlan(formation, sectionId);
 	}
 
-	function handleAddParallelActivitiesEvent(event) {
-		const { activities, sectionId } = event.detail;
+	function handleAddParallelActivitiesEvent(detail) {
+		const { activities, sectionId } = detail;
 		addParallelActivities(sectionId, activities);
 	}
 
@@ -282,7 +274,7 @@
 			return;
 		}
 
-		const sectionsValueForSubmission = get(sections);
+			const sectionsValueForSubmission = $state.snapshot(sections);
 
 		// Clean up sections to remove circular references and unnecessary data
 		const cleanedSections = sectionsValueForSubmission.map((section) => ({
@@ -308,7 +300,7 @@
 			submitting = false;
 
 			if (result.type === 'redirect' && result.location) {
-				toast.push(mode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
+				toast.push(effectiveMode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
 				if (!practicePlan) {
 					cart.clear();
 				}
@@ -328,7 +320,7 @@
 					(typeof result.error === 'string' ? result.error : 'Please try again.');
 				toast.push(`An unexpected error occurred: ${errorMessage}`);
 			} else if (result.type === 'success') {
-				toast.push(mode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
+				toast.push(effectiveMode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
 				if (!practicePlan) {
 					cart.clear();
 				}
@@ -339,7 +331,7 @@
 					result.status < 300 &&
 					result.type !== 'redirect'
 				) {
-					toast.push(mode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
+					toast.push(effectiveMode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
 					if (!practicePlan) {
 						cart.clear();
 					}
@@ -355,7 +347,7 @@
 	class="container mx-auto p-4 space-y-6"
 >
 	<h1 class="text-2xl font-bold">
-		{mode === 'edit' ? 'Edit Practice Plan' : 'Create Practice Plan'}
+		{effectiveMode === 'edit' ? 'Edit Practice Plan' : 'Create Practice Plan'}
 	</h1>
 
 	<!-- Duration Summary -->
@@ -365,8 +357,8 @@
 	<PlanMetadataFields {skillOptions} {focusAreaOptions} />
 
 	<PracticePlanSectionsEditor
-		on:openDrillSearch={handleOpenDrillSearch}
-		on:openTimelineSelector={handleOpenTimelineSelector}
+		onOpenDrillSearch={handleOpenDrillSearch}
+		onOpenTimelineSelector={handleOpenTimelineSelector}
 	/>
 
 	<!-- Visibility controls are handled within PlanMetadataFields -->
@@ -378,10 +370,10 @@
 				<Spinner class="inline-block w-4 h-4 mr-2" />
 			{/if}
 			{submitting
-				? mode === 'edit'
+				? effectiveMode === 'edit'
 					? 'Updating...'
 					: 'Creating...'
-				: mode === 'edit'
+				: effectiveMode === 'edit'
 					? 'Update Plan'
 					: 'Create Plan'}
 		</Button>
@@ -392,11 +384,11 @@
 <EnhancedAddItemModal
 	bind:show={showDrillSearch}
 	bind:selectedSectionId={selectedSectionForDrill}
-	on:addDrill={handleAddDrillEvent}
-	on:addFormation={handleAddFormationEvent}
-	on:addParallelActivities={handleAddParallelActivitiesEvent}
-	on:addBreak={handleAddBreakEvent}
-	on:addOneOff={handleAddOneOffEvent}
+	onAddDrill={handleAddDrillEvent}
+	onAddFormation={handleAddFormationEvent}
+	onAddParallelActivities={handleAddParallelActivitiesEvent}
+	onAddBreak={handleAddBreakEvent}
+	onAddOneOff={handleAddOneOffEvent}
 />
 <TimelineSelectorModal
 	bind:show={showTimelineSelector}
@@ -406,12 +398,12 @@
 	{customTimelineNames}
 	parallelTimelines={PARALLEL_TIMELINES}
 	timelineColors={TIMELINE_COLORS}
-	on:updateTimelineName={handleUpdateTimelineNameEvent}
-	on:updateTimelineColor={handleUpdateTimelineColorEvent}
-	on:saveTimelines={handleSaveTimelinesEvent}
+	onUpdateTimelineName={handleUpdateTimelineNameEvent}
+	onUpdateTimelineColor={handleUpdateTimelineColorEvent}
+	onSaveTimelines={handleSaveTimelinesEvent}
 />
 
 <!-- Display general form errors from server action -->
-{#if $page.form?.errors?.general}
-	<p class="text-red-500 text-sm mb-4 bg-red-100 p-2 rounded">{$page.form.errors.general}</p>
+{#if page.form?.errors?.general}
+	<p class="text-red-500 text-sm mb-4 bg-red-100 p-2 rounded">{page.form.errors.general}</p>
 {/if}

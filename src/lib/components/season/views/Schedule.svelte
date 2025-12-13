@@ -1,5 +1,5 @@
 <script>
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { device } from '$lib/stores/deviceStore';
 	import { Button } from '$lib/components/ui/button';
@@ -10,25 +10,27 @@
 	import CreateMarkerDialog from '../desktop/CreateMarkerDialog.svelte';
 	import { Plus, Sparkles, ChevronLeft, ChevronRight } from 'lucide-svelte';
 
-	export let season = null;
-	export let sections = [];
-	export let markers = [];
-	export let practices = [];
-	export let isAdmin = false;
-	export let teamSlug = '';
-	export let teamTimezone = 'UTC';
+	let {
+		season = null,
+		sections = [],
+		markers = [],
+		practices = [],
+		isAdmin = false,
+		teamSlug = '',
+		teamTimezone = 'UTC',
+		onPracticeCreated,
+		onMarkerChange
+	} = $props();
 
-	const dispatch = createEventDispatcher();
-
-	let showPracticeDialog = false;
-	let showMarkerDialog = false;
-	let selectedDate = null;
-	let editingMarker = null;
-	let viewMode = 'week'; // 'week' | 'month'
-	let currentWeek = [];
-	let currentMonth = [];
-	let weekOffset = 0;
-	let monthOffset = 0;
+	let showPracticeDialog = $state(false);
+	let showMarkerDialog = $state(false);
+	let selectedDate = $state(null);
+	let editingMarker = $state(null);
+	let viewMode = $state('week'); // 'week' | 'month'
+	let currentWeek = $state([]);
+	let currentMonth = $state([]);
+	let weekOffset = $state(0);
+	let monthOffset = $state(0);
 
 	// Initialize view
 	onMount(() => {
@@ -167,30 +169,24 @@
 		}
 	}
 
-	function handlePracticeCreated(event) {
-		showPracticeDialog = false;
-		dispatch('practiceCreated', event.detail);
+	function handlePracticeCreated(detail) {
+		onPracticeCreated?.(detail);
 	}
 
-	function handleMarkerSaved(event) {
-		showMarkerDialog = false;
-		dispatch('markerChange', event.detail);
+	function handleMarkerSaved(detail) {
+		onMarkerChange?.(detail);
 	}
 
 	function handleAddPractice() {
-		console.log('handleAddPractice called');
 		const today = new Date();
 		selectedDate = getDateString(today);
 		showPracticeDialog = true;
-		console.log('showPracticeDialog set to:', showPracticeDialog);
 	}
 
 	function handleAddMarker() {
-		console.log('handleAddMarker called');
 		editingMarker = null;
 		selectedDate = getDateString(new Date());
 		showMarkerDialog = true;
-		console.log('showMarkerDialog set to:', showMarkerDialog);
 	}
 
 	// Format headers
@@ -236,13 +232,13 @@
 	}
 </script>
 
-<div class="schedule-container" class:desktop={!$device.isMobile}>
+<div class="schedule-container" class:desktop={!device.isMobile}>
 	<!-- Header with navigation and view switcher -->
 	<div class="schedule-header">
 		<div class="nav-controls">
 			<button
 				class="nav-button"
-				on:click={() => navigate(-1)}
+				onclick={() => navigate(-1)}
 				aria-label={viewMode === 'week' ? 'Previous week' : 'Previous month'}
 			>
 				<ChevronLeft size={20} />
@@ -254,7 +250,7 @@
 
 			<button
 				class="nav-button"
-				on:click={() => navigate(1)}
+				onclick={() => navigate(1)}
 				aria-label={viewMode === 'week' ? 'Next week' : 'Next month'}
 			>
 				<ChevronRight size={20} />
@@ -265,25 +261,25 @@
 			<Button
 				size="sm"
 				variant={viewMode === 'week' ? 'default' : 'ghost'}
-				on:click={() => switchView('week')}
+				onclick={() => switchView('week')}
 			>
 				Week
 			</Button>
 			<Button
 				size="sm"
 				variant={viewMode === 'month' ? 'default' : 'ghost'}
-				on:click={() => switchView('month')}
+				onclick={() => switchView('month')}
 			>
 				Month
 			</Button>
 
 			{#if isAdmin}
 				<div class="divider"></div>
-				<Button variant="outline" size="sm" on:click={handleAddPractice}>
+				<Button variant="outline" size="sm" onclick={handleAddPractice}>
 					<Plus size={16} class="mr-1" />
 					Practice
 				</Button>
-				<Button variant="outline" size="sm" on:click={handleAddMarker}>
+				<Button variant="outline" size="sm" onclick={handleAddMarker}>
 					<Sparkles size={16} class="mr-1" />
 					Event
 				</Button>
@@ -331,7 +327,7 @@
 							{/if}
 							{#if dayPractices.length > 0}
 								{#each dayPractices as practice (practice.id)}
-									<button class="practice-item" on:click={() => handlePracticeClick(practice)}>
+									<button class="practice-item" onclick={() => handlePracticeClick(practice)}>
 										<span class="practice-time">
 											{new Date(`2000-01-01T${practice.start_time}`).toLocaleTimeString('en-US', {
 												hour: 'numeric',
@@ -353,7 +349,7 @@
 									<button
 										class="marker-item"
 										style="--marker-color: {marker.color}"
-										on:click={() => handleMarkerClick(marker)}
+										onclick={() => handleMarkerClick(marker)}
 										disabled={!isAdmin}
 									>
 										{marker.name || marker.title}
@@ -362,7 +358,7 @@
 							{/if}
 
 							{#if !isPast && isAdmin && dayPractices.length === 0}
-								<button class="add-practice-hint" on:click={() => handleDayClick(date)}>
+								<button class="add-practice-hint" onclick={() => handleDayClick(date)}>
 									<Plus size={16} />
 								</button>
 							{/if}
@@ -394,7 +390,7 @@
 						class:past={isPast}
 						class:has-practice={dayPractices.length > 0}
 						class:has-marker={dayMarkers.length > 0}
-						on:click={() => isCurrentMonth && handleDayClick(date)}
+						onclick={() => isCurrentMonth && handleDayClick(date)}
 						disabled={!isCurrentMonth || isPast || !isAdmin}
 					>
 						<span class="month-day-number">{date.getDate()}</span>
@@ -421,14 +417,16 @@
 </div>
 
 <!-- Practice Dialog/Sheet -->
-{#if $device.isMobile && showPracticeDialog}
+{#if device.isMobile && showPracticeDialog}
 	<CreatePracticeSheet
 		{season}
 		{sections}
 		date={selectedDate}
 		teamId={teamSlug}
-		on:save={handlePracticeCreated}
-		on:close={() => (showPracticeDialog = false)}
+		onSave={handlePracticeCreated}
+		onClose={() => {
+			showPracticeDialog = false;
+		}}
 	/>
 {/if}
 <CreatePracticeDialog
@@ -437,18 +435,23 @@
 	{sections}
 	date={selectedDate}
 	teamId={teamSlug}
-	on:save={handlePracticeCreated}
-	on:close={() => (showPracticeDialog = false)}
+	onSave={handlePracticeCreated}
+	onClose={() => {
+		// open is bound; keep callback for symmetry
+	}}
 />
 
 <!-- Marker Dialog/Sheet -->
-{#if $device.isMobile && showMarkerDialog}
+{#if device.isMobile && showMarkerDialog}
 	<EditMarkerSheet
 		{season}
 		marker={editingMarker}
 		defaultDate={selectedDate}
-		on:save={handleMarkerSaved}
-		on:close={() => (showMarkerDialog = false)}
+		onSave={handleMarkerSaved}
+		onClose={() => {
+			showMarkerDialog = false;
+			editingMarker = null;
+		}}
 	/>
 {/if}
 <CreateMarkerDialog
@@ -456,9 +459,11 @@
 	{season}
 	marker={editingMarker}
 	defaultDate={selectedDate}
-	on:save={handleMarkerSaved}
-	on:delete={handleMarkerSaved}
-	on:close={() => (showMarkerDialog = false)}
+	onSave={handleMarkerSaved}
+	onDelete={handleMarkerSaved}
+	onClose={() => {
+		editingMarker = null;
+	}}
 />
 
 <style>

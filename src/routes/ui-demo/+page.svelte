@@ -13,13 +13,13 @@
 	import { Sun, Moon } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 
-	let dialogOpen = false;
-	let inputValue = '';
-	let selectValue = '';
-	let textareaValue = '';
-	let checkboxValue = false;
-	let loadingButton = false;
-	let selectedTab = 'tab1';
+	let dialogOpen = $state(false);
+	let inputValue = $state('');
+	let selectValue = $state('');
+	let textareaValue = $state('');
+	let checkboxValue = $state(false);
+	let loadingButton = $state(false);
+	let selectedTab = $state('tab1');
 
 	const selectOptions = [
 		{ value: 'option1', label: 'Option 1' },
@@ -48,8 +48,8 @@
 <div class="container">
 	<div class="header">
 		<h1>UI Component Library Demo</h1>
-		<Button variant="ghost" size="sm" on:click={theme.toggle}>
-			{#if $theme === 'light'}
+		<Button variant="ghost" size="sm" onclick={() => theme.toggle()}>
+			{#if theme.rendered === 'light'}
 				<Moon size={20} />
 			{:else}
 				<Sun size={20} />
@@ -76,7 +76,7 @@
 		<h3>Button States</h3>
 		<div class="grid">
 			<Button disabled>Disabled</Button>
-			<Button loading={loadingButton} on:click={handleButtonClick}>
+			<Button loading={loadingButton} onclick={handleButtonClick}>
 				{loadingButton ? 'Loading...' : 'Click for Loading'}
 			</Button>
 			<Button href="/ui-demo">Link Button</Button>
@@ -124,27 +124,33 @@
 	</div>
 
 	<div class="section">
-		<h2>Cards</h2>
-		<div class="card-grid">
-			<Card variant="default">
-				<h3 slot="header">Default Card</h3>
-				<p>This is a default card with header and content.</p>
-				<div slot="footer">
-					<Button size="sm">Action</Button>
-				</div>
-			</Card>
+			<h2>Cards</h2>
+			<div class="card-grid">
+				<Card variant="default">
+					{#snippet header()}
+						<h3>Default Card</h3>
+					{/snippet}
+					<p>This is a default card with header and content.</p>
+					{#snippet footer()}
+						<Button size="sm">Action</Button>
+					{/snippet}
+				</Card>
 
-			<Card variant="bordered">
-				<h3 slot="header">Bordered Card</h3>
-				<p>This card has a border around it.</p>
-			</Card>
+				<Card variant="bordered">
+					{#snippet header()}
+						<h3>Bordered Card</h3>
+					{/snippet}
+					<p>This card has a border around it.</p>
+				</Card>
 
-			<Card variant="elevated">
-				<h3 slot="header">Elevated Card</h3>
-				<p>This card has a shadow for elevation.</p>
-			</Card>
+				<Card variant="elevated">
+					{#snippet header()}
+						<h3>Elevated Card</h3>
+					{/snippet}
+					<p>This card has a shadow for elevation.</p>
+				</Card>
+			</div>
 		</div>
-	</div>
 
 	<div class="section">
 		<h2>Badges</h2>
@@ -185,7 +191,7 @@
 
 	<div class="section">
 		<h2>Dialog</h2>
-		<Button on:click={() => (dialogOpen = true)}>Open Dialog</Button>
+		<Button onclick={() => (dialogOpen = true)}>Open Dialog</Button>
 
 		<Dialog
 			bind:open={dialogOpen}
@@ -194,10 +200,10 @@
 		>
 			<p>This is the dialog content. You can put any content here.</p>
 
-			<div slot="footer">
-				<Button variant="ghost" on:click={() => (dialogOpen = false)}>Cancel</Button>
-				<Button variant="primary" on:click={() => (dialogOpen = false)}>Confirm</Button>
-			</div>
+			{#snippet footer()}
+				<Button variant="ghost" onclick={() => (dialogOpen = false)}>Cancel</Button>
+				<Button variant="primary" onclick={() => (dialogOpen = false)}>Confirm</Button>
+			{/snippet}
 		</Dialog>
 	</div>
 

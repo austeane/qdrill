@@ -1,37 +1,49 @@
 <script>
-	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { scale, fade } from 'svelte/transition';
 	import { portal } from '$lib/actions/portal.js';
 	import { getSafeAreaInsets } from '$lib/utils/mobile.js';
 	import { X } from 'lucide-svelte';
 
-	export let open = false;
-	export let title = '';
-	export let height = 'auto'; // 'auto', 'full', '50%', '400px', etc.
-	export let closeOnOverlay = true;
-	export let closeOnEscape = true;
-	export let closeOnSwipeDown = true;
-	export let showHandle = true;
-	export let maxWidth = '640px'; // For tablets/desktop
+	let {
+		open = $bindable(false),
+		title = '',
+		height = 'auto',
+		closeOnOverlay = true,
+		closeOnEscape = true,
+		closeOnSwipeDown = true,
+		showHandle = true,
+		maxWidth = '640px',
+		header,
+		footer,
+		children,
+		onClose
+	} = $props(); // height: 'auto'|'full'|'50%'|'400px' etc | maxWidth: tablets/desktop
 
-	const dispatch = createEventDispatcher();
-
-	let sheetElement;
-	let contentElement;
-	let isDragging = false;
+	let sheetElement = $state(null);
+	let contentElement = $state(null);
+	let isDragging = $state(false);
 	let startY = 0;
 	let currentY = 0;
-	let translateY = 0;
-	let safeAreaBottom = 0;
+	let translateY = $state(0);
+	let safeAreaBottom = $state(0);
 	let savedScrollY = 0;
 
-	$: if (open) {
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+
+		if (!open) {
+			translateY = 0;
+			return;
+		}
+
 		lockBodyScroll();
 		safeAreaBottom = getSafeAreaInsets().bottom;
-	} else {
-		unlockBodyScroll();
-		translateY = 0;
-	}
+
+		return () => {
+			unlockBodyScroll();
+			translateY = 0;
+		};
+	});
 
 	function lockBodyScroll() {
 		if (typeof document === 'undefined') return;
@@ -53,7 +65,7 @@
 
 	function handleClose() {
 		open = false;
-		dispatch('close');
+		onClose?.();
 	}
 
 	function handleOverlayClick() {
@@ -126,21 +138,19 @@
 		handleTouchEnd();
 	}
 
-	onMount(() => {
-		if (typeof window !== 'undefined') {
-			window.addEventListener('keydown', handleKeydown);
-			window.addEventListener('mousemove', handleMouseMove);
-			window.addEventListener('mouseup', handleMouseUp);
-		}
-	});
+	$effect(() => {
+		if (typeof window === 'undefined') return;
 
-	onDestroy(() => {
-		unlockBodyScroll();
-		if (typeof window !== 'undefined') {
+		window.addEventListener('keydown', handleKeydown);
+		window.addEventListener('mousemove', handleMouseMove);
+		window.addEventListener('mouseup', handleMouseUp);
+
+		return () => {
+			unlockBodyScroll();
 			window.removeEventListener('keydown', handleKeydown);
 			window.removeEventListener('mousemove', handleMouseMove);
 			window.removeEventListener('mouseup', handleMouseUp);
-		}
+		};
 	});
 </script>
 
@@ -149,8 +159,8 @@
 		<!-- Overlay -->
 		<div
 			class="overlay"
-			on:click={handleOverlayClick}
-			on:keydown={(e) => e.key === 'Enter' && handleOverlayClick()}
+			onclick={handleOverlayClick}
+			onkeydown={(e) => e.key === 'Enter' && handleOverlayClick()}
 			role="button"
 			tabindex="-1"
 			aria-label="Close bottom sheet"
@@ -176,10 +186,10 @@
 			{#if showHandle}
 				<div
 					class="handle-container"
-					on:touchstart={handleTouchStart}
-					on:touchmove={handleTouchMove}
-					on:touchend={handleTouchEnd}
-					on:mousedown={handleMouseDown}
+					ontouchstart={handleTouchStart}
+					ontouchmove={handleTouchMove}
+					ontouchend={handleTouchEnd}
+					onmousedown={handleMouseDown}
 					role="button"
 					tabindex="-1"
 					aria-label="Drag to close"
@@ -189,14 +199,14 @@
 			{/if}
 
 			<!-- Header -->
-			{#if title || $$slots.header}
+			{#if title || header}
 				<div class="header">
-					{#if $$slots.header}
-						<slot name="header" />
+					{#if header}
+						{@render header()}
 					{:else}
 						<h2 id="sheet-title" class="title">{title}</h2>
 					{/if}
-					<button class="close-button" on:click={handleClose} aria-label="Close">
+					<button class="close-button" onclick={handleClose} aria-label="Close">
 						<X size={24} />
 					</button>
 				</div>
@@ -204,13 +214,13 @@
 
 			<!-- Content -->
 			<div bind:this={contentElement} class="content">
-				<slot />
+				{@render children?.()}
 			</div>
 
 			<!-- Footer -->
-			{#if $$slots.footer}
+			{#if footer}
 				<div class="footer">
-					<slot name="footer" />
+					{@render footer()}
 				</div>
 			{/if}
 		</div>

@@ -1,17 +1,12 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-
-	export let seasonId;
-	export let isAdmin = false;
-
-	const dispatch = createEventDispatcher();
-
-	let shareData = null;
-	let loading = false;
-	let error = null;
-	let copiedField = null;
-
 	import { apiFetch } from '$lib/utils/apiFetch.js';
+
+	let { seasonId, isAdmin = false, onTokenGenerated } = $props();
+
+	let shareData = $state(null);
+	let loading = $state(false);
+	let error = $state(null);
+	let copiedField = $state(null);
 
 	// Load current share settings
 	async function loadShareSettings() {
@@ -41,7 +36,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ type })
 			});
-			dispatch('tokenGenerated', { type });
+			onTokenGenerated?.({ type });
 		} catch (err) {
 			console.error('Error generating token:', err);
 			error = (err && err.message) || 'Failed to generate share link';
@@ -70,9 +65,11 @@
 	}
 
 	// Load on mount
-	$: if (isAdmin && seasonId) {
-		loadShareSettings();
-	}
+	$effect(() => {
+		if (isAdmin && seasonId) {
+			void loadShareSettings();
+		}
+	});
 </script>
 
 {#if isAdmin}
@@ -80,7 +77,7 @@
 		<div class="flex items-center justify-between mb-4">
 			<h2 class="text-xl font-semibold">Share Settings</h2>
 			<button
-				on:click={loadShareSettings}
+				onclick={loadShareSettings}
 				disabled={loading}
 				class="text-blue-600 hover:text-blue-700 text-sm"
 			>
@@ -158,7 +155,7 @@
 								class="flex-1 px-3 py-2 border rounded bg-gray-50 text-sm"
 							/>
 							<button
-								on:click={() => copyToClipboard(getFullUrl(shareData.public_view_url), 'public')}
+								onclick={() => copyToClipboard(getFullUrl(shareData.public_view_url), 'public')}
 								class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
 							>
 								{copiedField === 'public' ? 'Copied!' : 'Copy'}
@@ -166,7 +163,7 @@
 						</div>
 					{:else}
 						<button
-							on:click={() => generateToken('public')}
+							onclick={() => generateToken('public')}
 							disabled={loading}
 							class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
 						>
@@ -206,7 +203,7 @@
 								class="flex-1 px-3 py-2 border rounded bg-gray-50 text-sm"
 							/>
 							<button
-								on:click={() => copyToClipboard(getFullUrl(shareData.ics_url), 'ics')}
+								onclick={() => copyToClipboard(getFullUrl(shareData.ics_url), 'ics')}
 								class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
 							>
 								{copiedField === 'ics' ? 'Copied!' : 'Copy'}
@@ -225,7 +222,7 @@
 						</div>
 					{:else}
 						<button
-							on:click={() => generateToken('ics')}
+							onclick={() => generateToken('ics')}
 							disabled={loading}
 							class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
 						>
@@ -241,7 +238,7 @@
 						<div class="flex gap-2">
 							{#if shareData.public_view_token}
 								<button
-									on:click={() => generateToken('public')}
+									onclick={() => generateToken('public')}
 									disabled={loading}
 									class="px-3 py-1 text-xs bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 disabled:opacity-50 transition-colors"
 								>
@@ -250,7 +247,7 @@
 							{/if}
 							{#if shareData.ics_token}
 								<button
-									on:click={() => generateToken('ics')}
+									onclick={() => generateToken('ics')}
 									disabled={loading}
 									class="px-3 py-1 text-xs bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 disabled:opacity-50 transition-colors"
 								>
@@ -269,14 +266,14 @@
 				<p class="text-gray-500 mb-4">No share links generated yet</p>
 				<div class="flex justify-center gap-3">
 					<button
-						on:click={() => generateToken('public')}
+						onclick={() => generateToken('public')}
 						disabled={loading}
 						class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
 					>
 						Generate Public Link
 					</button>
 					<button
-						on:click={() => generateToken('ics')}
+						onclick={() => generateToken('ics')}
 						disabled={loading}
 						class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
 					>

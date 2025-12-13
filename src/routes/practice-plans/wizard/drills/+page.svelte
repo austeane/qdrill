@@ -1,54 +1,71 @@
 <script>
-	import { timeline, basicInfo } from '$lib/stores/wizardStore';
-	import { page } from '$app/stores';
+	import { wizardStore } from '$lib/stores/wizardStore';
+	import { page } from '$app/state';
 
 	// Props from server
-	export let data;
+	let { data } = $props();
 
 	// Current section being edited - initialize from URL param if available
-	let currentSectionIndex = 0;
-	$: {
-		const sectionParam = $page.url.searchParams.get('section');
-		if (sectionParam) {
-			const parsedIndex = parseInt(sectionParam);
-			if (!isNaN(parsedIndex) && parsedIndex >= 0 && parsedIndex < $timeline.sections.length) {
-				currentSectionIndex = parsedIndex;
+	let currentSectionIndex = $state(0);
+
+	$effect(() => {
+		const sectionIdParam = page.url.searchParams.get('sectionId');
+		if (sectionIdParam) {
+			const indexFromId = wizardStore.timeline.sections.findIndex(
+				(section) => String(section.id) === sectionIdParam
+			);
+
+			if (indexFromId !== -1) {
+				currentSectionIndex = indexFromId;
+				return;
 			}
 		}
-	}
-	$: currentSection = $timeline.sections[currentSectionIndex];
+
+		const sectionParam = page.url.searchParams.get('section');
+		if (!sectionParam) return;
+
+		const parsedIndex = parseInt(sectionParam, 10);
+		if (Number.isNaN(parsedIndex)) return;
+		if (parsedIndex < 0 || parsedIndex >= wizardStore.timeline.sections.length) return;
+
+		currentSectionIndex = parsedIndex;
+	});
+
+	const currentSection = $derived(wizardStore.timeline.sections[currentSectionIndex]);
 
 	// Filter state - make reactive to basicInfo and currentSection changes
-	$: filters = {
-		search: '',
-		skillLevel: $basicInfo.skillLevel,
-		minParticipants: $basicInfo.participants,
-		maxParticipants: $basicInfo.participants,
-		duration: currentSection?.duration || 15
-	};
+	let filterSearch = $state('');
+	$effect(() => {
+		wizardStore.basicInfo.participants;
+		currentSectionIndex;
+		filterSearch = '';
+	});
 
 	// Update URL when section changes - wrap in browser check
-	$: {
+	$effect(() => {
 		if (typeof window !== 'undefined') {
 			// Only run in browser
 			const url = new URL(window.location);
 			url.searchParams.set('section', currentSectionIndex.toString());
 			window.history.replaceState({}, '', url);
 		}
-	}
+	});
 
 	// Filtered drills - add null check
-	$: filteredDrills =
-		data?.drills?.filter((drill) => {
-			if (filters.search && !drill.name.toLowerCase().includes(filters.search.toLowerCase())) {
+	const filteredDrills = $derived(
+		(data?.drills ?? []).filter((drill) => {
+			if (filterSearch && !drill.name.toLowerCase().includes(filterSearch.toLowerCase())) {
 				return false;
 			}
-			if (filters.skillLevel && !drill.skill_level.includes(filters.skillLevel)) {
+			if (
+				wizardStore.basicInfo.skillLevel &&
+				!drill.skill_level.includes(wizardStore.basicInfo.skillLevel)
+			) {
 				return false;
 			}
 			// Convert to numbers for proper comparison
-			const minParticipants = parseInt(filters.minParticipants) || 0;
-			const maxParticipants = parseInt(filters.maxParticipants) || 0;
+			const minParticipants = parseInt(wizardStore.basicInfo.participants) || 0;
+			const maxParticipants = parseInt(wizardStore.basicInfo.participants) || 0;
 
 			if (minParticipants && drill.min_participants > minParticipants) {
 				return false;
@@ -57,76 +74,66 @@
 				return false;
 			}
 			return true;
-		}) ?? [];
+		})
+	);
 
 	// Handle adding a drill to the section
 	function addDrill(drill) {
-		timeline.update((current) => {
-			const updated = { ...current };
-			const section = updated.sections[currentSectionIndex];
+		const section = wizardStore.timeline.sections[currentSectionIndex];
+		if (!section) return;
 
-			if (!section.drills) {
-				section.drills = [];
+		if (!section.drills) section.drills = [];
+
+		const totalDrillTime = getTotalDrillTime(section);
+		const remainingTime = Math.max(0, section.duration - totalDrillTime);
+
+		// Don't add if no time remains
+		if (remainingTime <= 0) return;
+
+		const defaultDuration = drill.duration || 15;
+		const adjustedDuration = Math.min(defaultDuration, remainingTime);
+
+		// Only add if we can allocate at least 1 minute
+		if (adjustedDuration < 1) return;
+
+		section.drills = [
+			...section.drills,
+			{
+				id: drill.id,
+				name: drill.name,
+				duration: adjustedDuration,
+				drill
 			}
-
-			const totalDrillTime = getTotalDrillTime(section);
-			const remainingTime = Math.max(0, section.duration - totalDrillTime);
-
-			// Don't add if no time remains
-			if (remainingTime <= 0) {
-				return current;
-			}
-
-			const defaultDuration = drill.duration || 15;
-			const adjustedDuration = Math.min(defaultDuration, remainingTime);
-
-			// Only add if we can allocate at least 1 minute
-			if (adjustedDuration >= 1) {
-				section.drills.push({
-					id: drill.id,
-					name: drill.name,
-					duration: adjustedDuration,
-					drill: drill
-				});
-			}
-
-			return updated;
-		});
+		];
 	}
 
 	// Handle removing a drill from the section
 	function removeDrill(drillIndex) {
-		timeline.update((current) => {
-			const updated = { ...current };
-			const section = updated.sections[currentSectionIndex];
-			section.drills.splice(drillIndex, 1);
-			return updated;
-		});
+		const section = wizardStore.timeline.sections[currentSectionIndex];
+		if (!section?.drills?.length) return;
+
+		section.drills = section.drills.filter((_, index) => index !== drillIndex);
 	}
 
 	// Handle drill duration change
 	function handleDrillDurationChange(drillIndex, newDuration) {
-		timeline.update((current) => {
-			const updated = { ...current };
-			const section = updated.sections[currentSectionIndex];
+		const section = wizardStore.timeline.sections[currentSectionIndex];
+		if (!section?.drills?.[drillIndex]) return;
 
-			// Calculate total time excluding current drill
-			const otherDrillsTime = section.drills.reduce(
-				(total, drill, idx) => (idx === drillIndex ? total : total + (drill.duration || 0)),
-				0
-			);
+		// Calculate total time excluding current drill
+		const otherDrillsTime = section.drills.reduce(
+			(total, drill, index) => (index === drillIndex ? total : total + (drill.duration || 0)),
+			0
+		);
 
-			// Calculate maximum allowed duration for this drill
-			const maxAllowedDuration = section.duration - otherDrillsTime;
+		// Calculate maximum allowed duration for this drill
+		const maxAllowedDuration = section.duration - otherDrillsTime;
 
-			// Ensure duration is at least 1 minute and doesn't exceed available time
-			const parsedDuration = parseInt(newDuration) || 0;
-			const validatedDuration = Math.max(1, Math.min(parsedDuration, maxAllowedDuration));
+		// Ensure duration is at least 1 minute and doesn't exceed available time
+		const parsedDuration = parseInt(newDuration) || 0;
+		const validatedDuration = Math.max(1, Math.min(parsedDuration, maxAllowedDuration));
 
-			section.drills[drillIndex].duration = validatedDuration;
-
-			return updated;
-		});
+		section.drills[drillIndex].duration = validatedDuration;
 	}
 
 	// Calculate total time used by drills in a section
@@ -143,7 +150,7 @@
 
 	// Navigation between sections
 	function nextSection() {
-		if (currentSectionIndex < $timeline.sections.length - 1) {
+		if (currentSectionIndex < wizardStore.timeline.sections.length - 1) {
 			currentSectionIndex++;
 		}
 	}
@@ -168,18 +175,18 @@
 				type="button"
 				class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
 				disabled={currentSectionIndex === 0}
-				on:click={prevSection}
+				onclick={prevSection}
 			>
 				Previous Section
 			</button>
 			<div class="text-sm text-gray-500">
-				Section {currentSectionIndex + 1} of {$timeline.sections.length}
+				Section {currentSectionIndex + 1} of {wizardStore.timeline.sections.length}
 			</div>
 			<button
 				type="button"
 				class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-				disabled={currentSectionIndex === $timeline.sections.length - 1}
-				on:click={nextSection}
+				disabled={currentSectionIndex === wizardStore.timeline.sections.length - 1}
+				onclick={nextSection}
 			>
 				Next Section
 			</button>
@@ -227,14 +234,14 @@
 										min="1"
 										max={currentSection.duration}
 										bind:value={drill.duration}
-										on:input={(e) => handleDrillDurationChange(index, e.target.value)}
+										oninput={(e) => handleDrillDurationChange(index, e.target.value)}
 										class="shadow-sm focus:ring-blue-500 focus:border-blue-500 w-20 sm:text-sm border-gray-300 rounded-md"
 									/>
 									<span class="text-sm text-gray-500">min</span>
 								</label>
 								<button
 									type="button"
-									on:click={() => removeDrill(index)}
+									onclick={() => removeDrill(index)}
 									class="p-1 text-gray-400 hover:text-red-500"
 									aria-label="Remove drill"
 								>
@@ -284,15 +291,15 @@
 				</div>
 			</div>
 
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				<div class="col-span-full">
-					<input
-						type="text"
-						placeholder="Search drills..."
-						bind:value={filters.search}
-						class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-					/>
-				</div>
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+					<div class="col-span-full">
+						<input
+							type="text"
+							placeholder="Search drills..."
+							bind:value={filterSearch}
+							class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+						/>
+					</div>
 			</div>
 
 			<!-- Drill Grid -->
@@ -307,7 +314,7 @@
 					{#each filteredDrills as drill (drill.id)}
 						<button
 							type="button"
-							on:click={() => addDrill(drill)}
+							onclick={() => addDrill(drill)}
 							disabled={getTotalDrillTime(currentSection) >= currentSection.duration}
 							class="relative flex flex-col p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
                                    disabled:opacity-50 disabled:cursor-not-allowed"

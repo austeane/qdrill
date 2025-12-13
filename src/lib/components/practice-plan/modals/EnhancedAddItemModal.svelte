@@ -1,35 +1,40 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
-	export let show = false;
-	export let selectedSectionId = null;
-
-	const dispatch = createEventDispatcher();
+	let {
+		show = $bindable(false),
+		selectedSectionId = $bindable(null),
+		onAddDrill,
+		onAddFormation,
+		onAddParallelActivities,
+		onAddBreak,
+		onAddOneOff,
+		onClose
+	} = $props();
 
 	// Tab states
-	let activeTab = 'drill'; // 'drill', 'formation', 'parallel', 'break'
+	let activeTab = $state('drill'); // 'drill', 'formation', 'parallel', 'break'
 
 	// Drill search state
-	let drillSearchQuery = '';
-	let drillSearchResults = [];
+	let drillSearchQuery = $state('');
+	let drillSearchResults = $state([]);
 
 	// Formation search state
-	let formationSearchQuery = '';
-	let formationSearchResults = [];
-	let formationType = 'all'; // 'all', 'offensive', 'defensive'
+	let formationSearchQuery = $state('');
+	let formationSearchResults = $state([]);
+	let formationType = $state('all'); // 'all', 'offensive', 'defensive'
 
 	// Parallel activities state
-	let parallelActivities = {
+	let parallelActivities = $state({
 		BEATERS: null,
 		CHASERS: null,
 		SEEKERS: null
-	};
-	let selectedPositions = new Set(['BEATERS', 'CHASERS']);
+	});
+	let selectedPositions = $state(new Set(['BEATERS', 'CHASERS']));
 
 	// One-off activity state
-	let oneOffName = 'Quick Activity';
+	let oneOffName = $state('Quick Activity');
 
 	function close() {
 		show = false;
@@ -42,7 +47,7 @@
 		parallelActivities = { BEATERS: null, CHASERS: null, SEEKERS: null };
 		selectedPositions = new Set(['BEATERS', 'CHASERS']);
 		oneOffName = 'Quick Activity';
-		dispatch('close');
+		onClose?.();
 	}
 
 	// Drill search
@@ -107,7 +112,7 @@
 			return;
 		}
 
-		dispatch('addDrill', { drill, sectionId: selectedSectionId });
+		onAddDrill?.({ drill, sectionId: selectedSectionId });
 		close();
 	}
 
@@ -117,7 +122,7 @@
 			return;
 		}
 
-		dispatch('addFormation', { formation, sectionId: selectedSectionId });
+		onAddFormation?.({ formation, sectionId: selectedSectionId });
 		close();
 	}
 
@@ -142,7 +147,7 @@
 			return;
 		}
 
-		dispatch('addParallelActivities', { activities, sectionId: selectedSectionId });
+		onAddParallelActivities?.({ activities, sectionId: selectedSectionId });
 		close();
 	}
 
@@ -152,7 +157,7 @@
 			return;
 		}
 
-		dispatch('addBreak', { sectionId: selectedSectionId });
+		onAddBreak?.({ sectionId: selectedSectionId });
 		close();
 	}
 
@@ -162,7 +167,7 @@
 			return;
 		}
 
-		dispatch('addOneOff', { name: oneOffName.trim(), sectionId: selectedSectionId });
+		onAddOneOff?.({ name: oneOffName.trim(), sectionId: selectedSectionId });
 		close();
 	}
 
@@ -187,13 +192,17 @@
 		role="button"
 		tabindex="0"
 		aria-label="Close modal"
-		on:click={close}
-		on:keydown={(e) => e.key === 'Escape' && close()}
+		onclick={close}
+		onkeydown={(e) => e.key === 'Escape' && close()}
 	>
-		<div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation>
+		<div
+			class="modal-content"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
+		>
 			<div class="modal-header">
 				<h2 class="modal-title">Add to Practice Plan</h2>
-				<button class="close-button" on:click={close}>×</button>
+				<button class="close-button" onclick={close}>×</button>
 			</div>
 
 			<!-- Tabs -->
@@ -201,28 +210,28 @@
 				<button
 					class="tab"
 					class:active={activeTab === 'drill'}
-					on:click={() => (activeTab = 'drill')}
+					onclick={() => (activeTab = 'drill')}
 				>
 					Drill
 				</button>
 				<button
 					class="tab"
 					class:active={activeTab === 'formation'}
-					on:click={() => (activeTab = 'formation')}
+					onclick={() => (activeTab = 'formation')}
 				>
 					Formation
 				</button>
 				<button
 					class="tab"
 					class:active={activeTab === 'parallel'}
-					on:click={() => (activeTab = 'parallel')}
+					onclick={() => (activeTab = 'parallel')}
 				>
 					Parallel Activities
 				</button>
 				<button
 					class="tab"
 					class:active={activeTab === 'break'}
-					on:click={() => (activeTab = 'break')}
+					onclick={() => (activeTab = 'break')}
 				>
 					Break/Activity
 				</button>
@@ -236,13 +245,13 @@
 							type="text"
 							placeholder="Search drills..."
 							bind:value={drillSearchQuery}
-							on:input={() => searchDrills(drillSearchQuery)}
+							oninput={() => searchDrills(drillSearchQuery)}
 							class="search-input"
 						/>
 
 						<div class="search-results">
 							{#each drillSearchResults as drill (drill.id)}
-								<div class="result-item" on:click={() => handleAddDrill(drill)}>
+								<div class="result-item" onclick={() => handleAddDrill(drill)}>
 									<div class="result-name">{drill.name}</div>
 									<div class="result-details">
 										{drill.skill_level?.join(', ')} • {drill.suggested_length_min}-{drill.suggested_length_max}
@@ -260,7 +269,7 @@
 						<div class="formation-filters">
 							<select
 								bind:value={formationType}
-								on:change={() => searchFormations(formationSearchQuery)}
+								onchange={() => searchFormations(formationSearchQuery)}
 								class="filter-select"
 							>
 								<option value="all">All Formations</option>
@@ -273,13 +282,13 @@
 							type="text"
 							placeholder="Search formations..."
 							bind:value={formationSearchQuery}
-							on:input={() => searchFormations(formationSearchQuery)}
+							oninput={() => searchFormations(formationSearchQuery)}
 							class="search-input"
 						/>
 
 						<div class="search-results">
 							{#each formationSearchResults as formation (formation.id)}
-								<div class="result-item" on:click={() => handleAddFormation(formation)}>
+								<div class="result-item" onclick={() => handleAddFormation(formation)}>
 									<div class="result-name">{formation.name}</div>
 									<div class="result-details">
 										{formation.formation_type || 'Tactical'} Formation
@@ -301,7 +310,7 @@
 									<input
 										type="checkbox"
 										checked={selectedPositions.has(position)}
-										on:change={() => togglePosition(position)}
+										onchange={() => togglePosition(position)}
 									/>
 									{position}
 								</label>
@@ -316,7 +325,7 @@
 										{#if parallelActivities[position]}
 											<div class="selected-drill">
 												{parallelActivities[position].name}
-												<button class="clear-btn" on:click={() => clearParallelDrill(position)}
+												<button class="clear-btn" onclick={() => clearParallelDrill(position)}
 													>×</button
 												>
 											</div>
@@ -324,7 +333,7 @@
 											<input
 												type="text"
 												placeholder="Search drill..."
-												on:blur={(e) => searchParallelDrill(position, e.target.value)}
+												onblur={(e) => searchParallelDrill(position, e.target.value)}
 												class="position-search"
 											/>
 										{/if}
@@ -335,7 +344,7 @@
 
 						<button
 							class="add-button"
-							on:click={handleAddParallelActivities}
+							onclick={handleAddParallelActivities}
 							disabled={Object.values(parallelActivities).filter(Boolean).length < 2}
 						>
 							Add Parallel Activities
@@ -346,7 +355,7 @@
 				<!-- Break/Activity Tab -->
 				{#if activeTab === 'break'}
 					<div class="break-section">
-						<button class="break-button" on:click={handleAddBreak}> Add 10 Minute Break </button>
+						<button class="break-button" onclick={handleAddBreak}> Add 10 Minute Break </button>
 
 						<div class="divider">OR</div>
 
@@ -359,7 +368,7 @@
 								placeholder="Activity name..."
 								class="one-off-input"
 							/>
-							<button class="add-button" on:click={handleAddOneOff}> Add Activity </button>
+							<button class="add-button" onclick={handleAddOneOff}> Add Activity </button>
 						</div>
 					</div>
 				{/if}

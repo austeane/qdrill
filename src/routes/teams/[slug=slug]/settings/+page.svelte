@@ -10,21 +10,26 @@
 	import { toast } from '@zerodevx/svelte-toast';
 	import { invalidate } from '$app/navigation';
 
-	export let data;
+	let { data } = $props();
 
-	let team = data.team;
-	let members = data.members;
-	let isUpdating = false;
-	let updateError = '';
-	let updateSuccess = false;
+	let team = $state({ ...data.team });
+	let members = $state(data.members || []);
+	let isUpdating = $state(false);
+	let updateError = $state('');
+	let updateSuccess = $state(false);
 
 	// Member management state
-	let showAddMemberDialog = false;
-	let newMemberEmail = '';
-	let newMemberRole = 'member';
-	let isAddingMember = false;
-	let addMemberError = '';
-	let activeTab = 'general';
+	let showAddMemberDialog = $state(false);
+	let newMemberEmail = $state('');
+	let newMemberRole = $state('member');
+	let isAddingMember = $state(false);
+	let addMemberError = $state('');
+	let activeTab = $state('general');
+
+	$effect(() => {
+		team = { ...data.team };
+		members = data.members || [];
+	});
 
 	const timezoneOptions = [
 		{ value: 'America/New_York', label: 'Eastern Time' },
@@ -171,8 +176,10 @@
 					<p class="mb-4 text-green-600">Team updated successfully!</p>
 				{/if}
 
-				<Card>
-					<h2 slot="header" class="text-xl font-semibold">Team Information</h2>
+					<Card>
+						{#snippet header()}
+							<h2 class="text-xl font-semibold">Team Information</h2>
+						{/snippet}
 
 					<div class="grid gap-4">
 						<Input label="Team Name" bind:value={team.name} disabled={isUpdating} />
@@ -196,22 +203,24 @@
 						/>
 					</div>
 
-					<div slot="footer">
-						<Button variant="primary" on:click={updateTeam} disabled={isUpdating}>
-							{isUpdating ? 'Updating...' : 'Update Team'}
-						</Button>
-					</div>
-				</Card>
-			</div>
-		{:else if activeTab === 'members'}
-			<div class="tabs-content">
-				<Card>
-					<div slot="header" class="flex justify-between items-center">
-						<h2 class="text-xl font-semibold">Team Members</h2>
-						<Button variant="primary" size="sm" on:click={() => (showAddMemberDialog = true)}>
-							+ Add Member
-						</Button>
-					</div>
+						{#snippet footer()}
+							<Button variant="primary" onclick={updateTeam} disabled={isUpdating}>
+								{isUpdating ? 'Updating...' : 'Update Team'}
+							</Button>
+						{/snippet}
+					</Card>
+				</div>
+			{:else if activeTab === 'members'}
+				<div class="tabs-content">
+					<Card>
+						{#snippet header()}
+							<div class="flex justify-between items-center">
+								<h2 class="text-xl font-semibold">Team Members</h2>
+								<Button variant="primary" size="sm" onclick={() => (showAddMemberDialog = true)}>
+									+ Add Member
+								</Button>
+							</div>
+						{/snippet}
 
 					<div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
 						{members.length} member{members.length !== 1 ? 's' : ''}
@@ -249,7 +258,7 @@
 								<div class="flex items-center gap-2">
 									<Select
 										value={member.role}
-										on:change={(e) => updateMemberRole(member.user_id, e.target.value)}
+										onchange={(e) => updateMemberRole(member.user_id, e.target.value)}
 										options={[
 											{ value: 'admin', label: 'Admin' },
 											{ value: 'coach', label: 'Coach' },
@@ -261,7 +270,7 @@
 									<Button
 										size="sm"
 										variant="destructive"
-										on:click={() =>
+										onclick={() =>
 											removeMember(member.user_id, member.user?.name || 'this member')}
 										disabled={members.filter((m) => m.role === 'admin').length === 1 &&
 											member.role === 'admin'}
@@ -295,26 +304,28 @@
 							disabled={isAddingMember}
 						/>
 					</div>
-					<div slot="footer" class="flex gap-2">
-						<Button
-							variant="primary"
-							on:click={addMember}
-							disabled={isAddingMember || !newMemberEmail.trim()}
-						>
-							{isAddingMember ? 'Adding...' : 'Add Member'}
-						</Button>
-						<Button
-							variant="ghost"
-							on:click={() => {
-								showAddMemberDialog = false;
-								addMemberError = '';
-								newMemberEmail = '';
-								newMemberRole = 'member';
-							}}
-						>
-							Cancel
-						</Button>
-					</div>
+					{#snippet footer()}
+						<div class="flex gap-2">
+							<Button
+								variant="primary"
+								onclick={addMember}
+								disabled={isAddingMember || !newMemberEmail.trim()}
+							>
+								{isAddingMember ? 'Adding...' : 'Add Member'}
+							</Button>
+							<Button
+								variant="ghost"
+								onclick={() => {
+									showAddMemberDialog = false;
+									addMemberError = '';
+									newMemberEmail = '';
+									newMemberRole = 'member';
+								}}
+							>
+								Cancel
+							</Button>
+						</div>
+					{/snippet}
 				</Dialog>
 			</div>
 		{/if}

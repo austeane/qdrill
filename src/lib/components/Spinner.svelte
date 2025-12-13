@@ -1,8 +1,5 @@
 <script>
-	export let size = 'md';
-	export let color = 'blue';
-	export let overlay = false;
-	export let fullScreen = false;
+	let { size = 'md', color = 'blue', overlay = false, fullScreen = false } = $props();
 
 	const sizeClasses = {
 		sm: 'h-4 w-4',
@@ -17,7 +14,7 @@
 		gray: 'border-gray-500'
 	};
 
-	$: spinnerClasses = `${sizeClasses[size]} ${colorClasses[color]}`;
+	const spinnerClasses = $derived(`${sizeClasses[size]} ${colorClasses[color]}`);
 </script>
 
 {#if fullScreen}

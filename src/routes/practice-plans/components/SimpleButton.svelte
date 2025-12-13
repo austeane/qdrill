@@ -1,6 +1,13 @@
 <!-- src/routes/practice-plans/components/SimpleButton.svelte -->
 <script lang="ts">
-	export let className: string | undefined = undefined;
+	import type { Snippet } from 'svelte';
+
+	type Props = {
+		className?: string;
+		children?: Snippet;
+	};
+
+	let { className = undefined, children, ...restProps }: Props = $props();
 
 	// Base classes from the original buttonVariants
 	const baseClasses =
@@ -10,12 +17,11 @@
 	const styleClasses =
 		'border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2';
 
-	let combinedClasses: string;
-	$: combinedClasses = `${baseClasses} ${styleClasses} ${className || ''}`.trim();
+	const combinedClasses = $derived(`${baseClasses} ${styleClasses} ${className || ''}`.trim());
 </script>
 
-<button type="button" class={combinedClasses} on:click {...$$restProps}>
-	<slot />
+<button type="button" class={combinedClasses} {...restProps}>
+	{@render children?.()}
 </button>
 
 <style>

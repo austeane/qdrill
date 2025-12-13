@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { Target, Calendar, Users, PenTool, X, ChevronLeft, ChevronRight } from 'lucide-svelte';
 
-	export let open = false; // mobile drawer open
-	export let collapsed = false; // desktop collapsed state
+	let { open = $bindable(false), collapsed = $bindable(false) } = $props(); // mobile drawer open | desktop collapsed state
 
 	const navItems = [
 		{ href: '/drills', label: 'Drills', icon: Target },
@@ -13,14 +12,16 @@
 		{ href: '/teams', label: 'Teams', icon: Users, isBeta: true }
 	];
 
+	const pathname = $derived(page.url.pathname);
+
 	function isActive(href: string) {
-		return $page.url.pathname.startsWith(href);
+		return pathname.startsWith(href);
 	}
 </script>
 
 <aside class="sidebar" class:open class:collapsed>
-	<nav class="sidebar__nav" role="navigation">
-		<button class="close md:hidden" on:click={() => (open = false)} aria-label="Close sidebar">
+	<nav class="sidebar__nav">
+		<button class="close md:hidden" onclick={() => (open = false)} aria-label="Close sidebar">
 			<X size={18} />
 		</button>
 
@@ -32,9 +33,9 @@
 						class="nav__item"
 						class:active={isActive(item.href)}
 						title={collapsed ? item.label : undefined}
-						on:click={() => (open = false)}
+						onclick={() => (open = false)}
 					>
-						<svelte:component this={item.icon} size={18} />
+						<item.icon size={18} />
 						{#if !collapsed}
 							<span class="nav__label">
 								{item.label}
@@ -50,7 +51,7 @@
 
 		<button
 			class="collapse hidden md:flex"
-			on:click={() => (collapsed = !collapsed)}
+			onclick={() => (collapsed = !collapsed)}
 			aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
 		>
 			{#if collapsed}
@@ -63,14 +64,13 @@
 </aside>
 
 {#if open}
-	<div
+	<button
+		type="button"
 		class="overlay md:hidden"
-		role="button"
-		tabindex="0"
-		aria-label="Close sidebar"
-		on:click={() => (open = false)}
-		on:keydown={(e) => e.key === 'Enter' && (open = false)}
-	></div>
+		tabindex="-1"
+		aria-label="Dismiss sidebar"
+		onclick={() => (open = false)}
+	></button>
 {/if}
 
 <style>
@@ -156,6 +156,8 @@
 	.overlay {
 		position: fixed;
 		inset: 0;
+		border: none;
+		padding: 0;
 		background: rgba(0, 0, 0, 0.3);
 		z-index: calc(var(--z-fixed) - 1);
 		pointer-events: auto;

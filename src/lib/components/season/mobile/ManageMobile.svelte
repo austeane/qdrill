@@ -1,5 +1,4 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import { flip } from 'svelte/animate';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { toast } from '@zerodevx/svelte-toast';
@@ -7,20 +6,23 @@
 	import EditMarkerSheet from './EditMarkerSheet.svelte';
 	import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
-	export let season = null;
-	export let sections = [];
-	export let markers = [];
-	export let teamId = '';
+	let {
+		season = null,
+		sections = $bindable([]),
+		markers = $bindable([]),
+		teamId = '',
+		onChange,
+		onSectionChange,
+		onMarkerChange
+	} = $props();
 
-	const dispatch = createEventDispatcher();
-
-	let showSectionSheet = false;
-	let showMarkerSheet = false;
-	let editingSection = null;
-	let editingMarker = null;
-	let confirmDeleteSection = null;
-	let confirmDeleteMarker = null;
-	let deleteLoading = false;
+	let showSectionSheet = $state(false);
+	let showMarkerSheet = $state(false);
+	let editingSection = $state(null);
+	let editingMarker = $state(null);
+	let confirmDeleteSection = $state(null);
+	let confirmDeleteMarker = $state(null);
+	let deleteLoading = $state(false);
 
 	async function handleSectionMove(section, direction) {
 		const currentIndex = sections.findIndex((s) => s.id === section.id);
@@ -51,7 +53,7 @@
 				})
 			});
 
-			dispatch('change');
+			onChange?.();
 		} catch (_error) {
 			// Revert on error
 			sections = [...sections].sort((a, b) => a.order - b.order);
@@ -88,7 +90,7 @@
 				}
 			});
 
-			dispatch('change');
+			onChange?.();
 		} catch (_error) {
 			toast.push('Failed to delete section', {
 				theme: {
@@ -126,7 +128,7 @@
 				}
 			});
 
-			dispatch('change');
+			onChange?.();
 		} catch (_error) {
 			toast.push('Failed to delete event', {
 				theme: {
@@ -160,14 +162,12 @@
 		showMarkerSheet = true;
 	}
 
-	function handleSectionSaved(event) {
-		showSectionSheet = false;
-		dispatch('sectionChange', event.detail);
+	function handleSectionSaved(detail) {
+		onSectionChange?.(detail);
 	}
 
-	function handleMarkerSaved(event) {
-		showMarkerSheet = false;
-		dispatch('markerChange', event.detail);
+	function handleMarkerSaved(detail) {
+		onMarkerChange?.(detail);
 	}
 
 	function formatDateRange(start, end) {
@@ -198,7 +198,7 @@
 	<div class="manage-card">
 		<div class="card-header">
 			<h2 class="card-title">Season Sections</h2>
-			<button class="add-button" on:click={handleAddSection}>
+			<button class="add-button" onclick={handleAddSection}>
 				<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
 					<line x1="12" y1="5" x2="12" y2="19" />
 					<line x1="5" y1="12" x2="19" y2="12" />
@@ -206,14 +206,14 @@
 			</button>
 		</div>
 
-		<div class="items-list">
-			{#each sections as section, index (section.id)}
-				<div class="list-item" animate:flip={{ duration: 200 }}>
-					<div class="item-color" style="background-color: {section.color}" />
+			<div class="items-list">
+				{#each sections as section, index (section.id)}
+					<div class="list-item" animate:flip={{ duration: 200 }}>
+						<div class="item-color" style="background-color: {section.color}"></div>
 
-					<div class="item-content">
-						<div class="item-name">{section.name}</div>
-						<div class="item-details">
+						<div class="item-content">
+							<div class="item-name">{section.name}</div>
+							<div class="item-details">
 							{formatDateRange(section.start_date, section.end_date)}
 						</div>
 					</div>
@@ -221,7 +221,7 @@
 					<div class="item-actions">
 						<button
 							class="action-button"
-							on:click={() => handleSectionMove(section, -1)}
+							onclick={() => handleSectionMove(section, -1)}
 							disabled={index === 0}
 							aria-label="Move up"
 						>
@@ -232,7 +232,7 @@
 
 						<button
 							class="action-button"
-							on:click={() => handleSectionMove(section, 1)}
+							onclick={() => handleSectionMove(section, 1)}
 							disabled={index === sections.length - 1}
 							aria-label="Move down"
 						>
@@ -243,7 +243,7 @@
 
 						<button
 							class="action-button"
-							on:click={() => handleEditSection(section)}
+							onclick={() => handleEditSection(section)}
 							aria-label="Edit"
 						>
 							<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -255,7 +255,7 @@
 
 						<button
 							class="action-button delete"
-							on:click={() => handleSectionDeleteClick(section)}
+							onclick={() => handleSectionDeleteClick(section)}
 							aria-label="Delete"
 						>
 							<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -271,7 +271,7 @@
 			{#if sections.length === 0}
 				<div class="empty-state">
 					<p>No sections yet</p>
-					<button class="inline-add-button" on:click={handleAddSection}>
+					<button class="inline-add-button" onclick={handleAddSection}>
 						Add your first section
 					</button>
 				</div>
@@ -283,7 +283,7 @@
 	<div class="manage-card">
 		<div class="card-header">
 			<h2 class="card-title">Events & Milestones</h2>
-			<button class="add-button" on:click={handleAddMarker}>
+			<button class="add-button" onclick={handleAddMarker}>
 				<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
 					<line x1="12" y1="5" x2="12" y2="19" />
 					<line x1="5" y1="12" x2="19" y2="12" />
@@ -291,14 +291,14 @@
 			</button>
 		</div>
 
-		<div class="items-list">
-			{#each markers as marker (marker.id)}
-				<div class="list-item" animate:flip={{ duration: 200 }}>
-					<div class="item-color" style="background-color: {marker.color}" />
+			<div class="items-list">
+				{#each markers as marker (marker.id)}
+					<div class="list-item" animate:flip={{ duration: 200 }}>
+						<div class="item-color" style="background-color: {marker.color}"></div>
 
-					<div class="item-content">
-						<div class="item-name">{marker.name}</div>
-						<div class="item-details">
+						<div class="item-content">
+							<div class="item-name">{marker.name}</div>
+							<div class="item-details">
 							<span class="marker-type">{marker.type}</span>
 							<span class="marker-date">
 								{formatDateRange(marker.date, marker.end_date || marker.date)}
@@ -309,7 +309,7 @@
 					<div class="item-actions">
 						<button
 							class="action-button"
-							on:click={() => handleEditMarker(marker)}
+							onclick={() => handleEditMarker(marker)}
 							aria-label="Edit"
 						>
 							<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -321,7 +321,7 @@
 
 						<button
 							class="action-button delete"
-							on:click={() => handleMarkerDeleteClick(marker)}
+							onclick={() => handleMarkerDeleteClick(marker)}
 							aria-label="Delete"
 						>
 							<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -337,7 +337,7 @@
 			{#if markers.length === 0}
 				<div class="empty-state">
 					<p>No events yet</p>
-					<button class="inline-add-button" on:click={handleAddMarker}>
+					<button class="inline-add-button" onclick={handleAddMarker}>
 						Add your first event
 					</button>
 				</div>
@@ -352,8 +352,11 @@
 		{season}
 		section={editingSection}
 		{teamId}
-		on:save={handleSectionSaved}
-		on:close={() => (showSectionSheet = false)}
+		onSave={handleSectionSaved}
+		onClose={() => {
+			showSectionSheet = false;
+			editingSection = null;
+		}}
 	/>
 {/if}
 
@@ -362,8 +365,11 @@
 	<EditMarkerSheet
 		{season}
 		marker={editingMarker}
-		on:save={handleMarkerSaved}
-		on:close={() => (showMarkerSheet = false)}
+		onSave={handleMarkerSaved}
+		onClose={() => {
+			showMarkerSheet = false;
+			editingMarker = null;
+		}}
 	/>
 {/if}
 
@@ -376,8 +382,8 @@
 	cancelText="Cancel"
 	confirmVariant="destructive"
 	loading={deleteLoading}
-	on:confirm={handleSectionDelete}
-	on:cancel={() => (confirmDeleteSection = null)}
+	onConfirm={handleSectionDelete}
+	onCancel={() => (confirmDeleteSection = null)}
 />
 
 <ConfirmDialog
@@ -388,8 +394,8 @@
 	cancelText="Cancel"
 	confirmVariant="destructive"
 	loading={deleteLoading}
-	on:confirm={handleMarkerDelete}
-	on:cancel={() => (confirmDeleteMarker = null)}
+	onConfirm={handleMarkerDelete}
+	onCancel={() => (confirmDeleteMarker = null)}
 />
 
 <style>

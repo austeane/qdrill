@@ -2,10 +2,8 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 
-	export let data;
-	export let form;
-
-	$: users = data.users || [];
+	let { data, form } = $props();
+	const users = $derived(data.users || []);
 </script>
 
 <div class="container mx-auto px-4 py-8">

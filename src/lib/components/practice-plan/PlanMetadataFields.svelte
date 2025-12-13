@@ -1,45 +1,33 @@
 <script>
-	import { page } from '$app/stores';
-	import { writable } from 'svelte/store';
+	import { page } from '$app/state';
 
 	// --- Import stores ---
 	import {
-		planName,
-		planDescription,
-		estimatedNumberOfParticipants,
-		practiceGoals,
-		visibility,
-		isEditableByOthers,
-		phaseOfSeason,
-		startTime,
+		practicePlanMetadataStore,
 		addPracticeGoal,
 		removePracticeGoal,
-		updatePracticeGoal,
-		errors as metadataErrors
+		updatePracticeGoal
 	} from '$lib/stores/practicePlanMetadataStore';
 
-	export let skillOptions = [];
-	export let focusAreaOptions = [];
+	let { skillOptions = [], focusAreaOptions = [] } = $props();
 
 	// Local state for phaseOfSeason dropdown
 	let phaseOfSeasonOptions = ['Pre-season', 'Regular Season', 'Post-season', 'Tournament Prep'];
 
 	// Local state for focusAreas checkboxes
-	let localFocusAreas = writable([]);
+	let localFocusAreas = $state([]);
 
 	// Local state for skillLevel dropdown
-	let localSkillLevel = '';
+	let localSkillLevel = $state('');
 
 	// Helper function to update localFocusAreas for checkboxes
 	function handleFocusAreaChange(event) {
 		const { value, checked } = event.target;
-		localFocusAreas.update((currentAreas) => {
-			if (checked) {
-				return [...currentAreas, value];
-			} else {
-				return currentAreas.filter((v) => v !== value);
-			}
-		});
+		if (checked) {
+			localFocusAreas = [...localFocusAreas, value];
+		} else {
+			localFocusAreas = localFocusAreas.filter((v) => v !== value);
+		}
 	}
 
 	// Removed selectedLabels logic for popover
@@ -55,15 +43,15 @@
 		<input
 			id="planName"
 			name="planName"
-			bind:value={$planName}
+			bind:value={practicePlanMetadataStore.planName}
 			placeholder="e.g., Wednesday Throwing Focus"
 			required
 			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 		/>
-		{#if $page.form?.errors?.name}
-			<p class="text-red-500 text-sm mt-1">{$page.form.errors.name[0]}</p>
-		{:else if $metadataErrors.name?.[0]}
-			<p class="text-red-500 text-sm mt-1">{$metadataErrors.name[0]}</p>
+		{#if page.form?.errors?.name}
+			<p class="text-red-500 text-sm mt-1">{page.form.errors.name[0]}</p>
+		{:else if practicePlanMetadataStore.errors.name?.[0]}
+			<p class="text-red-500 text-sm mt-1">{practicePlanMetadataStore.errors.name[0]}</p>
 		{/if}
 	</div>
 
@@ -76,16 +64,18 @@
 		<textarea
 			id="planDescription"
 			name="planDescription"
-			bind:value={$planDescription}
+			bind:value={practicePlanMetadataStore.planDescription}
 			placeholder="Briefly describe the practice plan..."
 			rows="3"
 			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 		>
 		</textarea>
-		{#if $page.form?.errors?.description}
-			<p class="text-red-500 text-sm mt-1">{$page.form.errors.description[0]}</p>
-		{:else if $metadataErrors.description?.[0]}
-			<p class="text-red-500 text-sm mt-1">{$metadataErrors.description[0]}</p>
+		{#if page.form?.errors?.description}
+			<p class="text-red-500 text-sm mt-1">{page.form.errors.description[0]}</p>
+		{:else if practicePlanMetadataStore.errors.description?.[0]}
+			<p class="text-red-500 text-sm mt-1">
+				{practicePlanMetadataStore.errors.description[0]}
+			</p>
 		{/if}
 	</div>
 
@@ -121,7 +111,7 @@
 				name="participantCount"
 				type="number"
 				min="1"
-				bind:value={$estimatedNumberOfParticipants}
+				bind:value={practicePlanMetadataStore.estimatedNumberOfParticipants}
 				placeholder="e.g., 15"
 				class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 			/>
@@ -137,7 +127,7 @@
 			<select
 				id="phaseOfSeason"
 				name="phaseOfSeason"
-				bind:value={$phaseOfSeason}
+				bind:value={practicePlanMetadataStore.phaseOfSeason}
 				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
 			>
 				<option value="">Select Phase</option>
@@ -159,7 +149,7 @@
 			id="startTime"
 			name="startTime"
 			type="time"
-			bind:value={$startTime}
+			bind:value={practicePlanMetadataStore.startTime}
 			class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 		/>
 		<!-- Error handling for startTime -->
@@ -178,8 +168,8 @@
 						<input
 							type="checkbox"
 							value={option.value}
-							checked={$localFocusAreas.includes(option.value)}
-							on:change={handleFocusAreaChange}
+							checked={localFocusAreas.includes(option.value)}
+							onchange={handleFocusAreaChange}
 							class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
 						/>
 						<span class="text-sm text-gray-700">{option.label}</span>
@@ -195,22 +185,22 @@
 			>Practice Goals</span
 		>
 		<div role="list" aria-labelledby="practice-goals-label" class="space-y-2">
-			{#each $practiceGoals as goal, index (index)}
+			{#each practicePlanMetadataStore.practiceGoals as goal, index (index)}
 				<div class="flex items-center space-x-2">
 					<!-- Standard input -->
 					<input
 						type="text"
 						name="practiceGoals[]"
-						bind:value={goal}
-						on:input={(e) => updatePracticeGoal(index, e.target.value)}
+						value={goal}
+						oninput={(e) => updatePracticeGoal(index, e.target.value)}
 						placeholder="Enter practice goal"
 						class="flex-1 mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
 					/>
-					{#if $practiceGoals.length > 1}
+					{#if practicePlanMetadataStore.practiceGoals.length > 1}
 						<!-- Standard button -->
 						<button
 							type="button"
-							on:click={() => removePracticeGoal(index)}
+							onclick={() => removePracticeGoal(index)}
 							class="inline-flex justify-center py-1 px-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
 						>
 							Remove
@@ -222,7 +212,7 @@
 		<!-- Standard button -->
 		<button
 			type="button"
-			on:click={addPracticeGoal}
+			onclick={addPracticeGoal}
 			class="mt-2 inline-flex justify-center py-1 px-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
 		>
 			+ Add Goal
@@ -241,18 +231,18 @@
 			<select
 				id="visibility-select"
 				name="visibility"
-				bind:value={$visibility}
-				disabled={!$page.data.session}
+				bind:value={practicePlanMetadataStore.visibility}
+				disabled={!page.data.session}
 				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:cursor-not-allowed"
-				title={!$page.data.session ? 'Log in to change visibility' : ''}
+				title={!page.data.session ? 'Log in to change visibility' : ''}
 			>
 				<option value="public">Public</option>
-				{#if $page.data.session}
+				{#if page.data.session}
 					<option value="unlisted">Unlisted</option>
 					<option value="private">Private</option>
 				{/if}
 			</select>
-			{#if !$page.data.session}
+			{#if !page.data.session}
 				<p class="text-sm text-muted-foreground mt-1">Anonymous submissions are always public.</p>
 			{/if}
 		</div>
@@ -264,12 +254,12 @@
 				<input
 					type="checkbox"
 					name="isEditableByOthers"
-					bind:checked={$isEditableByOthers}
-					disabled={!$page.data.session}
+					bind:checked={practicePlanMetadataStore.isEditableByOthers}
+					disabled={!page.data.session}
 					class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 disabled:cursor-not-allowed"
 				/>
 				<span class="text-sm text-gray-700">Allow others to edit</span>
-				{#if !$page.data.session}
+				{#if !page.data.session}
 					<span class="text-sm text-muted-foreground">(required for anonymous)</span>
 				{/if}
 			</label>

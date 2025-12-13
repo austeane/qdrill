@@ -2,52 +2,54 @@
 	import {
 		handleTimelineDragOver,
 		handleDragLeave,
-		handleDrop
+		handleDrop,
+		dragState
 	} from '$lib/stores/dragManager';
 	import DrillItem from './DrillItem.svelte';
 	// Remove direct store imports
 	// import { removeItem, getTimelineName, customTimelineNames } from '$lib/stores/sectionsStore';
 
-	export let timeline;
-	export let groupTimelines;
-	export let timelineItems = []; // All items passed from parent
-	export let sectionIndex;
-	export let sectionId;
-	export let parallelGroupId;
-	export let totalDuration = 0;
-	// Add props for data and actions
-	export let onRemoveItem = (sectionIndex, itemIndex) => {
+	let {
+		timeline,
+		groupTimelines,
+		timelineItems = [], // All items passed from parent
+		sectionIndex,
+		sectionId,
+		parallelGroupId,
+		totalDuration = 0,
+		onRemoveItem = (sectionIndex, itemIndex) => {
 		console.warn('onRemoveItem prop not provided to TimelineColumn', sectionIndex, itemIndex);
-	};
-	export let onDurationChange = (sectionIndex, itemIndex, newDuration) => {
+		},
+		onDurationChange = (sectionIndex, itemIndex, newDuration) => {
 		console.warn(
 			'onDurationChange prop not provided to TimelineColumn',
 			sectionIndex,
 			itemIndex,
 			newDuration
 		);
-	};
-	export let onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
+		},
+		onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
 		console.warn(
 			'onTimelineChange prop not provided to TimelineColumn',
 			sectionIndex,
 			itemIndex,
 			newTimeline
 		);
-	};
-	export let timelineNameGetter = (timeline) => timeline; // Simple default
-	export let customTimelineNamesData = {}; // Pass the reactive data (not directly used here, but needed by getter)
+		},
+		timelineNameGetter = (timeline) => timeline, // Simple default
+		customTimelineNamesData = {} // Pass the reactive data (not directly used here, but needed by getter)
+	} = $props();
 
-	// No longer subscribe directly
-	// let timelineNamesStore;
-	// $: timelineNamesStore = $customTimelineNames;
+		// `customTimelineNamesData` is passed so `timelineNameGetter` can be reactive.
 
 	// Get the timeline name reactively using the passed getter
-	$: timelineName = timelineNameGetter(timeline);
+	const timelineName = $derived(timelineNameGetter(timeline));
 
 	// Filter items for this specific timeline
-	$: timelineSpecificItems = timelineItems.filter(
-		(item) => item.parallel_group_id === parallelGroupId && item.parallel_timeline === timeline
+	const timelineSpecificItems = $derived(
+		timelineItems.filter(
+			(item) => item.parallel_group_id === parallelGroupId && item.parallel_timeline === timeline
+		)
 	);
 
 	// Find the original index of an item within the parent's `timelineItems` array
@@ -64,10 +66,10 @@
 	data-section-index={sectionIndex}
 	data-timeline={timeline}
 	data-group-id={parallelGroupId}
-	on:dragover={(e) =>
+	ondragover={(e) =>
 		handleTimelineDragOver(e, sectionIndex, timeline, parallelGroupId, e.currentTarget)}
-	on:dragleave={handleDragLeave}
-	on:drop={(e) => {
+	ondragleave={handleDragLeave}
+	ondrop={(e) => {
 		// Ensure we capture the event parameters directly in the handler
 		e.preventDefault();
 		e.stopPropagation();
@@ -84,24 +86,19 @@
 
 		// Before calling handleDrop, explicitly update the dragState with correct values
 		// This ensures we don't lose critical drop target information
-		const dragState = window.__dragManager ? window.__dragManager.get() : null;
-		if (dragState && dragState.isDragging) {
+		if (dragState.isDragging) {
 			// Create a flag to know if we're dropping in the same timeline
 			const isSameTimeline =
 				dragState.sourceGroupId === parallelGroupId &&
 				dragState.sourceTimeline === timeline &&
 				dragState.sourceSection === sectionIndex;
 
-			window.__dragManager.update((state) => ({
-				...state,
-				// Use nullish coalescing (??) instead of logical OR (||) to handle section index 0 correctly
-				targetSection:
-					targetSection !== null && !isNaN(targetSection) ? targetSection : sectionIndex,
-				targetTimeline: targetTimeline || timeline,
-				targetGroupId: targetGroupId || parallelGroupId,
-				isSameTimeline: isSameTimeline,
-				dropPosition: 'inside'
-			}));
+			dragState.targetSection =
+				targetSection !== null && !isNaN(targetSection) ? targetSection : sectionIndex;
+			dragState.targetTimeline = targetTimeline || timeline;
+			dragState.targetGroupId = targetGroupId || parallelGroupId;
+			dragState.isSameTimeline = isSameTimeline;
+			dragState.dropPosition = 'inside';
 		}
 
 		console.log('[TIMELINE DROP] Direct handler with attributes:', {
@@ -110,7 +107,7 @@
 			parallelGroupId,
 			timelineItems: timelineSpecificItems.length,
 			isSameTimeline:
-				dragState?.sourceTimeline === timeline && dragState?.sourceGroupId === parallelGroupId
+				dragState.sourceTimeline === timeline && dragState.sourceGroupId === parallelGroupId
 		});
 
 		// Call the main drop handler

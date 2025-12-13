@@ -1,14 +1,13 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-
-	export let sections = [];
-	export let selectedPositions = ['CHASERS', 'BEATERS', 'SEEKERS'];
-
-	const dispatch = createEventDispatcher();
+	let {
+		sections = [],
+		selectedPositions = $bindable(['CHASERS', 'BEATERS', 'SEEKERS']),
+		onFilterChange
+	} = $props();
 	const allPositions = ['CHASERS', 'BEATERS', 'SEEKERS'];
 
 	// Get available positions from the practice plan data
-	$: availablePositions = getAvailablePositions(sections);
+	const availablePositions = $derived(getAvailablePositions(sections));
 
 	function getAvailablePositions(sections) {
 		const positions = new Set();
@@ -44,12 +43,12 @@
 			selectedPositions = [...selectedPositions, position];
 		}
 
-		dispatch('filterChange', { selectedPositions });
+		onFilterChange?.({ selectedPositions });
 	}
 
 	function selectAll() {
 		selectedPositions = [...availablePositions];
-		dispatch('filterChange', { selectedPositions });
+		onFilterChange?.({ selectedPositions });
 	}
 
 	function formatPositionName(position) {
@@ -69,7 +68,7 @@
 	<div class="filter-header">
 		<span class="filter-label">View positions:</span>
 		{#if selectedPositions.length < availablePositions.length}
-			<button class="select-all-btn" on:click={selectAll}> Select All </button>
+			<button class="select-all-btn" onclick={selectAll}> Select All </button>
 		{/if}
 	</div>
 
@@ -79,7 +78,7 @@
 				class="position-btn"
 				class:active={selectedPositions.includes(position)}
 				style="--position-color: {positionColors[position]}"
-				on:click={() => togglePosition(position)}
+				onclick={() => togglePosition(position)}
 				aria-pressed={selectedPositions.includes(position)}
 			>
 				<span class="position-checkbox" aria-hidden="true">

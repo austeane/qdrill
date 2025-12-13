@@ -1,33 +1,37 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { Menu, Search, Sun, Moon } from 'lucide-svelte';
+	import type { Snippet } from 'svelte';
 	import { useSession } from '$lib/auth-client';
 	import { theme } from '$lib/stores/themeStore';
 
-	const dispatch = createEventDispatcher();
 	const session = useSession();
 
-	export let sidebarOpen = false;
+	let {
+		sidebarOpen = false,
+		onToggleSidebar,
+		onOpenCommandPalette,
+		extra
+	}: {
+		sidebarOpen?: boolean;
+		onToggleSidebar?: (detail: { open: boolean }) => void;
+		onOpenCommandPalette?: () => void;
+		extra?: Snippet;
+	} = $props();
 
-	// Subscribe to the rendered theme to get the actual light/dark state
-	let renderedTheme = 'light';
-	theme.rendered.subscribe((value) => {
-		renderedTheme = value;
-	});
+	const renderedTheme = $derived(theme.rendered);
 
 	function toggleSidebar() {
-		sidebarOpen = !sidebarOpen;
-		dispatch('toggleSidebar', { open: sidebarOpen });
+		onToggleSidebar?.({ open: !sidebarOpen });
 	}
 
 	function openCommandPalette() {
-		dispatch('openCommandPalette');
+		onOpenCommandPalette?.();
 	}
 </script>
 
-<header class="topbar" role="banner">
+<header class="topbar">
 	<div class="topbar__inner">
-		<button class="icon-btn mobile-only" on:click={toggleSidebar} aria-label="Toggle menu">
+		<button class="icon-btn mobile-only" onclick={toggleSidebar} aria-label="Toggle menu">
 			<Menu size={20} />
 		</button>
 
@@ -37,18 +41,18 @@
 		</a>
 
 		<div class="search desktop-only">
-			<button class="search__trigger" on:click={openCommandPalette} aria-label="Open search (⌘K)">
+			<button class="search__trigger" onclick={openCommandPalette} aria-label="Open search (⌘K)">
 				<Search size={16} />
 				<span>Search…</span>
 				<kbd>⌘K</kbd>
 			</button>
 		</div>
 
-		<button class="icon-btn mobile-only" on:click={openCommandPalette} aria-label="Open search">
+		<button class="icon-btn mobile-only" onclick={openCommandPalette} aria-label="Open search">
 			<Search size={18} />
 		</button>
 
-		<div class="spacer" />
+		<div class="spacer"></div>
 
 		<a
 			href="https://discord.gg/yuXBkACYE3"
@@ -67,7 +71,7 @@
 			/>
 		</a>
 
-		<button class="icon-btn" on:click={() => theme.toggle()} aria-label="Toggle theme">
+		<button class="icon-btn" onclick={() => theme.toggle()} aria-label="Toggle theme">
 			{#if renderedTheme === 'light'}
 				<Sun size={18} />
 			{:else}
@@ -81,7 +85,7 @@
 			<a href="/login" class="pill">Sign in</a>
 		{/if}
 	</div>
-	<slot name="extra" />
+	{@render extra?.()}
 </header>
 
 <style>

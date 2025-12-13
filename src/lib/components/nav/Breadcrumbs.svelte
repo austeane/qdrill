@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ChevronRight, Home } from 'lucide-svelte';
 
-	export let segments: { label: string; href?: string }[] = [];
+	let { segments = [] }: { segments?: { label: string; href?: string }[] } = $props();
 </script>
 
 <nav aria-label="Breadcrumb" class="breadcrumbs">

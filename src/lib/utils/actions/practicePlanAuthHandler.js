@@ -1,5 +1,4 @@
-import { page } from '$app/stores';
-import { get } from 'svelte/store';
+import { page } from '$app/state';
 import { signIn } from '$lib/auth-client';
 
 /**
@@ -9,7 +8,7 @@ import { signIn } from '$lib/auth-client';
  */
 export function practicePlanAuthHandler(form) {
 	async function handleSubmit(event) {
-		const session = get(page).data?.session;
+		const session = page.data?.session;
 		if (!session) {
 			event.preventDefault();
 			const formData = new FormData(form);

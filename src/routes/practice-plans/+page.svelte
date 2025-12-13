@@ -1,46 +1,35 @@
 <script>
 	import FilterPanel from '$lib/components/FilterPanel.svelte';
-	import { onMount, afterUpdate } from 'svelte';
-	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { page, navigating } from '$app/stores';
+	import { navigating, page } from '$app/state';
 	import debounce from 'lodash/debounce';
-	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore';
+	import { sortStore } from '$lib/stores/sortStore';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
 	import { FILTER_STATES } from '$lib/constants';
-	import {
-		selectedPhaseOfSeason,
-		selectedPracticeGoals,
-		selectedEstimatedParticipantsMin,
-		selectedEstimatedParticipantsMax
-	} from '$lib/stores/practicePlanFilterStore';
+	import { practicePlanFilterStore } from '$lib/stores/practicePlanFilterStore';
 	import DeletePracticePlan from '$lib/components/DeletePracticePlan.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { cart } from '$lib/stores/cartStore';
 	import AiPlanGeneratorModal from '$lib/components/practice-plan/AiPlanGeneratorModal.svelte';
 	import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
 
-	export let data;
+	let { data } = $props();
 
-	// Data from load function (now contains paginated items and metadata)
-	$: practicePlans = data.practicePlans || [];
-	$: pagination = data.pagination;
-	$: filterOptions = data.filterOptions || {};
-	$: initialSelectedDrills = data.initialSelectedDrills || [];
-	$: error = data.error; // Handle potential loading errors
+	let practicePlans = $state([]);
+	let pagination = $state(null);
+	let filterOptions = $state({});
+	let error = $state(null);
 
 	// --- Component State reflecting URL/Load Data ---
-	let searchQuery = data.currentSearch || ''; // Initialize from load data
-	let selectedDrills = initialSelectedDrills; // Initialize from load data
-	let currentSortBy = data.currentSortBy || 'upvotes';
-	let currentSortOrder = data.currentSortOrder || 'desc';
+	let searchQuery = $state(''); // Initialize from load data
+	let selectedDrills = $state([]); // Initialize from load data
 
-	let showAiModal = false; // NEW modal state
+	let showAiModal = $state(false); // modal state
+
+	const isNavigating = $derived(navigating.type !== null);
 
 	// --- Initialize filter stores based on URL on mount/update ---
-	function initializeFiltersFromUrl() {
-		const searchParams = $page.url.searchParams;
-
+	function initializeFiltersFromUrl(searchParams, estimatedParticipantsOptions) {
 		// Helper to parse filter params (req/exc)
 		const parseFilterParam = (baseName) => {
 			const state = {};
@@ -53,100 +42,68 @@
 			return state;
 		};
 
-		selectedPhaseOfSeason.set(parseFilterParam('phase'));
-		selectedPracticeGoals.set(parseFilterParam('goal'));
+		practicePlanFilterStore.selectedPhaseOfSeason = parseFilterParam('phase');
+		practicePlanFilterStore.selectedPracticeGoals = parseFilterParam('goal');
 
-		selectedEstimatedParticipantsMin.set(
-			parseInt(searchParams.get('minP') || filterOptions.estimatedParticipants?.min || '1', 10)
-		);
-		selectedEstimatedParticipantsMax.set(
-			parseInt(searchParams.get('maxP') || filterOptions.estimatedParticipants?.max || '100', 10)
-		);
+		const estimatedMinDefault = estimatedParticipantsOptions?.min ?? 1;
+			const estimatedMaxDefault = estimatedParticipantsOptions?.max ?? 100;
 
-		// Update local sort state if different from URL
-		const urlSortBy = searchParams.get('sortBy') || 'upvotes';
-		const urlSortOrder = searchParams.get('sortOrder') || 'desc';
-		if (urlSortBy !== currentSortBy) {
-			currentSortBy = urlSortBy;
-			selectedSortOption.set(urlSortBy);
+		practicePlanFilterStore.selectedEstimatedParticipantsMin =
+			parseInt(searchParams.get('minP') || String(estimatedMinDefault), 10)
+		;
+		practicePlanFilterStore.selectedEstimatedParticipantsMax =
+			parseInt(searchParams.get('maxP') || String(estimatedMaxDefault), 10)
+		;
+
+			const urlSortBy = searchParams.get('sortBy') || 'upvotes';
+			const urlSortOrder = searchParams.get('sortOrder') || 'desc';
+			sortStore.selectedSortOption = urlSortBy;
+			sortStore.selectedSortOrder = urlSortOrder;
 		}
-		if (urlSortOrder !== currentSortOrder) {
-			currentSortOrder = urlSortOrder;
-			selectedSortOrder.set(urlSortOrder);
-		}
-	}
 
-	onMount(() => {
-		initializeFiltersFromUrl();
-	});
-
-	// Re-initialize filters if URL changes (e.g., back/forward buttons)
-	afterUpdate(() => {
-		if ($page.url.searchParams.toString() !== previousSearchParams) {
-			initializeFiltersFromUrl();
-			searchQuery = $page.url.searchParams.get('search') || '';
-			selectedDrills = initialSelectedDrills; // Re-sync selectedDrills if needed, handled by load
-			previousSearchParams = $page.url.searchParams.toString();
-		}
-	});
-	let previousSearchParams = ''; // Track search params for afterUpdate
-	onMount(() => {
-		previousSearchParams = $page.url.searchParams.toString();
-
-		// Subscribe to sort changes after mount
-		let initialMount = true;
-		const unsubscribeSortOption = selectedSortOption.subscribe((value) => {
-			if (!initialMount) {
-				currentSortBy = value;
-				updateUrlParams();
-			}
-		});
-		const unsubscribeSortOrder = selectedSortOrder.subscribe((value) => {
-			if (!initialMount) {
-				currentSortOrder = value;
-				updateUrlParams();
-			}
-		});
-
-		// Set initialMount to false after initial setup
-		tick().then(() => {
-			initialMount = false;
-		});
-
-		// Unsubscribe on component destroy
-		return () => {
-			unsubscribeSortOption();
-			unsubscribeSortOrder();
-		};
+	$effect(() => {
+		practicePlans = data.practicePlans || [];
+		pagination = data.pagination;
+		filterOptions = data.filterOptions || {};
+		error = data.error ?? null;
+		searchQuery = data.currentSearch || '';
+		selectedDrills = data.initialSelectedDrills || [];
+		initializeFiltersFromUrl(page.url.searchParams, data.filterOptions?.estimatedParticipants);
 	});
 
 	// --- URL Update Logic ---
 	const updateUrlParams = debounce(() => {
-		const params = new URLSearchParams($page.url.searchParams);
+		const params = new URLSearchParams(page.url.searchParams);
 
 		// Update search
 		if (searchQuery) {
 			params.set('search', searchQuery);
 		} else {
 			params.delete('search');
-		}
+			}
 
-		// Update sort
-		params.set('sortBy', $selectedSortOption);
-		params.set('sortOrder', $selectedSortOrder);
+			// Update sort
+			params.set('sortBy', sortStore.selectedSortOption);
+			params.set('sortOrder', sortStore.selectedSortOrder);
 
-		// Update filters from stores
-		updateFilterUrlParams(params, 'phase', $selectedPhaseOfSeason);
-		updateFilterUrlParams(params, 'goal', $selectedPracticeGoals);
+			// Update filters from stores
+			updateFilterUrlParams(params, 'phase', practicePlanFilterStore.selectedPhaseOfSeason);
+		updateFilterUrlParams(params, 'goal', practicePlanFilterStore.selectedPracticeGoals);
 
 		// Update range filters
-		if ($selectedEstimatedParticipantsMin !== (filterOptions.estimatedParticipants?.min ?? 1)) {
-			params.set('minP', $selectedEstimatedParticipantsMin.toString());
+		if (
+			practicePlanFilterStore.selectedEstimatedParticipantsMin !==
+			(filterOptions.estimatedParticipants?.min ?? 1)
+		) {
+			params.set('minP', practicePlanFilterStore.selectedEstimatedParticipantsMin.toString());
 		} else {
 			params.delete('minP');
 		}
-		if ($selectedEstimatedParticipantsMax !== (filterOptions.estimatedParticipants?.max ?? 100)) {
-			params.set('maxP', $selectedEstimatedParticipantsMax.toString());
+		if (
+			practicePlanFilterStore.selectedEstimatedParticipantsMax !==
+			(filterOptions.estimatedParticipants?.max ?? 100)
+		) {
+			params.set('maxP', practicePlanFilterStore.selectedEstimatedParticipantsMax.toString());
 		} else {
 			params.delete('maxP');
 		}
@@ -176,24 +133,21 @@
 		}
 	}
 
-	function handlePageChange(event) {
-		const newPage = event.detail.page;
-		const params = new URLSearchParams($page.url.searchParams);
+	function handlePageChange({ page: newPage }) {
+		const params = new URLSearchParams(page.url.searchParams);
 		params.set('page', newPage.toString());
 		goto(`?${params.toString()}`, { keepFocus: true });
 	}
 
 	// --- Event Handlers ---
-	function handleDrillSelect(event) {
-		const drill = event.detail; // Assuming FilterPanel dispatches drill object
+	function handleDrillSelect(drill) {
 		if (!selectedDrills.find((d) => d.id === drill.id)) {
 			selectedDrills = [...selectedDrills, drill];
 			updateUrlParams(); // Trigger URL update
 		}
 	}
 
-	function handleDrillRemove(event) {
-		const drillId = event.detail; // Assuming FilterPanel dispatches drillId
+	function handleDrillRemove(drillId) {
 		selectedDrills = selectedDrills.filter((d) => d.id !== drillId);
 		updateUrlParams(); // Trigger URL update
 	}
@@ -228,17 +182,17 @@
 	<div class="flex justify-between items-center mb-6">
 		<h1 class="text-2xl font-bold">Practice Plans</h1>
 		<div class="flex gap-2 relative">
-			{#if $page.data.session}
-				{#if $cart.length > 0}
+			{#if page.data.session}
+				{#if cart.drills.length > 0}
 					<a
 						href="/practice-plans/create"
 						class="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors duration-300"
 					>
-						Create Plan from Cart ({$cart.length} Drill{$cart.length !== 1 ? 's' : ''})
+						Create Plan from Cart ({cart.drills.length} Drill{cart.drills.length !== 1 ? 's' : ''})
 					</a>
 					<button
 						type="button"
-						on:click={() => (showAiModal = true)}
+						onclick={() => (showAiModal = true)}
 						class="relative inline-block px-6 py-3 bg-gray-100 text-gray-800 border border-gray-300 rounded-lg font-semibold hover:bg-gray-200 transition-colors duration-300"
 					>
 						Create Plan with AI
@@ -256,7 +210,7 @@
 					</a>
 					<button
 						type="button"
-						on:click={() => (showAiModal = true)}
+						onclick={() => (showAiModal = true)}
 						class="relative inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-300"
 					>
 						Create Plan with AI
@@ -283,9 +237,9 @@
 		phaseOfSeasonOptions={filterOptions.phaseOfSeason}
 		practiceGoalsOptions={filterOptions.practiceGoals}
 		bind:selectedDrills
-		on:drillSelect={handleDrillSelect}
-		on:drillRemove={handleDrillRemove}
-		on:filterChange={handleFilterChange}
+		onDrillSelect={handleDrillSelect}
+		onDrillRemove={handleDrillRemove}
+		onFilterChange={handleFilterChange}
 		{sortOptions}
 	/>
 
@@ -295,7 +249,7 @@
 		placeholder="Search practice plans..."
 		class="mb-6 w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 		bind:value={searchQuery}
-		on:input={updateUrlParams}
+		oninput={updateUrlParams}
 	/>
 
 	<!-- Display Error Message -->
@@ -310,7 +264,7 @@
 	{/if}
 
 	<!-- Practice Plans Grid -->
-	{#if $navigating && !practicePlans.length}
+	{#if isNavigating && !practicePlans.length}
 		<!-- Loading skeletons -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 			{#each Array(6) as _, _i (_i)}
@@ -376,7 +330,7 @@
 						<DeletePracticePlan
 							planId={plan.id}
 							createdBy={plan.created_by}
-							on:delete={() => onPlanDeleted(plan.id)}
+							onDelete={() => onPlanDeleted(plan.id)}
 						/>
 					</div>
 				</div>
@@ -388,7 +342,7 @@
 			<Pagination
 				currentPage={pagination.page}
 				totalPages={pagination.totalPages}
-				on:pageChange={handlePageChange}
+				onPageChange={handlePageChange}
 			/>
 		{/if}
 	{:else if !error}

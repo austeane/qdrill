@@ -1,6 +1,4 @@
 <script>
-	import { createEventDispatcher, onMount } from 'svelte';
-	import { dev } from '$app/environment';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { Button } from '$lib/components/ui/button';
@@ -9,27 +7,34 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Checkbox from '$lib/components/ui/Checkbox.svelte';
 	import Dialog from '$lib/components/ui/Dialog.svelte';
-
-	export let open = false;
-	export let season = null;
-	export let marker = null;
-	export let defaultDate = null;
-
-	const dispatch = createEventDispatcher();
-
-	let loading = false;
-	let isEditing = !!marker;
-
 	import { toLocalISO } from '$lib/utils/date.js';
-	let formData = {
-		name: marker?.name || '',
-		description: marker?.description || '',
-		date: marker?.date || marker?.start_date || defaultDate || toLocalISO(new Date()),
-		end_date: marker?.end_date || '',
-		color: marker?.color || '#3b82f6',
-		type: marker?.type || 'event',
-		is_range: !!marker?.end_date
-	};
+
+	let {
+		open = $bindable(false),
+		season = null,
+		marker = null,
+		defaultDate = null,
+		onSave,
+		onDelete,
+		onClose
+	} = $props();
+
+	let loading = $state(false);
+	const isEditing = $derived(!!marker);
+
+	function getInitialFormData() {
+		return {
+			name: marker?.name || '',
+			description: marker?.description || '',
+			date: marker?.date || marker?.start_date || defaultDate || toLocalISO(new Date()),
+			end_date: marker?.end_date || '',
+			color: marker?.color || '#3b82f6',
+			type: marker?.type || 'event',
+			is_range: !!marker?.end_date
+		};
+	}
+
+	let formData = $state(getInitialFormData());
 
 	const markerTypes = [
 		{ value: 'event', label: 'Event' },
@@ -48,6 +53,11 @@
 		{ value: '#ec4899', label: 'Pink' },
 		{ value: '#6b7280', label: 'Gray' }
 	];
+
+	$effect(() => {
+		if (!open) return;
+		formData = getInitialFormData();
+	});
 
 	async function handleSave() {
 		if (!formData.name.trim()) {
@@ -125,7 +135,7 @@
 				});
 			}
 
-			dispatch('save', response);
+			onSave?.(response);
 			handleClose();
 		} catch (error) {
 			console.error('Failed to save marker:', error);
@@ -157,7 +167,7 @@
 				}
 			});
 
-			dispatch('delete', marker.id);
+			onDelete?.(marker.id);
 			handleClose();
 		} catch (error) {
 			console.error('Failed to delete marker:', error);
@@ -173,38 +183,48 @@
 	}
 
 	function handleClose() {
-		dispatch('close');
-		resetForm();
-	}
-
-	function resetForm() {
-		formData = {
-			name: '',
-			description: '',
-			date: defaultDate || new Date().toISOString().split('T')[0],
-			end_date: '',
-			color: '#3b82f6',
-			type: 'event',
-			is_range: false
-		};
+		open = false;
+		onClose?.();
 	}
 
 	function handleColorSelect(color) {
 		formData.color = color;
 	}
-
-	onMount(() => {
-		if (dev) {
-			console.log('[CreateMarkerDialog] mounted', { open, isEditing, defaultDate });
-		}
-	});
 </script>
+
+{#snippet footer()}
+	<div class="flex justify-between">
+		<div>
+			{#if isEditing}
+				<Button variant="destructive" onclick={handleDelete} disabled={loading}>
+					Delete Event
+				</Button>
+			{/if}
+		</div>
+
+		<div class="flex gap-2">
+			<Button variant="ghost" onclick={handleClose} disabled={loading}>Cancel</Button>
+			<Button
+				variant="primary"
+				onclick={handleSave}
+				disabled={!formData.name.trim() || !formData.date || loading}
+			>
+				{#if loading}
+					{isEditing ? 'Updating...' : 'Creating...'}
+				{:else}
+					{isEditing ? 'Update Event' : 'Create Event'}
+				{/if}
+			</Button>
+		</div>
+	</div>
+{/snippet}
 
 <Dialog
 	bind:open
 	title={isEditing ? 'Edit Event' : 'Create Event'}
 	description={isEditing ? 'Update event details' : 'Add a new event or milestone to your season'}
-	on:close={handleClose}
+	onClose={handleClose}
+	{footer}
 >
 	<div class="grid gap-4">
 		<Input
@@ -264,44 +284,19 @@
 				Event Color
 			</span>
 			<div class="flex gap-2 flex-wrap">
-				{#each colorOptions as option (option.value)}
-					<button
-						type="button"
-						class="w-10 h-10 rounded-lg border-2 transition-all {formData.color === option.value
-							? 'border-gray-900 dark:border-white scale-110'
-							: 'border-gray-300 dark:border-gray-600'}"
-						style="background-color: {option.value}"
-						on:click={() => handleColorSelect(option.value)}
-						disabled={loading}
-						aria-label="Select {option.label} color"
-					/>
-				{/each}
+					{#each colorOptions as option (option.value)}
+						<button
+							type="button"
+							class="w-10 h-10 rounded-lg border-2 transition-all {formData.color === option.value
+								? 'border-gray-900 dark:border-white scale-110'
+								: 'border-gray-300 dark:border-gray-600'}"
+							style="background-color: {option.value}"
+							onclick={() => handleColorSelect(option.value)}
+							disabled={loading}
+							aria-label="Select {option.label} color"
+						></button>
+					{/each}
+				</div>
 			</div>
-		</div>
-	</div>
-
-	<div slot="footer" class="flex justify-between">
-		<div>
-			{#if isEditing}
-				<Button variant="destructive" on:click={handleDelete} disabled={loading}>
-					Delete Event
-				</Button>
-			{/if}
-		</div>
-
-		<div class="flex gap-2">
-			<Button variant="ghost" on:click={handleClose} disabled={loading}>Cancel</Button>
-			<Button
-				variant="primary"
-				on:click={handleSave}
-				disabled={!formData.name.trim() || !formData.date || loading}
-			>
-				{#if loading}
-					{isEditing ? 'Updating...' : 'Creating...'}
-				{:else}
-					{isEditing ? 'Update Event' : 'Create Event'}
-				{/if}
-			</Button>
-		</div>
 	</div>
 </Dialog>

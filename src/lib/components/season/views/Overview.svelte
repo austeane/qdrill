@@ -1,5 +1,4 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { device } from '$lib/stores/deviceStore';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -13,20 +12,23 @@
 	import { Layers, Edit2, ChevronRight, Plus } from 'lucide-svelte';
 	import { formatInTz } from '$lib/utils/formatInTz.js';
 
-	export let season = null;
-	export let sections = [];
-	export let markers = [];
-	export let practices = [];
-	export let isAdmin = false;
-	export let teamSlug = '';
-	export let teamTimezone = 'UTC';
+	let {
+		season = null,
+		sections = [],
+		markers = [],
+		practices = [],
+		isAdmin = false,
+		teamSlug = '',
+		teamTimezone = 'UTC',
+		onSectionChange,
+		onMarkerChange,
+		onCreatePractice
+	} = $props();
 
-	const dispatch = createEventDispatcher();
-
-	let showSectionDialog = false;
-	let showMarkerDialog = false;
-	let editingSection = null;
-	let editingMarker = null;
+	let showSectionDialog = $state(false);
+	let showMarkerDialog = $state(false);
+	let editingSection = $state(null);
+	let editingMarker = $state(null);
 
 	// Calculate progress for each section
 	function calculateProgress(section) {
@@ -110,14 +112,12 @@
 		showMarkerDialog = true;
 	}
 
-	function handleSectionSaved(event) {
-		showSectionDialog = false;
-		dispatch('sectionChange', event.detail);
+	function handleSectionSaved(detail) {
+		onSectionChange?.(detail);
 	}
 
-	function handleMarkerSaved(event) {
-		showMarkerDialog = false;
-		dispatch('markerChange', event.detail);
+	function handleMarkerSaved(detail) {
+		onMarkerChange?.(detail);
 	}
 
 	function handleAddPractice(section) {
@@ -129,7 +129,7 @@
 		const targetDate = today > sectionStart ? today : sectionStart;
 
 		if (targetDate <= sectionEnd) {
-			dispatch('createPractice', {
+			onCreatePractice?.({
 				date: toLocalISO(targetDate),
 				sectionId: section.id
 			});
@@ -144,15 +144,15 @@
 		goto(`/teams/${teamSlug}/season/timeline`);
 	}
 
-	$: markerGroups = groupMarkersByMonth();
-	$: markerMonths = Object.keys(markerGroups).sort((a, b) => new Date(a) - new Date(b));
+	const markerGroups = $derived(groupMarkersByMonth());
+	const markerMonths = $derived(Object.keys(markerGroups).sort((a, b) => new Date(a) - new Date(b)));
 </script>
 
-<div class="overview-container" class:desktop={!$device.isMobile}>
+<div class="overview-container" class:desktop={!device.isMobile}>
 	<!-- Action Bar -->
 	<div class="action-bar">
 		<h2 class="section-title">Season Overview</h2>
-		<Button on:click={viewTimeline} variant="outline" size="sm">
+		<Button onclick={viewTimeline} variant="outline" size="sm">
 			<Layers size={16} class="mr-2" />
 			View Timeline
 		</Button>
@@ -179,7 +179,7 @@
 					{#if isAdmin}
 						<button
 							class="edit-button"
-							on:click={() => handleEditSection(section)}
+							onclick={() => handleEditSection(section)}
 							aria-label="Edit section"
 						>
 							<Edit2 size={20} />
@@ -202,7 +202,7 @@
 
 					<div class="section-actions">
 						{#if nextPractice}
-							<button class="next-practice" on:click={() => navigateToPractice(nextPractice)}>
+							<button class="next-practice" onclick={() => navigateToPractice(nextPractice)}>
 								<span class="stat-label">Next:</span>
 								<span class="stat-value">
 									{formatInTz(nextPractice.scheduled_date, teamTimezone, {
@@ -218,7 +218,7 @@
 							<Button
 								size="sm"
 								variant={nextPractice ? 'ghost' : 'default'}
-								on:click={() => handleAddPractice(section)}
+								onclick={() => handleAddPractice(section)}
 							>
 								<Plus size={16} class="mr-1" />
 								Add Practice
@@ -230,7 +230,7 @@
 		{/each}
 
 		{#if isAdmin}
-			<button class="add-section-button" on:click={handleAddSection}>
+			<button class="add-section-button" onclick={handleAddSection}>
 				<Plus size={20} />
 				Add Section
 			</button>
@@ -243,7 +243,7 @@
 			<div class="section-header-row">
 				<h2 class="section-title">Events & Milestones</h2>
 				{#if isAdmin}
-					<Button size="sm" variant="outline" on:click={handleAddMarker}>
+					<Button size="sm" variant="outline" onclick={handleAddMarker}>
 						<Plus size={16} class="mr-1" />
 						Add Event
 					</Button>
@@ -261,8 +261,8 @@
 									<div
 										class="marker-item"
 										class:clickable={isAdmin}
-										on:click={() => isAdmin && handleEditMarker(marker)}
-										on:keydown={(e) => e.key === 'Enter' && isAdmin && handleEditMarker(marker)}
+										onclick={() => isAdmin && handleEditMarker(marker)}
+										onkeydown={(e) => e.key === 'Enter' && isAdmin && handleEditMarker(marker)}
 										role={isAdmin ? 'button' : 'listitem'}
 										tabindex={isAdmin ? 0 : -1}
 									>
@@ -307,43 +307,53 @@
 
 <!-- Section Dialog/Sheet -->
 {#if showSectionDialog}
-	{#if $device.isMobile}
+	{#if device.isMobile}
 		<EditSectionSheet
 			{season}
 			section={editingSection}
 			{teamSlug}
-			on:save={handleSectionSaved}
-			on:close={() => (showSectionDialog = false)}
+			onSave={handleSectionSaved}
+			onClose={() => {
+				showSectionDialog = false;
+				editingSection = null;
+			}}
 		/>
 	{:else}
 		<CreateSectionDialog
 			bind:open={showSectionDialog}
 			{season}
 			section={editingSection}
-			on:save={handleSectionSaved}
-			on:delete={handleSectionSaved}
-			on:close={() => (showSectionDialog = false)}
+			onSave={handleSectionSaved}
+			onDelete={handleSectionSaved}
+			onClose={() => {
+				editingSection = null;
+			}}
 		/>
 	{/if}
 {/if}
 
 <!-- Marker Dialog/Sheet -->
 {#if showMarkerDialog}
-	{#if $device.isMobile}
+	{#if device.isMobile}
 		<EditMarkerSheet
 			{season}
 			marker={editingMarker}
-			on:save={handleMarkerSaved}
-			on:close={() => (showMarkerDialog = false)}
+			onSave={handleMarkerSaved}
+			onClose={() => {
+				showMarkerDialog = false;
+				editingMarker = null;
+			}}
 		/>
 	{:else}
 		<CreateMarkerDialog
 			bind:open={showMarkerDialog}
 			{season}
 			marker={editingMarker}
-			on:save={handleMarkerSaved}
-			on:delete={handleMarkerSaved}
-			on:close={() => (showMarkerDialog = false)}
+			onSave={handleMarkerSaved}
+			onDelete={handleMarkerSaved}
+			onClose={() => {
+				editingMarker = null;
+			}}
 		/>
 	{/if}
 {/if}

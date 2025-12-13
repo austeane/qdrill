@@ -1,19 +1,19 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
-	export let seasonId;
-	export let currentTemplateId;
+	let { seasonId, currentTemplateId, onSelect, onClose } = $props();
 
-	const dispatch = createEventDispatcher();
+	let templates = $state([]);
+	let selectedTemplateId = $state(currentTemplateId ?? null);
+	let loading = $state(true);
 
-	let templates = [];
-	let selectedTemplateId = currentTemplateId;
-	let loading = true;
+	$effect(() => {
+		selectedTemplateId = currentTemplateId ?? null;
+	});
 
 	async function loadTemplates() {
 		// Use the resolved team.id (UUID) from layout data instead of the URL param
-		const teamId = $page.data.team?.id;
+		const teamId = page.data.team?.id;
 		if (!teamId) {
 			console.error('No team ID available in page data');
 			loading = false;
@@ -29,14 +29,16 @@
 	}
 
 	function selectTemplate() {
-		dispatch('select', { templateId: selectedTemplateId });
+		onSelect?.({ templateId: selectedTemplateId });
 	}
 
 	function close() {
-		dispatch('close');
+		onClose?.();
 	}
 
-	loadTemplates();
+	$effect(() => {
+		void loadTemplates();
+	});
 </script>
 
 <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -71,11 +73,11 @@
 		{/if}
 
 		<div class="flex justify-end space-x-2">
-			<button on:click={close} class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">
+			<button onclick={close} class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">
 				Cancel
 			</button>
 			<button
-				on:click={selectTemplate}
+				onclick={selectTemplate}
 				disabled={loading}
 				class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
 			>

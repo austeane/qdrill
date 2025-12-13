@@ -1,19 +1,22 @@
 <script>
 	import { slide } from 'svelte/transition';
-	import { createEventDispatcher } from 'svelte';
 	import DrillCard from './DrillCard.svelte';
 	import ParallelGroup from './ParallelGroup.svelte';
 	import FormationReference from '$lib/components/practice-plan/FormationReference.svelte';
 
-	export let section;
-	export let isActive = false;
-	export let canEdit = false;
-	export let sectionIndex = 0;
-	export let startTime = null;
-	export let selectedPositions = ['CHASERS', 'BEATERS', 'SEEKERS'];
+	let {
+		section,
+		isActive = false,
+		canEdit = false,
+		sectionIndex = 0,
+		startTime = null,
+		onEdit,
+		onDurationChange,
+		onUngroup,
+		onCollapse
+	} = $props();
 
-	const dispatch = createEventDispatcher();
-	let isCollapsed = false;
+	let isCollapsed = $state(false);
 
 	const sectionColors = [
 		'bg-blue-50',
@@ -24,130 +27,20 @@
 		'bg-cyan-50'
 	];
 
-	$: {
-		console.log('[Section] Received section data:', {
-			name: section.name,
-			items: section.items?.map((item) => ({
-				id: item.id,
-				name: item.name,
-				type: item.type,
-				isOneOff: item.type === 'one-off' || (item.type === 'drill' && item.drill_id === null),
-				duration: item.selected_duration || item.duration,
-				drill: {
-					name: item.drill?.name,
-					duration: item.drill?.duration
-				}
-			}))
-		});
-	}
-
-	$: {
-		console.log('[Section] Full section data:', section);
-		if (section.items?.length > 0) {
-			console.log('[Section] First item in section:', section.items[0]);
-			if (
-				section.items[0].type === 'one-off' ||
-				(section.items[0].type === 'drill' && section.items[0].drill_id === null)
-			) {
-				console.log('[Section] First item is a one-off drill');
-			}
-		}
-	}
-
-	$: normalizedItems = section.items?.map((item) => ({
-		...item,
-		name: item.drill?.name || item.name || 'Unnamed Item',
-		duration: item.selected_duration || item.drill?.duration || item.duration || 15,
-		description: item.drill?.brief_description || item.brief_description || '',
-		skill_level: item.drill?.skill_level || item.skill_level || [],
-		skills_focused_on: item.drill?.skills_focused_on || item.skills_focused_on || []
-	}));
+	const normalizedItems = $derived.by(() =>
+		(section?.items ?? []).map((item) => ({
+			...item,
+			name: item.drill?.name || item.name || 'Unnamed Item',
+			duration: Number(item.selected_duration ?? item.drill?.duration ?? item.duration ?? 15),
+			description: item.drill?.brief_description || item.brief_description || '',
+			skill_level: item.drill?.skill_level || item.skill_level || [],
+			skills_focused_on: item.drill?.skills_focused_on || item.skills_focused_on || []
+		}))
+	);
 
 	// Separate formations from regular items
-	$: formations = normalizedItems?.filter((item) => item.type === 'formation') || [];
-	$: drillItems = normalizedItems?.filter((item) => item.type !== 'formation') || [];
-
-	$: {
-		console.log('[Section] Normalized items:', normalizedItems);
-		console.log('[Section] Formations:', formations);
-		console.log('[Section] Drill items:', drillItems);
-	}
-
-	function calculateSectionDuration(items) {
-		if (!items || items.length === 0) return 0;
-
-		const parallelGroups = {};
-		let totalDuration = 0;
-
-		items.forEach((item) => {
-			const duration = parseInt(
-				item.selected_duration ||
-					item.duration ||
-					(item.drill && item.drill.suggested_length_max) ||
-					15
-			);
-
-			if (item.parallel_group_id) {
-				if (!parallelGroups[item.parallel_group_id]) {
-					parallelGroups[item.parallel_group_id] = {};
-				}
-				const timeline = item.parallel_timeline || 'CHASERS';
-				if (!parallelGroups[item.parallel_group_id][timeline]) {
-					parallelGroups[item.parallel_group_id][timeline] = 0;
-				}
-				parallelGroups[item.parallel_group_id][timeline] += duration;
-			} else {
-				totalDuration += duration;
-			}
-		});
-
-		// Add the max duration from each parallel group's timelines
-		Object.values(parallelGroups).forEach((timelineGroups) => {
-			const maxTimelineDuration = Math.max(...Object.values(timelineGroups));
-			totalDuration += maxTimelineDuration;
-		});
-
-		return totalDuration;
-	}
-
-	// Only calculate duration for non-formation items
-	$: sectionDuration = calculateSectionDuration(drillItems);
-
-	// Only group non-formation items
-	$: groupedItems = drillItems?.reduce(
-		(acc, item) => {
-			if (item.parallel_group_id) {
-				if (!acc.parallelGroups[item.parallel_group_id]) {
-					acc.parallelGroups[item.parallel_group_id] = [];
-				}
-				acc.parallelGroups[item.parallel_group_id].push(item);
-			} else {
-				acc.singles.push(item);
-			}
-			return acc;
-		},
-		{ singles: [], parallelGroups: {} }
-	) || { singles: [], parallelGroups: {} };
-
-	// Calculate cumulative duration for start times
-	$: {
-		let currentTime = startTime;
-		groupedItems.singles.forEach((item) => {
-			item.startTime = currentTime;
-			currentTime = addMinutes(currentTime, item.selected_duration || item.duration || 0);
-		});
-
-		Object.values(groupedItems.parallelGroups).forEach((group) => {
-			const groupStartTime = currentTime;
-			const maxDuration = Math.max(
-				...group.map((item) => item.selected_duration || item.duration || 0)
-			);
-			group.forEach((item) => {
-				item.startTime = groupStartTime;
-			});
-			currentTime = addMinutes(currentTime, maxDuration);
-		});
-	}
+	const formations = $derived(normalizedItems.filter((item) => item.type === 'formation'));
+	const drillItems = $derived(normalizedItems.filter((item) => item.type !== 'formation'));
 
 	function addMinutes(timeStr, minutes) {
 		if (!timeStr) return null;
@@ -158,28 +51,61 @@
 		return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
 	}
 
-	function handleEdit(event) {
-		dispatch('edit', event.detail);
+	function getItemDurationMinutes(item) {
+		const value = Number(item.selected_duration ?? item.duration ?? 0);
+		return Number.isFinite(value) ? value : 0;
 	}
 
-	function handleDurationChange(event) {
-		dispatch('durationChange', event.detail);
-	}
+	const timing = $derived.by(() => {
+		const groupMaxDurations = new Map();
+		for (const item of drillItems) {
+			if (!item.parallel_group_id) continue;
+			const duration = getItemDurationMinutes(item);
+			const prev = groupMaxDurations.get(item.parallel_group_id) ?? 0;
+			if (duration > prev) {
+				groupMaxDurations.set(item.parallel_group_id, duration);
+			}
+		}
 
-	function handleUngroup(event) {
-		dispatch('ungroup', event.detail);
-	}
+		const singleStartTimes = new Map();
+		const groupStartTimes = new Map();
+		const processedGroups = new Set();
+		let currentTime = startTime;
+		let duration = 0;
+
+		for (const item of drillItems) {
+			const itemDuration = getItemDurationMinutes(item);
+
+			if (item.parallel_group_id) {
+				if (processedGroups.has(item.parallel_group_id)) continue;
+				processedGroups.add(item.parallel_group_id);
+
+				groupStartTimes.set(item.parallel_group_id, currentTime);
+
+				const groupDuration = groupMaxDurations.get(item.parallel_group_id) ?? itemDuration;
+				duration += groupDuration;
+				currentTime = addMinutes(currentTime, groupDuration);
+
+				continue;
+			}
+
+			singleStartTimes.set(item.id, currentTime);
+			duration += itemDuration;
+			currentTime = addMinutes(currentTime, itemDuration);
+		}
+
+		return { duration, singleStartTimes, groupStartTimes };
+	});
 
 	function toggleCollapse() {
-		isCollapsed = !isCollapsed;
-		dispatch('collapse', { isCollapsed });
+		const nextCollapsed = !isCollapsed;
+		isCollapsed = nextCollapsed;
+		onCollapse?.({ isCollapsed: nextCollapsed });
 	}
 
 	function getSectionColor(index) {
 		return sectionColors[index % sectionColors.length];
 	}
-
-	$: console.log('Section Color:', getSectionColor(sectionIndex), 'Index:', sectionIndex);
 </script>
 
 <div
@@ -189,13 +115,13 @@
 >
 	<header class="section-header">
 		<div class="section-info">
-			<div
-				class="title-area"
-				on:click={toggleCollapse}
-				role="button"
-				tabindex="0"
-				on:keydown={(e) => e.key === 'Enter' && toggleCollapse()}
-			>
+				<div
+					class="title-area"
+					onclick={toggleCollapse}
+					role="button"
+					tabindex="0"
+					onkeydown={(e) => e.key === 'Enter' && toggleCollapse()}
+				>
 				<svg
 					class="w-4 h-4 transform transition-transform {isCollapsed ? '-rotate-90' : ''}"
 					viewBox="0 0 20 20"
@@ -205,10 +131,10 @@
 						d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
 					/>
 				</svg>
-				<h2 class="section-title">{section.name || 'Unnamed Section'}</h2>
+					<h2 class="section-title">{section.name || 'Unnamed Section'}</h2>
+				</div>
+				<span class="section-duration">{timing.duration} minutes</span>
 			</div>
-			<span class="section-duration">{sectionDuration} minutes</span>
-		</div>
 
 		{#if section.goals?.length > 0}
 			<div class="section-goals">
@@ -234,26 +160,26 @@
 					{#if !drillItems
 						.slice(0, itemIndex)
 						.some((prevItem) => prevItem.parallel_group_id === item.parallel_group_id)}
-						<ParallelGroup
-							items={drillItems.filter((i) => i.parallel_group_id === item.parallel_group_id)}
-							{canEdit}
-							startTime={item.startTime}
-							on:edit={handleEdit}
-							on:durationChange={handleDurationChange}
-							on:ungroup={handleUngroup}
-						/>
-					{/if}
-				{:else}
+							<ParallelGroup
+								items={drillItems.filter((i) => i.parallel_group_id === item.parallel_group_id)}
+								{canEdit}
+								startTime={timing.groupStartTimes.get(item.parallel_group_id)}
+								onUngroup={onUngroup}
+								onEdit={onEdit}
+								onDurationChange={onDurationChange}
+							/>
+						{/if}
+					{:else}
 					<!-- Render regular drill items -->
 					<DrillCard
-						{item}
-						editable={canEdit}
-						startTime={item.startTime}
-						on:edit={handleEdit}
-						on:durationChange={handleDurationChange}
-					/>
-				{/if}
-			{/each}
+							{item}
+							editable={canEdit}
+							startTime={timing.singleStartTimes.get(item.id)}
+							onEdit={onEdit}
+							onDurationChange={onDurationChange}
+						/>
+					{/if}
+				{/each}
 		</div>
 	{/if}
 </div>

@@ -1,5 +1,4 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { toast } from '@zerodevx/svelte-toast';
 	import Dialog from '$lib/components/ui/Dialog.svelte';
@@ -7,34 +6,17 @@
 	import Checkbox from '$lib/components/ui/Checkbox.svelte';
 	import { toLocalISO } from '$lib/utils/date.js';
 
-	export let open = false;
-	export let season = null;
-	export let section = null;
-	export let teamId = '';
+	let { open = $bindable(false), season = null, section = null, teamId = '', onSave, onDelete, onClose } =
+		$props();
 
-	const dispatch = createEventDispatcher();
+	let loading = $state(false);
+	let name = $state('');
+	let color = $state('#2563eb');
+	let startDate = $state('');
+	let endDate = $state('');
+	let seedDefaults = $state(false);
 
-	let loading = false;
-	let name = '';
-	let color = '#2563eb';
-	let startDate = '';
-	let endDate = '';
-	let seedDefaults = false;
-
-	$: isEdit = !!section;
-
-	$: if (section) {
-		name = section.name || '';
-		color = section.color || '#2563eb';
-		startDate = section.start_date || '';
-		endDate = section.end_date || '';
-	} else {
-		name = '';
-		color = '#2563eb';
-		startDate = season?.start_date || '';
-		endDate = season?.end_date || '';
-		seedDefaults = false;
-	}
+	const isEdit = $derived(!!section);
 
 	const colors = [
 		'#2563eb', // Blue
@@ -46,6 +28,25 @@
 		'#ec4899', // Pink
 		'#f97316' // Orange
 	];
+
+	$effect(() => {
+		if (!open) return;
+
+		if (section) {
+			name = section.name || '';
+			color = section.color || '#2563eb';
+			startDate = section.start_date || '';
+			endDate = section.end_date || '';
+			seedDefaults = false;
+			return;
+		}
+
+		name = '';
+		color = '#2563eb';
+		startDate = season?.start_date || '';
+		endDate = season?.end_date || '';
+		seedDefaults = false;
+	});
 
 	async function handleSave() {
 		if (!name.trim()) {
@@ -83,7 +84,7 @@
 				}
 			});
 
-			dispatch('save', response);
+			onSave?.(response);
 			handleClose();
 		} catch (error) {
 			console.error('Failed to save section:', error);
@@ -115,7 +116,7 @@
 				}
 			});
 
-			dispatch('delete', section);
+			onDelete?.(section);
 			handleClose();
 		} catch (error) {
 			console.error('Failed to delete section:', error);
@@ -131,7 +132,8 @@
 	}
 
 	function handleClose() {
-		dispatch('close');
+		open = false;
+		onClose?.();
 		resetForm();
 	}
 
@@ -147,40 +149,63 @@
 		const today = new Date();
 		const start = new Date(today);
 
-			switch (option) {
-				case 'this-week': {
-					const dayOfWeek = start.getDay();
-					start.setDate(start.getDate() - dayOfWeek);
-					startDate = toLocalISO(start);
+		switch (option) {
+			case 'this-week': {
+				const dayOfWeek = start.getDay();
+				start.setDate(start.getDate() - dayOfWeek);
+				startDate = toLocalISO(start);
 
-					const endOfWeek = new Date(start);
-					endOfWeek.setDate(start.getDate() + 6);
-					endDate = toLocalISO(endOfWeek);
-					break;
-				}
+				const endOfWeek = new Date(start);
+				endOfWeek.setDate(start.getDate() + 6);
+				endDate = toLocalISO(endOfWeek);
+				break;
+			}
 
-				case 'next-4-weeks': {
-					startDate = toLocalISO(today);
-					const fourWeeksLater = new Date(today);
-					fourWeeksLater.setDate(today.getDate() + 28);
-					endDate = toLocalISO(fourWeeksLater);
-					break;
-				}
+			case 'next-4-weeks': {
+				startDate = toLocalISO(today);
+				const fourWeeksLater = new Date(today);
+				fourWeeksLater.setDate(today.getDate() + 28);
+				endDate = toLocalISO(fourWeeksLater);
+				break;
+			}
 
-				case 'to-season-end': {
-					startDate = toLocalISO(today);
-					endDate = season?.end_date || '';
-					break;
-				}
+			case 'to-season-end': {
+				startDate = toLocalISO(today);
+				endDate = season?.end_date || '';
+				break;
 			}
 		}
+	}
 </script>
+
+{#snippet footer()}
+	<div class="footer-buttons">
+		{#if isEdit}
+			<button class="button button-destructive" onclick={handleDelete} disabled={loading}>
+				{loading ? 'Deleting...' : 'Delete'}
+			</button>
+		{/if}
+		<div class="footer-right">
+			<button class="button button-secondary" onclick={handleClose} disabled={loading}>
+				Cancel
+			</button>
+			<button
+				class="button button-primary"
+				onclick={handleSave}
+				disabled={loading || !name.trim()}
+			>
+				{loading ? 'Saving...' : isEdit ? 'Update' : 'Create'}
+			</button>
+		</div>
+	</div>
+{/snippet}
 
 <Dialog
 	bind:open
 	title={isEdit ? 'Edit Section' : 'Create Section'}
 	description={isEdit ? 'Update this season section' : 'Add a new section to your season'}
-	on:close={handleClose}
+	onClose={handleClose}
+	{footer}
 >
 	<div class="grid gap-4">
 		<Input
@@ -193,20 +218,20 @@
 
 		<div class="form-group">
 			<span class="form-label">Color</span>
-			<div class="color-grid">
-				{#each colors as c (c)}
-					<button
-						type="button"
-						class="color-option"
-						class:selected={color === c}
-						style="background-color: {c}"
-						on:click={() => (color = c)}
-						disabled={loading}
-						aria-label="Select color"
-					/>
-				{/each}
+				<div class="color-grid">
+					{#each colors as c (c)}
+						<button
+							type="button"
+							class="color-option"
+							class:selected={color === c}
+							style="background-color: {c}"
+							onclick={() => (color = c)}
+							disabled={loading}
+							aria-label="Select color"
+						></button>
+					{/each}
+				</div>
 			</div>
-		</div>
 
 		<div class="date-group">
 			<Input
@@ -235,7 +260,7 @@
 			<button
 				type="button"
 				class="quick-button"
-				on:click={() => setDateRange('this-week')}
+				onclick={() => setDateRange('this-week')}
 				disabled={loading}
 			>
 				This Week
@@ -243,7 +268,7 @@
 			<button
 				type="button"
 				class="quick-button"
-				on:click={() => setDateRange('next-4-weeks')}
+				onclick={() => setDateRange('next-4-weeks')}
 				disabled={loading}
 			>
 				Next 4 Weeks
@@ -251,7 +276,7 @@
 			<button
 				type="button"
 				class="quick-button"
-				on:click={() => setDateRange('to-season-end')}
+				onclick={() => setDateRange('to-season-end')}
 				disabled={loading}
 			>
 				To Season End
@@ -259,30 +284,8 @@
 		</div>
 
 		{#if !isEdit}
-			<Checkbox bind:checked={seedDefaults} disabled={loading}>
-				Add default practice sections
-			</Checkbox>
+			<Checkbox label="Add default practice sections" bind:checked={seedDefaults} disabled={loading} />
 		{/if}
-	</div>
-
-	<div slot="footer" class="footer-buttons">
-		{#if isEdit}
-			<button class="button button-destructive" on:click={handleDelete} disabled={loading}>
-				{loading ? 'Deleting...' : 'Delete'}
-			</button>
-		{/if}
-		<div class="footer-right">
-			<button class="button button-secondary" on:click={handleClose} disabled={loading}>
-				Cancel
-			</button>
-			<button
-				class="button button-primary"
-				on:click={handleSave}
-				disabled={loading || !name.trim()}
-			>
-				{loading ? 'Saving...' : isEdit ? 'Update' : 'Create'}
-			</button>
-		</div>
 	</div>
 </Dialog>
 

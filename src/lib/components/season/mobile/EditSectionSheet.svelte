@@ -1,25 +1,28 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { toLocalISO } from '$lib/utils/date.js';
 	import { toast } from '@zerodevx/svelte-toast';
 	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
-	import { toLocalISO } from '$lib/utils/date.js';
 
-	export let season = null;
-	export let section = null;
-	export let teamId = '';
+	let { season = null, section = null, teamId = '', onSave, onClose } = $props();
 
-	const dispatch = createEventDispatcher();
+	let open = $state(true);
+	let loading = $state(false);
+	let name = $state('');
+	let color = $state('#2563eb');
+	let startDate = $state('');
+	let endDate = $state('');
+	let seedDefaults = $state(false);
 
-	let loading = false;
-	let name = section?.name || '';
-	let color = section?.color || '#2563eb';
-	let startDate = section?.start_date || season?.start_date || '';
-	let endDate = section?.end_date || season?.end_date || '';
-	let seedDefaults = false;
+	const isEdit = $derived(!!section);
 
-	$: open = true;
-	$: isEdit = !!section;
+	$effect(() => {
+		name = section?.name || '';
+		color = section?.color || '#2563eb';
+		startDate = section?.start_date || season?.start_date || '';
+		endDate = section?.end_date || season?.end_date || '';
+		seedDefaults = false;
+	});
 
 	// Predefined colors
 	const colors = [
@@ -38,34 +41,34 @@
 		const today = new Date();
 		const start = new Date(today);
 
-			switch (option) {
-				case 'this-week': {
-					// Start from Sunday of this week
-					const dayOfWeek = start.getDay();
-					start.setDate(start.getDate() - dayOfWeek);
-					startDate = toLocalISO(start);
+		switch (option) {
+			case 'this-week': {
+				// Start from Sunday of this week
+				const dayOfWeek = start.getDay();
+				start.setDate(start.getDate() - dayOfWeek);
+				startDate = toLocalISO(start);
 
-					const endOfWeek = new Date(start);
-					endOfWeek.setDate(start.getDate() + 6);
-					endDate = toLocalISO(endOfWeek);
-					break;
-				}
+				const endOfWeek = new Date(start);
+				endOfWeek.setDate(start.getDate() + 6);
+				endDate = toLocalISO(endOfWeek);
+				break;
+			}
 
-				case 'next-4-weeks': {
-					startDate = toLocalISO(today);
-					const fourWeeksLater = new Date(today);
-					fourWeeksLater.setDate(today.getDate() + 28);
-					endDate = toLocalISO(fourWeeksLater);
-					break;
-				}
+			case 'next-4-weeks': {
+				startDate = toLocalISO(today);
+				const fourWeeksLater = new Date(today);
+				fourWeeksLater.setDate(today.getDate() + 28);
+				endDate = toLocalISO(fourWeeksLater);
+				break;
+			}
 
-				case 'to-season-end': {
-					startDate = toLocalISO(today);
-					endDate = season?.end_date || '';
-					break;
-				}
+			case 'to-season-end': {
+				startDate = toLocalISO(today);
+				endDate = season?.end_date || '';
+				break;
 			}
 		}
+	}
 
 	// Nudge dates by a week
 	function nudgeDates(weeks) {
@@ -147,7 +150,7 @@
 				}
 			});
 
-			dispatch('save', response);
+			onSave?.(response);
 			handleClose();
 		} catch (error) {
 			console.error('Failed to save section:', error);
@@ -164,15 +167,27 @@
 
 	function handleClose() {
 		open = false;
-		setTimeout(() => dispatch('close'), 200);
+		setTimeout(() => onClose?.(), 200);
 	}
 </script>
+
+{#snippet footer()}
+	<div class="footer-buttons">
+		<button class="button button-secondary" onclick={handleClose} disabled={loading}>
+			Cancel
+		</button>
+		<button class="button button-primary" onclick={handleSave} disabled={loading}>
+			{loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Section'}
+		</button>
+	</div>
+{/snippet}
 
 <BottomSheet
 	bind:open
 	title={isEdit ? 'Edit Section' : 'Create Section'}
 	height="auto"
-	on:close={handleClose}
+	onClose={handleClose}
+	{footer}
 >
 	<div class="form-content">
 		<!-- Name -->
@@ -191,19 +206,19 @@
 		<!-- Color Selection -->
 		<div class="form-group">
 			<span class="form-label">Color</span>
-			<div class="color-grid">
-				{#each colors as c (c)}
-					<button
-						class="color-option"
-						class:selected={color === c}
-						style="background-color: {c}"
-						on:click={() => (color = c)}
-						aria-label="Select color {c}"
-						disabled={loading}
-					/>
-				{/each}
+				<div class="color-grid">
+					{#each colors as c (c)}
+						<button
+							class="color-option"
+							class:selected={color === c}
+							style="background-color: {c}"
+							onclick={() => (color = c)}
+							aria-label="Select color {c}"
+							disabled={loading}
+						></button>
+					{/each}
+				</div>
 			</div>
-		</div>
 
 		<!-- Date Range -->
 		<div class="form-group">
@@ -213,21 +228,21 @@
 				<div class="quick-options">
 					<button
 						class="quick-button"
-						on:click={() => setDateRange('this-week')}
+						onclick={() => setDateRange('this-week')}
 						disabled={loading}
 					>
 						This week
 					</button>
 					<button
 						class="quick-button"
-						on:click={() => setDateRange('next-4-weeks')}
+						onclick={() => setDateRange('next-4-weeks')}
 						disabled={loading}
 					>
 						Next 4 weeks
 					</button>
 					<button
 						class="quick-button"
-						on:click={() => setDateRange('to-season-end')}
+						onclick={() => setDateRange('to-season-end')}
 						disabled={loading}
 					>
 						To season end
@@ -265,10 +280,10 @@
 
 			{#if isEdit}
 				<div class="nudge-buttons">
-					<button class="nudge-button" on:click={() => nudgeDates(-1)} disabled={loading}>
+					<button class="nudge-button" onclick={() => nudgeDates(-1)} disabled={loading}>
 						← 1 week earlier
 					</button>
-					<button class="nudge-button" on:click={() => nudgeDates(1)} disabled={loading}>
+					<button class="nudge-button" onclick={() => nudgeDates(1)} disabled={loading}>
 						1 week later →
 					</button>
 				</div>
@@ -290,15 +305,6 @@
 				</label>
 			</div>
 		{/if}
-	</div>
-
-	<div slot="footer" class="footer-buttons">
-		<button class="button button-secondary" on:click={handleClose} disabled={loading}>
-			Cancel
-		</button>
-		<button class="button button-primary" on:click={handleSave} disabled={loading}>
-			{loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Section'}
-		</button>
 	</div>
 </BottomSheet>
 

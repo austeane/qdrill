@@ -4,13 +4,16 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	compilerOptions: {
-		// This codebase is written in Svelte 4-style (implicit reactivity).
-		// Disable runes mode so local `let` state updates and `$:` react as expected.
-		runes: false,
-		// Keep legacy component API semantics (component events, bindable props)
-		// for this codebase while on Svelte 5.
-		compatibility: {
-			componentApi: 4
+		// Enable Svelte 5 runes mode.
+		runes: true
+	},
+	vitePlugin: {
+		dynamicCompileOptions({ filename }) {
+			// Some third-party packages ship legacy Svelte components that still use
+			// `export let`, `$$props/$$restProps`, and `<slot>`. Compile them in legacy mode.
+			if (filename.includes('node_modules')) {
+				return { runes: false };
+			}
 		}
 	},
 	kit: {

@@ -1,33 +1,23 @@
 <script>
 	import { browser } from '$app/environment';
-	import { page } from '$app/stores';
-	import { navigating } from '$app/stores';
-	import { onDestroy } from 'svelte';
+	import { navigating, page } from '$app/state';
 	import '../app.css';
 	import AppShell from '$lib/components/AppShell.svelte';
 	import { SvelteToast } from '@zerodevx/svelte-toast';
 	import FeedbackButton from '$lib/components/FeedbackButton.svelte';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import ErrorBoundary from '$lib/components/ErrorBoundary.svelte';
-	import { inject } from '@vercel/analytics';
-	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
-	import { dev } from '$app/environment';
-	import { onMount } from 'svelte';
 	import { useSession } from '$lib/auth-client';
 	import { theme } from '$lib/stores/themeStore';
 
-	inject({ mode: dev ? 'development' : 'production' });
-	injectSpeedInsights();
+	let { children } = $props();
 
 	// Get session using Better Auth
 	const session = useSession();
 
-	let isNavigating = false;
-	const unsubNavigating = navigating.subscribe((v) => (isNavigating = !!v));
-	onDestroy(unsubNavigating);
+	const isNavigating = $derived(navigating.type !== null);
 
-	/** @type {import('./$types').LayoutData} */
-	export let data;
+	theme.init?.();
 
 	// Function to check and associate entities from sessionStorage
 	async function checkAndAssociateEntities(sessionData) {
@@ -75,21 +65,19 @@
 		}
 	}
 
-	// Initialize theme and check for any pending entity associations
-	onMount(() => {
-		theme.init();
-		if ($session.data) {
-			checkAndAssociateEntities($session.data);
-		}
-	});
+	let didRunSessionAssociationOnce = false;
+	$effect(() => {
+		if (!browser) return;
 
-	// Check whenever the session data changes (e.g., after login)
-	$: {
-		if (browser && $session.data) {
-			// Use timeout to ensure session is fully established after redirect
-			setTimeout(() => checkAndAssociateEntities($session.data), 100);
-		}
-	}
+		const sessionData = $session.data;
+		if (!sessionData) return;
+
+		const delayMs = didRunSessionAssociationOnce ? 100 : 0;
+		didRunSessionAssociationOnce = true;
+
+		const timeout = setTimeout(() => checkAndAssociateEntities(sessionData), delayMs);
+		return () => clearTimeout(timeout);
+	});
 </script>
 
 <div class="flex flex-col min-h-screen">
@@ -105,14 +93,14 @@
 
 	<AppShell>
 		<ErrorBoundary>
-			<slot />
+			{@render children()}
 		</ErrorBoundary>
 	</AppShell>
 
 	<FeedbackButton />
 	<SvelteToast />
 
-	{#if $page.url.pathname === '/'}
+	{#if page.url.pathname === '/'}
 		<footer class="py-4 bg-gray-100">
 			<div class="container mx-auto text-center">
 				<a href="/privacy-policy" class="text-blue-500 hover:text-blue-700 mr-4">Privacy Policy</a>

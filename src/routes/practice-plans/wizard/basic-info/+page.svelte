@@ -1,10 +1,9 @@
 <script>
 	import { onMount } from 'svelte';
-	import { basicInfo, validationErrors } from '$lib/stores/wizardStore';
-	import { scheduleAutoSave } from '$lib/stores/wizardStore';
+	import { wizardStore } from '$lib/stores/wizardStore';
 
 	// Change Editor import to be loaded dynamically
-	let Editor;
+	let Editor = $state(null);
 
 	onMount(async () => {
 		try {
@@ -28,18 +27,20 @@
 
 	// Handle input changes
 	function handleChange() {
-		scheduleAutoSave();
+		wizardStore.scheduleAutoSave();
 	}
 
 	// Add practice goal
 	function addPracticeGoal() {
-		$basicInfo.practiceGoals = [...$basicInfo.practiceGoals, ''];
+		wizardStore.basicInfo.practiceGoals = [...wizardStore.basicInfo.practiceGoals, ''];
 		handleChange();
 	}
 
 	// Remove practice goal
 	function removePracticeGoal(index) {
-		$basicInfo.practiceGoals = $basicInfo.practiceGoals.filter((_, i) => i !== index);
+		wizardStore.basicInfo.practiceGoals = wizardStore.basicInfo.practiceGoals.filter(
+			(_, i) => i !== index
+		);
 		handleChange();
 	}
 </script>
@@ -62,15 +63,17 @@
 				<input
 					type="text"
 					id="name"
-					bind:value={$basicInfo.name}
-					on:input={handleChange}
+					bind:value={wizardStore.basicInfo.name}
+					oninput={handleChange}
 					class="bg-white text-gray-900 placeholder-gray-400 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
 					aria-label="Practice Plan Name"
-					aria-invalid={$validationErrors.name ? 'true' : 'false'}
-					aria-describedby={$validationErrors.name ? 'name-error' : undefined}
+					aria-invalid={wizardStore.validationErrors.name ? 'true' : 'false'}
+					aria-describedby={wizardStore.validationErrors.name ? 'name-error' : undefined}
 				/>
-				{#if $validationErrors.name}
-					<p id="name-error" class="mt-1 text-sm text-red-600">{$validationErrors.name[0]}</p>
+				{#if wizardStore.validationErrors.name}
+					<p id="name-error" class="mt-1 text-sm text-red-600">
+						{wizardStore.validationErrors.name[0]}
+					</p>
 				{/if}
 			</div>
 		</div>
@@ -84,17 +87,19 @@
 				<input
 					type="number"
 					id="participants"
-					bind:value={$basicInfo.participants}
-					on:input={handleChange}
+					bind:value={wizardStore.basicInfo.participants}
+					oninput={handleChange}
 					min="1"
 					class="bg-white text-gray-900 placeholder-gray-400 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
 					aria-label="Number of Participants"
-					aria-invalid={$validationErrors.participants ? 'true' : 'false'}
-					aria-describedby={$validationErrors.participants ? 'participants-error' : undefined}
+					aria-invalid={wizardStore.validationErrors.participants ? 'true' : 'false'}
+					aria-describedby={
+						wizardStore.validationErrors.participants ? 'participants-error' : undefined
+					}
 				/>
-				{#if $validationErrors.participants}
+				{#if wizardStore.validationErrors.participants}
 					<p id="participants-error" class="mt-1 text-sm text-red-600">
-						{$validationErrors.participants[0]}
+						{wizardStore.validationErrors.participants[0]}
 					</p>
 				{/if}
 			</div>
@@ -106,21 +111,23 @@
 			<div class="mt-1">
 				<select
 					id="phase"
-					bind:value={$basicInfo.phaseOfSeason}
-					on:change={handleChange}
+					bind:value={wizardStore.basicInfo.phaseOfSeason}
+					onchange={handleChange}
 					class="bg-white text-gray-900 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
 					aria-label="Phase of Season"
-					aria-invalid={$validationErrors.phaseOfSeason ? 'true' : 'false'}
-					aria-describedby={$validationErrors.phaseOfSeason ? 'phase-error' : undefined}
+					aria-invalid={wizardStore.validationErrors.phaseOfSeason ? 'true' : 'false'}
+					aria-describedby={
+						wizardStore.validationErrors.phaseOfSeason ? 'phase-error' : undefined
+					}
 				>
 					<option value={null}>Select a phase (optional)</option>
 					{#each phaseOptions as phase (phase)}
 						<option value={phase}>{phase}</option>
 					{/each}
 				</select>
-				{#if $validationErrors.phaseOfSeason}
+				{#if wizardStore.validationErrors.phaseOfSeason}
 					<p id="phase-error" class="mt-1 text-sm text-red-600">
-						{$validationErrors.phaseOfSeason[0]}
+						{wizardStore.validationErrors.phaseOfSeason[0]}
 					</p>
 				{/if}
 			</div>
@@ -134,27 +141,29 @@
 				</span>
 				<button
 					type="button"
-					on:click={addPracticeGoal}
+					onclick={addPracticeGoal}
 					class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
 				>
 					Add Goal
 				</button>
 			</div>
 			<div role="list" aria-labelledby="practice-goals-label" class="mt-2 space-y-2">
-				{#each $basicInfo.practiceGoals as _, index (index)}
+				{#each wizardStore.basicInfo.practiceGoals as _, index (index)}
 					<div class="flex items-center space-x-2">
 						<input
 							type="text"
-							bind:value={$basicInfo.practiceGoals[index]}
-							on:input={handleChange}
+							bind:value={wizardStore.basicInfo.practiceGoals[index]}
+							oninput={handleChange}
 							placeholder="Enter a practice goal"
 							class="bg-white text-gray-900 placeholder-gray-400 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
 							aria-label={`Practice Goal ${index + 1}`}
-							aria-invalid={$validationErrors.practiceGoals?.[index] ? 'true' : undefined}
+							aria-invalid={
+								wizardStore.validationErrors.practiceGoals?.[index] ? 'true' : undefined
+							}
 						/>
 						<button
 							type="button"
-							on:click={() => removePracticeGoal(index)}
+							onclick={() => removePracticeGoal(index)}
 							class="inline-flex items-center p-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200"
 							aria-label={`Remove Practice Goal ${index + 1}`}
 						>
@@ -174,9 +183,9 @@
 					</div>
 				{/each}
 			</div>
-			{#if $validationErrors.practiceGoals}
+			{#if wizardStore.validationErrors.practiceGoals}
 				<p id="practice-goals-error" class="mt-1 text-sm text-red-600">
-					{$validationErrors.practiceGoals[0]}
+					{wizardStore.validationErrors.practiceGoals[0]}
 				</p>
 			{/if}
 		</div>
@@ -187,15 +196,14 @@
 				Description (Optional)
 			</label>
 			<div class="mt-1">
-				{#if Editor}
-					<div class="min-h-[300px]">
-						<svelte:component
-							this={Editor}
-							id="description"
-							apiKey={import.meta.env.VITE_TINY_API_KEY}
-							init={{
-								height: 300,
-								menubar: false,
+					{#if Editor}
+						<div class="min-h-[300px]">
+							<Editor
+								id="description"
+								apiKey={import.meta.env.VITE_TINY_API_KEY}
+								init={{
+									height: 300,
+									menubar: false,
 								plugins: [
 									'advlist',
 									'autolink',
@@ -222,30 +230,34 @@
 								branding: false,
 								setup: (editor) => {
 									editor.on('change keyup', () => {
-										$basicInfo.description = editor.getContent();
+										wizardStore.basicInfo.description = editor.getContent();
 										handleChange();
 									});
 								}
-							}}
-							value={$basicInfo.description}
-							aria-invalid={$validationErrors.description ? 'true' : 'false'}
-							aria-describedby={$validationErrors.description ? 'description-error' : undefined}
-						/>
-					</div>
+								}}
+								value={wizardStore.basicInfo.description}
+								aria-invalid={wizardStore.validationErrors.description ? 'true' : 'false'}
+								aria-describedby={
+									wizardStore.validationErrors.description ? 'description-error' : undefined
+								}
+							/>
+						</div>
 				{:else}
 					<textarea
 						id="description"
-						bind:value={$basicInfo.description}
-						on:input={handleChange}
+						bind:value={wizardStore.basicInfo.description}
+						oninput={handleChange}
 						class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
 						rows="8"
-						aria-invalid={$validationErrors.description ? 'true' : 'false'}
-						aria-describedby={$validationErrors.description ? 'description-error' : undefined}
+						aria-invalid={wizardStore.validationErrors.description ? 'true' : 'false'}
+						aria-describedby={
+							wizardStore.validationErrors.description ? 'description-error' : undefined
+						}
 					></textarea>
 				{/if}
-				{#if $validationErrors.description}
+				{#if wizardStore.validationErrors.description}
 					<p id="description-error" class="mt-1 text-sm text-red-600">
-						{$validationErrors.description[0]}
+						{wizardStore.validationErrors.description[0]}
 					</p>
 				{/if}
 			</div>
@@ -258,19 +270,21 @@
 			>
 			<select
 				id="visibility-select"
-				bind:value={$basicInfo.visibility}
-				on:change={handleChange}
+				bind:value={wizardStore.basicInfo.visibility}
+				onchange={handleChange}
 				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-				aria-invalid={$validationErrors.visibility ? 'true' : 'false'}
-				aria-describedby={$validationErrors.visibility ? 'visibility-error' : undefined}
+				aria-invalid={wizardStore.validationErrors.visibility ? 'true' : 'false'}
+				aria-describedby={
+					wizardStore.validationErrors.visibility ? 'visibility-error' : undefined
+				}
 			>
 				<option value="public">Public</option>
 				<option value="private">Private</option>
 				<option value="unlisted">Unlisted</option>
 			</select>
-			{#if $validationErrors.visibility}
+			{#if wizardStore.validationErrors.visibility}
 				<p id="visibility-error" class="mt-1 text-sm text-red-600">
-					{$validationErrors.visibility[0]}
+					{wizardStore.validationErrors.visibility[0]}
 				</p>
 			{/if}
 		</div>
@@ -280,17 +294,19 @@
 			<label class="flex items-center space-x-2">
 				<input
 					type="checkbox"
-					bind:checked={$basicInfo.isEditableByOthers}
-					on:change={handleChange}
+					bind:checked={wizardStore.basicInfo.isEditableByOthers}
+					onchange={handleChange}
 					class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-					aria-invalid={$validationErrors.isEditableByOthers ? 'true' : 'false'}
-					aria-describedby={$validationErrors.isEditableByOthers ? 'editable-error' : undefined}
+					aria-invalid={wizardStore.validationErrors.isEditableByOthers ? 'true' : 'false'}
+					aria-describedby={
+						wizardStore.validationErrors.isEditableByOthers ? 'editable-error' : undefined
+					}
 				/>
 				<span class="text-sm text-gray-700">Allow others to edit this practice plan</span>
 			</label>
-			{#if $validationErrors.isEditableByOthers}
+			{#if wizardStore.validationErrors.isEditableByOthers}
 				<p id="editable-error" class="mt-1 text-sm text-red-600">
-					{$validationErrors.isEditableByOthers[0]}
+					{wizardStore.validationErrors.isEditableByOthers[0]}
 				</p>
 			{/if}
 		</div>

@@ -1,27 +1,23 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	// Removed shadcn component imports - Card, Button, Input, Label, Textarea, Select, Popover, etc.
 	import Spinner from '$lib/components/Spinner.svelte';
 	import { Info } from 'lucide-svelte'; // Added Info icon import
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	// Removed lucide-svelte, cmdk-sv, bits-ui, cn imports
 
-	const dispatch = createEventDispatcher();
-
-	export let skillOptions = [];
-	export let focusAreaOptions = [];
+	let { skillOptions = [], focusAreaOptions = [], onGenerated, onError } = $props();
 
 	// AI Generation State
-	let aiParams = {
+	let aiParams = $state({
 		durationMinutes: 90,
 		skillLevel: 'intermediate',
 		participantCount: 15,
 		goals: 'Improve team offense and cutting timing.',
 		focusAreas: [],
 		modelId: 'claude-opus-4.5'
-	};
-	let isGenerating = false;
-	let showInfoTooltip = false; // Added for tooltip visibility
+	});
+	let isGenerating = $state(false);
+	let showInfoTooltip = $state(false); // Added for tooltip visibility
 
 	// Helper function to update aiParams.focusAreas for checkboxes
 	function handleFocusAreaChange(event) {
@@ -31,8 +27,6 @@
 		} else {
 			aiParams.focusAreas = aiParams.focusAreas.filter((v) => v !== value);
 		}
-		// Ensure reactivity by reassigning
-		aiParams = aiParams;
 	}
 
 	async function handleGenerateAI() {
@@ -57,10 +51,10 @@
 				);
 			}
 
-			dispatch('generated', responseBody); // Dispatch success event with data
+			onGenerated?.(responseBody);
 		} catch (error) {
 			console.error('Failed to generate plan with AI:', error);
-			dispatch('error', `Generation failed: ${error.message || 'An unknown error occurred.'}`);
+			onError?.(`Generation failed: ${error.message || 'An unknown error occurred.'}`);
 		} finally {
 			isGenerating = false;
 		}
@@ -76,8 +70,8 @@
 			<h3 class="text-lg font-semibold leading-none tracking-tight">Generate Plan with AI</h3>
 			<div
 				class="relative"
-				on:mouseenter={() => (showInfoTooltip = true)}
-				on:mouseleave={() => (showInfoTooltip = false)}
+				onmouseenter={() => (showInfoTooltip = true)}
+				onmouseleave={() => (showInfoTooltip = false)}
 			>
 				<Info class="h-4 w-4 text-gray-500 cursor-pointer" />
 				{#if showInfoTooltip}
@@ -175,7 +169,7 @@
 								type="checkbox"
 								value={option.value}
 								checked={aiParams.focusAreas.includes(option.value)}
-								on:change={handleFocusAreaChange}
+								onchange={handleFocusAreaChange}
 								class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
 							/>
 							<span class="text-sm text-gray-700">{option.label}</span>
@@ -196,7 +190,7 @@
 		<!-- Standard button with Tailwind -->
 		<button
 			type="button"
-			on:click={handleGenerateAI}
+			onclick={handleGenerateAI}
 			disabled={isGenerating}
 			class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
 		>

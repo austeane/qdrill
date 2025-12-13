@@ -1,5 +1,4 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import {
 		startSectionDrag,
 		handleSectionDragOver,
@@ -13,96 +12,72 @@
 	import FormationItem from '../items/FormationItem.svelte';
 	import ParallelGroup from '../items/ParallelGroup.svelte';
 
-	export let section;
-	export let sectionIndex;
-
-	export let onRemoveSection = (sectionId) => {
+	let {
+		section,
+		sectionIndex,
+		onRemoveSection = (sectionId) => {
 		console.warn('onRemoveSection prop not provided to SectionContainer', sectionId);
-	};
-	export let onRemoveItem = (sectionIndex, itemIndex) => {
+		},
+		onRemoveItem = (sectionIndex, itemIndex) => {
 		console.warn('onRemoveItem prop not provided to SectionContainer', sectionIndex, itemIndex);
-	};
-	export let onDurationChange = (sectionIndex, itemIndex, newDuration) => {
+		},
+		onDurationChange = (sectionIndex, itemIndex, newDuration) => {
 		console.warn(
 			'onDurationChange prop not provided to SectionContainer',
 			sectionIndex,
 			itemIndex,
 			newDuration
 		);
-	};
-	export let onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
+		},
+		onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
 		console.warn(
 			'onTimelineChange prop not provided to SectionContainer',
 			sectionIndex,
 			itemIndex,
 			newTimeline
 		);
-	};
-	export let onUngroup = (groupId) => {
+		},
+		onUngroup = (groupId) => {
 		console.warn('onUngroup prop not provided to SectionContainer', groupId);
-	};
-	export let timelineNameGetter = (timeline) => timeline;
-	export let customTimelineNamesData = {};
-
-	const dispatch = createEventDispatcher();
+		},
+		timelineNameGetter = (timeline) => timeline,
+		customTimelineNamesData = {},
+		onOpenDrillSearch,
+		onOpenTimelineSelector
+	} = $props();
 
 	function handleOpenDrillSearch(event) {
-		dispatch('openDrillSearch', event.detail);
+		onOpenDrillSearch?.(event);
 	}
 
 	function handleOpenTimelineSelector(event) {
-		dispatch('openTimelineSelector', event.detail);
-	}
-
-	// Group items by parallel group ID
-	$: _groupedItems = groupItemsByParallelGroup(section.items);
-
-	function groupItemsByParallelGroup(items) {
-		const result = {
-			groups: {},
-			singles: []
-		};
-
-		if (!items) return result;
-
-		items.forEach((item) => {
-			if (item.parallel_group_id) {
-				if (!result.groups[item.parallel_group_id]) {
-					result.groups[item.parallel_group_id] = [];
-				}
-				result.groups[item.parallel_group_id].push(item);
-			} else {
-				result.singles.push(item);
-			}
-		});
-
-		return result;
+		onOpenTimelineSelector?.(event);
 	}
 </script>
 
 <div
 	class="section-container bg-white rounded-lg shadow-sm p-4 mb-4"
 	draggable="true"
-	on:dragstart={(e) => startSectionDrag(e, sectionIndex)}
-	on:dragover={(e) => handleSectionDragOver(e, sectionIndex, e.currentTarget)}
-	on:dragleave={handleDragLeave}
-	on:drop={handleDrop}
-	on:dragend={handleDragEnd}
+	ondragstart={(e) => startSectionDrag(e, sectionIndex)}
+	ondragover={(e) => handleSectionDragOver(e, sectionIndex, e.currentTarget)}
+	ondragleave={handleDragLeave}
+	ondrop={handleDrop}
+	ondragend={handleDragEnd}
 >
 	<SectionHeader
 		{section}
 		onRemove={() => onRemoveSection(section.id)}
-		on:openDrillSearch={handleOpenDrillSearch}
-		on:openTimelineSelector={handleOpenTimelineSelector}
+		onOpenDrillSearch={handleOpenDrillSearch}
+		onOpenTimelineSelector={handleOpenTimelineSelector}
 	/>
 
-	<ul class="space-y-4 min-h-[50px]" on:dragover|preventDefault>
+	<ul class="space-y-4 min-h-[50px]" ondragover={(e) => e.preventDefault()}>
 		{#if section.items.length === 0}
 			<div
 				class="empty-section-placeholder h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-500"
-				on:dragover={(e) => handleEmptySectionDragOver(e, sectionIndex, e.currentTarget)}
-				on:dragleave={handleDragLeave}
-				on:drop={handleDrop}
+				ondragover={(e) => handleEmptySectionDragOver(e, sectionIndex, e.currentTarget)}
+				ondragleave={handleDragLeave}
+				ondrop={handleDrop}
 			>
 				Drag drills here
 			</div>

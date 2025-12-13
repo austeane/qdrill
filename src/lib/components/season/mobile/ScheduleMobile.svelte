@@ -1,25 +1,27 @@
 <script>
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import CreatePracticeSheet from './CreatePracticeSheet.svelte';
 	import EditMarkerSheet from './EditMarkerSheet.svelte';
 
-	export let season = null;
-	export let sections = [];
-	export let markers = [];
-	export let practices = [];
-	export let isAdmin = false;
-	export let teamSlug = '';
+	let {
+		season = null,
+		sections = [],
+		markers = [],
+		practices = [],
+		isAdmin = false,
+		teamSlug = '',
+		onPracticeCreated,
+		onMarkerChange
+	} = $props();
 
-	const dispatch = createEventDispatcher();
-
-	let showPracticeSheet = false;
-	let showMarkerSheet = false;
-	let selectedDate = null;
-	let currentWeek = [];
-	let weekOffset = 0;
+	let showPracticeSheet = $state(false);
+	let showMarkerSheet = $state(false);
+	let selectedDate = $state(null);
+	let currentWeek = $state([]);
+	let weekOffset = $state(0);
 	let longPressTimer = null;
-	let editingMarker = null;
+	let editingMarker = $state(null);
 
 	// Initialize current week
 	onMount(() => {
@@ -141,14 +143,12 @@
 		}
 	}
 
-	function handlePracticeCreated(event) {
-		showPracticeSheet = false;
-		dispatch('practiceCreated', event.detail);
+	function handlePracticeCreated(detail) {
+		onPracticeCreated?.(detail);
 	}
 
-	function handleMarkerSaved(event) {
-		showMarkerSheet = false;
-		dispatch('markerChange', event.detail);
+	function handleMarkerSaved(detail) {
+		onMarkerChange?.(detail);
 	}
 
 	function handleAddPractice() {
@@ -177,7 +177,7 @@
 <div class="schedule-container">
 	<!-- Week Navigation -->
 	<div class="week-nav">
-		<button class="nav-button" on:click={() => navigateWeek(-1)} aria-label="Previous week">
+		<button class="nav-button" onclick={() => navigateWeek(-1)} aria-label="Previous week">
 			<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
 				<path d="M15 18l-7-6 7-6" />
 			</svg>
@@ -187,7 +187,7 @@
 			{getWeekHeader()}
 		</div>
 
-		<button class="nav-button" on:click={() => navigateWeek(1)} aria-label="Next week">
+		<button class="nav-button" onclick={() => navigateWeek(1)} aria-label="Next week">
 			<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
 				<path d="M9 18l7-6-7-6" />
 			</svg>
@@ -202,7 +202,7 @@
 				class="calendar-day"
 				class:today={isToday(date)}
 				class:past={isPastDate(date)}
-				on:click={() => handleDayClick(date)}
+				onclick={() => handleDayClick(date)}
 				aria-label={date.toLocaleDateString('en-US', {
 					weekday: 'long',
 					month: 'long',
@@ -212,15 +212,15 @@
 				<span class="day-label">
 					{date.toLocaleDateString('en-US', { weekday: 'short' })}
 				</span>
-				<span class="day-number">
-					{date.getDate()}
-				</span>
-				{#if getDayPractices(date).length > 0}
-					<div class="day-indicator" />
-				{/if}
-			</button>
-		{/each}
-	</div>
+					<span class="day-number">
+						{date.getDate()}
+					</span>
+					{#if getDayPractices(date).length > 0}
+						<div class="day-indicator"></div>
+					{/if}
+				</button>
+			{/each}
+		</div>
 
 	<!-- Day List -->
 	<div class="day-list">
@@ -234,12 +234,12 @@
 			{#if hasContent || isToday(date)}
 				<div
 					class="day-card"
-					on:touchstart={(e) => startLongPress(date, e)}
-					on:touchend={cancelLongPress}
-					on:touchmove={cancelLongPress}
-					on:mousedown={(e) => startLongPress(date, e)}
-					on:mouseup={cancelLongPress}
-					on:mouseleave={cancelLongPress}
+					ontouchstart={(e) => startLongPress(date, e)}
+					ontouchend={cancelLongPress}
+					ontouchmove={cancelLongPress}
+					onmousedown={(e) => startLongPress(date, e)}
+					onmouseup={cancelLongPress}
+					onmouseleave={cancelLongPress}
 				>
 					<div class="day-header">
 						<h3 class="day-title">
@@ -261,7 +261,7 @@
 								<button
 									class="practice-chip"
 									class:draft={practice.status === 'draft'}
-									on:click={() => handlePracticeClick(practice)}
+									onclick={() => handlePracticeClick(practice)}
 								>
 									<span class="practice-time">
 										{new Date(`2000-01-01T${practice.start_time}`).toLocaleTimeString('en-US', {
@@ -303,7 +303,7 @@
 									<button
 										class="marker-chip"
 										style="background-color: {marker.color}20; border-color: {marker.color}"
-										on:click={() => handleMarkerClick(marker)}
+										onclick={() => handleMarkerClick(marker)}
 										disabled={!isAdmin}
 									>
 										{marker.name}
@@ -314,7 +314,7 @@
 					{/if}
 
 					{#if !hasContent && isToday(date) && isAdmin}
-						<button class="empty-day-action" on:click={() => handleDayClick(date)}>
+						<button class="empty-day-action" onclick={() => handleDayClick(date)}>
 							<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
 								<line x1="12" y1="5" x2="12" y2="19" />
 								<line x1="5" y1="12" x2="19" y2="12" />
@@ -329,7 +329,7 @@
 
 	<!-- FAB for adding practice -->
 	{#if isAdmin}
-		<button class="fab" on:click={handleAddPractice} aria-label="Add practice">
+		<button class="fab" onclick={handleAddPractice} aria-label="Add practice">
 			<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="3">
 				<line x1="12" y1="5" x2="12" y2="19" />
 				<line x1="5" y1="12" x2="19" y2="12" />
@@ -344,9 +344,11 @@
 		{season}
 		{sections}
 		date={selectedDate}
-		{teamSlug}
-		on:save={handlePracticeCreated}
-		on:close={() => (showPracticeSheet = false)}
+		teamId={teamSlug}
+		onSave={handlePracticeCreated}
+		onClose={() => {
+			showPracticeSheet = false;
+		}}
 	/>
 {/if}
 
@@ -356,8 +358,11 @@
 		{season}
 		marker={editingMarker}
 		defaultDate={selectedDate}
-		on:save={handleMarkerSaved}
-		on:close={() => (showMarkerSheet = false)}
+		onSave={handleMarkerSaved}
+		onClose={() => {
+			showMarkerSheet = false;
+			editingMarker = null;
+		}}
 	/>
 {/if}
 

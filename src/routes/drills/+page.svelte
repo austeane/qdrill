@@ -2,141 +2,113 @@
 <script>
 	import FilterPanel from '$lib/components/FilterPanel.svelte';
 	import { cart } from '$lib/stores/cartStore';
-	import { onMount } from 'svelte';
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast';
-	import { selectedSortOption, selectedSortOrder } from '$lib/stores/sortStore.js';
+	import { sortStore } from '$lib/stores/sortStore.js';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
 	import { dev } from '$app/environment';
-	import { page } from '$app/stores';
 	import { goto, invalidate } from '$app/navigation';
-	import { navigating } from '$app/stores';
-	import { onDestroy } from 'svelte';
+	import { page, navigating } from '$app/state';
 	import { FILTER_STATES } from '$lib/constants';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { sanitizeHtml } from '$lib/utils/sanitize.js';
 	import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
+		import { slide } from 'svelte/transition';
 
-	// Import only necessary stores (filter/sort state)
-	import {
-		currentPage,
-		totalPages,
-		drillsPerPage,
-		searchQuery,
-		selectedSkillLevels,
-		selectedComplexities,
-		selectedSkillsFocusedOn,
-		selectedPositionsFocusedOn,
-		selectedNumberOfPeopleMin,
-		selectedNumberOfPeopleMax,
-		selectedSuggestedLengthsMin,
-		selectedSuggestedLengthsMax,
-		selectedHasVideo,
-		selectedHasDiagrams,
-		selectedHasImages,
-		selectedDrillTypes
-	} from '$lib/stores/drillsStore';
+		import { drillsStore } from '$lib/stores/drillsStore';
 
-	import Pagination from '$lib/components/Pagination.svelte';
+		import Pagination from '$lib/components/Pagination.svelte';
 
-	export let data;
+	let { data } = $props();
 
-	let isNavigating = false;
-	const unsubNavigating = navigating.subscribe((v) => (isNavigating = !!v));
-	onDestroy(unsubNavigating);
+	const isNavigating = $derived(navigating.type !== null);
 
 	// Filter options from load
-	$: filterOptions = data.filterOptions || {};
+	const filterOptions = $derived(data.filterOptions || {});
 
 	// Check if user is admin
-	$: isAdmin = $page.data.session?.user?.role === 'admin';
+	const userId = $derived(page.data.session?.user?.id);
+	const isAdmin = $derived(page.data.session?.user?.role === 'admin');
 
-	// Object to hold temporary button states ('added', 'removed', or null)
-	let buttonStates = {};
+	// Temporary button states ('added'/'removed') keyed by drill ID
+	let transientButtonStates = $state({});
+	const buttonStateTimers = new Map();
+	$effect(() => {
+		return () => {
+			for (const timer of buttonStateTimers.values()) clearTimeout(timer);
+			buttonStateTimers.clear();
+		};
+	});
 
 	// Reactive set of drill IDs currently in the cart
-	$: drillsInCart = new Set(($cart || []).map((d) => d.id));
-
-	// Initialize buttonStates based on data.items
-	$: {
-		if (data && data.items) {
-			// Create a new buttonStates object without reading from the existing one
-			const newButtonStates = {};
-			data.items.forEach((drill) => {
-				// Check if we already have a temporary state (added/removed)
-				const existingState = buttonStates[drill.id];
-				if (existingState === 'added' || existingState === 'removed') {
-					// Keep temporary states
-					newButtonStates[drill.id] = existingState;
-				} else {
-					// Set state based on cart contents
-					newButtonStates[drill.id] = drillsInCart.has(drill.id) ? 'in-cart' : null;
-				}
-			});
-			buttonStates = newButtonStates;
+	const drillsInCart = $derived(new Set(cart.drills.map((d) => d.id)));
+	const buttonStates = $derived.by(() => {
+		const states = {};
+		for (const drill of data?.items || []) {
+			const transient = transientButtonStates[drill.id];
+			if (transient === 'added' || transient === 'removed') {
+				states[drill.id] = transient;
+				continue;
+			}
+			states[drill.id] = drillsInCart.has(drill.id) ? 'in-cart' : null;
 		}
-	}
+		return states;
+	});
 
 	// Initialize filter stores from URL search params on mount or when URL changes
-	$: {
-		if ($page.url.searchParams) {
-			const params = $page.url.searchParams;
+	const urlSearch = $derived(page.url.search);
+		$effect(() => {
+			const params = new URLSearchParams(urlSearch);
 
 			// Helper to parse comma-separated params into store object
-			const parseCommaSeparatedToStore = (paramName, store) => {
+			const parseCommaSeparatedToStore = (paramName, field) => {
 				const values =
 					params
 						.get(paramName)
 						?.split(',')
-						.map((t) => t.trim())
-						.filter((t) => t) || [];
+					.map((t) => t.trim())
+					.filter((t) => t) || [];
 				const newState = {};
 				values.forEach((v) => {
 					newState[v] = FILTER_STATES.REQUIRED;
 				}); // Assume URL values mean REQUIRED
-				store.set(newState);
+				drillsStore[field] = newState;
 			};
 
 			// Helper to parse simple param into store
-			const parseSimpleParamToStore = (
-				paramName,
-				store,
-				defaultValue = null,
-				parser = (v) => v
-			) => {
-				store.set(params.has(paramName) ? parser(params.get(paramName)) : defaultValue);
+			const parseSimpleParamToStore = (paramName, field, defaultValue = null, parser = (v) => v) => {
+				drillsStore[field] = params.has(paramName) ? parser(params.get(paramName)) : defaultValue;
 			};
 
-			const parseBooleanParamToStore = (paramName, store) => {
+			const parseBooleanParamToStore = (paramName, field) => {
 				const value = params.get(paramName)?.toLowerCase();
-				store.set(value === 'true' ? true : value === 'false' ? false : null);
+				drillsStore[field] = value === 'true' ? true : value === 'false' ? false : null;
 			};
 
-			parseCommaSeparatedToStore('skillLevel', selectedSkillLevels);
-			parseCommaSeparatedToStore('complexity', selectedComplexities);
-			parseCommaSeparatedToStore('skills', selectedSkillsFocusedOn);
-			parseCommaSeparatedToStore('positions', selectedPositionsFocusedOn);
-			parseCommaSeparatedToStore('types', selectedDrillTypes);
+			parseCommaSeparatedToStore('skillLevel', 'selectedSkillLevels');
+			parseCommaSeparatedToStore('complexity', 'selectedComplexities');
+			parseCommaSeparatedToStore('skills', 'selectedSkillsFocusedOn');
+			parseCommaSeparatedToStore('positions', 'selectedPositionsFocusedOn');
+			parseCommaSeparatedToStore('types', 'selectedDrillTypes');
 
-			parseSimpleParamToStore('minPeople', selectedNumberOfPeopleMin, null, parseInt);
-			parseSimpleParamToStore('maxPeople', selectedNumberOfPeopleMax, null, parseInt);
-			parseSimpleParamToStore('minLength', selectedSuggestedLengthsMin, null, parseInt);
-			parseSimpleParamToStore('maxLength', selectedSuggestedLengthsMax, null, parseInt);
-			parseSimpleParamToStore('q', searchQuery, '');
+			parseSimpleParamToStore('minPeople', 'selectedNumberOfPeopleMin', null, parseInt);
+			parseSimpleParamToStore('maxPeople', 'selectedNumberOfPeopleMax', null, parseInt);
+			parseSimpleParamToStore('minLength', 'selectedSuggestedLengthsMin', null, parseInt);
+			parseSimpleParamToStore('maxLength', 'selectedSuggestedLengthsMax', null, parseInt);
+			parseSimpleParamToStore('q', 'searchQuery', '');
 
-			parseBooleanParamToStore('hasVideo', selectedHasVideo);
-			parseBooleanParamToStore('hasDiagrams', selectedHasDiagrams);
-			parseBooleanParamToStore('hasImages', selectedHasImages);
+			parseBooleanParamToStore('hasVideo', 'selectedHasVideo');
+			parseBooleanParamToStore('hasDiagrams', 'selectedHasDiagrams');
+			parseBooleanParamToStore('hasImages', 'selectedHasImages');
 
 			// Initialize sort stores
-			selectedSortOption.set(params.get('sort') || 'date_created');
-			selectedSortOrder.set(params.get('order') || 'desc');
+			sortStore.selectedSortOption = params.get('sort') || 'date_created';
+			sortStore.selectedSortOrder = params.get('order') || 'desc';
 
-			// Update pagination stores from data (might be slightly delayed vs URL, but reflects loaded data)
-			currentPage.set(data.pagination?.page || 1);
-			totalPages.set(data.pagination?.totalPages || 1);
-			drillsPerPage.set(parseInt(params.get('limit') || '10'));
-		}
-	}
+			// Update pagination state from load + URL
+			drillsStore.currentPage = data.pagination?.page || 1;
+			drillsStore.totalPages = data.pagination?.totalPages || 1;
+			drillsStore.drillsPerPage = parseInt(params.get('limit') || '10');
+		});
 
 	// Functions to navigate pages
 	let debounceTimer;
@@ -148,20 +120,20 @@
 	function applyFiltersAndNavigate({ resetPage = false } = {}) {
 		const params = new URLSearchParams(); // Start fresh
 
-		// Pagination
-		const pageToNavigate = resetPage ? 1 : $page.url.searchParams.get('page') || 1;
-		params.set('page', pageToNavigate.toString());
-		params.set('limit', $drillsPerPage.toString());
+			// Pagination
+			const pageToNavigate = resetPage ? 1 : page.url.searchParams.get('page') || 1;
+			params.set('page', pageToNavigate.toString());
+			params.set('limit', drillsStore.drillsPerPage.toString());
 
-		// Sorting
-		if ($selectedSortOption && $selectedSortOption !== 'date_created') {
-			// Only add if not default
-			params.set('sort', $selectedSortOption);
-		}
-		if ($selectedSortOrder && $selectedSortOrder !== 'desc') {
-			// Only add if not default
-			params.set('order', $selectedSortOrder);
-		}
+			// Sorting
+			if (sortStore.selectedSortOption && sortStore.selectedSortOption !== 'date_created') {
+				// Only add if not default
+				params.set('sort', sortStore.selectedSortOption);
+			}
+			if (sortStore.selectedSortOrder && sortStore.selectedSortOrder !== 'desc') {
+				// Only add if not default
+				params.set('order', sortStore.selectedSortOrder);
+			}
 
 		// Filters
 		// Helper to set params for comma-separated values from filter store objects
@@ -188,37 +160,36 @@
 			}
 		};
 
-		updateCommaSeparatedParam('skillLevel', $selectedSkillLevels);
-		updateCommaSeparatedParam('complexity', $selectedComplexities);
-		updateCommaSeparatedParam('skills', $selectedSkillsFocusedOn);
-		updateCommaSeparatedParam('positions', $selectedPositionsFocusedOn);
-		updateCommaSeparatedParam('types', $selectedDrillTypes);
+			updateCommaSeparatedParam('skillLevel', drillsStore.selectedSkillLevels);
+			updateCommaSeparatedParam('complexity', drillsStore.selectedComplexities);
+			updateCommaSeparatedParam('skills', drillsStore.selectedSkillsFocusedOn);
+			updateCommaSeparatedParam('positions', drillsStore.selectedPositionsFocusedOn);
+			updateCommaSeparatedParam('types', drillsStore.selectedDrillTypes);
 
 		// Range params – only include if they differ from the defaults
 		const defaultMinPeople = filterOptions.numberOfPeopleOptions?.min ?? 0;
 		const defaultMaxPeople = filterOptions.numberOfPeopleOptions?.max ?? 100;
 		const defaultMinLength = filterOptions.suggestedLengths?.min ?? 0;
-		const defaultMaxLength = filterOptions.suggestedLengths?.max ?? 120;
+			const defaultMaxLength = filterOptions.suggestedLengths?.max ?? 120;
 
-		updateSimpleParam('minPeople', $selectedNumberOfPeopleMin, defaultMinPeople);
-		updateSimpleParam('maxPeople', $selectedNumberOfPeopleMax, defaultMaxPeople);
-		updateSimpleParam('minLength', $selectedSuggestedLengthsMin, defaultMinLength);
-		updateSimpleParam('maxLength', $selectedSuggestedLengthsMax, defaultMaxLength);
+			updateSimpleParam('minPeople', drillsStore.selectedNumberOfPeopleMin, defaultMinPeople);
+			updateSimpleParam('maxPeople', drillsStore.selectedNumberOfPeopleMax, defaultMaxPeople);
+			updateSimpleParam('minLength', drillsStore.selectedSuggestedLengthsMin, defaultMinLength);
+			updateSimpleParam('maxLength', drillsStore.selectedSuggestedLengthsMax, defaultMaxLength);
 
-		updateBooleanParam('hasVideo', $selectedHasVideo);
-		updateBooleanParam('hasDiagrams', $selectedHasDiagrams);
-		updateBooleanParam('hasImages', $selectedHasImages);
+			updateBooleanParam('hasVideo', drillsStore.selectedHasVideo);
+			updateBooleanParam('hasDiagrams', drillsStore.selectedHasDiagrams);
+			updateBooleanParam('hasImages', drillsStore.selectedHasImages);
 
-		// Pass null for searchQuery if it's empty to avoid adding '?q='
-		updateSimpleParam('q', $searchQuery === '' ? null : $searchQuery);
+			// Pass null for searchQuery if it's empty to avoid adding '?q='
+			updateSimpleParam('q', drillsStore.searchQuery === '' ? null : drillsStore.searchQuery);
 
 		goto(`/drills?${params.toString()}`, { keepFocus: true, noScroll: true });
 	}
 
-	function handlePageChange(event) {
-		const newPage = event.detail.page;
+	function handlePageChange({ page: newPage }) {
 		if (newPage >= 1 && newPage <= (data.pagination?.totalPages || 1)) {
-			const params = new URLSearchParams($page.url.searchParams);
+			const params = new URLSearchParams(page.url.searchParams);
 			params.set('page', newPage.toString());
 			goto(`/drills?${params.toString()}`, { keepFocus: true, noScroll: true });
 		}
@@ -229,12 +200,12 @@
 	}
 
 	function handleSortChange(event) {
-		selectedSortOption.set(event.target.value);
+		sortStore.selectedSortOption = event.target.value;
 		applyFiltersAndNavigate({ resetPage: true });
 	}
 
 	function toggleSortOrder() {
-		selectedSortOrder.update((order) => (order === 'asc' ? 'desc' : 'asc'));
+		sortStore.toggleOrder();
 		applyFiltersAndNavigate({ resetPage: true });
 	}
 
@@ -243,27 +214,28 @@
 		const isInCart = drillsInCart.has(drill.id);
 		if (isInCart) {
 			cart.removeDrill(drill.id);
-			buttonStates = { ...buttonStates, [drill.id]: 'removed' };
+			transientButtonStates[drill.id] = 'removed';
 		} else {
 			cart.addDrill(drill);
-			buttonStates = { ...buttonStates, [drill.id]: 'added' };
+			transientButtonStates[drill.id] = 'added';
 		}
-		// No need for second buttonStates = { ...buttonStates };
-		setTimeout(() => {
-			// Update state based on actual cart status after timeout
-			buttonStates = {
-				...buttonStates,
-				[drill.id]: ($cart || []).some((d) => d.id === drill.id) ? 'in-cart' : null
-			};
-		}, 500);
+
+		const existingTimer = buttonStateTimers.get(drill.id);
+		if (existingTimer) clearTimeout(existingTimer);
+
+		buttonStateTimers.set(
+			drill.id,
+			setTimeout(() => {
+				buttonStateTimers.delete(drill.id);
+				delete transientButtonStates[drill.id];
+			}, 500)
+		);
 	}
 
-	import { slide } from 'svelte/transition';
+	let showSortOptions = $state(false);
+	let sortOptionsRef = $state(null);
 
-	let showSortOptions = false;
-	let sortOptionsRef;
-
-	onMount(() => {
+	$effect(() => {
 		const handleClickOutside = (event) => {
 			if (sortOptionsRef && !sortOptionsRef.contains(event.target)) {
 				showSortOptions = false;
@@ -338,7 +310,7 @@
 				href="/practice-plans/create"
 				class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-300"
 			>
-				Create Practice Plan with {($cart || []).length} Drill{($cart || []).length !== 1
+				Create Practice Plan with {cart.drills.length} Drill{cart.drills.length !== 1
 					? 's'
 					: ''}
 			</a>
@@ -356,7 +328,7 @@
 		numberOfPeopleOptions={filterOptions.numberOfPeopleOptions || { min: 0, max: 100 }}
 		suggestedLengths={filterOptions.suggestedLengths || { min: 0, max: 120 }}
 		drillTypes={filterOptions.drillTypes || []}
-		on:filterChange={() => applyFiltersAndNavigate({ resetPage: true })}
+		onFilterChange={() => applyFiltersAndNavigate({ resetPage: true })}
 	/>
 
 	<!-- Sorting Section and Search Input -->
@@ -364,7 +336,7 @@
 		<div class="relative">
 			<button
 				class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg shadow-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-300 flex items-center"
-				on:click={toggleSortOptions}
+				onclick={toggleSortOptions}
 			>
 				<span class="font-semibold mr-2">Sort</span>
 				<span class="transform transition-transform duration-300" class:rotate-180={showSortOptions}
@@ -378,37 +350,37 @@
 					class="absolute left-0 mt-2 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm z-10"
 				>
 					<div class="flex flex-col space-y-2">
-						<select
-							class="p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-gray-200"
-							on:change={handleSortChange}
-							value={$selectedSortOption}
-							data-testid="sort-select"
-						>
+							<select
+								class="p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-gray-200"
+								onchange={handleSortChange}
+								value={sortStore.selectedSortOption}
+								data-testid="sort-select"
+							>
 							{#each sortOptions as option (option.value)}
 								<option value={option.value}>{option.label}</option>
 							{/each}
 						</select>
 						<button
 							class="px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-300 dark:text-gray-200"
-							on:click={toggleSortOrder}
-							data-testid="sort-order-toggle"
-						>
-							{$selectedSortOrder === 'asc' ? '↑ Ascending' : '↓ Descending'}
-						</button>
+								onclick={toggleSortOrder}
+								data-testid="sort-order-toggle"
+							>
+								{sortStore.selectedSortOrder === 'asc' ? '↑ Ascending' : '↓ Descending'}
+							</button>
+						</div>
 					</div>
-				</div>
 			{/if}
 		</div>
 
-		<input
-			type="text"
-			placeholder="Search drills..."
-			class="flex-grow p-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-gray-200"
-			bind:value={$searchQuery}
-			on:input={handleSearchInput}
-			aria-label="Search drills"
-			data-testid="search-input"
-		/>
+			<input
+				type="text"
+				placeholder="Search drills..."
+				class="flex-grow p-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-gray-200"
+				bind:value={drillsStore.searchQuery}
+				oninput={handleSearchInput}
+				aria-label="Search drills"
+				data-testid="search-input"
+			/>
 	</div>
 
 	<!-- Loading and Empty States -->
@@ -436,9 +408,9 @@
 							<UpvoteDownvote drillId={drill.id} />
 
 							<!-- Conditional Delete Button -->
-							{#if dev || isAdmin || drill.created_by === $page.data.session?.user?.id}
+							{#if dev || isAdmin || drill.created_by === userId}
 								<button
-									on:click={(e) => deleteDrill(drill.id, e)}
+									onclick={(e) => deleteDrill(drill.id, e)}
 									class="text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors duration-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
 									title="Delete drill"
 									aria-label="Delete drill"
@@ -559,7 +531,10 @@
 									buttonStates[drill.id] !== 'added' &&
 									buttonStates[drill.id] !== 'removed' &&
 									buttonStates[drill.id] !== 'in-cart'}
-								on:click|stopPropagation={() => toggleDrillInCart(drill)}
+								onclick={(e) => {
+									e.stopPropagation();
+									toggleDrillInCart(drill);
+								}}
 							>
 								{#if buttonStates[drill.id] === 'added'}
 									Added
@@ -582,7 +557,7 @@
 			<Pagination
 				currentPage={data.pagination.page}
 				totalPages={data.pagination.totalPages}
-				on:pageChange={handlePageChange}
+				onPageChange={handlePageChange}
 			/>
 		{/if}
 	{/if}

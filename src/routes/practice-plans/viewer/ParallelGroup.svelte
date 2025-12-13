@@ -1,47 +1,47 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import DrillCard from './DrillCard.svelte';
 	import {
-		getTimelineColor,
-		getTimelineName,
+		customTimelineColors,
 		customTimelineNames,
+		DEFAULT_TIMELINE_COLORS,
 		DEFAULT_TIMELINE_NAMES
 	} from '$lib/stores/sectionsStore';
 
-	export let items = [];
-	export let canEdit = false;
-	export let startTime = null;
-
-	const dispatch = createEventDispatcher();
-
-	// Subscribe to customTimelineNames to make component reactive to name changes
-	let timelineNamesStore;
-	$: timelineNamesStore = $customTimelineNames;
+	let {
+		items = [],
+		canEdit = false,
+		startTime = null,
+		onUngroup,
+		onEdit,
+		onDurationChange
+	} = $props();
 
 	// Group items by timeline
-	$: timelineGroups = items.reduce((acc, item) => {
-		const timeline = item.parallel_timeline || 'CHASERS';
-		if (!acc[timeline]) {
-			acc[timeline] = [];
-		}
-		acc[timeline].push(item);
-		return acc;
-	}, {});
+	const timelineGroups = $derived.by(() =>
+		items.reduce((acc, item) => {
+			const timeline = item.parallel_timeline || 'CHASERS';
+			if (!acc[timeline]) {
+				acc[timeline] = [];
+			}
+			acc[timeline].push(item);
+			return acc;
+		}, {})
+	);
 
 	// Calculate max duration across all timelines
-	$: groupDuration = Math.max(
-		...Object.values(timelineGroups).map((timelineItems) =>
-			timelineItems.reduce((sum, item) => sum + (item.selected_duration || item.duration || 0), 0)
+	const groupDuration = $derived.by(() =>
+		Math.max(
+			...Object.values(timelineGroups).map((timelineItems) =>
+				timelineItems.reduce((sum, item) => sum + (item.selected_duration || item.duration || 0), 0)
+			)
 		)
 	);
 
 	// Get the group name from the first item in the group
-	$: groupName = items[0]?.group_name || 'Parallel Activities';
+	const groupName = $derived(items[0]?.group_name || 'Parallel Activities');
 
 	function ungroup() {
-		dispatch('ungroup', {
-			groupId: items[0]?.parallel_group_id
-		});
+		onUngroup?.({ groupId: items[0]?.parallel_group_id });
 	}
 
 	// Helper function to format time (copied from DrillCard)
@@ -68,8 +68,8 @@
 	}
 
 	// Calculate start times within each timeline
-	$: timelineGroupsWithStartTimes = Object.entries(timelineGroups).map(
-		([timeline, timelineItems]) => {
+	const timelineGroupsWithStartTimes = $derived.by(() =>
+		Object.entries(timelineGroups).map(([timeline, timelineItems]) => {
 			let currentTimelineTime = startTime; // Start with the group's overall start time
 			const itemsWithStartTimes = timelineItems.map((item) => {
 				const itemStartTime = currentTimelineTime;
@@ -80,46 +80,58 @@
 				return { ...item, startTime: itemStartTime };
 			});
 			return [timeline, itemsWithStartTimes];
-		}
+		})
 	);
+
+	function getTimelineColorClass(timeline) {
+		return (
+			customTimelineColors?.[timeline] ||
+			DEFAULT_TIMELINE_COLORS?.[timeline] ||
+			'bg-gray-500'
+		);
+	}
+
+	function getTimelineDisplayName(timeline) {
+		return (
+			customTimelineNames?.[timeline] || DEFAULT_TIMELINE_NAMES?.[timeline] || timeline || ''
+		);
+	}
 </script>
 
 <div class="parallel-group">
 	<div class="group-header">
 		<div class="parallel-indicator">{groupName}</div>
-		<div class="group-actions">
-			<div class="group-duration">
-				{#if startTime}
-					<span class="text-sm text-gray-500 mr-2">{formatTime(startTime)}</span>
+			<div class="group-actions">
+				<div class="group-duration">
+					{#if startTime}
+						<span class="text-sm text-gray-500 mr-2">{formatTime(startTime)}</span>
+					{/if}
+					{groupDuration} min
+				</div>
+				{#if canEdit}
+					<button class="ungroup-btn" onclick={ungroup} title="Ungroup activities"> Ungroup </button>
 				{/if}
-				{groupDuration} min
 			</div>
-			{#if canEdit}
-				<button class="ungroup-btn" on:click={ungroup} title="Ungroup activities"> Ungroup </button>
-			{/if}
 		</div>
-	</div>
 
 	<div class="group-content">
-		{#each timelineGroupsWithStartTimes as [timeline, timelineItems] (timeline)}
-			<div class="timeline-column" class:single-timeline={Object.keys(timelineGroups).length === 1}>
-				<div class="timeline-header {getTimelineColor(timeline)}">
-					{timelineNamesStore
-						? getTimelineName(timeline)
-						: DEFAULT_TIMELINE_NAMES?.[timeline] || timeline}
-				</div>
-				<div class="timeline-items">
-					{#each timelineItems as item (item.drill?.id || item.id || crypto.randomUUID())}
-						<DrillCard
-							{item}
-							editable={canEdit}
-							startTime={item.startTime}
-							isInParallelGroup={true}
-							on:edit
-							on:durationChange
-						/>
-					{/each}
-				</div>
+			{#each timelineGroupsWithStartTimes as [timeline, timelineItems] (timeline)}
+				<div class="timeline-column" class:single-timeline={Object.keys(timelineGroups).length === 1}>
+					<div class="timeline-header {getTimelineColorClass(timeline)}">
+						{getTimelineDisplayName(timeline)}
+					</div>
+					<div class="timeline-items">
+						{#each timelineItems as item, idx (item.id ?? item.drill?.id ?? idx)}
+							<DrillCard
+								{item}
+								editable={canEdit}
+								startTime={item.startTime}
+								isInParallelGroup={true}
+								onEdit={onEdit}
+								onDurationChange={onDurationChange}
+							/>
+						{/each}
+					</div>
 			</div>
 		{/each}
 	</div>

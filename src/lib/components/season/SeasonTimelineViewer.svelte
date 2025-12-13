@@ -3,41 +3,12 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 
-	export let season;
-	export let sections = [];
-	export let markers = [];
-	export let practices = [];
+	let { season, sections = [], markers = [], practices = [] } = $props();
 
 	let timelineElement;
-	let dayWidth = 30;
-	let rowHeight = 40;
-	let headerHeight = 60;
-
-	// Calculate timeline dimensions
-	$: seasonStart = season
-		? season.start_date
-			? parseISODateLocal(season.start_date)
-			: new Date()
-		: new Date();
-	$: seasonEnd = season
-		? season.end_date
-			? parseISODateLocal(season.end_date)
-			: new Date()
-		: new Date();
-	$: totalDays = Math.ceil((seasonEnd - seasonStart) / (1000 * 60 * 60 * 24)) + 1;
-	$: timelineWidth = totalDays * dayWidth;
-
-	// Group sections by overlapping rows for stacking
-	$: stackedSections = stackSections(sections);
-	$: sectionsHeight = (stackedSections.length || 1) * rowHeight;
-
-	// Compute marker rows for collision-free layout
-	$: markerRowMap = computeMarkerRows(markers);
-	$: markerRowCount = markerRowMap.size ? Math.max(...markerRowMap.values()) + 1 : 1;
-	$: markersHeight = Math.max(rowHeight, markerRowCount * 20);
-
-	// Total vertical height
-	$: bodyHeight = sectionsHeight + markersHeight + (practices?.length ? rowHeight : 0);
+	let dayWidth = $state(30);
+	const rowHeight = 40;
+	const headerHeight = 60;
 
 	// Date utilities
 	function parseISODateLocal(s) {
@@ -48,6 +19,28 @@
 		const [y, m, d] = dateStr.split('-').map(Number);
 		return new Date(y, m - 1, d);
 	}
+
+	// Calculate timeline dimensions
+	const seasonStart = $derived(
+		season ? (season.start_date ? parseISODateLocal(season.start_date) : new Date()) : new Date()
+	);
+	const seasonEnd = $derived(
+		season ? (season.end_date ? parseISODateLocal(season.end_date) : new Date()) : new Date()
+	);
+	const totalDays = $derived(Math.ceil((seasonEnd - seasonStart) / (1000 * 60 * 60 * 24)) + 1);
+	const timelineWidth = $derived(totalDays * dayWidth);
+
+	// Group sections by overlapping rows for stacking
+	const stackedSections = $derived(stackSections(sections));
+	const sectionsHeight = $derived((stackedSections.length || 1) * rowHeight);
+
+	// Compute marker rows for collision-free layout
+	const markerRowMap = $derived(computeMarkerRows(markers));
+	const markerRowCount = $derived(markerRowMap.size ? Math.max(...markerRowMap.values()) + 1 : 1);
+	const markersHeight = $derived(Math.max(rowHeight, markerRowCount * 20));
+
+	// Total vertical height
+	const bodyHeight = $derived(sectionsHeight + markersHeight + (practices.length ? rowHeight : 0));
 
 	function dateToX(date) {
 		const d =
@@ -261,18 +254,18 @@
 					class="grid-bg absolute"
 					style="top: 0; left: 0; width: {timelineWidth}px; height: {bodyHeight}px;"
 				>
-					{#each getDays() as day, i (day.toISOString())}
-						{@const isWeekend = day.getDay() === 0 || day.getDay() === 6}
-						{@const isToday = formatDateISO(day) === formatDateISO(new Date())}
-						<div
-							class="grid-day absolute border-r"
-							class:week-divider={day.getDay() === 1}
-							class:weekend={isWeekend}
-							class:today={isToday}
-							style="left: {i * dayWidth}px; width: {dayWidth}px; height: {bodyHeight}px"
-						/>
-					{/each}
-				</div>
+						{#each getDays() as day, i (day.toISOString())}
+							{@const isWeekend = day.getDay() === 0 || day.getDay() === 6}
+							{@const isToday = formatDateISO(day) === formatDateISO(new Date())}
+							<div
+								class="grid-day absolute border-r"
+								class:week-divider={day.getDay() === 1}
+								class:weekend={isWeekend}
+								class:today={isToday}
+								style="left: {i * dayWidth}px; width: {dayWidth}px; height: {bodyHeight}px"
+							></div>
+						{/each}
+					</div>
 
 				<!-- Sections -->
 				<div class="sections-lane relative" style="height: {sectionsHeight}px">

@@ -1,5 +1,5 @@
 <script>
-	export let formations = [];
+	let { formations = [] } = $props();
 </script>
 
 {#if formations.length > 0}

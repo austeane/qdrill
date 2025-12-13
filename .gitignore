@@ -21,5 +21,10 @@ tests/_pycache
 cypress/downloads
 cypress/screenshots
 
+# Local dev artifacts
+.tmp/
+test-results/
+.mcp.json
+
 # Sentry Config File
 .env.sentry-build-plugin

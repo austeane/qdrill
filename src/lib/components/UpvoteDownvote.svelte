@@ -1,92 +1,53 @@
 <script>
-	import { onMount } from 'svelte';
-	import { writable } from 'svelte/store';
 	import { authClient } from '$lib/auth-client';
 	import { ThumbsUp, ThumbsDown } from 'lucide-svelte';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import Spinner from '$lib/components/Spinner.svelte';
-	import { createLoadingState } from '$lib/utils/loadingStates.js';
 
-	export let drillId = null;
-	export let practicePlanId = null;
+	let { drillId = null, practicePlanId = null } = $props();
 
-	console.log(
-		'[UpvoteDownvote] Script executed. Initial props - drillId:',
-		drillId,
-		'practicePlanId:',
-		practicePlanId
-	);
+	let upvotes = $state(0);
+	let downvotes = $state(0);
+	let userVote = $state(0); // 1 for upvote, -1 for downvote, 0 for no vote
 
-	let upvotes = writable(0);
-	let downvotes = writable(0);
-	let userVote = writable(0); // 1 for upvote, -1 for downvote, 0 for no vote
-
-	// Loading states
-	const loadingVotes = createLoadingState();
-	const votingInProgress = createLoadingState();
+	let loadingVotes = $state(false);
+	let votingInProgress = $state(false);
 
 	const session = authClient.useSession();
-	const user = $session.data?.user;
+	const user = $derived($session.data?.user);
 
-	onMount(async () => {
-		console.log(
-			'[UpvoteDownvote] onMount called. Current drillId:',
-			drillId,
-			'Current practicePlanId:',
-			practicePlanId
-		);
-		await loadVotes();
+	$effect(() => {
+		if (!drillId && !practicePlanId) return;
+		void loadVotes();
 	});
 
-	$: if (user !== undefined) {
-		loadVotes();
-	}
-
-	const loadVotes = loadingVotes.wrap(async () => {
-		console.log(
-			'[UpvoteDownvote] loadVotes called. drillId:',
-			drillId,
-			'practicePlanId:',
-			practicePlanId
-		);
+	async function loadVotes() {
 		if (!drillId && !practicePlanId) {
-			console.log('[UpvoteDownvote] No ID provided, returning.');
 			return;
 		}
 
+		loadingVotes = true;
 		try {
 			const endpoint = `/api/votes?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`;
-			console.log('[UpvoteDownvote] Fetching counts from:', endpoint);
 			const counts = await apiFetch(endpoint);
-			console.log(
-				'[UpvoteDownvote] Received counts:',
-				counts,
-				'for ID:',
-				drillId || practicePlanId
-			);
-			upvotes.set(counts.upvotes || 0);
-			downvotes.set(counts.downvotes || 0);
+			upvotes = counts.upvotes || 0;
+			downvotes = counts.downvotes || 0;
 
 			if (user) {
 				const userVoteEndpoint = `/api/votes/user?${drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`}`;
-				console.log('[UpvoteDownvote] Fetching user vote from:', userVoteEndpoint);
 				const vote = await apiFetch(userVoteEndpoint);
-				console.log(
-					'[UpvoteDownvote] Received user vote:',
-					vote,
-					'for ID:',
-					drillId || practicePlanId
-				);
-				userVote.set(vote?.vote || 0);
+				userVote = vote?.vote || 0;
 			}
 		} catch (error) {
 			console.error('Error loading votes:', error);
 			toast.push('Failed to load votes', { theme: { '--toastBackground': '#F56565' } });
+		} finally {
+			loadingVotes = false;
 		}
-	});
+	}
 
-	const handleVote = votingInProgress.wrap(async (voteType) => {
+	async function handleVote(voteType) {
 		if (!user) {
 			const confirmed = confirm('Please sign in to vote. Click OK to sign in with Google.');
 			if (confirmed) {
@@ -100,7 +61,7 @@
 			return;
 		}
 
-		const currentVote = $userVote;
+		const currentVote = userVote;
 		const newVote = currentVote === voteType ? 0 : voteType; // Toggle or set new vote
 
 		if (!drillId && !practicePlanId) {
@@ -109,6 +70,7 @@
 			return;
 		}
 
+		votingInProgress = true;
 		try {
 			if (currentVote === newVote) {
 				const queryParam = drillId ? `drillId=${drillId}` : `practicePlanId=${practicePlanId}`;
@@ -116,11 +78,11 @@
 					method: 'DELETE'
 				});
 
-				userVote.set(0);
+				userVote = 0;
 				if (newVote === 1) {
-					upvotes.update((n) => n - 1);
+					upvotes -= 1;
 				} else {
-					downvotes.update((n) => n - 1);
+					downvotes -= 1;
 				}
 				toast.push('Vote removed');
 			} else {
@@ -144,29 +106,31 @@
 					body: JSON.stringify(requestBody)
 				});
 
-				if (currentVote === 1) upvotes.update((n) => n - 1);
-				if (currentVote === -1) downvotes.update((n) => n - 1);
+				if (currentVote === 1) upvotes -= 1;
+				if (currentVote === -1) downvotes -= 1;
 
 				if (newVote === 1) {
-					upvotes.update((n) => n + 1);
+					upvotes += 1;
 					toast.push('Upvoted!');
 				} else {
-					downvotes.update((n) => n + 1);
+					downvotes += 1;
 					toast.push('Downvoted!');
 				}
 
-				userVote.set(newVote);
+				userVote = newVote;
 			}
 		} catch (error) {
 			console.error('Error casting vote:', error);
 			toast.push('Failed to cast vote: ' + error.message, {
 				theme: { '--toastBackground': '#F56565' }
 			});
+		} finally {
+			votingInProgress = false;
 		}
-	});
+	}
 </script>
 
-{#if $loadingVotes}
+{#if loadingVotes}
 	<div class="flex flex-col items-center space-y-1 text-sm">
 		<Spinner size="sm" color="gray" />
 		<span class="text-xs text-gray-500">Loading...</span>
@@ -174,16 +138,16 @@
 {:else}
 	<div class="flex flex-col items-center space-y-1 text-sm">
 		<button
-			on:click={() => handleVote(1)}
-			disabled={$votingInProgress}
+			onclick={() => handleVote(1)}
+			disabled={votingInProgress}
 			class="p-1 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-			class:text-blue-600={$userVote === 1}
-			class:bg-blue-100={$userVote === 1}
-			class:text-gray-400={$userVote !== 1}
-			class:hover:bg-blue-50={$userVote !== 1 && !$votingInProgress}
+			class:text-blue-600={userVote === 1}
+			class:bg-blue-100={userVote === 1}
+			class:text-gray-400={userVote !== 1}
+			class:hover:bg-blue-50={userVote !== 1 && !votingInProgress}
 			aria-label="Upvote"
 		>
-			{#if $votingInProgress}
+			{#if votingInProgress}
 				<Spinner size="sm" color="blue" />
 			{:else}
 				<ThumbsUp size={20} />
@@ -193,23 +157,23 @@
 
 		<span
 			class="font-medium"
-			class:text-blue-600={$userVote === 1}
-			class:text-red-600={$userVote === -1}
+			class:text-blue-600={userVote === 1}
+			class:text-red-600={userVote === -1}
 		>
-			{$upvotes - $downvotes}
+			{upvotes - downvotes}
 		</span>
 
 		<button
-			on:click={() => handleVote(-1)}
-			disabled={$votingInProgress}
+			onclick={() => handleVote(-1)}
+			disabled={votingInProgress}
 			class="p-1 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-			class:text-red-600={$userVote === -1}
-			class:bg-red-100={$userVote === -1}
-			class:text-gray-400={$userVote !== -1}
-			class:hover:bg-red-50={$userVote !== -1 && !$votingInProgress}
+			class:text-red-600={userVote === -1}
+			class:bg-red-100={userVote === -1}
+			class:text-gray-400={userVote !== -1}
+			class:hover:bg-red-50={userVote !== -1 && !votingInProgress}
 			aria-label="Downvote"
 		>
-			{#if $votingInProgress}
+			{#if votingInProgress}
 				<Spinner size="sm" color="red" />
 			{:else}
 				<ThumbsDown size={20} />

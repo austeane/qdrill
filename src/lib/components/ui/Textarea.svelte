@@ -1,31 +1,29 @@
 <script>
-	import { createEventDispatcher, onMount } from 'svelte';
+	let {
+		id = '',
+		label = '',
+		value = $bindable(''),
+		placeholder = '',
+		error = '',
+		description = '',
+		required = false,
+		disabled = false,
+		readonly = false,
+		rows = 4,
+		...restProps
+		} = $props();
 
-	export let id = '';
-	export let label = '';
-	export let value = '';
-	export let placeholder = '';
-	export let error = '';
-	export let description = '';
-	export let required = false;
-	export let disabled = false;
-	export let readonly = false;
-	export let rows = 4;
+	let generatedId = $state('');
+	const uid = $derived(id || generatedId);
 
-	let uid = id;
-
-	onMount(() => {
-		if (!uid && typeof crypto !== 'undefined') {
-			uid = 'textarea-' + crypto.randomUUID();
+	$effect(() => {
+		if (id) {
+			return;
+		}
+		if (!generatedId && typeof crypto !== 'undefined') {
+			generatedId = `textarea-${crypto.randomUUID()}`;
 		}
 	});
-
-	const dispatch = createEventDispatcher();
-
-	function handleInput(e) {
-		value = e.target.value;
-		dispatch('input', e);
-	}
 </script>
 
 <div class="textarea-wrapper">
@@ -44,7 +42,6 @@
 
 	<textarea
 		id={uid}
-		{value}
 		{placeholder}
 		{required}
 		{disabled}
@@ -54,11 +51,8 @@
 		class:error
 		aria-invalid={!!error}
 		aria-describedby={error ? `${uid}-error` : description ? `${uid}-description` : undefined}
-		on:input={handleInput}
-		on:change
-		on:blur
-		on:focus
-		{...$$restProps}
+		bind:value
+		{...restProps}
 	></textarea>
 
 	{#if error}

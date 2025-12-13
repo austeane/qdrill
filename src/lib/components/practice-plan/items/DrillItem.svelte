@@ -1,4 +1,5 @@
 <script>
+	import { onMount } from 'svelte';
 	import {
 		startItemDrag,
 		handleItemDragOver,
@@ -8,46 +9,48 @@
 		dragState
 	} from '$lib/stores/dragManager';
 
-	export let item;
-	export let itemIndex;
-	export let sectionIndex;
-	export let onRemove;
-	export let onDurationChange = (sectionIndex, itemIndex, newDuration) => {
+	let {
+		item,
+		itemIndex,
+		sectionIndex,
+		onRemove,
+		onDurationChange = (sectionIndex, itemIndex, newDuration) => {
 		console.warn(
 			'onDurationChange prop not provided to DrillItem',
 			sectionIndex,
 			itemIndex,
 			newDuration
 		);
-	};
-	export let onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
+		},
+		onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
 		console.warn(
 			'onTimelineChange prop not provided to DrillItem',
 			sectionIndex,
 			itemIndex,
 			newTimeline
 		);
-	};
-	export let timelineItemIndex = null;
-	export let timeline = null;
-	export let parallelGroupId = null;
+		},
+		timelineItemIndex = null,
+		timeline = null,
+		parallelGroupId = null
+	} = $props();
 
 	// Generate a stable unique identifier for this item based on its content
-	$: itemId = item.id;
+	const itemId = $derived(item?.id);
 
 	// Reactive drag states for this item - use ID instead of index
-	$: isBeingDragged =
-		$dragState.isDragging &&
-		$dragState.dragType === 'item' &&
-		$dragState.sourceSection === sectionIndex &&
-		$dragState.itemId === itemId;
+	const isBeingDragged = $derived(
+		dragState.isDragging &&
+		dragState.dragType === 'item' &&
+		dragState.sourceSection === sectionIndex &&
+		dragState.itemId === itemId
+	);
 
-	$: _isDropTarget =
-		$dragState.targetSection === sectionIndex && $dragState.targetIndex === itemIndex;
+	const _isDropTarget = $derived(
+		dragState.targetSection === sectionIndex && dragState.targetIndex === itemIndex
+	);
 
 	// Only log when mounted in the DOM
-	import { onMount } from 'svelte';
-
 	onMount(() => {
 		console.log(
 			`[DrillItem] Mounted: ${item.name} (ID: ${itemId}) at section ${sectionIndex} index ${itemIndex}${item.parallel_timeline ? ` in ${item.parallel_timeline} timeline (position ${timelineItemIndex})` : ''}`
@@ -66,7 +69,7 @@
 	data-item-name={item.name}
 	data-timeline={timeline || item.parallel_timeline}
 	data-group-id={parallelGroupId || item.parallel_group_id}
-	on:dragstart={(e) => {
+	ondragstart={(e) => {
 		// Make sure the ID is in the event dataset
 		if (e.currentTarget) {
 			// Force set all the data attributes on the element
@@ -87,11 +90,11 @@
 		// Pass additional timeline position info for better reordering
 		startItemDrag(e, sectionIndex, itemIndex, item, itemId, timelineItemIndex);
 	}}
-	on:dragover={(e) =>
+	ondragover={(e) =>
 		handleItemDragOver(e, sectionIndex, itemIndex, item, e.currentTarget, timelineItemIndex)}
-	on:dragleave={handleDragLeave}
-	on:drop={handleDrop}
-	on:dragend={handleDragEnd}
+	ondragleave={handleDragLeave}
+	ondrop={handleDrop}
+	ondragend={handleDragEnd}
 >
 	<!-- Item content -->
 	<div class="bg-white p-4 rounded-lg shadow-sm border transition-all duration-200 hover:shadow-md">
@@ -106,7 +109,7 @@
 					<select
 						class="px-2 py-1 border rounded text-sm"
 						value={item.parallel_timeline || ''}
-						on:change={(e) => onTimelineChange(sectionIndex, itemIndex, e.target.value || null)}
+						onchange={(e) => onTimelineChange(sectionIndex, itemIndex, e.target.value || null)}
 					>
 						<option value="">All Positions</option>
 						<option value="BEATERS">Beaters</option>
@@ -121,12 +124,12 @@
 						max="120"
 						class="w-16 px-2 py-1 border rounded mr-2"
 						value={item.selected_duration || item.duration}
-						on:blur={(e) =>
+						onblur={(e) =>
 							onDurationChange(sectionIndex, itemIndex, parseInt(e.target.value) || 15)}
 					/>
 					<span class="text-sm text-gray-600">min</span>
 				</div>
-				<button type="button" class="text-red-500 hover:text-red-700 text-sm" on:click={onRemove}>
+				<button type="button" class="text-red-500 hover:text-red-700 text-sm" onclick={onRemove}>
 					Remove
 				</button>
 			</div>

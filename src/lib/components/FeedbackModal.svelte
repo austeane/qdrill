@@ -1,13 +1,12 @@
-<script>
-	import { feedbackModalVisible } from '$lib/stores/feedbackStore';
-	import { browser } from '$app/environment';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
-	import { apiFetch } from '$lib/utils/apiFetch';
+	<script>
+		import { feedbackStore } from '$lib/stores/feedbackStore';
+		import { browser } from '$app/environment';
+		import { page } from '$app/state';
+		import { goto } from '$app/navigation';
+		import { apiFetch } from '$lib/utils/apiFetch';
 
-	let feedbackText = '';
-	let feedbackType = 'general';
+	let feedbackText = $state('');
+	let feedbackType = $state('general');
 
 	async function submitFeedback() {
 		const deviceInfo = browser ? navigator.userAgent : 'Server-side';
@@ -27,37 +26,33 @@
 				body: JSON.stringify(payload)
 			});
 
-			feedbackText = '';
-			feedbackType = 'general';
-			feedbackModalVisible.set(false);
-		} catch (error) {
-			// Error handling already done by apiFetch
-			alert('Failed to submit feedback: ' + error.message);
+				feedbackText = '';
+				feedbackType = 'general';
+				feedbackStore.close();
+			} catch (error) {
+				// Error handling already done by apiFetch
+				alert('Failed to submit feedback: ' + error.message);
+			}
 		}
-	}
 
-	function closeModal() {
-		feedbackModalVisible.set(false);
-	}
+		function closeModal() {
+			feedbackStore.close();
+		}
 
-	function goToFeedbackPage() {
-		feedbackModalVisible.set(false);
-		goto('/feedback');
-	}
+		function goToFeedbackPage() {
+			feedbackStore.close();
+			goto('/feedback');
+		}
+	</script>
 
-	onMount(() => {
-		// No-op for now
-	});
-</script>
-
-{#if $feedbackModalVisible}
+{#if feedbackStore.modalVisible}
 	<div
 		class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="feedback-title"
 		tabindex="-1"
-		on:keydown={(e) => e.key === 'Escape' && closeModal()}
+		onkeydown={(e) => e.key === 'Escape' && closeModal()}
 	>
 		<div class="bg-white dark:bg-gray-800 p-6 rounded shadow-lg max-w-md w-full">
 			<h2 id="feedback-title" class="text-xl font-semibold mb-4">Quick Feedback</h2>
@@ -76,14 +71,14 @@
 			<div class="mt-4 flex justify-end">
 				<button
 					type="button"
-					on:click={closeModal}
+					onclick={closeModal}
 					class="px-4 py-2 bg-gray-300 rounded"
 					aria-label="Cancel"
 				>
 					Cancel
 				</button>
 				<button
-					on:click={submitFeedback}
+					onclick={submitFeedback}
 					class="px-4 py-2 bg-blue-500 text-white rounded"
 					aria-label="Submit Feedback"
 				>
@@ -91,7 +86,9 @@
 				</button>
 			</div>
 			<div class="mt-4 text-sm text-gray-600 dark:text-gray-300 text-center">
-				<a href="#" on:click|preventDefault={goToFeedbackPage}>Give and see detailed feedback</a>
+				<a href="/feedback" onclick={(e) => (e.preventDefault(), goToFeedbackPage())}
+					>Give and see detailed feedback</a
+				>
 			</div>
 		</div>
 	</div>

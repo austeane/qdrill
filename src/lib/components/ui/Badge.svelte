@@ -1,10 +1,9 @@
 <script>
-	export let variant = 'default'; // default, secondary, success, warning, error, info
-	export let size = 'md'; // sm, md, lg
+	let { variant = 'default', size = 'md', children, ...restProps } = $props(); // default, secondary, success, warning, error, info | sm, md, lg
 </script>
 
-<span class="badge badge-{variant} badge-{size}" {...$$restProps}>
-	<slot />
+<span class="badge badge-{variant} badge-{size}" {...restProps}>
+	{@render children?.()}
 </span>
 
 <style>

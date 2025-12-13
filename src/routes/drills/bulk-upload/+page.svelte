@@ -1,21 +1,23 @@
 <script>
-	import { writable } from 'svelte/store';
+	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
 	let fileInput;
-	let uploadedFile = writable(null);
-	let isUploading = writable(false);
-	let uploadSummary = writable(null);
-	let parsedDrills = writable([]);
-	let filterOption = writable('all');
-	let visibility = writable('public');
+	let uploadedFile = $state(null);
+	let isUploading = $state(false);
+	let uploadSummary = $state(null);
+	let parsedDrills = $state([]);
+	let filterOption = $state('all');
+	let visibility = $state('public');
 
-	$: filteredDrills = $parsedDrills.filter((drill) => {
-		if ($filterOption === 'all') return true;
-		if ($filterOption === 'errors') return drill.errors.length > 0;
-		if ($filterOption === 'valid') return drill.errors.length === 0;
-	});
+	const filteredDrills = $derived.by(() =>
+		parsedDrills.filter((drill) => {
+			if (filterOption === 'all') return true;
+			if (filterOption === 'errors') return drill.errors.length > 0;
+			if (filterOption === 'valid') return drill.errors.length === 0;
+		})
+	);
 
 	const skillLevelOptions = ['New to Sport', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
 
@@ -37,7 +39,7 @@
 	function handleFileChange(event) {
 		const file = event.target.files[0];
 		if (file && file.type === 'text/csv') {
-			uploadedFile.set(file);
+			uploadedFile = file;
 		} else {
 			toast.push('Please select a valid CSV file', { theme: { '--toastBackground': 'red' } });
 			fileInput.value = '';
@@ -45,17 +47,17 @@
 	}
 
 	async function uploadCSV() {
-		if (!$uploadedFile) {
+		if (!uploadedFile) {
 			toast.push('Please select a CSV file to upload', { theme: { '--toastBackground': 'red' } });
 			return;
 		}
 
-		isUploading.set(true);
-		uploadSummary.set(null);
-		parsedDrills.set([]);
+		isUploading = true;
+		uploadSummary = null;
+		parsedDrills = [];
 		const formData = new FormData();
-		formData.append('file', $uploadedFile);
-		formData.append('visibility', $visibility);
+		formData.append('file', uploadedFile);
+		formData.append('visibility', visibility);
 
 		try {
 			const result = await apiFetch('/api/drills/bulk-upload', {
@@ -63,21 +65,20 @@
 				body: formData
 			});
 
-			uploadSummary.set(result.summary);
-			parsedDrills.set(
+			uploadSummary = result.summary;
+			parsedDrills =
 				result.drills.map((drill) => ({
 					...drill,
 					isEditing: false,
 					editableDiagramIndex: null
-				}))
-			);
+				}));
 		} catch (error) {
 			console.error('Error uploading CSV:', error);
 			toast.push(`Failed to upload CSV file: ${error.message}`, {
 				theme: { '--toastBackground': 'red' }
 			});
 		} finally {
-			isUploading.set(false);
+			isUploading = false;
 		}
 	}
 
@@ -97,18 +98,13 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 	}
 
 	function editDrill(index) {
-		parsedDrills.update((drills) => {
-			const newDrills = [...drills];
-			const drill = { ...newDrills[index], isEditing: true };
-			newDrills[index] = drill;
-			return newDrills;
-		});
+		parsedDrills = parsedDrills.map((d, i) => (i === index ? { ...d, isEditing: true } : d));
 	}
 
 	function saveDrill(index) {
-		parsedDrills.update((drills) => {
-			const newDrills = [...drills];
-			let drill = { ...newDrills[index] };
+		parsedDrills = parsedDrills.map((d, i) => {
+			if (i !== index) return d;
+			let drill = { ...d };
 
 			const validationResult = bulkUploadDrillInputSchema.safeParse(drill);
 
@@ -125,20 +121,16 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 				});
 			}
 
-			newDrills[index] = drill;
-			return newDrills;
+			return drill;
 		});
 	}
 
 	function cancelEdit(index) {
-		parsedDrills.update((drills) => {
-			drills[index].isEditing = false;
-			return drills;
-		});
+		parsedDrills = parsedDrills.map((d, i) => (i === index ? { ...d, isEditing: false } : d));
 	}
 
 	function removeDrill(index) {
-		parsedDrills.update((drills) => drills.filter((_, i) => i !== index));
+		parsedDrills = parsedDrills.filter((_, i) => i !== index);
 	}
 
 	async function saveChanges() {
@@ -146,7 +138,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 	}
 
 	async function importDrills() {
-		const validDrills = $parsedDrills.filter((drill) => drill.errors.length === 0);
+		const validDrills = parsedDrills.filter((drill) => drill.errors.length === 0);
 		if (validDrills.length === 0) {
 			toast.push('No valid drills to import', { theme: { '--toastBackground': 'red' } });
 			return;
@@ -158,8 +150,8 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					drills: validDrills,
-					fileName: $uploadedFile ? $uploadedFile.name : 'manual_upload',
-					visibility: $visibility
+					fileName: uploadedFile ? uploadedFile.name : 'manual_upload',
+					visibility
 				})
 			});
 
@@ -176,49 +168,48 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 	}
 
 	function addDiagram(drillIndex) {
-		parsedDrills.update((drills) => {
-			if (!drills[drillIndex].diagrams) {
-				drills[drillIndex].diagrams = [];
-			}
-			const newDiagramIndex = drills[drillIndex].diagrams.length;
-			drills[drillIndex].diagrams.push({});
-			drills[drillIndex].editableDiagramIndex = newDiagramIndex;
-			return drills;
+		parsedDrills = parsedDrills.map((d, i) => {
+			if (i !== drillIndex) return d;
+			const diagrams = Array.isArray(d.diagrams) ? [...d.diagrams] : [];
+			const newDiagramIndex = diagrams.length;
+			diagrams.push({});
+			return { ...d, diagrams, editableDiagramIndex: newDiagramIndex };
 		});
 	}
 
 	function _deleteDiagram(drillIndex, diagramIndex) {
-		parsedDrills.update((drills) => {
-			drills[drillIndex].diagrams.splice(diagramIndex, 1);
-			return drills;
+		parsedDrills = parsedDrills.map((d, i) => {
+			if (i !== drillIndex) return d;
+			const diagrams = Array.isArray(d.diagrams)
+				? d.diagrams.filter((_, idx) => idx !== diagramIndex)
+				: [];
+			return { ...d, diagrams };
 		});
 	}
 
-	function saveDiagram(drillIndex, diagramIndex, event) {
-		const diagramData = event.detail;
-		parsedDrills.update((drills) => {
-			drills[drillIndex].diagrams[diagramIndex] = diagramData;
-			drills[drillIndex].editableDiagramIndex = null;
-			return drills;
+	function saveDiagram(drillIndex, diagramIndex, diagramData) {
+		parsedDrills = parsedDrills.map((d, i) => {
+			if (i !== drillIndex) return d;
+			const diagrams = Array.isArray(d.diagrams) ? [...d.diagrams] : [];
+			diagrams[diagramIndex] = diagramData;
+			return { ...d, diagrams, editableDiagramIndex: null };
 		});
 		toast.push('Diagram saved successfully', { theme: { '--toastBackground': 'green' } });
 	}
 
 	function editDiagram(drillIndex, diagramIndex) {
-		parsedDrills.update((drills) => {
-			drills[drillIndex] = { ...drills[drillIndex], editableDiagramIndex: diagramIndex };
-			return drills;
-		});
+		parsedDrills = parsedDrills.map((d, i) =>
+			i === drillIndex ? { ...d, editableDiagramIndex: diagramIndex } : d
+		);
 	}
 
 	function cancelEditDiagram(drillIndex) {
-		parsedDrills.update((drills) => {
-			drills[drillIndex].editableDiagramIndex = null;
-			return drills;
-		});
+		parsedDrills = parsedDrills.map((d, i) =>
+			i === drillIndex ? { ...d, editableDiagramIndex: null } : d
+		);
 	}
 
-	$: validDrillsCount = $parsedDrills.filter((drill) => drill.errors.length === 0).length;
+	const validDrillsCount = $derived(parsedDrills.filter((drill) => drill.errors.length === 0).length);
 
 	function toggleSelection(array, value) {
 		if (array.includes(value)) {
@@ -230,9 +221,9 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 	}
 
 	function validateDrillLocal(index) {
-		parsedDrills.update((drills) => {
-			const newDrills = [...drills];
-			const drill = { ...newDrills[index] };
+		parsedDrills = parsedDrills.map((d, i) => {
+			if (i !== index) return d;
+			const drill = { ...d };
 
 			const validationResult = bulkUploadDrillInputSchema.safeParse(drill);
 
@@ -244,18 +235,21 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 				);
 			}
 
-			newDrills[index] = drill;
-			return newDrills;
+			return drill;
 		});
 	}
 
-	let skillsInput = '';
-	$: if (filteredDrills && filteredDrills.length > 0 && filteredDrills[0].isEditing) {
+	let skillsInput = $state('');
+	$effect(() => {
+		if (!filteredDrills || filteredDrills.length === 0 || !filteredDrills[0]?.isEditing) {
+			return;
+		}
+
 		const editingDrill = filteredDrills.find((d) => d.isEditing);
 		if (editingDrill) {
 			skillsInput = editingDrill.skills_focused_on.join(', ');
 		}
-	}
+	});
 </script>
 
 <svelte:head>
@@ -301,7 +295,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 			or using the CSV, contact Austin.
 		</p>
 		<button
-			on:click={downloadTemplate}
+			onclick={downloadTemplate}
 			class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded"
 		>
 			Download CSV Template
@@ -312,18 +306,18 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 		<input
 			type="file"
 			accept=".csv"
-			on:change={handleFileChange}
+			onchange={handleFileChange}
 			bind:this={fileInput}
 			class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
 		/>
 	</div>
 
-	{#if $uploadedFile}
+	{#if uploadedFile}
 		<div class="mb-6">
 			<label for="visibility-select" class="block text-gray-700 font-medium mb-1">Visibility</label>
 			<select
 				id="visibility-select"
-				bind:value={$visibility}
+				bind:value={visibility}
 				class="p-2 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
 			>
 				<option value="public">Public - Visible to everyone</option>
@@ -334,30 +328,30 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 
 		<div class="mb-6">
 			<button
-				on:click={uploadCSV}
-				disabled={$isUploading}
+				onclick={uploadCSV}
+				disabled={isUploading}
 				class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded disabled:opacity-50"
 			>
-				{$isUploading ? 'Uploading...' : 'Upload'}
+				{isUploading ? 'Uploading...' : 'Upload'}
 			</button>
 		</div>
 	{/if}
 
-	{#if $uploadSummary}
+	{#if uploadSummary}
 		<div class="mb-6 p-4 bg-gray-100 rounded">
 			<h2 class="text-2xl font-semibold mb-2">Upload Summary</h2>
-			<p>Total drills: <span class="font-medium">{$uploadSummary.total}</span></p>
-			<p>Drills without errors: <span class="font-medium">{$uploadSummary.valid}</span></p>
-			<p>Drills with errors: <span class="font-medium">{$uploadSummary.errors}</span></p>
+			<p>Total drills: <span class="font-medium">{uploadSummary.total}</span></p>
+			<p>Drills without errors: <span class="font-medium">{uploadSummary.valid}</span></p>
+			<p>Drills with errors: <span class="font-medium">{uploadSummary.errors}</span></p>
 		</div>
 	{/if}
 
-	{#if $parsedDrills.length > 0}
+	{#if parsedDrills.length > 0}
 		<div class="mb-6">
 			<label for="filter-select" class="mr-2 font-semibold">Filter:</label>
 			<select
 				id="filter-select"
-				bind:value={$filterOption}
+				bind:value={filterOption}
 				class="border border-gray-300 rounded px-2 py-1"
 			>
 				<option value="all">All Drills</option>
@@ -383,7 +377,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 									bind:value={drill.name}
 									placeholder="Name"
 									class={`w-full px-3 py-2 border ${drill.errors?.some((e) => e.startsWith('name:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-									on:input={() => validateDrillLocal(index)}
+									oninput={() => validateDrillLocal(index)}
 								/>
 								{#if drill.errors?.find((e) => e.startsWith('name:'))}
 									<p class="text-red-500 text-sm mt-1">
@@ -401,7 +395,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 									bind:value={drill.brief_description}
 									placeholder="Brief Description"
 									class={`w-full px-3 py-2 border ${drill.errors?.some((e) => e.startsWith('brief_description:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-									on:input={() => validateDrillLocal(index)}
+									oninput={() => validateDrillLocal(index)}
 								/>
 								{#if drill.errors?.find((e) => e.startsWith('brief_description:'))}
 									<p class="text-red-500 text-sm mt-1">
@@ -419,7 +413,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 									bind:value={drill.detailed_description}
 									placeholder="Detailed Description"
 									class={`w-full px-3 py-2 border ${drill.errors?.some((e) => e.startsWith('detailed_description:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-									on:input={() => validateDrillLocal(index)}
+									oninput={() => validateDrillLocal(index)}
 									rows="4"
 								></textarea>
 								{#if drill.errors?.find((e) => e.startsWith('detailed_description:'))}
@@ -443,7 +437,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 											type="button"
 											class="px-3 py-1 rounded-full border border-gray-300"
 											class:selected={drill.drill_type.includes(type)}
-											on:click={() => {
+											onclick={() => {
 												toggleSelection(drill.drill_type, type);
 												validateDrillLocal(index);
 											}}
@@ -469,7 +463,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 											type="button"
 											class="px-3 py-1 rounded-full border border-gray-300"
 											class:selected={drill.skill_level.includes(level)}
-											on:click={() => {
+											onclick={() => {
 												toggleSelection(drill.skill_level, level);
 												validateDrillLocal(index);
 											}}
@@ -493,7 +487,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 									id="complexity"
 									bind:value={drill.complexity}
 									class={`w-full px-3 py-2 border ${drill.errors?.some((e) => e.startsWith('complexity:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-									on:change={() => validateDrillLocal(index)}
+									onchange={() => validateDrillLocal(index)}
 								>
 									<option value={null}>Select...</option>
 									{#each complexityOptions as option (option)}
@@ -517,7 +511,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 										bind:value={drill.suggested_length.min}
 										placeholder="Min"
 										class={`w-full px-3 py-2 border ${drill.errors?.some((e) => e.startsWith('suggested_length.min:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-										on:input={() => validateDrillLocal(index)}
+										oninput={() => validateDrillLocal(index)}
 									/>
 									{#if drill.errors?.find((e) => e.startsWith('suggested_length.min:'))}
 										<p class="text-red-500 text-sm mt-1">
@@ -537,7 +531,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 										bind:value={drill.suggested_length.max}
 										placeholder="Max"
 										class={`w-full px-3 py-2 border ${drill.errors?.some((e) => e.startsWith('suggested_length.max:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-										on:input={() => validateDrillLocal(index)}
+										oninput={() => validateDrillLocal(index)}
 									/>
 									{#if drill.errors?.find((e) => e.startsWith('suggested_length.max:'))}
 										<p class="text-red-500 text-sm mt-1">
@@ -559,7 +553,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 										bind:value={drill.number_of_people.min}
 										placeholder="Min"
 										class={`w-full px-3 py-2 border ${drill.errors?.some((e) => e.startsWith('number_of_people.min:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-										on:input={() => validateDrillLocal(index)}
+										oninput={() => validateDrillLocal(index)}
 										min="1"
 									/>
 									{#if drill.errors?.find((e) => e.startsWith('number_of_people.min:'))}
@@ -580,7 +574,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 										bind:value={drill.number_of_people.max}
 										placeholder="Max (or leave empty for 'any')"
 										class={`w-full px-3 py-2 border ${drill.errors?.some((e) => e.startsWith('number_of_people.max:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-										on:input={() => validateDrillLocal(index)}
+										oninput={() => validateDrillLocal(index)}
 									/>
 									{#if drill.errors?.find((e) => e.startsWith('number_of_people.max:'))}
 										<p class="text-red-500 text-sm mt-1">
@@ -600,7 +594,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 									id="skills-{index}"
 									type="text"
 									bind:value={skillsInput}
-									on:change={() => {
+									onchange={() => {
 										drill.skills_focused_on = skillsInput
 											.split(',')
 											.map((s) => s.trim())
@@ -627,7 +621,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 											type="button"
 											class="px-3 py-1 rounded-full border border-gray-300"
 											class:selected={drill.positions_focused_on.includes(pos)}
-											on:click={() => {
+											onclick={() => {
 												toggleSelection(drill.positions_focused_on, pos);
 												validateDrillLocal(index);
 											}}
@@ -652,7 +646,7 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 									bind:value={drill.video_link}
 									placeholder="https://example.com"
 									class={`w-full px-3 py-2 border ${drill.errors?.some((e) => e.startsWith('video_link:')) ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring`}
-									on:input={() => validateDrillLocal(index)}
+									oninput={() => validateDrillLocal(index)}
 								/>
 								{#if drill.errors?.find((e) => e.startsWith('video_link:'))}
 									<p class="text-red-500 text-sm mt-1">
@@ -669,21 +663,21 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 										{index}
 										{diagIndex}
 										showSaveButton={drill.editableDiagramIndex === diagIndex}
-										on:save={(event) => saveDiagram(index, diagIndex, event)}
+										onSave={(diagramData) => saveDiagram(index, diagIndex, diagramData)}
 									/>
 									{#if drill.editableDiagramIndex === diagIndex}
-										<button on:click={() => cancelEditDiagram(index)} class="text-gray-500 mt-2"
+										<button onclick={() => cancelEditDiagram(index)} class="text-gray-500 mt-2"
 											>Cancel</button
 										>
 									{:else}
 										<button
-											on:click={() => editDiagram(index, diagIndex)}
+											onclick={() => editDiagram(index, diagIndex)}
 											class="text-blue-500 mt-2">Edit Diagram</button
 										>
 									{/if}
 								{/each}
 								<button
-									on:click={() => addDiagram(index)}
+									onclick={() => addDiagram(index)}
 									class="mt-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-1 px-3 rounded"
 								>
 									Add New Diagram
@@ -692,13 +686,13 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 
 							<div class="flex justify-end space-x-2 mt-4">
 								<button
-									on:click={() => cancelEdit(index)}
+									onclick={() => cancelEdit(index)}
 									class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded"
 								>
 									Cancel
 								</button>
 								<button
-									on:click={() => saveDrill(index)}
+									onclick={() => saveDrill(index)}
 									class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded"
 									disabled={drill.errors?.length > 0}
 								>
@@ -774,21 +768,21 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 										{index}
 										{diagIndex}
 										showSaveButton={drill.editableDiagramIndex === diagIndex}
-										on:save={(event) => saveDiagram(index, diagIndex, event)}
+										onSave={(diagramData) => saveDiagram(index, diagIndex, diagramData)}
 									/>
 									{#if drill.editableDiagramIndex === diagIndex}
-										<button on:click={() => cancelEditDiagram(index)} class="text-gray-500 mt-2"
+										<button onclick={() => cancelEditDiagram(index)} class="text-gray-500 mt-2"
 											>Cancel</button
 										>
 									{:else}
 										<button
-											on:click={() => editDiagram(index, diagIndex)}
+											onclick={() => editDiagram(index, diagIndex)}
 											class="text-blue-500 mt-2">Edit Diagram</button
 										>
 									{/if}
 								{/each}
 								<button
-									on:click={() => addDiagram(index)}
+									onclick={() => addDiagram(index)}
 									class="mt-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-1 px-3 rounded"
 								>
 									Add New Diagram
@@ -797,13 +791,13 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 
 							<div class="flex space-x-4 mt-4">
 								<button
-									on:click={() => editDrill(index)}
+									onclick={() => editDrill(index)}
 									class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded"
 								>
 									Edit
 								</button>
 								<button
-									on:click={() => removeDrill(index)}
+									onclick={() => removeDrill(index)}
 									class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded"
 								>
 									Remove
@@ -818,13 +812,13 @@ Example Drill,A brief description,A more detailed description,"Competitive,Skill
 
 	<div class="flex space-x-4">
 		<button
-			on:click={saveChanges}
+			onclick={saveChanges}
 			class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded"
 		>
 			Save Changes
 		</button>
 		<button
-			on:click={importDrills}
+			onclick={importDrills}
 			class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded"
 		>
 			Import Valid Drills ({validDrillsCount})

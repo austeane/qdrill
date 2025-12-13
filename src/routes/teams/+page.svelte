@@ -9,18 +9,18 @@
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { Users, Calendar, Shield, UserPlus } from 'lucide-svelte';
 
-	export let data;
+	let { data } = $props();
 
-	let teams = data.teams || [];
-	let showCreateModal = false;
-	let newTeam = {
+	const teams = $derived(data.teams || []);
+	let showCreateModal = $state(false);
+	let newTeam = $state({
 		name: '',
 		description: '',
 		timezone: 'America/New_York',
 		default_start_time: '09:00'
-	};
-	let isCreating = false;
-	let createError = '';
+	});
+	let isCreating = $state(false);
+	let createError = $state('');
 
 	const timezoneOptions = [
 		{ value: 'America/New_York', label: 'Eastern Time' },
@@ -92,7 +92,7 @@
 				</p>
 			</div>
 			{#if data.isAuthenticated}
-				<Button variant="primary" on:click={() => (showCreateModal = true)}>
+				<Button variant="primary" onclick={() => (showCreateModal = true)}>
 					<UserPlus size={16} class="mr-2" />
 					Create Team
 				</Button>
@@ -172,76 +172,80 @@
 	</div>
 
 	<!-- Teams Grid -->
-	<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-		{#each teams as team (team.id)}
-			<Card variant="elevated">
-				<div slot="header" class="flex items-start justify-between">
-					<h3>
-						{#if data.isAuthenticated}
-							<a href={`/teams/${team.slug}/season`} class="hover:underline font-semibold"
-								>{team.name}</a
-							>
-						{:else}
-							<a
-								href={`/login?next=${encodeURIComponent(`/teams/${team.slug}/season`)}`}
-								class="font-semibold">{team.name}</a
-							>
-						{/if}
-					</h3>
-					{#if data.isAuthenticated && team.role}
-						<span
-							class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium {team.role ===
-							'admin'
-								? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
-								: team.role === 'coach'
-									? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
-									: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}"
-						>
-							{#if team.role === 'admin'}
-								<Shield size={12} class="mr-1" />
-								Admin
-							{:else if team.role === 'coach'}
-								<Users size={12} class="mr-1" />
-								Coach
-							{:else}
-								<Users size={12} class="mr-1" />
-								Member
+		<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+			{#each teams as team (team.id)}
+				<Card variant="elevated">
+					{#snippet header()}
+						<div class="flex items-start justify-between">
+							<h3>
+								{#if data.isAuthenticated}
+									<a href={`/teams/${team.slug}/season`} class="hover:underline font-semibold"
+										>{team.name}</a
+									>
+								{:else}
+									<a
+										href={`/login?next=${encodeURIComponent(`/teams/${team.slug}/season`)}`}
+										class="font-semibold">{team.name}</a
+									>
+								{/if}
+							</h3>
+							{#if data.isAuthenticated && team.role}
+								<span
+									class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium {team.role ===
+									'admin'
+										? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+										: team.role === 'coach'
+											? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+											: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}"
+								>
+									{#if team.role === 'admin'}
+										<Shield size={12} class="mr-1" />
+										Admin
+									{:else if team.role === 'coach'}
+										<Users size={12} class="mr-1" />
+										Coach
+									{:else}
+										<Users size={12} class="mr-1" />
+										Member
+									{/if}
+								</span>
 							{/if}
-						</span>
-					{/if}
-				</div>
-				<p class="text-gray-600 dark:text-gray-400">{team.description || 'No description'}</p>
-				{#if !data.isAuthenticated}
-					<p class="text-sm text-amber-600 dark:text-amber-500 mt-2 flex items-center">
-						<Shield size={14} class="mr-1" />
+						</div>
+					{/snippet}
+					<p class="text-gray-600 dark:text-gray-400">{team.description || 'No description'}</p>
+					{#if !data.isAuthenticated}
+						<p class="text-sm text-amber-600 dark:text-amber-500 mt-2 flex items-center">
+							<Shield size={14} class="mr-1" />
 						Sign in to join or edit
 					</p>
 				{:else if team.role === 'member'}
 					<p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-						View-only access • Contact admin for edit permissions
-					</p>
-				{/if}
-				<div slot="footer" class="flex items-center justify-between">
-					<div class="flex gap-2">
-						{#if data.isAuthenticated}
-							<Button href={`/teams/${team.slug}/season`} size="sm">View Season</Button>
-							{#if team.role === 'admin'}
-								<Button href={`/teams/${team.slug}/settings`} variant="ghost" size="sm">
-									<Shield size={14} class="mr-1" />
-									Settings
-								</Button>
-							{/if}
-						{:else}
-							<Button
-								href={`/login?next=${encodeURIComponent(`/teams/${team.slug}/season`)}`}
-								size="sm">View Season</Button
-							>
-						{/if}
-					</div>
-				</div>
-			</Card>
-		{/each}
-	</div>
+							View-only access • Contact admin for edit permissions
+						</p>
+					{/if}
+					{#snippet footer()}
+						<div class="flex items-center justify-between">
+							<div class="flex gap-2">
+								{#if data.isAuthenticated}
+									<Button href={`/teams/${team.slug}/season`} size="sm">View Season</Button>
+									{#if team.role === 'admin'}
+										<Button href={`/teams/${team.slug}/settings`} variant="ghost" size="sm">
+											<Shield size={14} class="mr-1" />
+											Settings
+										</Button>
+									{/if}
+								{:else}
+									<Button
+										href={`/login?next=${encodeURIComponent(`/teams/${team.slug}/season`)}`}
+										size="sm">View Season</Button
+									>
+								{/if}
+							</div>
+						</div>
+					{/snippet}
+				</Card>
+			{/each}
+		</div>
 
 	{#if teams.length === 0 && data.isAuthenticated}
 		<div class="col-span-full text-center py-12">
@@ -252,7 +256,7 @@
 					Create your first team to unlock collaborative practice planning, season management, and
 					shared resources for your coaching staff.
 				</p>
-				<Button variant="primary" size="lg" on:click={() => (showCreateModal = true)}>
+				<Button variant="primary" size="lg" onclick={() => (showCreateModal = true)}>
 					<UserPlus size={20} class="mr-2" />
 					Create Your First Team
 				</Button>
@@ -303,10 +307,12 @@
 		{/if}
 	</div>
 
-	<div slot="footer" class="flex justify-end gap-2">
-		<Button variant="ghost" on:click={closeModal} disabled={isCreating}>Cancel</Button>
-		<Button variant="primary" on:click={createTeam} disabled={isCreating}>
-			{isCreating ? 'Creating...' : 'Create'}
-		</Button>
-	</div>
+	{#snippet footer()}
+		<div class="flex justify-end gap-2">
+			<Button variant="ghost" onclick={closeModal} disabled={isCreating}>Cancel</Button>
+			<Button variant="primary" onclick={createTeam} disabled={isCreating}>
+				{isCreating ? 'Creating...' : 'Create'}
+			</Button>
+		</div>
+	{/snippet}
 </Dialog>

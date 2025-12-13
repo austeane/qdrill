@@ -2,7 +2,6 @@
 	import Topbar from '$lib/components/nav/Topbar.svelte';
 	import Sidebar from '$lib/components/nav/Sidebar.svelte';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
-	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 
 	let { children }: { children?: Snippet } = $props();
@@ -10,20 +9,6 @@
 	let sidebarOpen = $state(false); // mobile drawer
 	let sidebarCollapsed = $state(false); // desktop collapsed
 	let cmdOpen = $state(false);
-
-	function handleKeydown(e: KeyboardEvent) {
-		if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-			e.preventDefault();
-			cmdOpen = true;
-		}
-	}
-
-	onMount(() => {
-		window.addEventListener('keydown', handleKeydown);
-		return () => {
-			window.removeEventListener('keydown', handleKeydown);
-		};
-	});
 </script>
 
 <Topbar

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import { Search } from 'lucide-svelte';
+	import { onWindowEvent } from '$lib/utils/windowEvents';
 
 	let {
 		open = $bindable(false),
@@ -49,10 +49,7 @@
 		e.stopPropagation();
 	}
 
-	onMount(() => {
-		window.addEventListener('keydown', onKey);
-		return () => window.removeEventListener('keydown', onKey);
-	});
+	onWindowEvent('keydown', onKey);
 </script>
 
 {#if open}

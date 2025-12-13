@@ -1,7 +1,9 @@
 <script>
+	import { SvelteSet } from 'svelte/reactivity';
+
 	let {
 		show = $bindable(false),
-		selectedTimelines = new Set(),
+		selectedTimelines = new SvelteSet(),
 		parallelTimelines = {},
 		timelineColors = {},
 		getTimelineColor = (_timeline) => 'bg-gray-500',

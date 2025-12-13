@@ -3,6 +3,7 @@
 	import { portal } from '$lib/actions/portal.js';
 	import { getSafeAreaInsets } from '$lib/utils/mobile.js';
 	import { X } from 'lucide-svelte';
+	import { onWindowEvent } from '$lib/utils/windowEvents';
 
 	let {
 		open = $bindable(false),
@@ -138,20 +139,13 @@
 		handleTouchEnd();
 	}
 
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-
-		window.addEventListener('keydown', handleKeydown);
-		window.addEventListener('mousemove', handleMouseMove);
-		window.addEventListener('mouseup', handleMouseUp);
-
-		return () => {
-			unlockBodyScroll();
-			window.removeEventListener('keydown', handleKeydown);
-			window.removeEventListener('mousemove', handleMouseMove);
-			window.removeEventListener('mouseup', handleMouseUp);
-		};
+	onWindowEvent('keydown', (event) => {
+		if (!open) return;
+		handleKeydown(event);
 	});
+
+	onWindowEvent('mousemove', handleMouseMove);
+	onWindowEvent('mouseup', handleMouseUp);
 </script>
 
 {#if open}

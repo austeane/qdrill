@@ -747,3 +747,14 @@ This is a running log of decisions, work completed, roadblocks, and intentional 
 - Validation:
   - `pnpm run check`: `svelte-check found 0 errors and 94 warnings in 26 files`
   - `pnpm test:unit:run`: pass (18 files, 310 tests)
+
+## 2025-12-13 (Merge to main) ✅
+
+- **Merged `chore/svelte5-runes-migration` into `main`** (commit `528a3f3`)
+- Final validation before merge:
+  - `pnpm run check`: 0 errors, 94 warnings
+  - `pnpm test:unit:run`: 310 tests passing
+- Migration complete: 165 files changed, 11,230 insertions, 9,133 deletions
+- New runes-enabled stores created in `.svelte.js`/`.svelte.ts` files
+- All legacy `$store` syntax removed from components
+- No feature changes — this was a pure syntax migration

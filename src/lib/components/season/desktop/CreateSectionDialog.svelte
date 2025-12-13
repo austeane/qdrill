@@ -29,22 +29,38 @@
 		'#f97316' // Orange
 	];
 
+	// Clamp a date string to season bounds, returning a valid yyyy-MM-dd date string
+	function clampDateToSeason(dateStr) {
+		if (!dateStr || !season?.start_date || !season?.end_date) {
+			return toLocalISO(new Date(season?.start_date || dateStr || new Date()));
+		}
+
+		const date = new Date(dateStr);
+		const seasonStart = new Date(season.start_date);
+		const seasonEnd = new Date(season.end_date);
+
+		if (date < seasonStart) return toLocalISO(seasonStart);
+		if (date > seasonEnd) return toLocalISO(seasonEnd);
+		return toLocalISO(date);
+	}
+
 	$effect(() => {
 		if (!open) return;
 
 		if (section) {
 			name = section.name || '';
 			color = section.color || '#2563eb';
-			startDate = section.start_date || '';
-			endDate = section.end_date || '';
+			// Clamp existing section dates to season bounds
+			startDate = clampDateToSeason(section.start_date);
+			endDate = clampDateToSeason(section.end_date);
 			seedDefaults = false;
 			return;
 		}
 
 		name = '';
 		color = '#2563eb';
-		startDate = season?.start_date || '';
-		endDate = season?.end_date || '';
+		startDate = season?.start_date ? toLocalISO(new Date(season.start_date)) : '';
+		endDate = season?.end_date ? toLocalISO(new Date(season.end_date)) : '';
 		seedDefaults = false;
 	});
 
@@ -140,8 +156,8 @@
 	function resetForm() {
 		name = '';
 		color = '#2563eb';
-		startDate = season?.start_date || '';
-		endDate = season?.end_date || '';
+		startDate = season?.start_date ? toLocalISO(new Date(season.start_date)) : '';
+		endDate = season?.end_date ? toLocalISO(new Date(season.end_date)) : '';
 		seedDefaults = false;
 	}
 

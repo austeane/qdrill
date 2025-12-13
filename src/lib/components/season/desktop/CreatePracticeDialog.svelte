@@ -13,18 +13,40 @@
 		$props();
 
 	let loading = $state(false);
-	let selectedDate = $state(date || toLocalISO(new Date()));
 	let startTime = $state('18:00');
 	let seedDefaults = $state(true);
 	let practiceType = $state('regular');
 	let createAndEdit = $state(false);
+
+	// Clamp a date string to season bounds, returning a valid yyyy-MM-dd date string
+	function clampDateToSeason(dateStr) {
+		if (!dateStr || !season?.start_date || !season?.end_date) {
+			return toLocalISO(new Date(season?.start_date || dateStr || new Date()));
+		}
+
+		const d = new Date(dateStr);
+		const seasonStart = new Date(season.start_date);
+		const seasonEnd = new Date(season.end_date);
+
+		if (d < seasonStart) return toLocalISO(seasonStart);
+		if (d > seasonEnd) return toLocalISO(seasonEnd);
+		return toLocalISO(d);
+	}
+
+	// Get default date (today if within season, otherwise season start)
+	function getDefaultDate() {
+		const today = toLocalISO(new Date());
+		return clampDateToSeason(today);
+	}
+
+	let selectedDate = $state(date ? clampDateToSeason(date) : getDefaultDate());
 
 	const overlappingSections = $derived(getOverlappingSections(selectedDate));
 
 	$effect(() => {
 		// Keep selectedDate in sync when parent updates the date while dialog is open
 		if (open && date && date !== selectedDate) {
-			selectedDate = date;
+			selectedDate = clampDateToSeason(date);
 		}
 	});
 
@@ -124,7 +146,7 @@
 	}
 
 	function resetForm() {
-		selectedDate = date || toLocalISO(new Date());
+		selectedDate = date ? clampDateToSeason(date) : getDefaultDate();
 		startTime = '18:00';
 		seedDefaults = true;
 		practiceType = 'regular';

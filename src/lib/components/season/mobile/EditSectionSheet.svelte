@@ -16,11 +16,27 @@
 
 	const isEdit = $derived(!!section);
 
+	// Clamp a date string to season bounds, returning a valid yyyy-MM-dd date string
+	function clampDateToSeason(dateStr) {
+		if (!dateStr || !season?.start_date || !season?.end_date) {
+			return toLocalISO(new Date(season?.start_date || dateStr || new Date()));
+		}
+
+		const date = new Date(dateStr);
+		const seasonStart = new Date(season.start_date);
+		const seasonEnd = new Date(season.end_date);
+
+		if (date < seasonStart) return toLocalISO(seasonStart);
+		if (date > seasonEnd) return toLocalISO(seasonEnd);
+		return toLocalISO(date);
+	}
+
 	$effect(() => {
 		name = section?.name || '';
 		color = section?.color || '#2563eb';
-		startDate = section?.start_date || season?.start_date || '';
-		endDate = section?.end_date || season?.end_date || '';
+		// Clamp existing section dates to season bounds when editing
+		startDate = section?.start_date ? clampDateToSeason(section.start_date) : (season?.start_date ? toLocalISO(new Date(season.start_date)) : '');
+		endDate = section?.end_date ? clampDateToSeason(section.end_date) : (season?.end_date ? toLocalISO(new Date(season.end_date)) : '');
 		seedDefaults = false;
 	});
 

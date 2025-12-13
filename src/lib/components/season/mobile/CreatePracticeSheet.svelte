@@ -8,9 +8,31 @@
 
 	let open = $state(true);
 	let loading = $state(false);
-	let selectedDate = $state(date || toLocalISO(new Date()));
 	let startTime = $state('18:00'); // Default 6 PM
 	let seedDefaults = $state(true);
+
+	// Clamp a date string to season bounds, returning a valid yyyy-MM-dd date string
+	function clampDateToSeason(dateStr) {
+		if (!dateStr || !season?.start_date || !season?.end_date) {
+			return toLocalISO(new Date(season?.start_date || dateStr || new Date()));
+		}
+
+		const d = new Date(dateStr);
+		const seasonStart = new Date(season.start_date);
+		const seasonEnd = new Date(season.end_date);
+
+		if (d < seasonStart) return toLocalISO(seasonStart);
+		if (d > seasonEnd) return toLocalISO(seasonEnd);
+		return toLocalISO(d);
+	}
+
+	// Get default date (today if within season, otherwise season start)
+	function getDefaultDate() {
+		const today = toLocalISO(new Date());
+		return clampDateToSeason(today);
+	}
+
+	let selectedDate = $state(date ? clampDateToSeason(date) : getDefaultDate());
 
 	const overlappingSections = $derived(getOverlappingSections(selectedDate));
 

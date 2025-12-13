@@ -22,12 +22,34 @@
 	let loading = $state(false);
 	const isEditing = $derived(!!marker);
 
+	// Clamp a date string to season bounds, returning a valid yyyy-MM-dd date string
+	function clampDateToSeason(dateStr) {
+		if (!dateStr || !season?.start_date || !season?.end_date) {
+			return toLocalISO(new Date(season?.start_date || dateStr || new Date()));
+		}
+
+		const date = new Date(dateStr);
+		const seasonStart = new Date(season.start_date);
+		const seasonEnd = new Date(season.end_date);
+
+		if (date < seasonStart) return toLocalISO(seasonStart);
+		if (date > seasonEnd) return toLocalISO(seasonEnd);
+		return toLocalISO(date);
+	}
+
+	// Get a default date within the season (today if within bounds, otherwise season start)
+	function getDefaultDate() {
+		const today = toLocalISO(new Date());
+		return clampDateToSeason(today);
+	}
+
 	function getInitialFormData() {
+		const markerDate = marker?.date || marker?.start_date || defaultDate;
 		return {
 			name: marker?.name || '',
 			description: marker?.description || '',
-			date: marker?.date || marker?.start_date || defaultDate || toLocalISO(new Date()),
-			end_date: marker?.end_date || '',
+			date: markerDate ? clampDateToSeason(markerDate) : getDefaultDate(),
+			end_date: marker?.end_date ? clampDateToSeason(marker.end_date) : '',
 			color: marker?.color || '#3b82f6',
 			type: marker?.type || 'event',
 			is_range: !!marker?.end_date

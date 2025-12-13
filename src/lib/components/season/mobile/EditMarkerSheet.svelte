@@ -1,5 +1,6 @@
 <script>
 	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { toLocalISO } from '$lib/utils/date.js';
 	import { toast } from '@zerodevx/svelte-toast';
 	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
 
@@ -16,13 +17,30 @@
 
 	const isEdit = $derived(!!marker);
 
+	// Clamp a date string to season bounds, returning a valid yyyy-MM-dd date string
+	function clampDateToSeason(dateStr) {
+		if (!dateStr || !season?.start_date || !season?.end_date) {
+			return toLocalISO(new Date(season?.start_date || dateStr || new Date()));
+		}
+
+		const d = new Date(dateStr);
+		const seasonStart = new Date(season.start_date);
+		const seasonEnd = new Date(season.end_date);
+
+		if (d < seasonStart) return toLocalISO(seasonStart);
+		if (d > seasonEnd) return toLocalISO(seasonEnd);
+		return toLocalISO(d);
+	}
+
 	$effect(() => {
 		name = marker?.name || '';
 		type = marker?.type || 'tournament';
 		color = marker?.color || '#ef4444';
-		date = marker?.date || defaultDate || season?.start_date || '';
+		// Clamp dates to season bounds
+		const markerDate = marker?.date || defaultDate;
+		date = markerDate ? clampDateToSeason(markerDate) : (season?.start_date || '');
 		isMultiDay = !!marker?.end_date;
-		endDate = marker?.end_date || '';
+		endDate = marker?.end_date ? clampDateToSeason(marker.end_date) : '';
 	});
 
 	// Marker types

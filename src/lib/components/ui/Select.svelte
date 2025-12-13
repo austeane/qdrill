@@ -9,19 +9,10 @@
 		required = false,
 		disabled = false,
 		...restProps
-		} = $props();
+	} = $props();
 
-	let generatedId = $state('');
-	const uid = $derived(id || generatedId);
-
-	$effect(() => {
-		if (id) {
-			return;
-		}
-		if (!generatedId && typeof crypto !== 'undefined') {
-			generatedId = `select-${crypto.randomUUID()}`;
-		}
-	});
+	const baseId = $props.id();
+	const uid = $derived(id || `select-${baseId}`);
 </script>
 
 <div class="select-wrapper">

@@ -1,6 +1,13 @@
 import adapter from '@sveltejs/adapter-vercel';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
+const RUNES_NODE_MODULES = [
+	// Compile specific dependencies in runes mode. Most dependencies still ship legacy Svelte
+	// syntax (`export let`, `<slot>`, etc) and must be compiled with `runes: false`.
+	//
+	// Example: 'bits-ui' (v2+), '@some-svelte-lib/core'
+];
+
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	compilerOptions: {
@@ -9,11 +16,17 @@ const config = {
 	},
 	vitePlugin: {
 		dynamicCompileOptions({ filename }) {
+			if (!filename.includes('node_modules')) return;
+
+			for (const pkg of RUNES_NODE_MODULES) {
+				if (filename.includes(`node_modules/${pkg}/`)) {
+					return { runes: true };
+				}
+			}
+
 			// Some third-party packages ship legacy Svelte components that still use
 			// `export let`, `$$props/$$restProps`, and `<slot>`. Compile them in legacy mode.
-			if (filename.includes('node_modules')) {
-				return { runes: false };
-			}
+			return { runes: false };
 		}
 	},
 	kit: {

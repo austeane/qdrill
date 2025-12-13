@@ -35,6 +35,7 @@ A comprehensive code review was recently conducted to assess the codebase and id
 - **[Guides](./guides/)**: Step-by-step guides and tutorials
   - [Creating Practice Plans Guide](./guides/creating-practice-plans-guide.md)
   - [Loading States Best Practices](./guides/loading-states-best-practices.md)
+  - [Svelte 5 Runes Post‑Migration Guide](./guides/svelte-5-runes-post-migration.md)
   - [LLM Guide for Creating Drills](./guides/llm_creating_drills.md)
   - [LLM Guide for Creating Practice Plans](./guides/llm_creating_practice_plans.md)
 

@@ -11,19 +11,10 @@
 		readonly = false,
 		rows = 4,
 		...restProps
-		} = $props();
+	} = $props();
 
-	let generatedId = $state('');
-	const uid = $derived(id || generatedId);
-
-	$effect(() => {
-		if (id) {
-			return;
-		}
-		if (!generatedId && typeof crypto !== 'undefined') {
-			generatedId = `textarea-${crypto.randomUUID()}`;
-		}
-	});
+	const baseId = $props.id();
+	const uid = $derived(id || `textarea-${baseId}`);
 </script>
 
 <div class="textarea-wrapper">

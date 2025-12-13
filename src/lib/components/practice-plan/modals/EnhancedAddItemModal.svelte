@@ -1,6 +1,7 @@
 <script>
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	let {
 		show = $bindable(false),
@@ -31,7 +32,7 @@
 		CHASERS: null,
 		SEEKERS: null
 	});
-	let selectedPositions = $state(new Set(['BEATERS', 'CHASERS']));
+	const selectedPositions = new SvelteSet(['BEATERS', 'CHASERS']);
 
 	// One-off activity state
 	let oneOffName = $state('Quick Activity');
@@ -45,7 +46,9 @@
 		formationSearchQuery = '';
 		formationSearchResults = [];
 		parallelActivities = { BEATERS: null, CHASERS: null, SEEKERS: null };
-		selectedPositions = new Set(['BEATERS', 'CHASERS']);
+		selectedPositions.clear();
+		selectedPositions.add('BEATERS');
+		selectedPositions.add('CHASERS');
 		oneOffName = 'Quick Activity';
 		onClose?.();
 	}
@@ -177,12 +180,10 @@
 		} else {
 			selectedPositions.add(position);
 		}
-		selectedPositions = new Set(selectedPositions); // Trigger reactivity
 	}
 
 	function clearParallelDrill(position) {
 		parallelActivities[position] = null;
-		parallelActivities = { ...parallelActivities }; // Trigger reactivity
 	}
 </script>
 

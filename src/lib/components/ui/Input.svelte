@@ -11,19 +11,10 @@
 		disabled = false,
 		readonly = false,
 		...restProps
-		} = $props();
+	} = $props();
 
-	let generatedId = $state('');
-	const uid = $derived(id || generatedId);
-
-	$effect(() => {
-		if (id) {
-			return;
-		}
-		if (!generatedId && typeof crypto !== 'undefined') {
-			generatedId = `input-${crypto.randomUUID()}`;
-		}
-	});
+	const baseId = $props.id();
+	const uid = $derived(id || `input-${baseId}`);
 </script>
 
 <div class="input-wrapper">

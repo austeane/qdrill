@@ -1,5 +1,6 @@
 <script>
 	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { toLocalISO } from '$lib/utils/date.js';
 	import { toast } from '@zerodevx/svelte-toast';
 	import Dialog from '$lib/components/ui/Dialog.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
@@ -15,8 +16,9 @@
 		if (!open || !season) return;
 
 		name = season.name || '';
-		startDate = season.start_date || '';
-		endDate = season.end_date || '';
+		// Convert ISO dates to yyyy-MM-dd format for date inputs
+		startDate = season.start_date ? toLocalISO(new Date(season.start_date)) : '';
+		endDate = season.end_date ? toLocalISO(new Date(season.end_date)) : '';
 	});
 
 	async function handleSave() {

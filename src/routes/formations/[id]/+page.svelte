@@ -1,6 +1,6 @@
 <script>
 	// import { onMount } from 'svelte'; // Removed
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
 	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
@@ -8,13 +8,13 @@
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { sanitizeHtml } from '$lib/utils/sanitize.js';
 
-	export let data;
+	let { data } = $props();
 
 	// Use formation data directly from the load function
-	$: formation = data.formation;
+	const formation = $derived(data.formation);
 
-	// Check if user is admin
-	$: isAdmin = $page.data.session?.user?.role === 'admin';
+	const session = $derived(page.data.session);
+	const isAdmin = $derived(session?.user?.role === 'admin');
 
 	// REMOVED: State for associated drills (isLoadingDrills, loadDrillsError)
 	// REMOVED: isLoading state
@@ -75,14 +75,14 @@
 	<meta name="description" content={formation?.brief_description || 'View formation details'} />
 </svelte:head>
 
-<div class="container mx-auto px-4 py-8">
+	<div class="container mx-auto px-4 py-8">
 	<!-- Remove top-level loading/error checks, data is guaranteed -->
 	<div class="mb-6 flex items-center justify-between">
 		<div>
-			<button
-				class="text-blue-600 hover:text-blue-800 flex items-center"
-				on:click={() => goto('/formations')}
-			>
+				<button
+					class="text-blue-600 hover:text-blue-800 flex items-center"
+					onclick={() => goto('/formations')}
+				>
 				<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
@@ -95,36 +95,36 @@
 			</button>
 		</div>
 
-		<!-- Edit/Delete Buttons (Permission check remains) -->
-		{#if formation && $page.data.session && (dev || isAdmin || $page.data.session.user.id === formation.created_by || formation.is_editable_by_others)}
-			<div class="flex space-x-4">
-				<button
-					class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-					on:click={handleEdit}
-				>
-					Edit
-				</button>
-				<button
-					class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-					on:click={handleDuplicate}
-				>
-					Duplicate
-				</button>
-				{#if dev || isAdmin || $page.data.session.user.id === formation.created_by}
+			<!-- Edit/Delete Buttons (Permission check remains) -->
+			{#if formation && session && (dev || isAdmin || session.user.id === formation.created_by || formation.is_editable_by_others)}
+				<div class="flex space-x-4">
 					<button
-						class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-						on:click={handleDelete}
+						class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+						onclick={handleEdit}
 					>
-						Delete
+						Edit
 					</button>
-				{/if}
+					<button
+						class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+						onclick={handleDuplicate}
+					>
+						Duplicate
+					</button>
+					{#if dev || isAdmin || session.user.id === formation.created_by}
+						<button
+							class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+							onclick={handleDelete}
+						>
+							Delete
+						</button>
+		{/if}
 			</div>
-		{:else if formation && $page.data.session}
+		{:else if formation && session}
 			<!-- Show Duplicate button for authenticated users who can't edit -->
 			<div class="flex space-x-4">
 				<button
 					class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-					on:click={handleDuplicate}
+					onclick={handleDuplicate}
 				>
 					Duplicate
 				</button>

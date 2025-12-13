@@ -1,6 +1,6 @@
 <script>
 	import DrillForm from '../DrillForm.svelte';
-	export let data; // Accept data from load function
+	let { data } = $props(); // Accept data from load function
 </script>
 
 <svelte:head>

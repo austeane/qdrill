@@ -1,13 +1,7 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
+	let { recurrence = null, season = null, templates = [], onSave, onCancel } = $props();
 
-	export let recurrence = null;
-	export let season = null;
-	export let templates = [];
-
-	const dispatch = createEventDispatcher();
-
-	let formData = {
+	const defaultFormData = {
 		name: '',
 		pattern: 'weekly',
 		day_of_week: [],
@@ -19,9 +13,11 @@
 		is_active: true
 	};
 
-	if (recurrence) {
-		formData = { ...recurrence };
-	}
+	let formData = $state({ ...defaultFormData });
+
+	$effect(() => {
+		formData = recurrence ? { ...defaultFormData, ...recurrence } : { ...defaultFormData };
+	});
 
 	const weekDays = [
 		{ value: 0, label: 'Sunday', short: 'Sun' },
@@ -60,11 +56,11 @@
 			data.day_of_week = [];
 		}
 
-		dispatch('save', data);
+		onSave?.(data);
 	}
 
 	function handleCancel() {
-		dispatch('cancel');
+		onCancel?.();
 	}
 </script>
 
@@ -101,7 +97,7 @@
                    {formData.day_of_week.includes(day.value)
 							? 'bg-blue-500 text-white border-blue-500'
 							: 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}"
-						on:click={() => toggleWeekDay(day.value)}
+						onclick={() => toggleWeekDay(day.value)}
 					>
 						{day.short}
 					</button>
@@ -122,7 +118,7 @@
                    {formData.day_of_month.includes(day)
 							? 'bg-blue-500 text-white border-blue-500'
 							: 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}"
-						on:click={() => toggleMonthDay(day)}
+						onclick={() => toggleMonthDay(day)}
 					>
 						{day}
 					</button>
@@ -181,12 +177,12 @@
 	</div>
 
 	<div class="flex justify-end space-x-2 pt-4 border-t">
-		<button type="button" on:click={handleCancel} class="px-4 py-2 border rounded hover:bg-gray-50">
+		<button type="button" onclick={handleCancel} class="px-4 py-2 border rounded hover:bg-gray-50">
 			Cancel
 		</button>
 		<button
 			type="button"
-			on:click={handleSubmit}
+			onclick={handleSubmit}
 			disabled={!formData.name ||
 				(formData.pattern !== 'monthly' && formData.day_of_week.length === 0) ||
 				(formData.pattern === 'monthly' && formData.day_of_month.length === 0)}

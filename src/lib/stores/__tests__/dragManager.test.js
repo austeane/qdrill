@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { get } from 'svelte/store';
 import * as dragManager from '../dragManager';
 import * as sectionsStore from '../sectionsStore';
 import * as _historyStore from '../historyStore';
+
+const get = () => dragManager.getDragStateSnapshot();
 
 // ------------------------------------------------------------------
 // MOCKS
@@ -55,27 +56,7 @@ let mockSections;
 
 beforeEach(() => {
 	// Reset the drag store to a consistent baseline, including isSameTimeline
-	dragManager.dragState.set({
-		isDragging: false,
-		dragType: null,
-		sourceSection: null,
-		sourceIndex: null,
-		sourceGroupId: null,
-		sourceTimeline: null,
-		sourceTimelineIndex: null,
-		itemId: null,
-		itemName: null,
-		targetSection: null,
-		targetIndex: null,
-		targetGroupId: null,
-		targetTimeline: null,
-		targetTimelineIndex: null,
-		dropPosition: null,
-		draggedElementId: null,
-		dropTargetElementId: null,
-		// Some tests rely on isSameTimeline being tracked
-		isSameTimeline: false
-	});
+	dragManager.resetDragState();
 
 	// Reset mock sections data
 	mockSections = [
@@ -320,10 +301,10 @@ describe('dragManager', () => {
 				expect(mockElement.classList.add).toHaveBeenCalledWith('dragging');
 			});
 
-			it('should handle errors gracefully', () => {
-				// Force an error by manually calling the error handler
-				const resetSpy = vi.spyOn(dragManager, 'resetDragState');
-				try {
+				it('should handle errors gracefully', () => {
+					// Force an error by manually calling the error handler
+					const resetSpy = vi.spyOn(dragManager, 'resetDragState');
+					try {
 					// Call the function with a setup that will throw an error
 					mockDragEvent.currentTarget = null;
 
@@ -332,21 +313,21 @@ describe('dragManager', () => {
 
 					// Check resetDragState was called
 					expect(resetSpy).toHaveBeenCalled();
-				} catch {
-					// Expected error
-				} finally {
-					// Reset the mock
-					resetSpy.mockRestore();
-					// Reset drag state manually for next tests
-					dragManager.dragState.set({
-						isDragging: false,
-						dragType: null,
-						sourceSection: null,
-						sourceGroupId: null
-					});
-				}
+					} catch {
+						// Expected error
+					} finally {
+						// Reset the mock
+						resetSpy.mockRestore();
+						// Reset drag state manually for next tests
+						dragManager.setDragState({
+							isDragging: false,
+							dragType: null,
+							sourceSection: null,
+							sourceGroupId: null
+						});
+					}
+				});
 			});
-		});
 
 		describe('startSectionDrag', () => {
 			it('should initialize drag state for a section', () => {
@@ -360,10 +341,10 @@ describe('dragManager', () => {
 				expect(mockElement.classList.add).toHaveBeenCalledWith('dragging');
 			});
 
-			it('should handle errors gracefully', () => {
-				// Force an error by manually calling the error handler
-				const resetSpy = vi.spyOn(dragManager, 'resetDragState');
-				try {
+				it('should handle errors gracefully', () => {
+					// Force an error by manually calling the error handler
+					const resetSpy = vi.spyOn(dragManager, 'resetDragState');
+					try {
 					// Call the function with a setup that will throw an error
 					mockDragEvent.currentTarget = null;
 
@@ -372,20 +353,20 @@ describe('dragManager', () => {
 
 					// Check resetDragState was called
 					expect(resetSpy).toHaveBeenCalled();
-				} catch {
-					// Expected error
-				} finally {
-					// Reset the mock
-					resetSpy.mockRestore();
-					// Reset drag state manually for next tests
-					dragManager.dragState.set({
-						isDragging: false,
-						dragType: null,
-						sourceSection: null
-					});
-				}
+					} catch {
+						// Expected error
+					} finally {
+						// Reset the mock
+						resetSpy.mockRestore();
+						// Reset drag state manually for next tests
+						dragManager.setDragState({
+							isDragging: false,
+							dragType: null,
+							sourceSection: null
+						});
+					}
+				});
 			});
-		});
 	});
 
 	// ---------------------------------------------------------------
@@ -395,7 +376,7 @@ describe('dragManager', () => {
 		describe('handleItemDragOver', () => {
 			beforeEach(() => {
 				// Setup an item drag
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'item',
 					sourceSection: 0,
@@ -420,7 +401,7 @@ describe('dragManager', () => {
 
 			it('should not update when dragging over the same item', () => {
 				// Reset drag state first to have known values
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'item',
 					sourceSection: 0,
@@ -458,7 +439,7 @@ describe('dragManager', () => {
 			});
 
 			it('should allow group drags over items', () => {
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'group',
 					sourceSection: 0,
@@ -474,7 +455,7 @@ describe('dragManager', () => {
 			});
 
 			it('should not allow section drags over items', () => {
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'section',
 					sourceSection: 0
@@ -497,7 +478,7 @@ describe('dragManager', () => {
 		describe('handleGroupDragOver', () => {
 			beforeEach(() => {
 				// Setup group drag
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'group',
 					sourceSection: 0,
@@ -516,7 +497,7 @@ describe('dragManager', () => {
 
 			it('should not update when dragging over the same group', () => {
 				// Reset drag state first to have known values
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'group',
 					sourceSection: 0,
@@ -531,7 +512,7 @@ describe('dragManager', () => {
 			});
 
 			it('should allow item drags over groups', () => {
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'item',
 					sourceSection: 0,
@@ -546,7 +527,7 @@ describe('dragManager', () => {
 			});
 
 			it('should not allow section drags over groups', () => {
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'section',
 					sourceSection: 0
@@ -566,7 +547,7 @@ describe('dragManager', () => {
 
 		describe('handleSectionDragOver', () => {
 			beforeEach(() => {
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'section',
 					sourceSection: 0
@@ -583,7 +564,7 @@ describe('dragManager', () => {
 
 			it('should not update when dragging over the same section', () => {
 				// Reset drag state first to have known values
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'section',
 					sourceSection: 0,
@@ -597,7 +578,7 @@ describe('dragManager', () => {
 			});
 
 			it('should not allow item drags over sections', () => {
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'item',
 					sourceSection: 0,
@@ -612,7 +593,7 @@ describe('dragManager', () => {
 			});
 
 			it('should not allow group drags over sections', () => {
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'group',
 					sourceSection: 0,
@@ -635,7 +616,7 @@ describe('dragManager', () => {
 		describe('handleTimelineDragOver', () => {
 			beforeEach(() => {
 				// Setup item drag
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'item',
 					sourceSection: 0,
@@ -659,7 +640,7 @@ describe('dragManager', () => {
 
 			it('should detect moves within the same timeline', () => {
 				// Now "source" is also timeline-based
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'item',
 					sourceSection: 0,
@@ -678,7 +659,7 @@ describe('dragManager', () => {
 			});
 
 			it('should not allow group drags to timelines', () => {
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'group',
 					sourceSection: 0,
@@ -691,7 +672,7 @@ describe('dragManager', () => {
 			});
 
 			it('should not allow section drags to timelines', () => {
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'section',
 					sourceSection: 0
@@ -711,7 +692,7 @@ describe('dragManager', () => {
 
 		describe('handleEmptySectionDragOver', () => {
 			beforeEach(() => {
-				dragManager.dragState.set({
+				dragManager.setDragState({
 					isDragging: true,
 					dragType: 'item',
 					sourceSection: 0,
@@ -720,7 +701,7 @@ describe('dragManager', () => {
 				});
 			});
 
-			it('should update drag state for empty section targets', () => {
+				it('should update drag state for empty section targets', () => {
 				// This test is checking that the correct item index is calculated for empty sections
 
 				// First reset mockSections to a clean state with empty items arrays
@@ -729,11 +710,11 @@ describe('dragManager', () => {
 					{ id: 2, items: [] }
 				];
 
-				// Reset drag state
-				dragManager.dragState.set({
-					isDragging: true,
-					dragType: 'item',
-					sourceSection: 0,
+					// Reset drag state
+					dragManager.setDragState({
+						isDragging: true,
+						dragType: 'item',
+						sourceSection: 0,
 					sourceIndex: 0,
 					itemId: 101,
 					targetSection: null,
@@ -750,13 +731,13 @@ describe('dragManager', () => {
 				expect(state.targetIndex).toBe(0);
 				expect(state.dropPosition).toBe('inside');
 				expect(mockElement.classList.add).toHaveBeenCalledWith('empty-section-target');
-			});
+				});
 
-			it('should allow group drags to empty sections', () => {
-				dragManager.dragState.set({
-					isDragging: true,
-					dragType: 'group',
-					sourceSection: 0,
+				it('should allow group drags to empty sections', () => {
+					dragManager.setDragState({
+						isDragging: true,
+						dragType: 'group',
+						sourceSection: 0,
 					sourceGroupId: 'group1'
 				});
 				dragManager.handleEmptySectionDragOver(mockDragEvent, 1, mockElement);
@@ -764,13 +745,13 @@ describe('dragManager', () => {
 				const state = get(dragManager.dragState);
 				expect(state.targetSection).toBe(1);
 				expect(state.dropPosition).toBe('inside');
-			});
+				});
 
-			it('should not allow section drags to empty sections', () => {
-				dragManager.dragState.set({
-					isDragging: true,
-					dragType: 'section',
-					sourceSection: 0
+				it('should not allow section drags to empty sections', () => {
+					dragManager.setDragState({
+						isDragging: true,
+						dragType: 'section',
+						sourceSection: 0
 				});
 				dragManager.handleEmptySectionDragOver(mockDragEvent, 1, mockElement);
 
@@ -791,7 +772,7 @@ describe('dragManager', () => {
 	// ---------------------------------------------------------------
 	describe('handleDragLeave', () => {
 		beforeEach(() => {
-			dragManager.dragState.set({
+			dragManager.setDragState({
 				isDragging: true,
 				dragType: 'item',
 				targetSection: 1,
@@ -844,7 +825,7 @@ describe('dragManager', () => {
 
 	describe('handleDragEnd', () => {
 		beforeEach(() => {
-			dragManager.dragState.set({
+			dragManager.setDragState({
 				isDragging: true,
 				dragType: 'item',
 				sourceSection: 0,
@@ -886,7 +867,7 @@ describe('dragManager', () => {
 	// ---------------------------------------------------------------
 	describe('handleDrop', () => {
 		it('should handle drag drops without errors', () => {
-			dragManager.dragState.set({
+			dragManager.setDragState({
 				isDragging: true,
 				dragType: 'item',
 				sourceSection: 0,
@@ -908,7 +889,7 @@ describe('dragManager', () => {
 		});
 
 		it('should recover item information from dataTransfer if missing in state', () => {
-			dragManager.dragState.set({
+			dragManager.setDragState({
 				isDragging: true,
 				dragType: 'item',
 				sourceSection: 0,
@@ -933,7 +914,7 @@ describe('dragManager', () => {
 			// verify the drag state is reset after a drop with no target
 
 			// Set up the drag state with no target
-			dragManager.dragState.set({
+			dragManager.setDragState({
 				isDragging: true,
 				dragType: 'item',
 				sourceSection: 0,
@@ -968,7 +949,7 @@ describe('dragManager', () => {
 				{ id: 2, items: [] }
 			];
 
-			dragManager.dragState.set({
+			dragManager.setDragState({
 				isDragging: true,
 				dragType: 'item',
 				sourceSection: 0,
@@ -990,7 +971,7 @@ describe('dragManager', () => {
 		});
 
 		it('should handle errors during drop operations', () => {
-			dragManager.dragState.set({
+			dragManager.setDragState({
 				isDragging: true,
 				dragType: 'item',
 				sourceSection: 0,
@@ -1042,7 +1023,7 @@ describe('dragManager', () => {
 			];
 
 			// Setup drag state for dragging a group
-			dragManager.dragState.set({
+			dragManager.setDragState({
 				isDragging: true,
 				dragType: 'group',
 				sourceSection: 0,

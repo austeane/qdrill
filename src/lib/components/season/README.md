@@ -217,7 +217,7 @@ The components use the `deviceStore` for responsive behavior:
 ```svelte
 import {device} from '$lib/stores/deviceStore';
 
-{#if $device.isMobile}
+{#if device.isMobile}
 	<!-- Mobile layout -->
 {:else}
 	<!-- Desktop layout -->

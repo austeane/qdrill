@@ -1,5 +1,6 @@
 import { createPool } from '@vercel/postgres';
 import { Kysely, PostgresDialect, sql } from 'kysely';
+import { building } from '$app/environment';
 
 // Create a Vercel-managed pool instance
 let pool;
@@ -14,6 +15,7 @@ function getPool() {
 		} else {
 			// Fail fast in real production runtime; allow a stub for local/dev/test/build and Vercel previews.
 			const isProdRuntime =
+				!building &&
 				process.env.NODE_ENV === 'production' &&
 				(process.env.VERCEL_ENV ? process.env.VERCEL_ENV === 'production' : true);
 			if (isProdRuntime) {

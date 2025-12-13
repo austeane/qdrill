@@ -11,23 +11,23 @@
 	import BatchGenerationPreview from '$lib/components/season/BatchGenerationPreview.svelte';
 	import { toLocalISO } from '$lib/utils/date.js';
 
-	let season = null;
-	let recurrences = [];
-	let templates = [];
-	let loading = true;
-	let error = null;
+	let season = $state(null);
+	let recurrences = $state([]);
+	let templates = $state([]);
+	let loading = $state(true);
+	let error = $state(null);
 
-	let showConfig = false;
-	let editingRecurrence = null;
-	let showPreview = false;
-	let selectedRecurrence = null;
-	let preview = null;
-	let generating = false;
+	let showConfig = $state(false);
+	let editingRecurrence = $state(null);
+	let showPreview = $state(false);
+	let selectedRecurrence = $state(null);
+	let preview = $state(null);
+	let generating = $state(false);
 
-	let dateRange = {
+	let dateRange = $state({
 		start_date: '',
 		end_date: ''
-	};
+	});
 
 	onMount(loadData);
 
@@ -60,8 +60,7 @@
 		}
 	}
 
-	async function handleSaveRecurrence(event) {
-		const data = event.detail;
+	async function handleSaveRecurrence(data) {
 		try {
 			const url = editingRecurrence
 				? `/api/seasons/${season.id}/recurrences/${editingRecurrence.id}`
@@ -202,35 +201,39 @@
 			<p class="text-gray-600">Set up recurring practice schedules for {season.name}</p>
 		</div>
 
-		{#if showConfig}
-			<Card class="mb-6">
-				<h2 slot="header" class="text-lg font-semibold">
-					{editingRecurrence ? 'Edit' : 'Create'} Recurrence Pattern
-				</h2>
-				<RecurrenceConfig
-					recurrence={editingRecurrence}
-					{season}
-					{templates}
-					on:save={handleSaveRecurrence}
-					on:cancel={() => {
+			{#if showConfig}
+				<Card class="mb-6">
+					{#snippet header()}
+						<h2 class="text-lg font-semibold">
+							{editingRecurrence ? 'Edit' : 'Create'} Recurrence Pattern
+						</h2>
+					{/snippet}
+					<RecurrenceConfig
+						recurrence={editingRecurrence}
+						{season}
+						{templates}
+					onSave={handleSaveRecurrence}
+					onCancel={() => {
 						showConfig = false;
 						editingRecurrence = null;
 					}}
-				/>
-			</Card>
-		{:else if showPreview}
-			<Card class="mb-6">
-				<h2 slot="header" class="text-lg font-semibold">
-					Preview Batch Generation: {selectedRecurrence?.name}
-				</h2>
-				<div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<Input
-						label="Start Date"
+					/>
+				</Card>
+			{:else if showPreview}
+				<Card class="mb-6">
+					{#snippet header()}
+						<h2 class="text-lg font-semibold">
+							Preview Batch Generation: {selectedRecurrence?.name}
+						</h2>
+					{/snippet}
+					<div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+						<Input
+							label="Start Date"
 						type="date"
 						bind:value={dateRange.start_date}
 						min={season.start_date}
 						max={season.end_date}
-						on:change={() => handlePreviewGeneration(selectedRecurrence)}
+						onchange={() => handlePreviewGeneration(selectedRecurrence)}
 					/>
 					<Input
 						label="End Date"
@@ -238,14 +241,14 @@
 						bind:value={dateRange.end_date}
 						min={season.start_date}
 						max={season.end_date}
-						on:change={() => handlePreviewGeneration(selectedRecurrence)}
+						onchange={() => handlePreviewGeneration(selectedRecurrence)}
 					/>
 				</div>
 				<BatchGenerationPreview
 					{preview}
 					loading={generating}
-					on:generate={handleGenerate}
-					on:cancel={() => {
+					onGenerate={handleGenerate}
+					onCancel={() => {
 						showPreview = false;
 						selectedRecurrence = null;
 						preview = null;
@@ -254,7 +257,7 @@
 			</Card>
 		{:else}
 			<div class="mb-4">
-				<Button variant="primary" on:click={() => (showConfig = true)}
+				<Button variant="primary" onclick={() => (showConfig = true)}
 					>+ Add Recurrence Pattern</Button
 				>
 			</div>
@@ -334,17 +337,17 @@
 										<Button
 											size="sm"
 											variant="ghost"
-											on:click={() => handlePreviewGeneration(recurrence)}>Generate</Button
+											onclick={() => handlePreviewGeneration(recurrence)}>Generate</Button
 										>
 										<Button
 											size="sm"
 											variant="ghost"
-											on:click={() => handleEditRecurrence(recurrence)}>Edit</Button
+											onclick={() => handleEditRecurrence(recurrence)}>Edit</Button
 										>
 										<Button
 											size="sm"
 											variant="destructive"
-											on:click={() => handleDeleteRecurrence(recurrence)}>Delete</Button
+											onclick={() => handleDeleteRecurrence(recurrence)}>Delete</Button
 										>
 									</td>
 								</tr>

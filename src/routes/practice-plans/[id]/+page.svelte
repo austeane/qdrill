@@ -1,7 +1,5 @@
 <script>
-	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
-	import { writable } from 'svelte/store';
+	import { page } from '$app/state';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import Comments from '$lib/components/Comments.svelte';
 	import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
@@ -15,36 +13,45 @@
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { sanitizeHtml } from '$lib/utils/sanitize.js';
 
-	export let data;
-	const { practicePlan } = data;
+	let { data } = $props();
+	const practicePlan = $derived(data?.practicePlan);
 
-	// Store for tracking the current section
-	const currentSectionId = writable(null);
+	// State for tracking the current section
+	let currentSectionId = $state(null);
 
 	// Group filter state
-	let selectedGroupFilter = 'All Groups';
+	let selectedGroupFilter = $state('All Groups');
 
-	// Calculate total duration considering parallel activities
-	$: totalDuration = practicePlan.sections.reduce((sum, section) => sum + section.duration, 0);
+	let isDescriptionExpanded = $state(true);
 
 	// Check edit permissions
-	$: isAdmin = $page.data.session?.user?.role === 'admin';
-	$: userCanEdit =
+	const isAdmin = $derived(page.data.session?.user?.role === 'admin');
+	const userCanEdit = $derived(
 		isAdmin ||
-		$page.data.session?.user?.id === practicePlan.created_by ||
-		($page.data.session?.user?.id && practicePlan.is_editable_by_others);
+			page.data.session?.user?.id === practicePlan?.created_by ||
+			(page.data.session?.user?.id && practicePlan?.is_editable_by_others)
+	);
 
-	// Add this near the other state variables
-	const isDescriptionExpanded = writable(true);
+	// Calculate total duration considering parallel activities
+	const totalDuration = $derived(
+		(practicePlan?.sections ?? []).reduce((sum, section) => sum + (section.duration ?? 0), 0)
+	);
 
-	// Intersection Observer setup for section tracking
-	onMount(() => {
+	// Filter sections based on selected group
+	const filteredSections = $derived(
+		filterSectionsByGroup(practicePlan?.sections ?? [], selectedGroupFilter)
+	);
+
+	$effect(() => {
+		// Re-run when the rendered section list changes
+		filteredSections;
+
 		const observer = new IntersectionObserver(
 			(entries) => {
 				entries.forEach((entry) => {
 					if (entry.isIntersecting) {
 						const sectionId = entry.target.getAttribute('data-section-id');
-						currentSectionId.set(sectionId);
+						currentSectionId = sectionId;
 					}
 				});
 			},
@@ -61,15 +68,6 @@
 
 		return () => observer.disconnect();
 	});
-
-	// Handle section selection from timeline
-	function handleSectionSelect(event) {
-		const { sectionId } = event.detail;
-		const section = document.querySelector(`[data-section-id="${sectionId}"]`);
-		if (section) {
-			section.scrollIntoView({ behavior: 'smooth' });
-		}
-	}
 
 	// Format time for display
 	function formatTime(timeStr) {
@@ -93,17 +91,9 @@
 		);
 	}
 
-	// Handle group filter change
-	function handleGroupFilterChange(event) {
-		selectedGroupFilter = event.detail.filter;
-	}
-
-	// Filter sections based on selected group
-	$: filteredSections = filterSectionsByGroup(practicePlan.sections, selectedGroupFilter);
-
 	// Calculate section start times
 	function calculateSectionStartTime(sections, sectionIndex) {
-		let currentTime = practicePlan.start_time?.slice(0, 5) || '09:00';
+		let currentTime = practicePlan?.start_time?.slice(0, 5) || '09:00';
 		for (let i = 0; i < sectionIndex; i++) {
 			const section = sections[i];
 			const sectionDuration = section.items.reduce(
@@ -151,41 +141,41 @@
 		<div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
 			<!-- Title and Description -->
 			<div class="w-full sm:w-auto order-last sm:order-first">
-				<h1 class="text-2xl font-bold break-words">{practicePlan.name}</h1>
-				{#if practicePlan.description}
-					<div class="mt-2">
-						{#if $isDescriptionExpanded}
-							<div class="flex justify-end">
-								<button
-									class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md mb-2"
-									on:click={() => ($isDescriptionExpanded = false)}
-								>
-									Show less of description ↑
-								</button>
-							</div>
-						{/if}
-						<div
-							class="text-gray-600 dark:text-gray-300 prose prose-sm sm:prose lg:prose-lg dark:prose-invert"
-							class:truncate={!$isDescriptionExpanded}
-						>
-							{@html sanitizeHtml(practicePlan.description)}
-						</div>
-						<div class="flex justify-end mt-1">
-							{#if $isDescriptionExpanded}
-								<button
-									class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md"
-									on:click={() => ($isDescriptionExpanded = false)}
-								>
-									Show less of description ↓
-								</button>
-							{:else}
-								<button
-									class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md"
-									on:click={() => ($isDescriptionExpanded = true)}
-								>
-									Show more of description ↓
-								</button>
+					<h1 class="text-2xl font-bold break-words">{practicePlan.name}</h1>
+					{#if practicePlan.description}
+						<div class="mt-2">
+							{#if isDescriptionExpanded}
+								<div class="flex justify-end">
+									<button
+										class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md mb-2"
+										onclick={() => (isDescriptionExpanded = false)}
+									>
+										Show less of description ↑
+									</button>
+								</div>
 							{/if}
+							<div
+								class="text-gray-600 dark:text-gray-300 prose prose-sm sm:prose lg:prose-lg dark:prose-invert"
+								class:truncate={!isDescriptionExpanded}
+							>
+								{@html sanitizeHtml(practicePlan.description)}
+							</div>
+							<div class="flex justify-end mt-1">
+								{#if isDescriptionExpanded}
+									<button
+										class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md"
+										onclick={() => (isDescriptionExpanded = false)}
+									>
+										Show less of description ↓
+									</button>
+								{:else}
+									<button
+										class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md"
+										onclick={() => (isDescriptionExpanded = true)}
+									>
+										Show more of description ↓
+									</button>
+								{/if}
 						</div>
 					</div>
 				{/if}
@@ -200,14 +190,14 @@
 					>
 						Edit Plan
 					</a>
-				{/if}
-				{#if $page.data.session}
-					<button
-						on:click={handleDuplicate}
-						class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors text-sm sm:text-base whitespace-nowrap"
-					>
-						Duplicate Plan
-					</button>
+					{/if}
+					{#if page.data.session}
+						<button
+							onclick={handleDuplicate}
+							class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors text-sm sm:text-base whitespace-nowrap"
+						>
+							Duplicate Plan
+						</button>
 				{/if}
 				<DeletePracticePlan planId={practicePlan.id} createdBy={practicePlan.created_by} />
 				<UpvoteDownvote practicePlanId={practicePlan.id} />
@@ -273,34 +263,29 @@
 		</div>
 	{/if}
 
-	<!-- Group Filter -->
-	<GroupFilter
-		sections={practicePlan.sections}
-		bind:selectedFilter={selectedGroupFilter}
-		on:filterChange={handleGroupFilterChange}
-	/>
+		<!-- Group Filter -->
+		<GroupFilter sections={practicePlan.sections} bind:selectedFilter={selectedGroupFilter} />
 
 	<!-- Main Content -->
 	<div class="flex gap-6">
 		<!-- Timeline (hidden on mobile) -->
-		<Timeline
-			sections={filteredSections}
-			currentSectionId={$currentSectionId}
-			{totalDuration}
-			on:sectionSelect={handleSectionSelect}
-		/>
+			<Timeline
+				sections={filteredSections}
+				{currentSectionId}
+				{totalDuration}
+			/>
 
 		<!-- Practice Plan Content -->
 		<div class="flex-1">
 			{#each filteredSections as section, index (section.id)}
-				<div data-section-id={section.id} class="mb-6">
-					<Section
-						{section}
-						isActive={section.id === $currentSectionId}
-						canEdit={false}
-						sectionIndex={index}
-						startTime={calculateSectionStartTime(filteredSections, index)}
-					/>
+					<div data-section-id={section.id} class="mb-6">
+						<Section
+							{section}
+							isActive={section.id === currentSectionId}
+							canEdit={false}
+							sectionIndex={index}
+							startTime={calculateSectionStartTime(filteredSections, index)}
+						/>
 				</div>
 			{/each}
 		</div>

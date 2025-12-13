@@ -1,17 +1,18 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import { device } from '$lib/stores/deviceStore';
 	import { Layers, Calendar, Settings, Share2 } from 'lucide-svelte';
 
-	export let activeTab = 'overview';
-	export let season = null;
-	export let sections = [];
-	export let markers = [];
-	export let practices = [];
-	export let isAdmin = false;
-	export let teamId = '';
-
-	const dispatch = createEventDispatcher();
+	let {
+		activeTab = $bindable('overview'),
+		season = null,
+		sections = [],
+		markers = [],
+		practices = [],
+		isAdmin = false,
+		teamId = '',
+		onTabChange,
+		children
+	} = $props();
 
 	// Tab configuration
 	const tabs = [
@@ -41,16 +42,16 @@
 		}
 	];
 
-	$: visibleTabs = tabs.filter((tab) => !tab.adminOnly || isAdmin);
+	const visibleTabs = $derived(tabs.filter((tab) => !tab.adminOnly || isAdmin));
 
 	function handleTabChange(tab) {
 		activeTab = tab;
-		dispatch('tabChange', tab);
+		onTabChange?.({ tab });
 	}
 </script>
 
-<div class="season-shell" class:mobile={$device.isMobile}>
-	{#if $device.isMobile}
+<div class="season-shell" class:mobile={device.isMobile}>
+	{#if device.isMobile}
 		<!-- Mobile Layout -->
 		<header class="mobile-header">
 			<div class="header-content">
@@ -75,7 +76,7 @@
 		</header>
 
 		<main class="mobile-content">
-			<slot />
+			{@render children?.()}
 		</main>
 
 		<nav class="mobile-nav">
@@ -83,11 +84,11 @@
 				<button
 					class="nav-tab"
 					class:active={activeTab === tab.id}
-					on:click={() => handleTabChange(tab.id)}
+					onclick={() => handleTabChange(tab.id)}
 					aria-current={activeTab === tab.id ? 'page' : undefined}
 				>
 					<div class="nav-icon">
-						<svelte:component this={tab.icon} size={24} />
+						<tab.icon size={24} />
 					</div>
 					<span class="nav-label">{tab.label}</span>
 				</button>
@@ -121,10 +122,10 @@
 						<button
 							class="desktop-tab"
 							class:active={activeTab === tab.id}
-							on:click={() => handleTabChange(tab.id)}
+							onclick={() => handleTabChange(tab.id)}
 							aria-current={activeTab === tab.id ? 'page' : undefined}
 						>
-							<svelte:component this={tab.icon} size={20} />
+							<tab.icon size={20} />
 							<span>{tab.label}</span>
 						</button>
 					{/each}
@@ -132,7 +133,7 @@
 			</header>
 
 			<main class="desktop-content">
-				<slot />
+				{@render children?.()}
 			</main>
 		</div>
 	{/if}

@@ -8,26 +8,30 @@
 		dragState
 	} from '$lib/stores/dragManager';
 
-	export let item;
-	export let itemIndex;
-	export let sectionIndex;
-	export let onRemove;
-	export let timelineItemIndex = null;
-	export let timeline = null;
-	export let parallelGroupId = null;
+	let {
+		item,
+		itemIndex,
+		sectionIndex,
+		onRemove,
+		timelineItemIndex = null,
+		timeline = null,
+		parallelGroupId = null
+	} = $props();
 
 	// Generate a stable unique identifier for this item based on its content
-	$: itemId = item.id;
+	const itemId = $derived(item?.id);
 
 	// Reactive drag states for this item - use ID instead of index
-	$: isBeingDragged =
-		$dragState.isDragging &&
-		$dragState.dragType === 'item' &&
-		$dragState.sourceSection === sectionIndex &&
-		$dragState.itemId === itemId;
+	const isBeingDragged = $derived(
+		dragState.isDragging &&
+		dragState.dragType === 'item' &&
+		dragState.sourceSection === sectionIndex &&
+		dragState.itemId === itemId
+	);
 
-	$: _isDropTarget =
-		$dragState.targetSection === sectionIndex && $dragState.targetIndex === itemIndex;
+	const _isDropTarget = $derived(
+		dragState.targetSection === sectionIndex && dragState.targetIndex === itemIndex
+	);
 </script>
 
 <li
@@ -41,7 +45,7 @@
 	data-item-name={item.name}
 	data-timeline={timeline || item.parallel_timeline}
 	data-group-id={parallelGroupId || item.parallel_group_id}
-	on:dragstart={(e) => {
+	ondragstart={(e) => {
 		// Make sure the ID is in the event dataset
 		if (e.currentTarget) {
 			// Force set all the data attributes on the element
@@ -57,11 +61,11 @@
 		// Pass additional timeline position info for better reordering
 		startItemDrag(e, sectionIndex, itemIndex, item, itemId, timelineItemIndex);
 	}}
-	on:dragover={(e) =>
+	ondragover={(e) =>
 		handleItemDragOver(e, sectionIndex, itemIndex, item, e.currentTarget, timelineItemIndex)}
-	on:dragleave={handleDragLeave}
-	on:drop={handleDrop}
-	on:dragend={handleDragEnd}
+	ondragleave={handleDragLeave}
+	ondrop={handleDrop}
+	ondragend={handleDragEnd}
 >
 	<!-- Formation reference content -->
 	<div
@@ -79,11 +83,11 @@
 					target="_blank"
 					rel="noopener noreferrer"
 					class="text-blue-600 hover:text-blue-700 text-sm underline"
-					on:click|stopPropagation
+					onclick={(e) => e.stopPropagation()}
 				>
 					View →
 				</a>
-				<button type="button" class="text-red-500 hover:text-red-700 text-sm" on:click={onRemove}>
+				<button type="button" class="text-red-500 hover:text-red-700 text-sm" onclick={onRemove}>
 					Remove
 				</button>
 			</div>

@@ -1,5 +1,4 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import {
 		sections,
 		addSection,
@@ -14,35 +13,35 @@
 	import SectionContainer from '$lib/components/practice-plan/sections/SectionContainer.svelte';
 	import SimpleButton from '../../../routes/practice-plans/components/SimpleButton.svelte';
 
-	const dispatch = createEventDispatcher();
+	let { onOpenDrillSearch, onOpenTimelineSelector } = $props();
 
-	function handleOpenDrillSearch(event) {
-		dispatch('openDrillSearch', event.detail);
+	function handleOpenDrillSearch(detail) {
+		onOpenDrillSearch?.(detail);
 	}
 
-	function handleOpenTimelineSelector() {
-		dispatch('openTimelineSelector');
+	function handleOpenTimelineSelector(detail) {
+		onOpenTimelineSelector?.(detail);
 	}
 </script>
 
 <div class="practice-plan-sections space-y-4">
 	<h2 class="text-xl font-semibold">Plan Sections &amp; Items</h2>
-	{#each $sections as section, sectionIndex (section.id || sectionIndex)}
+	{#each sections as section, sectionIndex (section.id || sectionIndex)}
 		<SectionContainer
 			{section}
 			{sectionIndex}
-			on:openDrillSearch={handleOpenDrillSearch}
-			on:openTimelineSelector={handleOpenTimelineSelector}
+			onOpenDrillSearch={handleOpenDrillSearch}
+			onOpenTimelineSelector={handleOpenTimelineSelector}
 			onRemoveSection={removeSection}
 			onRemoveItem={removeItem}
 			onDurationChange={handleDurationChange}
 			onTimelineChange={handleTimelineChange}
 			onUngroup={handleUngroup}
 			timelineNameGetter={getTimelineName}
-			customTimelineNamesData={$customTimelineNames}
+			customTimelineNamesData={customTimelineNames}
 		/>
 	{/each}
 	<div class="my-4">
-		<SimpleButton on:click={addSection}>+ Add Section</SimpleButton>
+		<SimpleButton onclick={addSection}>+ Add Section</SimpleButton>
 	</div>
 </div>

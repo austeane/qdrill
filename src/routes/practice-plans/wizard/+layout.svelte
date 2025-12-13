@@ -1,13 +1,14 @@
 <script>
 	import {
-		currentStep,
 		maxSteps,
-		wizardState,
+		wizardStore,
 		canProceedToNextStep
 	} from '$lib/stores/wizardStore';
 	// Removed import from the deleted wizardValidation file
 	// import { validationErrors } from '$lib/stores/wizardValidation';
 	import { goto } from '$app/navigation';
+
+	let { children } = $props();
 
 	// Step definitions
 	const steps = [
@@ -20,19 +21,19 @@
 
 	// Navigation functions
 	function goToStep(step) {
-		currentStep.set(step);
+		wizardStore.currentStep = step;
 		goto(steps[step - 1].path);
 	}
 
 	function nextStep() {
-		if ($currentStep < maxSteps && canProceedToNextStep($wizardState)) {
-			goToStep($currentStep + 1);
-		}
+		if (wizardStore.currentStep >= maxSteps) return;
+		if (wizardStore.currentStep === 1 && !wizardStore.validateBasicInfo()) return;
+		goToStep(wizardStore.currentStep + 1);
 	}
 
 	function prevStep() {
-		if ($currentStep > 1) {
-			goToStep($currentStep - 1);
+		if (wizardStore.currentStep > 1) {
+			goToStep(wizardStore.currentStep - 1);
 		}
 	}
 </script>
@@ -46,7 +47,7 @@
 					<ol class="flex items-center w-full">
 						{#each steps as step (step.id)}
 							<li
-								class="relative flex-1 {step.id === $currentStep
+								class="relative flex-1 {step.id === wizardStore.currentStep
 									? 'text-blue-600'
 									: 'text-gray-500'}"
 							>
@@ -54,9 +55,9 @@
 									<span class="flex-shrink-0">
 										<span
 											class="w-8 h-8 flex items-center justify-center rounded-full
-                                            {step.id < $currentStep
+                                            {step.id < wizardStore.currentStep
 												? 'bg-blue-600 text-white'
-												: step.id === $currentStep
+												: step.id === wizardStore.currentStep
 													? 'border-2 border-blue-600 text-blue-600'
 													: 'border-2 border-gray-300 text-gray-500'}"
 										>
@@ -82,7 +83,7 @@
 	<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 		<div class="bg-white dark:bg-gray-800 shadow sm:rounded-lg">
 			<div class="px-4 py-5 sm:p-6">
-				<slot></slot>
+				{@render children()}
 			</div>
 		</div>
 	</main>
@@ -95,17 +96,17 @@
 			<div class="flex justify-between">
 				<button
 					class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700
-                           {$currentStep === 1 ? 'opacity-50 cursor-not-allowed' : ''}"
-					on:click={prevStep}
-					disabled={$currentStep === 1}
+                           {wizardStore.currentStep === 1 ? 'opacity-50 cursor-not-allowed' : ''}"
+					onclick={prevStep}
+					disabled={wizardStore.currentStep === 1}
 				>
 					Previous
 				</button>
 
 				<button
 					class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-					on:click={nextStep}
-					disabled={$currentStep === maxSteps || !canProceedToNextStep($wizardState)}
+					onclick={nextStep}
+					disabled={wizardStore.currentStep === maxSteps || !canProceedToNextStep()}
 				>
 					Next
 				</button>

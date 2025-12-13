@@ -20,11 +20,11 @@ QDrill is a SvelteKit app (UI + API routes) for managing drills, formations, and
 
 ## Tech Stack (What Runs Where)
 
-- **SvelteKit + Svelte 5**: configured in Svelte 4-style (“runes” disabled) in `svelte.config.js`.
+- **SvelteKit + Svelte 5**: runes enabled in `svelte.config.js` (app code uses `$state/$derived/$effect` + `$props`). Some third‑party `.svelte` deps are compiled in legacy mode via `vitePlugin.dynamicCompileOptions` to keep builds working.
 - **Styling**: Tailwind CSS (`tailwind.config.js`) + PostCSS (`postcss.config.cjs`).
 - **DB**: Postgres via Kysely. Some endpoints/services use raw SQL via Kysely’s `sql` tag for complex joins/search.
 - **Auth**: Better Auth (Google OAuth) configured in `src/lib/auth.js`; SvelteKit integration in `src/hooks.server.js`.
-- **Observability**: Sentry in `src/hooks.server.js`; Vercel Analytics/Speed Insights in `src/routes/+layout.server.js` and `src/routes/+layout.svelte`.
+- **Observability**: Sentry in `src/hooks.server.js`; Vercel Analytics/Speed Insights injected from `src/routes/+layout.server.js` (gated to Vercel runtime).
 - **Rich text**: TinyMCE is loaded dynamically in form routes (e.g. drills/formations/practice plans).
 - **Diagramming**: Excalidraw is used for whiteboard/diagrams and pulls in React; see Vite `optimizeDeps` in `vite.config.js`.
 - **AI**: `/api/practice-plans/generate-ai` uses Claude Opus 4.5 via the Vercel AI SDK (`@ai-sdk/anthropic`) and enforces per-user rate limits stored in `users`.
@@ -215,7 +215,7 @@ Migrations live in `migrations/`:
 
 - Formatting: Prettier (`.prettierrc`) uses **tabs**, single quotes, `printWidth: 100`.
 - Linting: ESLint flat config in `eslint.config.js`.
-- Svelte: written in Svelte 4-style reactivity (Svelte 5 “runes” disabled).
+- Svelte: written in Svelte 5 runes mode (use `$state/$derived/$effect` + `$props()`, event attributes, and snippet props + `{@render ...}`).
 - DB: column names are snake_case; avoid renaming DB fields in responses unless there’s a clear API boundary.
 - Prefer the service layer (`src/lib/server/services/*`) for DB access; keep API routes thin and use `handleApiError` for consistent error shapes.
 

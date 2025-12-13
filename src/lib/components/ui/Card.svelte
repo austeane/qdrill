@@ -1,22 +1,21 @@
 <script>
-	export let variant = 'default'; // default, bordered, elevated
-	export let padding = 'md'; // sm, md, lg
+	let { variant = 'default', padding = 'md', header, children, footer, ...restProps } = $props(); // default, bordered, elevated | sm, md, lg
 </script>
 
-<div class="card card-{variant} padding-{padding}" {...$$restProps}>
-	{#if $$slots.header}
+<div class="card card-{variant} padding-{padding}" {...restProps}>
+	{#if header}
 		<div class="card-header">
-			<slot name="header" />
+			{@render header()}
 		</div>
 	{/if}
 
 	<div class="card-content">
-		<slot />
+		{@render children?.()}
 	</div>
 
-	{#if $$slots.footer}
+	{#if footer}
 		<div class="card-footer">
-			<slot name="footer" />
+			{@render footer()}
 		</div>
 	{/if}
 </div>
@@ -28,13 +27,9 @@
 		overflow: hidden;
 	}
 
-	.card-default {
-		/* No additional styling */
-	}
-
-	.card-bordered {
-		border: 1px solid var(--color-border-default);
-	}
+		.card-bordered {
+			border: 1px solid var(--color-border-default);
+		}
 
 	.card-elevated {
 		box-shadow: var(--shadow-md);

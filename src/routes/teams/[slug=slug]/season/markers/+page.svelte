@@ -1,5 +1,5 @@
 <script>
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch';
@@ -11,19 +11,29 @@
 	import Dialog from '$lib/components/ui/Dialog.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 
-	export let data;
+	let { data } = $props();
 
-	let newMarker = {
+	const teamSlug = $derived(page.params.slug);
+	const season = $derived(data.season);
+	const teamTimezone = $derived(data.team?.timezone || 'UTC');
+	const canEdit = $derived(data.canEdit);
+
+	let markers = $state([]);
+	$effect(() => {
+		markers = data.markers ?? [];
+	});
+
+	let newMarker = $state({
 		type: 'milestone',
 		name: '',
 		date: '',
 		color: '#EF4444'
-	};
-	let editingMarker = null;
-	let showAddDialog = false;
-	let isSubmitting = false;
-	let addError = '';
-	let editError = '';
+	});
+	let editingMarkerId = $state(null);
+	let showAddDialog = $state(false);
+	let isSubmitting = $state(false);
+	let addError = $state('');
+	let editError = $state('');
 
 	const markerTypes = [
 		{ value: 'milestone', label: 'Milestone', color: '#EF4444' },
@@ -42,13 +52,13 @@
 		addError = '';
 
 		try {
-			const marker = await apiFetch(`/api/seasons/${data.season.id}/markers`, {
+			const marker = await apiFetch(`/api/seasons/${season.id}/markers`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(newMarker)
 			});
 
-			data.markers = [...data.markers, marker].sort((a, b) => new Date(a.date) - new Date(b.date));
+			markers = [...markers, marker].sort((a, b) => new Date(a.date) - new Date(b.date));
 			newMarker = {
 				type: 'milestone',
 				name: '',
@@ -68,14 +78,14 @@
 	async function updateMarker(marker) {
 		editError = '';
 		try {
-			await apiFetch(`/api/seasons/${data.season.id}/markers/${marker.id}`, {
+			await apiFetch(`/api/seasons/${season.id}/markers/${marker.id}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(marker)
 			});
 
-			editingMarker = null;
-			data.markers = [...data.markers].sort((a, b) => new Date(a.date) - new Date(b.date));
+			editingMarkerId = null;
+			markers = [...markers].sort((a, b) => new Date(a.date) - new Date(b.date));
 			toast.push('Marker updated successfully', { theme: { '--toastBackground': '#10b981' } });
 		} catch (error) {
 			editError = error.message || 'Failed to update marker';
@@ -87,11 +97,11 @@
 		if (!confirm('Are you sure you want to delete this marker?')) return;
 
 		try {
-			await apiFetch(`/api/seasons/${data.season.id}/markers/${markerId}`, {
+			await apiFetch(`/api/seasons/${season.id}/markers/${markerId}`, {
 				method: 'DELETE'
 			});
 
-			data.markers = data.markers.filter((m) => m.id !== markerId);
+			markers = markers.filter((m) => m.id !== markerId);
 			toast.push('Marker deleted successfully', { theme: { '--toastBackground': '#10b981' } });
 		} catch (error) {
 			const errorMsg = error.message || 'Failed to delete marker';
@@ -102,7 +112,7 @@
 	function formatDate(date) {
 		if (!date) return 'No date';
 		// Use formatInTz with team timezone or UTC fallback
-		return formatInTz(date, data.team?.timezone || 'UTC', {
+		return formatInTz(date, teamTimezone, {
 			month: 'short',
 			day: 'numeric',
 			year: 'numeric'
@@ -118,31 +128,57 @@
 </script>
 
 <svelte:head>
-	<title>Season Markers - {data?.team?.name || $page.params.slug}</title>
+	<title>Season Markers - {data?.team?.name || teamSlug}</title>
 </svelte:head>
+
+{#snippet footer()}
+	<Button
+		variant="primary"
+		onclick={addMarker}
+		disabled={isSubmitting || !newMarker.name.trim() || !newMarker.date}
+	>
+		{isSubmitting ? 'Adding...' : 'Add Marker'}
+	</Button>
+	<Button
+		variant="ghost"
+		onclick={() => {
+			showAddDialog = false;
+			addError = '';
+		}}
+	>
+		Cancel
+	</Button>
+{/snippet}
 
 <div class="container mx-auto px-4 py-8">
 	<div class="mb-6 flex items-center justify-between">
 		<div>
 			<h1 class="text-3xl font-bold">Season Markers</h1>
-			<p class="text-gray-600 dark:text-gray-400 mt-1">{data.season.name}</p>
+			<p class="text-gray-600 dark:text-gray-400 mt-1">{season.name}</p>
 		</div>
-		<Button variant="ghost" on:click={() => goto(`/teams/${data.team.slug}/season`)}>
+		<Button variant="ghost" onclick={() => goto(`/teams/${teamSlug}/season`)}>
 			← Back to Season
 		</Button>
 	</div>
 
-	{#if data.canEdit}
+	{#if canEdit}
 		<div class="mb-6">
-			<Button variant="primary" on:click={() => (showAddDialog = true)}>+ Add Marker</Button>
+			<Button variant="primary" onclick={() => (showAddDialog = true)}>+ Add Marker</Button>
 		</div>
 
-		<Dialog bind:open={showAddDialog} title="Add New Marker">
+		<Dialog
+			bind:open={showAddDialog}
+			title="Add New Marker"
+			footer={footer}
+			onClose={() => {
+				addError = '';
+			}}
+		>
 			<div class="grid gap-4">
 				<Select
 					label="Marker Type"
 					bind:value={newMarker.type}
-					on:change={onTypeChange}
+					onchange={onTypeChange}
 					options={markerTypes.map((t) => ({ value: t.value, label: t.label }))}
 				/>
 				<Input
@@ -156,8 +192,8 @@
 					label="Date"
 					type="date"
 					bind:value={newMarker.date}
-					min={data.season.start_date}
-					max={data.season.end_date}
+					min={season.start_date}
+					max={season.end_date}
 					error={addError && !newMarker.date ? 'Date is required' : ''}
 					required
 				/>
@@ -171,31 +207,13 @@
 					/>
 				</div>
 			</div>
-			<div slot="footer" class="flex gap-2">
-				<Button
-					variant="primary"
-					on:click={addMarker}
-					disabled={isSubmitting || !newMarker.name.trim() || !newMarker.date}
-				>
-					{isSubmitting ? 'Adding...' : 'Add Marker'}
-				</Button>
-				<Button
-					variant="ghost"
-					on:click={() => {
-						showAddDialog = false;
-						addError = '';
-					}}
-				>
-					Cancel
-				</Button>
-			</div>
 		</Dialog>
 	{/if}
 
 	<div class="space-y-4">
-		{#each data.markers as marker (marker.id)}
+		{#each markers as marker (marker.id)}
 			<Card>
-				{#if editingMarker === marker.id}
+				{#if editingMarkerId === marker.id}
 					<div class="grid gap-4">
 						<Select
 							label="Marker Type"
@@ -208,8 +226,8 @@
 							label="Date"
 							type="date"
 							bind:value={marker.date}
-							min={data.season.start_date}
-							max={data.season.end_date}
+							min={season.start_date}
+							max={season.end_date}
 							error={editError}
 						/>
 						<div>
@@ -222,14 +240,14 @@
 							/>
 						</div>
 						<div class="flex gap-2">
-							<Button size="sm" variant="primary" on:click={() => updateMarker(marker)}>
+							<Button size="sm" variant="primary" onclick={() => updateMarker(marker)}>
 								Save
 							</Button>
 							<Button
 								size="sm"
 								variant="ghost"
-								on:click={() => {
-									editingMarker = null;
+								onclick={() => {
+									editingMarkerId = null;
 									editError = '';
 								}}
 							>
@@ -255,12 +273,12 @@
 								</div>
 							</div>
 						</div>
-						{#if data.canEdit}
+						{#if canEdit}
 							<div class="flex gap-2">
-								<Button size="sm" variant="ghost" on:click={() => (editingMarker = marker.id)}>
+								<Button size="sm" variant="ghost" onclick={() => (editingMarkerId = marker.id)}>
 									Edit
 								</Button>
-								<Button size="sm" variant="destructive" on:click={() => deleteMarker(marker.id)}>
+								<Button size="sm" variant="destructive" onclick={() => deleteMarker(marker.id)}>
 									Delete
 								</Button>
 							</div>
@@ -270,11 +288,11 @@
 			</Card>
 		{/each}
 
-		{#if data.markers.length === 0}
+		{#if markers.length === 0}
 			<Card>
 				<div class="text-center py-8">
 					<p class="text-gray-500 dark:text-gray-400">No markers defined for this season yet.</p>
-					{#if data.canEdit}
+					{#if canEdit}
 						<p class="text-gray-500 dark:text-gray-400 mt-2">
 							Click "Add Marker" to add important dates and milestones.
 						</p>

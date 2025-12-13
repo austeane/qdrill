@@ -1,23 +1,14 @@
 <script>
 	import { X } from 'lucide-svelte';
-	import { onMount, createEventDispatcher } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 
-	/** @type {boolean} */
-	export let open = false;
-	/** @type {string} */
-	export let title = '';
-	/** @type {string} */
-	export let description = '';
+	let { open = $bindable(false), title = '', description = '', children, footer, onClose } = $props();
 
-	const dispatch = createEventDispatcher();
-
-	let dialogRef;
-	let scrollPosition = 0;
+	let dialogRef = $state(null);
 
 	function handleClose() {
 		open = false;
-		dispatch('close');
+		onClose?.();
 	}
 
 	function handleKeydown(e) {
@@ -32,40 +23,31 @@
 		}
 	}
 
-	$: if (typeof window !== 'undefined') {
-		if (open) {
-			scrollPosition = window.pageYOffset;
-			document.body.style.overflow = 'hidden';
-			document.body.style.position = 'fixed';
-			document.body.style.top = `-${scrollPosition}px`;
-			document.body.style.width = '100%';
-		} else {
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		if (!open) return;
+
+		const scrollPosition = window.pageYOffset;
+		document.body.style.overflow = 'hidden';
+		document.body.style.position = 'fixed';
+		document.body.style.top = `-${scrollPosition}px`;
+		document.body.style.width = '100%';
+
+		return () => {
 			document.body.style.overflow = '';
 			document.body.style.position = '';
 			document.body.style.top = '';
 			document.body.style.width = '';
 			window.scrollTo(0, scrollPosition);
-		}
-	}
-
-	onMount(() => {
-		return () => {
-			// Cleanup on unmount
-			if (typeof window !== 'undefined') {
-				document.body.style.overflow = '';
-				document.body.style.position = '';
-				document.body.style.top = '';
-				document.body.style.width = '';
-			}
 		};
 	});
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if open}
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-	<div class="dialog-overlay" transition:fade={{ duration: 150 }} on:click={handleOverlayClick}>
+	<div class="dialog-overlay" transition:fade={{ duration: 150 }} onclick={handleOverlayClick}>
 		<div
 			class="dialog-content"
 			role="dialog"
@@ -81,7 +63,7 @@
 						{title}
 					</h2>
 				{/if}
-				<button class="dialog-close" on:click={handleClose} aria-label="Close dialog">
+				<button class="dialog-close" onclick={handleClose} aria-label="Close dialog">
 					<X size={20} />
 				</button>
 			</div>
@@ -93,12 +75,12 @@
 			{/if}
 
 			<div class="dialog-body">
-				<slot />
+				{@render children?.()}
 			</div>
 
-			{#if $$slots.footer}
+			{#if footer}
 				<div class="dialog-footer">
-					<slot name="footer" />
+					{@render footer()}
 				</div>
 			{/if}
 		</div>

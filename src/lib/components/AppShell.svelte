@@ -3,10 +3,13 @@
 	import Sidebar from '$lib/components/nav/Sidebar.svelte';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import { onMount } from 'svelte';
+	import type { Snippet } from 'svelte';
 
-	let sidebarOpen = false; // mobile drawer
-	let sidebarCollapsed = false; // desktop collapsed
-	let cmdOpen = false;
+	let { children }: { children?: Snippet } = $props();
+
+	let sidebarOpen = $state(false); // mobile drawer
+	let sidebarCollapsed = $state(false); // desktop collapsed
+	let cmdOpen = $state(false);
 
 	function handleKeydown(e: KeyboardEvent) {
 		if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -24,16 +27,16 @@
 </script>
 
 <Topbar
-	{sidebarOpen}
-	on:toggleSidebar={(e) => (sidebarOpen = e.detail.open)}
-	on:openCommandPalette={() => (cmdOpen = true)}
+	sidebarOpen={sidebarOpen}
+	onToggleSidebar={({ open }) => (sidebarOpen = open)}
+	onOpenCommandPalette={() => (cmdOpen = true)}
 />
 
 <div class="appshell">
 	<Sidebar bind:open={sidebarOpen} bind:collapsed={sidebarCollapsed} />
 
 	<div class="appshell__content" id="main-content" tabindex="-1">
-		<slot />
+		{@render children?.()}
 	</div>
 </div>
 

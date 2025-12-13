@@ -1,20 +1,22 @@
 <script>
-	export let open = false;
-	export let searchTerm = '';
-	export let suggestions = [];
-	export let selectedDrills = [];
-	export let loading = false;
-	export let error = null;
-	export let onToggle = () => {};
-	export let onInput = () => {};
-	export let onSelect = (_drill) => {};
-	export let onRemove = (_id) => {};
+	let {
+		open = false,
+		searchTerm = $bindable(''),
+		suggestions = [],
+		selectedDrills = [],
+		loading = false,
+		error = null,
+		onToggle = () => {},
+		onInput = () => {},
+		onSelect = (_drill) => {},
+		onRemove = (_id) => {}
+	} = $props();
 </script>
 
 <div class="relative">
 	<button
 		class={`inline-flex items-center border border-gray-300 rounded-full px-4 py-2 cursor-pointer transition-colors duration-300 ${open ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-		on:click={onToggle}
+		onclick={onToggle}
 		aria-expanded={open}
 		aria-controls="containsDrill-content"
 	>
@@ -31,7 +33,7 @@
 		<div
 			id="containsDrill-content"
 			class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
-			on:click|stopPropagation
+			onclick={(e) => e.stopPropagation()}
 			role="menu"
 			tabindex="0"
 		>
@@ -40,7 +42,7 @@
 				placeholder="Search for drills..."
 				class="w-full p-2 border border-gray-300 rounded-md mb-2"
 				bind:value={searchTerm}
-				on:input={onInput}
+				oninput={onInput}
 			/>
 			{#if loading}
 				<p class="text-gray-500">Loading...</p>
@@ -52,7 +54,7 @@
 						{#each suggestions as drill (drill.id)}
 							<li
 								class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-100"
-								on:click={() => onSelect(drill)}
+								onclick={() => onSelect(drill)}
 							>
 								<span class="font-normal block truncate">{drill.name}</span>
 							</li>
@@ -69,7 +71,7 @@
 					{#each selectedDrills as drill (drill.id)}
 						<div class="flex items-center justify-between bg-blue-100 p-2 rounded mb-1">
 							<span>{drill.name}</span>
-							<button class="text-red-600 hover:text-red-800" on:click={() => onRemove(drill.id)}
+							<button class="text-red-600 hover:text-red-800" onclick={() => onRemove(drill.id)}
 								>&times;</button
 							>
 						</div>

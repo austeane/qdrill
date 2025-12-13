@@ -2,6 +2,7 @@
 	import { Loader2 } from 'lucide-svelte';
 	import { buttonVariants } from './index.js';
 	import { cn } from '$lib/utils.js';
+	import type { Snippet } from 'svelte';
 	import type { HTMLButtonAttributes, HTMLAnchorAttributes } from 'svelte/elements';
 
 	type CommonProps = {
@@ -12,19 +13,21 @@
 		class?: string;
 	};
 
-	type $$Props = (HTMLButtonAttributes & HTMLAnchorAttributes) & CommonProps;
+	type $$Props = (HTMLButtonAttributes & HTMLAnchorAttributes) & CommonProps & { children?: Snippet };
 
-	let className: $$Props['class'] = undefined;
-	export let variant: $$Props['variant'] = 'default';
-	export let size: $$Props['size'] = 'default';
-	export let loading: boolean = false;
-	export let disabled: boolean = false;
-	// Explicitly accept href so we can render an anchor when provided
-	export let href: string | undefined = undefined;
-	export { className as class };
+	let {
+		variant = 'default',
+		size = 'default',
+		loading = false,
+		disabled = false,
+		href = undefined,
+		class: className,
+		children,
+		...restProps
+	}: $$Props = $props();
 
-	$: isLink = typeof href === 'string' && href.length > 0;
-	$: classes = cn(buttonVariants({ variant, size, className }));
+	const isLink = $derived(typeof href === 'string' && href.length > 0);
+	const classes = $derived(String(cn(buttonVariants({ variant, size, class: className }))));
 </script>
 
 <!--
@@ -37,12 +40,12 @@
 		{href}
 		aria-disabled={disabled || loading}
 		data-loading={loading}
-		{...$$restProps}
+		{...restProps}
 	>
 		{#if loading}
 			<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 		{/if}
-		<slot />
+		{@render children?.()}
 	</a>
 {:else}
 	<button
@@ -51,13 +54,12 @@
 		disabled={disabled || loading}
 		aria-disabled={disabled || loading}
 		data-loading={loading}
-		{...$$restProps}
-		on:click
+		{...restProps}
 	>
 		{#if loading}
 			<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 		{/if}
-		<slot />
+		{@render children?.()}
 	</button>
 {/if}
 

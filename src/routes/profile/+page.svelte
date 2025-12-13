@@ -1,13 +1,21 @@
 <script>
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	// import UpvoteDownvote from '$lib/components/UpvoteDownvote.svelte';
 	import EntityScore from '$lib/components/EntityScore.svelte';
 	import { signOut } from '$lib/auth-client.js';
 	import { LogOut } from '$lib/components/ui/icons.ts';
 
-	export let data;
-	const { userData } = data;
+	let { data } = $props();
+
+	const userData = $derived(
+		data.userData ?? {
+			drills: [],
+			practicePlans: [],
+			votes: [],
+			comments: []
+		}
+	);
 
 	async function handleSignOut() {
 		try {
@@ -23,14 +31,18 @@
 	const itemsPerPage = 5;
 
 	// Drills pagination
-	let currentPageDrills = 1;
-	$: totalPagesDrills = userData?.drills ? Math.ceil(userData.drills.length / itemsPerPage) : 0;
-	$: paginatedDrills = userData?.drills
-		? userData.drills.slice(
-				(currentPageDrills - 1) * itemsPerPage,
-				currentPageDrills * itemsPerPage
-			)
-		: [];
+	let currentPageDrills = $state(1);
+	const totalPagesDrills = $derived(
+		userData?.drills ? Math.ceil(userData.drills.length / itemsPerPage) : 0
+	);
+	const paginatedDrills = $derived(
+		userData?.drills
+			? userData.drills.slice(
+					(currentPageDrills - 1) * itemsPerPage,
+					currentPageDrills * itemsPerPage
+				)
+			: []
+	);
 
 	function changePageDrills(newPage) {
 		if (newPage >= 1 && newPage <= totalPagesDrills) {
@@ -39,16 +51,18 @@
 	}
 
 	// Practice Plans pagination
-	let currentPagePracticePlans = 1;
-	$: totalPagesPracticePlans = userData?.practicePlans
-		? Math.ceil(userData.practicePlans.length / itemsPerPage)
-		: 0;
-	$: paginatedPracticePlans = userData?.practicePlans
-		? userData.practicePlans.slice(
-				(currentPagePracticePlans - 1) * itemsPerPage,
-				currentPagePracticePlans * itemsPerPage
-			)
-		: [];
+	let currentPagePracticePlans = $state(1);
+	const totalPagesPracticePlans = $derived(
+		userData?.practicePlans ? Math.ceil(userData.practicePlans.length / itemsPerPage) : 0
+	);
+	const paginatedPracticePlans = $derived(
+		userData?.practicePlans
+			? userData.practicePlans.slice(
+					(currentPagePracticePlans - 1) * itemsPerPage,
+					currentPagePracticePlans * itemsPerPage
+				)
+			: []
+	);
 
 	function changePagePracticePlans(newPage) {
 		if (newPage >= 1 && newPage <= totalPagesPracticePlans) {
@@ -66,9 +80,9 @@
 	}
 
 	// Add user info from Google
-	$: userEmail = $page.data.session?.user?.email;
-	$: userName = $page.data.session?.user?.name;
-	$: userImage = $page.data.session?.user?.image;
+	const userEmail = $derived(page.data.session?.user?.email);
+	const userName = $derived(page.data.session?.user?.name);
+	const userImage = $derived(page.data.session?.user?.image);
 </script>
 
 <div class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
@@ -82,7 +96,7 @@
 			<p class="text-gray-600 dark:text-gray-300">{userEmail}</p>
 		</div>
 		<button
-			on:click={handleSignOut}
+			onclick={handleSignOut}
 			class="absolute top-6 right-6 sm:static px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 transition-colors"
 			aria-label="Sign out"
 		>
@@ -130,7 +144,7 @@
 					{#if totalPagesDrills > 1}
 						<div class="mt-6 flex justify-between items-center text-sm">
 							<button
-								on:click={() => changePageDrills(currentPageDrills - 1)}
+								onclick={() => changePageDrills(currentPageDrills - 1)}
 								disabled={currentPageDrills === 1}
 								class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 							>
@@ -138,7 +152,7 @@
 							</button>
 							<span>Page {currentPageDrills} of {totalPagesDrills}</span>
 							<button
-								on:click={() => changePageDrills(currentPageDrills + 1)}
+								onclick={() => changePageDrills(currentPageDrills + 1)}
 								disabled={currentPageDrills === totalPagesDrills}
 								class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 							>
@@ -171,7 +185,7 @@
 					{#if totalPagesPracticePlans > 1}
 						<div class="mt-6 flex justify-between items-center text-sm">
 							<button
-								on:click={() => changePagePracticePlans(currentPagePracticePlans - 1)}
+								onclick={() => changePagePracticePlans(currentPagePracticePlans - 1)}
 								disabled={currentPagePracticePlans === 1}
 								class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 							>
@@ -179,7 +193,7 @@
 							</button>
 							<span>Page {currentPagePracticePlans} of {totalPagesPracticePlans}</span>
 							<button
-								on:click={() => changePagePracticePlans(currentPagePracticePlans + 1)}
+								onclick={() => changePagePracticePlans(currentPagePracticePlans + 1)}
 								disabled={currentPagePracticePlans === totalPagesPracticePlans}
 								class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 							>

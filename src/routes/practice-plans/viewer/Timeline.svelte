@@ -2,49 +2,49 @@
 	import { tweened } from 'svelte/motion';
 	import { cubicOut } from 'svelte/easing';
 
-	export let sections = [];
-	export let currentSectionId = null;
-	export let totalDuration = 0;
+	let { sections = [], currentSectionId = null, totalDuration = 0 } = $props();
 
 	// Process sections to create timeline items with parallel groups
-	$: timelineItems = sections.reduce((acc, section) => {
-		const sectionItems = [];
-		let currentParallelGroup = null;
+	const timelineItems = $derived.by(() =>
+		sections.reduce((acc, section) => {
+			const sectionItems = [];
+			let currentParallelGroup = null;
 
-		section.items?.forEach((item) => {
-			if (item.parallel_group_id) {
-				// Start or add to parallel group
-				if (!currentParallelGroup || currentParallelGroup.id !== item.parallel_group_id) {
+			section.items?.forEach((item) => {
+				if (item.parallel_group_id) {
+					// Start or add to parallel group
+					if (!currentParallelGroup || currentParallelGroup.id !== item.parallel_group_id) {
+						if (currentParallelGroup) {
+							sectionItems.push(currentParallelGroup);
+						}
+						currentParallelGroup = {
+							id: item.parallel_group_id,
+							type: 'parallel',
+							items: [item],
+							duration: item.duration
+						};
+					} else {
+						currentParallelGroup.items.push(item);
+						currentParallelGroup.duration = Math.max(currentParallelGroup.duration, item.duration);
+					}
+				} else {
+					// Add any existing parallel group before adding single item
 					if (currentParallelGroup) {
 						sectionItems.push(currentParallelGroup);
+						currentParallelGroup = null;
 					}
-					currentParallelGroup = {
-						id: item.parallel_group_id,
-						type: 'parallel',
-						items: [item],
-						duration: item.duration
-					};
-				} else {
-					currentParallelGroup.items.push(item);
-					currentParallelGroup.duration = Math.max(currentParallelGroup.duration, item.duration);
+					sectionItems.push(item);
 				}
-			} else {
-				// Add any existing parallel group before adding single item
-				if (currentParallelGroup) {
-					sectionItems.push(currentParallelGroup);
-					currentParallelGroup = null;
-				}
-				sectionItems.push(item);
+			});
+
+			// Add any remaining parallel group
+			if (currentParallelGroup) {
+				sectionItems.push(currentParallelGroup);
 			}
-		});
 
-		// Add any remaining parallel group
-		if (currentParallelGroup) {
-			sectionItems.push(currentParallelGroup);
-		}
-
-		return [...acc, { ...section, items: sectionItems }];
-	}, []);
+			return [...acc, { ...section, items: sectionItems }];
+		}, [])
+	);
 
 	// Animated scroll indicator
 	const scrollPosition = tweened(0, {
@@ -53,17 +53,22 @@
 	});
 
 	// Update scroll position based on current section
-	$: {
-		if (currentSectionId) {
-			const currentSection = timelineItems.find((item) => item.id === currentSectionId);
-			if (currentSection) {
-				const startTime = timelineItems
-					.slice(0, timelineItems.indexOf(currentSection))
-					.reduce((acc, s) => acc + calculateSectionDuration(s.items), 0);
-				scrollPosition.set((startTime / totalDuration) * 100);
-			}
+	$effect(() => {
+		if (!currentSectionId || !totalDuration) {
+			return;
 		}
-	}
+
+		const currentSection = timelineItems.find((item) => item.id === currentSectionId);
+		if (!currentSection) {
+			return;
+		}
+
+		const startTime = timelineItems
+			.slice(0, timelineItems.indexOf(currentSection))
+			.reduce((acc, s) => acc + calculateSectionDuration(s.items), 0);
+
+		scrollPosition.set((startTime / totalDuration) * 100);
+	});
 
 	function calculateSectionDuration(items) {
 		// console.log('Calculating duration for items:', items);
@@ -120,23 +125,10 @@
 
 	// $: console.log('Timeline Sections:', sections);
 
-	// Add this debug log at the top of the component
-	$: {
-		console.log('Timeline Items:', timelineItems);
-		timelineItems.forEach((section) => {
-			console.log('Section items:', section.items);
-			section.items?.forEach((item) => {
-				if (item.type === 'parallel') {
-					console.log('Parallel group:', item);
-				}
-			});
-		});
-	}
-
-	let tooltipVisible = false;
-	let tooltipContent = '';
-	let tooltipX = 0;
-	let tooltipY = 0;
+	let tooltipVisible = $state(false);
+	let tooltipContent = $state('');
+	let tooltipX = $state(0);
+	let tooltipY = $state(0);
 
 	function showTooltip(event, text) {
 		tooltipContent = text;
@@ -175,27 +167,27 @@
 	</div>
 {/if}
 
-<div class="timeline-container">
-	<div
-		class="timeline"
-		on:mousemove={handleMouseMove}
-		role="group"
-		aria-label="Practice Plan Timeline"
-	>
+	<div class="timeline-container">
+		<div
+			class="timeline"
+			onmousemove={handleMouseMove}
+			role="group"
+			aria-label="Practice Plan Timeline"
+		>
 		<!-- Progress indicator -->
 		<div class="progress-line" style="height: {$scrollPosition}%"></div>
 
 		<!-- Timeline sections -->
 		{#each timelineItems as section, index (section.id)}
-			<div
-				role="button"
-				tabindex="0"
-				class="timeline-section"
-				class:active={section.id === currentSectionId}
-				on:click={() => handleTimelineClick(section)}
-				on:keydown={(e) => handleTimelineKeyDown(e, section)}
-				style="height: {(calculateSectionDuration(section.items) / totalDuration) * 100}%"
-			>
+				<div
+					role="button"
+					tabindex="0"
+					class="timeline-section"
+					class:active={section.id === currentSectionId}
+					onclick={() => handleTimelineClick(section)}
+					onkeydown={(e) => handleTimelineKeyDown(e, section)}
+					style="height: {(calculateSectionDuration(section.items) / totalDuration) * 100}%"
+				>
 				<!-- Section label -->
 				<div class="section-label">
 					<span class="section-name">{section.name}</span>
@@ -226,18 +218,18 @@
 														: (timelineItems.slice(0, idx).reduce((sum, i) => sum + i.duration, 0) /
 																totalTimelineDuration) *
 															100}
-												<div
-													role="tooltip"
-													class="parallel-item-wrapper"
-													style="height: {(parallelItem.duration / totalTimelineDuration) *
-														100}%; top: {cumulativeHeight}%"
-													on:mouseenter={(e) =>
-														showTooltip(
-															e,
-															`${section.name}: ${parallelItem.drill?.name || parallelItem.name || 'Unnamed Drill'}`
-														)}
-													on:mouseleave={hideTooltip}
-												>
+													<div
+														role="tooltip"
+														class="parallel-item-wrapper"
+														style="height: {(parallelItem.duration / totalTimelineDuration) *
+															100}%; top: {cumulativeHeight}%"
+														onmouseenter={(e) =>
+															showTooltip(
+																e,
+																`${section.name}: ${parallelItem.drill?.name || parallelItem.name || 'Unnamed Drill'}`
+															)}
+														onmouseleave={hideTooltip}
+													>
 													<div class="parallel-item-inner {getSectionColor(index)}"></div>
 												</div>
 											{/each}
@@ -247,17 +239,17 @@
 							</div>
 						{:else}
 							<!-- Single item -->
-							<div
-								role="tooltip"
-								class="timeline-item"
-								style="height: {(item.duration / calculateSectionDuration(section.items)) * 100}%"
-								on:mouseenter={(e) =>
-									showTooltip(
-										e,
-										`${section.name}: ${item.drill?.name || item.name || 'Unnamed Drill'}`
-									)}
-								on:mouseleave={hideTooltip}
-							>
+								<div
+									role="tooltip"
+									class="timeline-item"
+									style="height: {(item.duration / calculateSectionDuration(section.items)) * 100}%"
+									onmouseenter={(e) =>
+										showTooltip(
+											e,
+											`${section.name}: ${item.drill?.name || item.name || 'Unnamed Drill'}`
+										)}
+									onmouseleave={hideTooltip}
+								>
 								<div class="timeline-item-inner {getSectionColor(index)}">
 									<!-- Remove the background and border properties from the base styles -->
 								</div>

@@ -2,10 +2,7 @@
 	import { FILTER_STATES } from '$lib/constants';
 	import { Check, X } from 'lucide-svelte';
 
-	export let value;
-	export let state = FILTER_STATES.NEUTRAL;
-	export let label;
-	export let onChange;
+	let { value, state = FILTER_STATES.NEUTRAL, label, onChange = () => {} } = $props();
 
 	function toggleState() {
 		const newState =
@@ -38,8 +35,16 @@
 			: state === FILTER_STATES.EXCLUDED
 				? 'mixed'
 				: 'false'}
-		on:click|preventDefault={toggleState}
-		on:keydown={(e) => (e.key === ' ' || e.key === 'Enter') && (e.preventDefault(), toggleState())}
+		onclick={(e) => {
+			e.preventDefault();
+			toggleState();
+		}}
+		onkeydown={(e) => {
+			if (e.key === ' ' || e.key === 'Enter') {
+				e.preventDefault();
+				toggleState();
+			}
+		}}
 	>
 		{#if state === FILTER_STATES.REQUIRED}
 			<Check size={16} class="text-white" />

@@ -1,11 +1,10 @@
 <script>
-	import { basicInfo, timeline } from '$lib/stores/wizardStore';
+	import { wizardStore } from '$lib/stores/wizardStore';
 	import { sections as sectionsStore, formatDrillItem } from '$lib/stores/sectionsStore';
 	import { goto } from '$app/navigation';
-	import { writable } from 'svelte/store';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
-	let submissionError = writable(null);
+	let submissionError = $state(null);
 
 	// Format time for display
 	function formatTime(minutes) {
@@ -16,7 +15,7 @@
 
 	// Helper to find timeline details for a section
 	function getTimelineDetails(sectionId) {
-		const timelineSection = $timeline.sections.find((ts) => ts.id === sectionId);
+		const timelineSection = wizardStore.timeline.sections.find((ts) => ts.id === sectionId);
 		return {
 			duration: timelineSection?.duration || 0,
 			startTime: timelineSection?.startTime || 0
@@ -25,23 +24,25 @@
 
 	// Handle final submission
 	async function handleSubmit() {
-		submissionError.set(null);
+		submissionError = null;
 		try {
 			// Validation should happen in previous steps or be re-evaluated here
 			// For simplicity, skipping detailed re-validation logic here
 			// Assuming previous steps ensured data validity according to sectionsStore
 
 			// Construct payload from basicInfo and sectionsStore
+			const sectionsSnapshot = $state.snapshot(sectionsStore);
+
 			const planData = {
-				name: $basicInfo.name,
-				description: $basicInfo.description,
-				phase_of_season: $basicInfo.phaseOfSeason,
-				estimated_number_of_participants: parseInt($basicInfo.participants) || null,
-				practice_goals: $basicInfo.practiceGoals.filter((goal) => goal && goal.trim()),
-				visibility: $basicInfo.visibility,
-				is_editable_by_others: $basicInfo.isEditableByOthers,
-				sections: $sectionsStore.map((section, sectionIndex) => {
-					const timelineSection = $timeline.sections.find((ts) => ts.id === section.id);
+				name: wizardStore.basicInfo.name,
+				description: wizardStore.basicInfo.description,
+				phase_of_season: wizardStore.basicInfo.phaseOfSeason,
+				estimated_number_of_participants: parseInt(wizardStore.basicInfo.participants) || null,
+				practice_goals: wizardStore.basicInfo.practiceGoals.filter((goal) => goal && goal.trim()),
+				visibility: wizardStore.basicInfo.visibility,
+				is_editable_by_others: wizardStore.basicInfo.isEditableByOthers,
+				sections: sectionsSnapshot.map((section, sectionIndex) => {
+					const timelineSection = wizardStore.timeline.sections.find((ts) => ts.id === section.id);
 					const duration = timelineSection?.duration || 0;
 
 					return {
@@ -87,12 +88,12 @@
 				goto(`/practice-plans/${data.id}`);
 			} else {
 				console.error('Submission successful, but no ID returned:', data);
-				submissionError.set('Plan created, but failed to redirect.');
+				submissionError = 'Plan created, but failed to redirect.';
 			}
 		} catch (error) {
 			console.error('Failed to create practice plan:', error);
-			if (!$submissionError) {
-				submissionError.set(error.message || 'An unexpected error occurred during submission.');
+			if (!submissionError) {
+				submissionError = error.message || 'An unexpected error occurred during submission.';
 			}
 		}
 	}
@@ -115,26 +116,28 @@
 		<dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
 			<div>
 				<dt class="text-sm font-medium text-gray-500">Name</dt>
-				<dd class="mt-1 text-sm text-gray-900">{$basicInfo.name || '-'}</dd>
+				<dd class="mt-1 text-sm text-gray-900">{wizardStore.basicInfo.name || '-'}</dd>
 			</div>
 			<div>
 				<dt class="text-sm font-medium text-gray-500">Participants</dt>
-				<dd class="mt-1 text-sm text-gray-900">{$basicInfo.participants || '-'}</dd>
+				<dd class="mt-1 text-sm text-gray-900">{wizardStore.basicInfo.participants || '-'}</dd>
 			</div>
 			<div>
 				<dt class="text-sm font-medium text-gray-500">Phase of Season</dt>
-				<dd class="mt-1 text-sm text-gray-900">{$basicInfo.phaseOfSeason || '-'}</dd>
+				<dd class="mt-1 text-sm text-gray-900">{wizardStore.basicInfo.phaseOfSeason || '-'}</dd>
 			</div>
 			<div>
 				<dt class="text-sm font-medium text-gray-500">Visibility</dt>
-				<dd class="mt-1 text-sm text-gray-900 capitalize">{$basicInfo.visibility || 'public'}</dd>
+				<dd class="mt-1 text-sm text-gray-900 capitalize">
+					{wizardStore.basicInfo.visibility || 'public'}
+				</dd>
 			</div>
 			<div class="sm:col-span-2">
 				<dt class="text-sm font-medium text-gray-500">Practice Goals</dt>
 				<dd class="mt-1 text-sm text-gray-900">
-					{#if $basicInfo.practiceGoals && $basicInfo.practiceGoals.filter((g) => g && g.trim()).length > 0}
+					{#if wizardStore.basicInfo.practiceGoals && wizardStore.basicInfo.practiceGoals.filter((g) => g && g.trim()).length > 0}
 						<ul class="list-disc pl-5 space-y-1">
-							{#each $basicInfo.practiceGoals.filter((goal) => goal && goal.trim()) as goal (goal)}
+							{#each wizardStore.basicInfo.practiceGoals.filter((goal) => goal && goal.trim()) as goal (goal)}
 								<li>{goal}</li>
 							{/each}
 						</ul>
@@ -146,7 +149,7 @@
 			<div class="sm:col-span-2">
 				<dt class="text-sm font-medium text-gray-500">Description</dt>
 				<dd class="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
-					{$basicInfo.description || '-'}
+					{wizardStore.basicInfo.description || '-'}
 				</dd>
 			</div>
 		</dl>
@@ -155,8 +158,8 @@
 	<!-- Sections & Items Overview -->
 	<div class="space-y-6">
 		<h3 class="text-base font-medium text-gray-900">Plan Sections & Items</h3>
-		{#if $sectionsStore.length > 0}
-			{#each $sectionsStore as section (section.id)}
+		{#if sectionsStore.length > 0}
+			{#each sectionsStore as section (section.id)}
 				{@const timelineDetails = getTimelineDetails(section.id)}
 				<div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
 					<div class="flex items-center justify-between mb-4">
@@ -178,7 +181,7 @@
 						</div>
 						<button
 							type="button"
-							on:click={() => goToSectionDrills(section.id)}
+							onclick={() => goToSectionDrills(section.id)}
 							class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
 						>
 							Edit Items
@@ -220,17 +223,17 @@
 	<div class="flex justify-end mt-8">
 		<button
 			type="button"
-			on:click={handleSubmit}
+			onclick={handleSubmit}
 			class="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
 		>
 			Create Practice Plan
 		</button>
 	</div>
 
-	{#if $submissionError}
+	{#if submissionError}
 		<div class="text-red-600 text-sm mt-2 p-3 bg-red-50 border border-red-200 rounded">
 			<strong>Error:</strong>
-			{$submissionError}
+			{submissionError}
 		</div>
 	{/if}
 </div>

@@ -1,22 +1,25 @@
 <script>
-	import { onMount } from 'svelte';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { dev } from '$app/environment';
 	import { invalidate } from '$app/navigation';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
-	export let data;
+	let { data } = $props();
 
-	let pollOptions = data.pollOptions || [];
-	let allDrillNames = data.allDrillNames || [];
-	let drillOptions = [];
-	let newDescription = '';
-	let isSubmitting = false;
-	let sortBy = 'votes'; // 'votes' or 'date'
-	let editingId = null;
-	let searchTerm = '';
-	let selectedDrill = null;
-	let isLoadingDrills = false;
+	let pollOptions = $state(data.pollOptions || []);
+	const allDrillNames = $derived(data.allDrillNames || []);
+	let drillOptions = $state([]);
+	let newDescription = $state('');
+	let isSubmitting = $state(false);
+	let sortBy = $state('votes'); // 'votes' or 'date'
+	let editingId = $state(null);
+	let searchTerm = $state('');
+	let selectedDrill = $state(null);
+	let isLoadingDrills = $state(false);
+
+	$effect(() => {
+		pollOptions = data.pollOptions || [];
+	});
 
 	function searchDrills() {
 		if (!searchTerm) {
@@ -37,16 +40,16 @@
 		}
 	}
 
-	function sortOptions(by) {
+	function setSort(by) {
 		sortBy = by;
-		pollOptions = [...pollOptions].sort((a, b) => {
-			if (by === 'votes') {
-				return b.votes - a.votes;
-			} else {
-				return new Date(b.created_at) - new Date(a.created_at);
-			}
-		});
 	}
+
+	const sortedPollOptions = $derived(
+		[...pollOptions].sort((a, b) => {
+			if (sortBy === 'votes') return b.votes - a.votes;
+			return new Date(b.created_at) - new Date(a.created_at);
+		})
+	);
 
 	function invalidatePollData() {
 		invalidate('app:poll');
@@ -147,18 +150,6 @@
 		}
 	}
 
-	$: if (searchTerm) {
-		searchDrills();
-	}
-
-	onMount(() => {
-		sortOptions(sortBy);
-	});
-	$: sortOptions(sortBy);
-	$: if (data.pollOptions) {
-		pollOptions = data.pollOptions || [];
-		sortOptions(sortBy);
-	}
 </script>
 
 <div class="max-w-4xl mx-auto">
@@ -166,7 +157,7 @@
 
 	<div class="bg-bg-0 rounded-lg shadow-md p-6 mb-8">
 		<h2 class="text-xl font-semibold mb-4 text-text">Suggest a New Drill</h2>
-		<form on:submit={addOption} class="space-y-4">
+		<form onsubmit={addOption} class="space-y-4">
 			<div>
 				<label for="description" class="block text-sm font-medium text-text mb-1">
 					Description (2-100 characters)
@@ -200,7 +191,7 @@
 					class="px-3 py-1 rounded-md text-sm {sortBy === 'votes'
 						? 'bg-blue-500 text-white'
 						: 'bg-white text-text hover:bg-gray-50'}"
-					on:click={() => sortOptions('votes')}
+					onclick={() => setSort('votes')}
 				>
 					Most Voted
 				</button>
@@ -208,7 +199,7 @@
 					class="px-3 py-1 rounded-md text-sm {sortBy === 'date'
 						? 'bg-blue-500 text-white'
 						: 'bg-white text-text hover:bg-gray-50'}"
-					on:click={() => sortOptions('date')}
+					onclick={() => setSort('date')}
 				>
 					Newest
 				</button>
@@ -219,7 +210,7 @@
 			<div class="text-center py-8 text-gray-500">No suggestions yet. Be the first to add one!</div>
 		{:else}
 			<div class="space-y-4">
-				{#each pollOptions as option (option.id)}
+				{#each sortedPollOptions as option (option.id)}
 					<div class="border rounded-lg p-4 hover:bg-bg-1 bg-white transition-colors">
 						<div class="flex items-start justify-between">
 							<div class="flex-1">
@@ -239,7 +230,7 @@
 												bind:value={searchTerm}
 												placeholder="Search for a drill..."
 												class="w-full px-3 py-2 text-sm border rounded-md"
-												on:input={searchDrills}
+												oninput={searchDrills}
 											/>
 											{#if isLoadingDrills}
 												<div class="absolute right-2 top-2">
@@ -258,7 +249,7 @@
 															drill.id
 																? 'bg-blue-50'
 																: ''}"
-															on:click={() => {
+															onclick={() => {
 																selectedDrill = drill;
 																searchTerm = drill.name;
 																drillOptions = [];
@@ -272,14 +263,14 @@
 										</div>
 										<div class="flex gap-2">
 											<button
-												on:click={() => saveDrillLink(option.id)}
+												onclick={() => saveDrillLink(option.id)}
 												class="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
 												disabled={!selectedDrill}
 											>
 												Save
 											</button>
 											<button
-												on:click={() => {
+												onclick={() => {
 													editingId = null;
 													searchTerm = '';
 													selectedDrill = null;
@@ -293,7 +284,7 @@
 									</div>
 								{:else if dev}
 									<button
-										on:click={() => {
+										onclick={() => {
 											editingId = option.id;
 											searchTerm = '';
 											selectedDrill = null;
@@ -306,7 +297,7 @@
 							</div>
 							<div class="ml-4 flex flex-col items-center">
 								<button
-									on:click={() => vote(option.id)}
+									onclick={() => vote(option.id)}
 									class="text-gray-500 hover:text-blue-500 focus:outline-none transition-colors"
 									aria-label="Upvote suggestion"
 								>
@@ -322,7 +313,7 @@
 								<span class="font-semibold text-text">{option.votes}</span>
 								{#if dev}
 									<button
-										on:click={() => deleteOption(option.id)}
+										onclick={() => deleteOption(option.id)}
 										class="mt-2 text-red-500 hover:text-red-600 focus:outline-none"
 										title="Delete suggestion"
 										aria-label="Delete suggestion"

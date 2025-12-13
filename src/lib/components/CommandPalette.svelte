@@ -1,10 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import type { Snippet } from 'svelte';
 	import { Search } from 'lucide-svelte';
 
-	export let open = false;
-	export let placeholder = 'Search drills, plans, teams…';
-	export let onClose: (() => void) | undefined;
+	let {
+		open = $bindable(false),
+		placeholder = 'Search drills, plans, teams…',
+		onClose,
+		children
+	}: {
+		open?: boolean;
+		placeholder?: string;
+		onClose?: () => void;
+		children?: Snippet;
+	} = $props();
 
 	function close() {
 		open = false;
@@ -22,6 +31,24 @@
 		}
 	}
 
+	function handleInputKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			e.stopPropagation();
+			close();
+			return;
+		}
+
+		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+			e.preventDefault();
+			e.stopPropagation();
+			open = !open;
+			return;
+		}
+
+		e.stopPropagation();
+	}
+
 	onMount(() => {
 		window.addEventListener('keydown', onKey);
 		return () => window.removeEventListener('keydown', onKey);
@@ -29,17 +56,26 @@
 </script>
 
 {#if open}
-	<div class="cp__backdrop" on:click={close}></div>
+	<button
+		type="button"
+		class="cp__backdrop"
+		aria-label="Close command palette"
+		tabindex="-1"
+		onclick={close}
+	></button>
 	<div class="cp__dialog" role="dialog" aria-modal="true" aria-label="Command Palette">
 		<div class="cp__input">
 			<Search size={16} />
-			<input {placeholder} autofocus on:keydown={(e) => e.stopPropagation()} />
+			<!-- svelte-ignore a11y_autofocus -->
+			<input {placeholder} autofocus onkeydown={handleInputKeydown} />
 			<kbd>Esc</kbd>
 		</div>
 		<div class="cp__results">
-			<slot>
+			{#if children}
+				{@render children()}
+			{:else}
 				<p class="hint">Type to search. Try: drills, plans, teams…</p>
-			</slot>
+			{/if}
 		</div>
 	</div>
 {/if}
@@ -48,6 +84,8 @@
 	.cp__backdrop {
 		position: fixed;
 		inset: 0;
+		border: none;
+		padding: 0;
 		background: rgba(0, 0, 0, 0.6);
 		z-index: var(--z-modal-backdrop);
 	}

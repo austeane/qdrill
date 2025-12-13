@@ -1,23 +1,25 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import { goto } from '$app/navigation';
 	import EditSectionSheet from './EditSectionSheet.svelte';
 	import EditMarkerSheet from './EditMarkerSheet.svelte';
 	import { toLocalISO } from '$lib/utils/date.js';
 
-	export let season = null;
-	export let sections = [];
-	export let markers = [];
-	export let practices = [];
-	export let isAdmin = false;
-	export let teamSlug = '';
+	let {
+		season = null,
+		sections = [],
+		markers = [],
+		practices = [],
+		isAdmin = false,
+		teamSlug = '',
+		onSectionChange,
+		onMarkerChange,
+		onCreatePractice
+	} = $props();
 
-	const dispatch = createEventDispatcher();
-
-	let showSectionSheet = false;
-	let showMarkerSheet = false;
-	let editingSection = null;
-	let editingMarker = null;
+	let showSectionSheet = $state(false);
+	let showMarkerSheet = $state(false);
+	let editingSection = $state(null);
+	let editingMarker = $state(null);
 
 	// Calculate progress for each section
 	function calculateProgress(section) {
@@ -99,14 +101,12 @@
 		showMarkerSheet = true;
 	}
 
-	function handleSectionSaved(event) {
-		showSectionSheet = false;
-		dispatch('sectionChange', event.detail);
+	function handleSectionSaved(detail) {
+		onSectionChange?.(detail);
 	}
 
-	function handleMarkerSaved(event) {
-		showMarkerSheet = false;
-		dispatch('markerChange', event.detail);
+	function handleMarkerSaved(detail) {
+		onMarkerChange?.(detail);
 	}
 
 	function handleAddPractice(section) {
@@ -118,7 +118,7 @@
 		const targetDate = today > sectionStart ? today : sectionStart;
 
 		if (targetDate <= sectionEnd) {
-			dispatch('createPractice', {
+			onCreatePractice?.({
 				date: toLocalISO(targetDate),
 				sectionId: section.id
 			});
@@ -129,8 +129,8 @@
 		goto(`/teams/${teamSlug}/plans/${practice.id}`);
 	}
 
-	$: markerGroups = groupMarkersByMonth();
-	$: markerMonths = Object.keys(markerGroups).sort((a, b) => new Date(a) - new Date(b));
+	const markerGroups = $derived(groupMarkersByMonth());
+	const markerMonths = $derived(Object.keys(markerGroups).sort((a, b) => new Date(a) - new Date(b)));
 </script>
 
 <div class="overview-container">
@@ -141,12 +141,12 @@
 			{@const practiceCount = getSectionPractices(section).length}
 			{@const nextPractice = getNextPractice(section)}
 
-			<div class="section-card">
-				<div class="section-header">
-					<div class="section-color" style="background-color: {section.color}" />
-					<div class="section-info">
-						<h3 class="section-name">{section.name}</h3>
-						<div class="section-dates">
+				<div class="section-card">
+					<div class="section-header">
+						<div class="section-color" style="background-color: {section.color}"></div>
+						<div class="section-info">
+							<h3 class="section-name">{section.name}</h3>
+							<div class="section-dates">
 							{new Date(section.start_date).toLocaleDateString('en-US', {
 								month: 'short',
 								day: 'numeric'
@@ -161,7 +161,7 @@
 					{#if isAdmin}
 						<button
 							class="edit-button"
-							on:click={() => handleEditSection(section)}
+							onclick={() => handleEditSection(section)}
 							aria-label="Edit section"
 						>
 							<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
@@ -173,12 +173,12 @@
 					{/if}
 				</div>
 
-				<div class="progress-container">
-					<div class="progress-bar">
-						<div class="progress-fill" style="width: {progress}%" />
+					<div class="progress-container">
+						<div class="progress-bar">
+							<div class="progress-fill" style="width: {progress}%"></div>
+						</div>
+						<span class="progress-text">{progress}%</span>
 					</div>
-					<span class="progress-text">{progress}%</span>
-				</div>
 
 				<div class="section-stats">
 					<div class="stat">
@@ -186,7 +186,7 @@
 						<span class="stat-value">{practiceCount}</span>
 					</div>
 					{#if nextPractice}
-						<button class="next-practice" on:click={() => navigateToPractice(nextPractice)}>
+						<button class="next-practice" onclick={() => navigateToPractice(nextPractice)}>
 							<span class="stat-label">Next:</span>
 							<span class="stat-value">
 								{new Date(nextPractice.scheduled_date).toLocaleDateString('en-US', {
@@ -199,7 +199,7 @@
 							</svg>
 						</button>
 					{:else if isAdmin && progress < 100}
-						<button class="add-practice-button" on:click={() => handleAddPractice(section)}>
+						<button class="add-practice-button" onclick={() => handleAddPractice(section)}>
 							<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
 								<line x1="12" y1="5" x2="12" y2="19" />
 								<line x1="5" y1="12" x2="19" y2="12" />
@@ -212,7 +212,7 @@
 		{/each}
 
 		{#if isAdmin}
-			<button class="add-section-button" on:click={handleAddSection}>
+			<button class="add-section-button" onclick={handleAddSection}>
 				<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
 					<line x1="12" y1="5" x2="12" y2="19" />
 					<line x1="5" y1="12" x2="19" y2="12" />
@@ -233,15 +233,15 @@
 
 					<div class="markers-list">
 						{#each markerGroups[month] as marker (marker.id)}
-							<button
-								class="marker-item"
-								on:click={() => isAdmin && handleEditMarker(marker)}
-								disabled={!isAdmin}
-							>
-								<div class="marker-color" style="background-color: {marker.color}" />
-								<div class="marker-info">
-									<div class="marker-name">{marker.name}</div>
-									<div class="marker-date">
+								<button
+									class="marker-item"
+									onclick={() => isAdmin && handleEditMarker(marker)}
+									disabled={!isAdmin}
+								>
+									<div class="marker-color" style="background-color: {marker.color}"></div>
+									<div class="marker-info">
+										<div class="marker-name">{marker.name}</div>
+										<div class="marker-date">
 										{#if marker.end_date}
 											{new Date(marker.date).getDate()}–{new Date(marker.end_date).getDate()}
 										{:else}
@@ -263,8 +263,8 @@
 		</div>
 	{/if}
 
-	{#if isAdmin && markers.length === 0}
-		<button class="add-marker-button" on:click={handleAddMarker}>
+{#if isAdmin && markers.length === 0}
+		<button class="add-marker-button" onclick={handleAddMarker}>
 			<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
 				<line x1="12" y1="5" x2="12" y2="19" />
 				<line x1="5" y1="12" x2="19" y2="12" />
@@ -280,8 +280,11 @@
 		{season}
 		section={editingSection}
 		{teamSlug}
-		on:save={handleSectionSaved}
-		on:close={() => (showSectionSheet = false)}
+		onSave={handleSectionSaved}
+		onClose={() => {
+			showSectionSheet = false;
+			editingSection = null;
+		}}
 	/>
 {/if}
 
@@ -290,8 +293,11 @@
 	<EditMarkerSheet
 		{season}
 		marker={editingMarker}
-		on:save={handleMarkerSaved}
-		on:close={() => (showMarkerSheet = false)}
+		onSave={handleMarkerSaved}
+		onClose={() => {
+			showMarkerSheet = false;
+			editingMarker = null;
+		}}
 	/>
 {/if}
 

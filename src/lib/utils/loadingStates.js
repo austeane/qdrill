@@ -1,12 +1,30 @@
-import { writable } from 'svelte/store';
-
 /**
  * Create a loading state store with helper methods
  * @param {boolean} initialState - Initial loading state
  * @returns {object} Store with loading state and helper methods
  */
 export function createLoadingState(initialState = false) {
-	const { subscribe, set, update } = writable(initialState);
+	let state = initialState;
+	const subscribers = new Set();
+
+	function notify() {
+		for (const run of subscribers) run(state);
+	}
+
+	function set(next) {
+		state = next;
+		notify();
+	}
+
+	function update(fn) {
+		set(fn(state));
+	}
+
+	function subscribe(run) {
+		run(state);
+		subscribers.add(run);
+		return () => subscribers.delete(run);
+	}
 
 	return {
 		subscribe,

@@ -1,65 +1,75 @@
 <script>
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import SeasonTimelineViewer from '$lib/components/season/SeasonTimelineViewer.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
-	import { onMount } from 'svelte';
 
-	export let data;
+	let { data } = $props();
 
-	let season = data.season;
-	let sections = [];
-	let markers = [];
-	let practices = [];
-	let loading = true;
+	const teamSlug = $derived(page.params.slug);
+	const season = $derived(data.season ?? null);
 
-	onMount(async () => {
-		await loadTimelineData();
-	});
+	let sections = $state([]);
+	let markers = $state([]);
+	let practices = $state([]);
+	let loading = $state(true);
 
-	async function loadTimelineData() {
-		if (!season) return;
+	$effect(() => {
+		if (!season) {
+			sections = [];
+			markers = [];
+			practices = [];
+			loading = false;
+			return;
+		}
 
 		loading = true;
+		let cancelled = false;
 
-		try {
-			// Load sections
-			const sectionsRes = await apiFetch(`/api/seasons/${season.id}/sections`);
-			sections = sectionsRes || [];
-		} catch (error) {
-			console.error('Failed to load sections:', error);
-		}
+		(async () => {
+			try {
+				// Load sections
+				const sectionsRes = await apiFetch(`/api/seasons/${season.id}/sections`);
+				if (!cancelled) sections = sectionsRes || [];
+			} catch (error) {
+				console.error('Failed to load sections:', error);
+			}
 
-		try {
-			// Load markers
-			const markersRes = await apiFetch(`/api/seasons/${season.id}/markers`);
-			markers = markersRes || [];
-		} catch (error) {
-			console.error('Failed to load markers:', error);
-		}
+			try {
+				// Load markers
+				const markersRes = await apiFetch(`/api/seasons/${season.id}/markers`);
+				if (!cancelled) markers = markersRes || [];
+			} catch (error) {
+				console.error('Failed to load markers:', error);
+			}
 
-		try {
-			// Load practices
-			const practicesRes = await apiFetch(`/api/teams/${$page.params.slug}/practice-plans`);
-			const list = practicesRes?.items || [];
-			practices = list.filter((p) => p.season_id === season.id);
-		} catch (error) {
-			console.error('Failed to load practices:', error);
-		}
+			try {
+				// Load practices
+				const practicesRes = await apiFetch(`/api/teams/${teamSlug}/practice-plans`);
+				const list = practicesRes?.items || [];
+				if (!cancelled) practices = list.filter((p) => p.season_id === season.id);
+			} catch (error) {
+				console.error('Failed to load practices:', error);
+			}
 
-		loading = false;
-	}
+			if (!cancelled) loading = false;
+		})();
+
+		return () => {
+			cancelled = true;
+		};
+	});
 
 	function goBack() {
-		goto(`/teams/${$page.params.slug}/season`);
+		goto(`/teams/${teamSlug}/season`);
 	}
 </script>
 
 <div class="timeline-page">
 	<div class="header">
 		<div class="header-left">
-			<Button variant="ghost" on:click={goBack}>← Back to Season</Button>
+			<Button variant="ghost" onclick={goBack}>← Back to Season</Button>
 			<h1 class="page-title">{season?.name || 'Season'} Timeline</h1>
 		</div>
 
@@ -91,7 +101,7 @@
 	{:else}
 		<div class="no-season">
 			<p>No active season found.</p>
-			<Button variant="primary" href="/teams/{$page.params.slug}/season">
+			<Button variant="primary" href={`/teams/${teamSlug}/season`}>
 				Go to Season Management
 			</Button>
 		</div>

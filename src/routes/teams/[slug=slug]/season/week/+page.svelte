@@ -1,31 +1,25 @@
 <script>
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import WeekView from '$lib/components/season/WeekView.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import { Button } from '$lib/components/ui/button';
-	import Spinner from '$lib/components/Spinner.svelte';
-	import { toLocalISO } from '$lib/utils/date.js';
 
-	export let data;
+	let { data } = $props();
 
-	let season = data.season ?? null;
-	let practices = data.practices ?? [];
-	let markers = data.markers ?? [];
-	let currentWeek = data.currentWeek ? new Date(data.currentWeek) : new Date();
-	let loading = false;
-	let error = data.error ?? null;
+	const teamSlug = $derived(page.params.slug);
+	const teamTimezone = $derived(data.team?.timezone || 'UTC');
+	const isAdmin = $derived(data.userRole === 'admin');
+	const season = $derived(data.season ?? null);
+	const currentWeek = $derived(data.currentWeek ? new Date(data.currentWeek) : new Date());
+	const error = $derived(data.error ?? null);
 
-	// Keep URL in sync with currentWeek when navigating in the component
-	function updateUrlWithWeek(week) {
-		if (typeof window !== 'undefined') {
-			const url = new URL($page.url);
-			url.searchParams.set('week', toLocalISO(week));
-			window.history.replaceState({}, '', url);
-		}
-	}
-	$: if (typeof window !== 'undefined') {
-		updateUrlWithWeek(currentWeek);
-	}
+	let practices = $state([]);
+	let markers = $state([]);
+
+	$effect(() => {
+		practices = data.practices ?? [];
+		markers = data.markers ?? [];
+	});
 </script>
 
 <svelte:head>
@@ -37,39 +31,26 @@
 		<div class="flex items-center justify-between">
 			<h1 class="text-2xl font-bold">Week View</h1>
 			<div class="flex gap-2">
-				<Button href="/teams/{$page.params.slug}/season" variant="ghost" size="sm"
-					>← Season Overview</Button
-				>
-				{#if data.userRole === 'admin'}
-					<Button href="/teams/{$page.params.slug}/season/recurrences" size="sm"
-						>Manage Recurrences</Button
-					>
+				<Button href={`/teams/${teamSlug}/season`} variant="ghost" size="sm">← Season Overview</Button>
+				{#if isAdmin}
+					<Button href={`/teams/${teamSlug}/season/recurrences`} size="sm">Manage Recurrences</Button>
 				{/if}
 			</div>
 		</div>
 		{#if season}
 			<p class="text-gray-600 mt-2">
-				{season.name} • {data.userRole === 'admin'
-					? 'Admin view (all practices)'
-					: 'Member view (published only)'}
+				{season.name} • {isAdmin ? 'Admin view (all practices)' : 'Member view (published only)'}
 			</p>
 		{/if}
 	</div>
 
-	{#if loading}
-		<Card>
-			<div class="flex justify-center items-center py-12 text-gray-500 gap-3">
-				<Spinner />
-				<span>Loading week data...</span>
-			</div>
-		</Card>
-	{:else if error}
+	{#if error}
 		<Card>
 			<div class="p-4 text-amber-700">
 				<p class="font-medium">{error}</p>
 				{#if error.includes('No active season')}
 					<div class="mt-2">
-						<Button href="/teams/{$page.params.slug}/season" variant="ghost" size="sm"
+						<Button href={`/teams/${teamSlug}/season`} variant="ghost" size="sm"
 							>Go to season management →</Button
 						>
 					</div>
@@ -79,18 +60,18 @@
 	{:else if season}
 		<WeekView
 			{season}
-			{practices}
+			bind:practices
 			{markers}
-			bind:currentWeek
-			isAdmin={data.userRole === 'admin'}
-			teamSlug={$page.params.slug}
-			teamTimezone={data.team?.timezone || 'UTC'}
+			{currentWeek}
+			{isAdmin}
+			{teamSlug}
+			{teamTimezone}
 		/>
 
 		<div class="mt-6 text-sm text-gray-600">
 			<p>💡 Tips:</p>
 			<ul class="mt-1 ml-6 list-disc">
-				{#if data.userRole === 'admin'}
+				{#if isAdmin}
 					<li>Click "Add Practice" on any day to create a draft practice plan</li>
 					<li>Draft practices are only visible to admins until published</li>
 					<li>Use the Edit button to modify practice details</li>

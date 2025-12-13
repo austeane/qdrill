@@ -1,16 +1,16 @@
 <script>
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { Search, Lock, AlertTriangle } from 'lucide-svelte';
 
 	// Error information from SvelteKit
-	$: error = $page.error;
-	$: status = $page.status;
+	const error = $derived(page.error);
+	const status = $derived(page.status);
 
 	// Determine error type and appropriate response
-	$: errorType = getErrorType(status, error);
-	$: errorConfig = getErrorConfig(errorType);
+	const errorType = $derived(getErrorType(status, error));
+	const errorConfig = $derived(getErrorConfig(errorType));
 
 	function getErrorType(status, _error) {
 		if (status === 404) return '404';
@@ -76,7 +76,7 @@
 
 	onMount(() => {
 		// Log error for monitoring
-		console.error('Error page displayed:', { status, error, path: $page.url.pathname });
+		console.error('Error page displayed:', { status, error, path: page.url.pathname });
 	});
 </script>
 
@@ -127,7 +127,7 @@
 						</a>
 					{:else if action.onClick}
 						<button
-							on:click={action.onClick}
+							onclick={action.onClick}
 							class="block w-full px-4 py-2 rounded-md font-medium transition-colors duration-200"
 							class:bg-blue-600={action.primary}
 							class:text-white={action.primary}
@@ -153,7 +153,7 @@
 							type="text"
 							placeholder="Search drills and plans..."
 							class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-							on:keydown={(e) => {
+							onkeydown={(e) => {
 								if (e.key === 'Enter' && e.target.value.trim()) {
 									goto(`/drills?q=${encodeURIComponent(e.target.value.trim())}`);
 								}
@@ -161,7 +161,7 @@
 						/>
 						<button
 							class="px-4 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-							on:click={(e) => {
+							onclick={(e) => {
 								const input = e.target.previousElementSibling;
 								if (input.value.trim()) {
 									goto(`/drills?q=${encodeURIComponent(input.value.trim())}`);

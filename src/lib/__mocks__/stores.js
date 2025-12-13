@@ -1,4 +1,24 @@
-import { writable } from 'svelte/store';
+function writable(initialValue) {
+	let value = initialValue;
+	const subscribers = new Set();
+
+	function set(next) {
+		value = next;
+		for (const run of subscribers) run(value);
+	}
+
+	function update(fn) {
+		set(fn(value));
+	}
+
+	function subscribe(run) {
+		run(value);
+		subscribers.add(run);
+		return () => subscribers.delete(run);
+	}
+
+	return { set, update, subscribe };
+}
 
 // Mock SvelteKit stores for testing
 export const page = writable({

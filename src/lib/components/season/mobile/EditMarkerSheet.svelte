@@ -1,25 +1,29 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { toast } from '@zerodevx/svelte-toast';
 	import BottomSheet from '$lib/components/ui/BottomSheet.svelte';
 
-	export let season = null;
-	export let marker = null;
-	export let defaultDate = null;
+	let { season = null, marker = null, defaultDate = null, onSave, onClose } = $props();
 
-	const dispatch = createEventDispatcher();
+	let open = $state(true);
+	let loading = $state(false);
+	let name = $state('');
+	let type = $state('tournament');
+	let color = $state('#ef4444');
+	let date = $state('');
+	let isMultiDay = $state(false);
+	let endDate = $state('');
 
-	let loading = false;
-	let name = marker?.name || '';
-	let type = marker?.type || 'tournament';
-	let color = marker?.color || '#ef4444';
-	let date = marker?.date || defaultDate || season?.start_date || '';
-	let isMultiDay = !!marker?.end_date;
-	let endDate = marker?.end_date || '';
+	const isEdit = $derived(!!marker);
 
-	$: open = true;
-	$: isEdit = !!marker;
+	$effect(() => {
+		name = marker?.name || '';
+		type = marker?.type || 'tournament';
+		color = marker?.color || '#ef4444';
+		date = marker?.date || defaultDate || season?.start_date || '';
+		isMultiDay = !!marker?.end_date;
+		endDate = marker?.end_date || '';
+	});
 
 	// Marker types
 	const markerTypes = [
@@ -115,7 +119,7 @@
 				}
 			});
 
-			dispatch('save', response);
+			onSave?.(response);
 			handleClose();
 		} catch (error) {
 			console.error('Failed to save marker:', error);
@@ -132,7 +136,7 @@
 
 	function handleClose() {
 		open = false;
-		setTimeout(() => dispatch('close'), 200);
+		setTimeout(() => onClose?.(), 200);
 	}
 
 	function formatDate(dateStr) {
@@ -146,11 +150,23 @@
 	}
 </script>
 
+{#snippet footer()}
+	<div class="footer-buttons">
+		<button class="button button-secondary" onclick={handleClose} disabled={loading}>
+			Cancel
+		</button>
+		<button class="button button-primary" onclick={handleSave} disabled={loading}>
+			{loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Event'}
+		</button>
+	</div>
+{/snippet}
+
 <BottomSheet
 	bind:open
 	title={isEdit ? 'Edit Event' : 'Create Event'}
 	height="auto"
-	on:close={handleClose}
+	onClose={handleClose}
+	{footer}
 >
 	<div class="form-content">
 		<!-- Type Selection -->
@@ -161,7 +177,7 @@
 					<button
 						class="type-option"
 						class:selected={type === markerType.value}
-						on:click={() => (type = markerType.value)}
+						onclick={() => (type = markerType.value)}
 						disabled={loading}
 					>
 						<span class="type-icon">{markerType.icon}</span>
@@ -193,19 +209,19 @@
 		<!-- Color Selection -->
 		<div class="form-group">
 			<span class="form-label">Color</span>
-			<div class="color-grid">
-				{#each colors as c (c)}
-					<button
-						class="color-option"
-						class:selected={color === c}
-						style="background-color: {c}"
-						on:click={() => (color = c)}
-						aria-label="Select color {c}"
-						disabled={loading}
-					/>
-				{/each}
+				<div class="color-grid">
+					{#each colors as c (c)}
+						<button
+							class="color-option"
+							class:selected={color === c}
+							style="background-color: {c}"
+							onclick={() => (color = c)}
+							aria-label="Select color {c}"
+							disabled={loading}
+						></button>
+					{/each}
+				</div>
 			</div>
-		</div>
 
 		<!-- Multi-day toggle -->
 		<div class="form-group">
@@ -258,15 +274,6 @@
 				{/if}
 			</div>
 		</div>
-	</div>
-
-	<div slot="footer" class="footer-buttons">
-		<button class="button button-secondary" on:click={handleClose} disabled={loading}>
-			Cancel
-		</button>
-		<button class="button button-primary" on:click={handleSave} disabled={loading}>
-			{loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Event'}
-		</button>
 	</div>
 </BottomSheet>
 

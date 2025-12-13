@@ -1,10 +1,10 @@
 <script>
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
-	export let customSegments = null;
+	let { customSegments = null } = $props();
 
-	$: path = $page.url.pathname;
-	$: pathSegments = customSegments || path.split('/').filter((segment) => segment !== '');
+	const path = $derived(page.url.pathname);
+	const pathSegments = $derived(customSegments || path.split('/').filter((segment) => segment !== ''));
 
 	function getUrl(index) {
 		if (customSegments) {

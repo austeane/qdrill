@@ -1,37 +1,45 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
 	import { getGroupColor } from '$lib/utils/groupColors.js';
 	import { getAvailableGroupFilters } from '$lib/utils/groupFilter.js';
 
-	export let sections = [];
-	export let selectedFilter = 'All Groups';
+	let {
+		sections = [],
+		selectedFilter = $bindable('All Groups'),
+		onFilterChange
+	} = $props();
 
-	const dispatch = createEventDispatcher();
-
-	$: availableFilters = getAvailableGroupFilters(sections);
+	const availableFilters = $derived(getAvailableGroupFilters(sections));
 
 	function handleFilterChange(filter) {
 		selectedFilter = filter;
-		dispatch('filterChange', { filter });
+		onFilterChange?.({ filter });
 	}
 
 	function formatFilterName(filter) {
 		if (filter === 'All Groups') return filter;
 		return filter.charAt(0) + filter.slice(1).toLowerCase();
 	}
+
+	$effect(() => {
+		if (availableFilters.length > 0 && !availableFilters.includes(selectedFilter)) {
+			selectedFilter = 'All Groups';
+		}
+	});
 </script>
 
-<div class="group-filter">
-	{#each availableFilters as filter (filter)}
-		<button
-			class="filter-btn {selectedFilter === filter ? 'active' : ''}"
-			on:click={() => handleFilterChange(filter)}
-			style="--filter-color: {getGroupColor(filter)}"
-		>
-			{formatFilterName(filter)}
-		</button>
-	{/each}
-</div>
+{#if availableFilters.length > 1}
+	<div class="group-filter">
+		{#each availableFilters as filter (filter)}
+			<button
+				class="filter-btn {selectedFilter === filter ? 'active' : ''}"
+				onclick={() => handleFilterChange(filter)}
+				style="--filter-color: {getGroupColor(filter)}"
+			>
+				{formatFilterName(filter)}
+			</button>
+		{/each}
+	</div>
+{/if}
 
 <style>
 	.group-filter {

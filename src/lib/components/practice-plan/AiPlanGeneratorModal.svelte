@@ -1,20 +1,14 @@
 <script>
 	/* NEW component */
-	import { createEventDispatcher } from 'svelte';
 	import { goto } from '$app/navigation';
 	import AiPlanGenerator from './AiPlanGenerator.svelte';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
-	// Props
-	export let isOpen = false;
-	export let skillOptions = [];
-	export let focusAreaOptions = [];
-
-	const dispatch = createEventDispatcher();
+	let { isOpen = $bindable(false), skillOptions = [], focusAreaOptions = [], onClose } = $props();
 
 	function close() {
 		isOpen = false;
-		dispatch('close');
+		onClose?.();
 	}
 
 	/* Handle plan returned by AiPlanGenerator:
@@ -22,7 +16,7 @@
 	   – on success navigate to /practice-plans/{id}/edit
 	*/
 	async function handleGenerated(event) {
-		const generatedPlanFromAI = event.detail; // This should now be in the correct format
+		const generatedPlanFromAI = event; // This should now be in the correct format
 		try {
 			// No transformation needed if AI prompt and schema are aligned with backend
 			console.log(
@@ -65,7 +59,7 @@
 			<!-- Close button -->
 			<button
 				class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl leading-none"
-				on:click={close}
+				onclick={close}
 				aria-label="Close">&times;</button
 			>
 
@@ -73,8 +67,8 @@
 			<AiPlanGenerator
 				{skillOptions}
 				{focusAreaOptions}
-				on:generated={handleGenerated}
-				on:error={(e) => alert(e.detail)}
+				onGenerated={handleGenerated}
+				onError={(message) => alert(message)}
 			/>
 		</div>
 	</div>

@@ -1,6 +1,5 @@
 <script>
-	import { onMount } from 'svelte';
-	import { writable } from 'svelte/store';
+	import { goto } from '$app/navigation';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import Timeline from '../../../../practice-plans/viewer/Timeline.svelte';
 	import Section from '../../../../practice-plans/viewer/Section.svelte';
@@ -8,33 +7,42 @@
 	import GroupFilter from '$lib/components/practice-plan/GroupFilter.svelte';
 	import { filterSectionsByGroup } from '$lib/utils/groupFilter.js';
 
-	export let data;
-	const { practicePlan, team, userRole } = data;
+	let { data } = $props();
+	const practicePlan = $derived(data.practicePlan);
+	const team = $derived(data.team);
+	const userRole = $derived(data.userRole);
 
 	// Store for tracking the current section
-	const currentSectionId = writable(null);
+	let currentSectionId = $state(null);
 
 	// Group filter state
-	let selectedGroupFilter = 'All Groups';
+	let selectedGroupFilter = $state('All Groups');
+
+	const sections = $derived(practicePlan.sections ?? []);
+
+	// Filter sections based on selected group
+	const filteredSections = $derived(filterSectionsByGroup(sections, selectedGroupFilter));
 
 	// Calculate total duration considering parallel activities
-	$: totalDuration = practicePlan.sections.reduce((sum, section) => sum + section.duration, 0);
+	const totalDuration = $derived(sections.reduce((sum, section) => sum + section.duration, 0));
 
 	// Check edit permissions - in team context, use team role
-	$: isAdmin = userRole === 'admin';
-	$: userCanEdit = isAdmin || userRole === 'coach';
+	const isAdmin = $derived(userRole === 'admin');
+	const userCanEdit = $derived(isAdmin || userRole === 'coach');
 
 	// Add this near the other state variables
-	const isDescriptionExpanded = writable(true);
+	let isDescriptionExpanded = $state(true);
 
 	// Intersection Observer setup for section tracking
-	onMount(() => {
+	$effect(() => {
+		filteredSections.length;
+
 		const observer = new IntersectionObserver(
 			(entries) => {
 				entries.forEach((entry) => {
 					if (entry.isIntersecting) {
 						const sectionId = entry.target.getAttribute('data-section-id');
-						currentSectionId.set(sectionId);
+						currentSectionId = sectionId;
 					}
 				});
 			},
@@ -51,15 +59,6 @@
 
 		return () => observer.disconnect();
 	});
-
-	// Handle section selection from timeline
-	function handleSectionSelect(event) {
-		const { sectionId } = event.detail;
-		const section = document.querySelector(`[data-section-id="${sectionId}"]`);
-		if (section) {
-			section.scrollIntoView({ behavior: 'smooth' });
-		}
-	}
 
 	// Format time for display
 	function formatTime(timeStr) {
@@ -83,22 +82,6 @@
 		);
 	}
 
-	// Handle group filter change
-	function handleGroupFilterChange(event) {
-		selectedGroupFilter = event.detail.filter;
-	}
-
-	// Filter sections based on selected group
-	$: filteredSections = filterSectionsByGroup(practicePlan.sections, selectedGroupFilter);
-
-	// Extract unique groups from sections
-	$: uniqueGroups = [
-		...new Set(
-			practicePlan.sections.flatMap((s) =>
-				s.parallel_groups ? s.parallel_groups.map((g) => g.group_name) : []
-			)
-		)
-	].filter(Boolean);
 </script>
 
 <main class="page-container">
@@ -178,61 +161,60 @@
 	</div>
 
 	<!-- Description -->
-	{#if practicePlan.description}
-		<div class="practice-plan-description">
-			<button class="description-header" on:click={() => isDescriptionExpanded.update((n) => !n)}>
-				<h2>Description</h2>
-				<svg
-					class="chevron"
-					class:rotated={!$isDescriptionExpanded}
-					viewBox="0 0 20 20"
-					fill="currentColor"
+		{#if practicePlan.description}
+			<div class="practice-plan-description">
+				<button
+					class="description-header"
+					onclick={() => (isDescriptionExpanded = !isDescriptionExpanded)}
 				>
+					<h2>Description</h2>
+					<svg
+						class="chevron"
+						class:rotated={!isDescriptionExpanded}
+						viewBox="0 0 20 20"
+						fill="currentColor"
+					>
 					<path
 						fill-rule="evenodd"
 						d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
 						clip-rule="evenodd"
 					/>
 				</svg>
-			</button>
-			{#if $isDescriptionExpanded}
-				<p class="description-text">{practicePlan.description}</p>
-			{/if}
-		</div>
-	{/if}
+				</button>
+				{#if isDescriptionExpanded}
+					<p class="description-text">{practicePlan.description}</p>
+				{/if}
+			</div>
+		{/if}
 
-	<!-- Group Filter (if there are groups) -->
-	{#if uniqueGroups.length > 0}
-		<div class="mb-6">
-			<GroupFilter groups={uniqueGroups} on:filterChange={handleGroupFilterChange} />
-		</div>
-	{/if}
+		<!-- Group Filter -->
+		<GroupFilter sections={sections} bind:selectedFilter={selectedGroupFilter} />
 
 	<!-- Timeline -->
-	<div class="timeline-container">
-		<Timeline
-			sections={filteredSections}
-			currentSectionId={$currentSectionId}
-			on:sectionSelect={handleSectionSelect}
-		/>
-	</div>
+		<div class="timeline-container">
+			<Timeline sections={filteredSections} {currentSectionId} {totalDuration} />
+		</div>
 
 	<!-- Sections -->
-	<div class="sections-container">
-		{#each filteredSections as section, index (section.id)}
-			<div data-section-id={section.id}>
-				<Section {section} {index} />
-			</div>
-		{/each}
-	</div>
+		<div class="sections-container">
+			{#each filteredSections as section, index (section.id)}
+				<div data-section-id={section.id}>
+					<Section {section} sectionIndex={index} isActive={section.id === currentSectionId} />
+				</div>
+			{/each}
+		</div>
 
 	<!-- Actions -->
-	{#if userCanEdit}
-		<div class="practice-plan-actions">
-			<DeletePracticePlan planId={practicePlan.id} teamId={team.id} isTeamContext={true} />
-		</div>
-	{/if}
-</main>
+		{#if userCanEdit}
+			<div class="practice-plan-actions">
+				<DeletePracticePlan
+					planId={practicePlan.id}
+					createdBy={practicePlan.created_by}
+					onDelete={() => goto(`/teams/${team.slug}/plans`)}
+				/>
+			</div>
+		{/if}
+	</main>
 
 <style>
 	.page-container {

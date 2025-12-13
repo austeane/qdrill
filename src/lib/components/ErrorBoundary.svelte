@@ -1,14 +1,10 @@
 <script>
 	import { onMount } from 'svelte';
-	import { createEventDispatcher } from 'svelte';
 
-	export let fallback = null;
-	export let onError = null;
+	let { fallback: Fallback = null, onError = null, children } = $props();
 
-	const dispatch = createEventDispatcher();
-
-	let hasError = false;
-	let error = null;
+	let hasError = $state(false);
+	let error = $state(null);
 
 	// Error boundaries in Svelte are not yet fully supported like in React
 	// This is a simplified version that can catch some errors
@@ -21,8 +17,6 @@
 			if (onError) {
 				onError(error, { componentStack: 'ErrorBoundary' });
 			}
-
-			dispatch('error', { error, errorInfo: { componentStack: 'ErrorBoundary' } });
 
 			// Log to monitoring service
 			console.error('Error boundary caught error:', error);
@@ -47,8 +41,8 @@
 </script>
 
 {#if hasError}
-	{#if fallback}
-		<svelte:component this={fallback} {error} {retry} />
+	{#if Fallback}
+		<Fallback {error} {retry} />
 	{:else}
 		<div class="bg-red-50 border border-red-200 rounded-lg p-4 my-4">
 			<div class="flex items-center">
@@ -71,7 +65,7 @@
 			</div>
 			<div class="mt-4">
 				<button
-					on:click={retry}
+					onclick={retry}
 					class="bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1 rounded text-sm font-medium"
 				>
 					Try Again
@@ -80,5 +74,5 @@
 		</div>
 	{/if}
 {:else}
-	<slot />
+	{@render children?.()}
 {/if}

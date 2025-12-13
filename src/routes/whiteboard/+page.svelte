@@ -3,8 +3,8 @@
 	import ErrorBoundary from '$lib/components/ErrorBoundary.svelte';
 	import { browser } from '$app/environment';
 
-	let excalidrawError = null;
-	let isRetrying = false;
+	let excalidrawError = $state(null);
+	let isRetrying = $state(false);
 	let _excalidrawId = 'whiteboard-main';
 
 	function handleExcalidrawError(error) {
@@ -58,7 +58,7 @@
 				</p>
 				<div class="space-y-3">
 					<button
-						on:click={retryExcalidraw}
+						onclick={retryExcalidraw}
 						disabled={isRetrying}
 						class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
 					>

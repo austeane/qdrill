@@ -1,20 +1,25 @@
 <script>
-	import { onMount } from 'svelte';
+	let {
+		id = '',
+		label = '',
+		value = $bindable(''),
+		options = [], // [{value, label}]
+		placeholder = 'Select an option',
+		error = '',
+		required = false,
+		disabled = false,
+		...restProps
+		} = $props();
 
-	export let id = '';
-	export let label = '';
-	export let value = '';
-	export let options = []; // [{value, label}]
-	export let placeholder = 'Select an option';
-	export let error = '';
-	export let required = false;
-	export let disabled = false;
+	let generatedId = $state('');
+	const uid = $derived(id || generatedId);
 
-	let uid = id;
-
-	onMount(() => {
-		if (!uid && typeof crypto !== 'undefined') {
-			uid = 'select-' + crypto.randomUUID();
+	$effect(() => {
+		if (id) {
+			return;
+		}
+		if (!generatedId && typeof crypto !== 'undefined') {
+			generatedId = `select-${crypto.randomUUID()}`;
 		}
 	});
 </script>
@@ -38,11 +43,9 @@
 		class:error
 		aria-invalid={!!error}
 		aria-describedby={error ? `${uid}-error` : undefined}
-		on:change
-		on:blur
-		{...$$restProps}
+		{...restProps}
 	>
-		<option value="" disabled selected={!value}>
+		<option value="" disabled>
 			{placeholder}
 		</option>
 		{#each options as option (option.value)}

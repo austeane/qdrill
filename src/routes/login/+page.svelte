@@ -1,10 +1,10 @@
 <script>
 	import { signIn, useSession } from '$lib/auth-client';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	const session = useSession();
 
 	function continueToNext() {
-		const url = new URL($page.url);
+		const url = new URL(page.url);
 		const next = url.searchParams.get('next') || '/';
 		window.location.href = next;
 	}
@@ -21,14 +21,14 @@
 			</div>
 			<button
 				class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded"
-				on:click={continueToNext}
+				onclick={continueToNext}
 			>
 				Continue
 			</button>
 		{:else}
 			<button
 				class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded"
-				on:click={() => signIn.social({ provider: 'google' })}
+				onclick={() => signIn.social({ provider: 'google' })}
 			>
 				Sign in with Google
 			</button>

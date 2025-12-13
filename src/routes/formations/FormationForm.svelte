@@ -1,6 +1,5 @@
 <script>
 	import { onMount, tick } from 'svelte';
-	import { writable } from 'svelte/store';
 	import { goto } from '$app/navigation';
 	import ExcalidrawWrapper from '$lib/components/ExcalidrawWrapper.svelte';
 	import { toast } from '@zerodevx/svelte-toast';
@@ -8,27 +7,30 @@
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { createForm } from 'svelte-forms-lib';
 
-	// Initialize stores
-	export let formation = {
-		id: null,
-		name: '',
-		brief_description: '',
-		detailed_description: '',
-		diagrams: [],
-		tags: [],
-		is_editable_by_others: false,
-		visibility: 'public',
-		formation_type: 'offense'
-	};
+	function createEmptyFormation() {
+		return {
+			id: null,
+			name: '',
+			brief_description: '',
+			detailed_description: '',
+			diagrams: [],
+			tags: [],
+			is_editable_by_others: false,
+			visibility: 'public',
+			formation_type: 'offense'
+		};
+	}
 
-	let name = writable(formation.name ?? '');
-	let brief_description = writable(formation.brief_description ?? '');
-	let detailed_description = writable(formation.detailed_description ?? '');
-	let tags = writable(formation.tags ?? []);
-	let newTag = writable('');
-	let is_editable_by_others = writable(formation.is_editable_by_others ?? false);
-	let visibility = writable(formation.visibility ?? 'public');
-	let formation_type = writable(formation.formation_type ?? 'offense');
+	let { formation = createEmptyFormation() } = $props();
+
+	let name = $state(formation.name ?? '');
+	let brief_description = $state(formation.brief_description ?? '');
+	let detailed_description = $state(formation.detailed_description ?? '');
+	let tags = $state(formation.tags ?? []);
+	let newTag = $state('');
+	let is_editable_by_others = $state(formation.is_editable_by_others ?? false);
+	let visibility = $state(formation.visibility ?? 'public');
+	let formation_type = $state(formation.formation_type ?? 'offense');
 	// Parse diagrams if they come as JSON strings
 	const parseDiagrams = (diagramsData) => {
 		if (!diagramsData || diagramsData.length === 0) {
@@ -58,15 +60,15 @@
 		});
 	};
 
-	let diagrams = writable(parseDiagrams(formation.diagrams));
+	let diagrams = $state(parseDiagrams(formation.diagrams));
 
-	let errors = writable({});
+	let errors = $state({});
 	let _mounted = false;
-	let diagramKey = 0;
+	let diagramKey = $state(0);
 	let diagramRefs = [];
 
-	let showAddDiagramModal = false;
-	let selectedTemplate = 'blank';
+	let showAddDiagramModal = $state(false);
+	let selectedTemplate = $state('blank');
 
 	// Add a diagram function
 	function addDiagram() {
@@ -78,8 +80,8 @@
 			}
 		}
 
-		diagrams.update((d) => [
-			...d,
+		diagrams = [
+			...diagrams,
 			{
 				template: selectedTemplate,
 				elements: [],
@@ -90,7 +92,7 @@
 				},
 				files: {}
 			}
-		]);
+		];
 
 		diagramKey++;
 		showAddDiagramModal = false;
@@ -99,27 +101,24 @@
 	// Delete a diagram
 	function deleteDiagram(index) {
 		if (confirm('Are you sure you want to delete this diagram?')) {
-			diagrams.update((d) => d.filter((_, i) => i !== index));
+			diagrams = diagrams.filter((_, i) => i !== index);
 			diagramKey++;
 		}
 	}
 
 	// Move diagram up or down in the list
 	function moveDiagram(index, direction) {
-		diagrams.update((d) => {
-			const newIndex = index + direction;
-			if (newIndex < 0 || newIndex >= d.length) return d;
-			const newDiagrams = [...d];
-			[newDiagrams[index], newDiagrams[newIndex]] = [newDiagrams[newIndex], newDiagrams[index]];
-			return newDiagrams;
-		});
+		const newIndex = index + direction;
+		if (newIndex < 0 || newIndex >= diagrams.length) return;
+
+		const newDiagrams = [...diagrams];
+		[newDiagrams[index], newDiagrams[newIndex]] = [newDiagrams[newIndex], newDiagrams[index]];
+		diagrams = newDiagrams;
 		diagramKey++;
 	}
 
 	// Handle diagram save event
-	function handleDiagramSave(event, index) {
-		const diagramData = event.detail;
-
+	function handleDiagramSave(diagramData, index) {
 		// Ensure proper structure when saving
 		const processedData = {
 			elements: diagramData.elements || [],
@@ -132,11 +131,9 @@
 			files: diagramData.files || {}
 		};
 
-		diagrams.update((d) => {
-			const newDiagrams = [...d];
-			newDiagrams[index] = processedData;
-			return newDiagrams;
-		});
+		const newDiagrams = [...diagrams];
+		newDiagrams[index] = processedData;
+		diagrams = newDiagrams;
 	}
 
 	function handleMoveUp(index) {
@@ -149,19 +146,19 @@
 
 	// Add a tag to the formation
 	function addTag() {
-		const tag = $newTag.trim().toLowerCase();
+		const tag = newTag.trim().toLowerCase();
 
 		if (!tag) return;
 
-		if (!$tags.includes(tag)) {
-			tags.update((t) => [...t, tag]);
-			newTag.set('');
+		if (!tags.includes(tag)) {
+			tags = [...tags, tag];
+			newTag = '';
 		}
 	}
 
 	// Remove a tag from the formation
 	function removeTag(tagToRemove) {
-		tags.update((t) => t.filter((tag) => tag !== tagToRemove));
+		tags = tags.filter((tag) => tag !== tagToRemove);
 	}
 
 	// Handle tag input keypress
@@ -179,75 +176,62 @@
 			diagramRefs[index].saveDiagram();
 		}
 
-		diagrams.update((d) => {
-			const diagramToDuplicate = d[index];
+		const diagramToDuplicate = diagrams[index];
 
-			// Create a mapping of old groupIds to new groupIds to maintain group relationships
-			const groupIdMap = new Map();
+		// Create a mapping of old groupIds to new groupIds to maintain group relationships
+		const groupIdMap = new Map();
 
-			// Create a deep copy of the diagram, ensuring new IDs for elements
-			const duplicatedDiagram = {
-				elements:
-					diagramToDuplicate.elements?.map((element) => {
-						// Create new groupIds mapping if they exist
-						let newGroupIds = undefined;
-						if (element.groupIds && element.groupIds.length > 0) {
-							newGroupIds = element.groupIds.map((groupId) => {
-								// If we haven't created a new ID for this group yet, create one
-								if (!groupIdMap.has(groupId)) {
-									groupIdMap.set(groupId, crypto.randomUUID());
-								}
-								// Use the consistent new ID for this group
-								return groupIdMap.get(groupId);
-							});
-						}
+		// Create a deep copy of the diagram, ensuring new IDs for elements
+		const duplicatedDiagram = {
+			elements:
+				diagramToDuplicate.elements?.map((element) => {
+					// Create new groupIds mapping if they exist
+					let newGroupIds = undefined;
+					if (element.groupIds && element.groupIds.length > 0) {
+						newGroupIds = element.groupIds.map((groupId) => {
+							// If we haven't created a new ID for this group yet, create one
+							if (!groupIdMap.has(groupId)) {
+								groupIdMap.set(groupId, crypto.randomUUID());
+							}
+							// Use the consistent new ID for this group
+							return groupIdMap.get(groupId);
+						});
+					}
 
-						return {
-							...element,
-							id: crypto.randomUUID(), // Generate new IDs for each element
-							groupIds: newGroupIds // Use the mapped group IDs to maintain relationships
-						};
-					}) || [],
-				appState: { ...diagramToDuplicate.appState },
-				files: { ...diagramToDuplicate.files }
-			};
+					return {
+						...element,
+						id: crypto.randomUUID(), // Generate new IDs for each element
+						groupIds: newGroupIds // Use the mapped group IDs to maintain relationships
+					};
+				}) || [],
+			appState: { ...diagramToDuplicate.appState },
+			files: { ...diagramToDuplicate.files }
+		};
 
-			// Insert the duplicate after the original
-			const newDiagrams = [...d];
-			newDiagrams.splice(index + 1, 0, duplicatedDiagram);
-			return newDiagrams;
-		});
+		// Insert the duplicate after the original
+		const newDiagrams = [...diagrams];
+		newDiagrams.splice(index + 1, 0, duplicatedDiagram);
+		diagrams = newDiagrams;
 
 		diagramKey++; // Force re-render of diagrams
 	}
 
-	// Editor component
-	let Editor;
-	onMount(async () => {
-		try {
-			console.log('Attempting to load TinyMCE module...');
-			const module = await import('@tinymce/tinymce-svelte');
-			console.log('Module loaded:', module);
-			Editor = module.default;
-			console.log('Editor component assigned:', Editor);
-		} catch (error) {
-			console.error('Error loading TinyMCE:', error);
-		}
-	});
+	// Editor component (loaded dynamically)
+	let Editor = $state(null);
 
 	// Form validation
 	function validateForm() {
 		let newErrors = {};
-		if (!$name) newErrors.name = 'Name is required';
-		if (!$brief_description) newErrors.brief_description = 'Brief description is required';
+		if (!name) newErrors.name = 'Name is required';
+		if (!brief_description) newErrors.brief_description = 'Brief description is required';
 
-		errors.set(newErrors);
+		errors = newErrors;
 		return Object.keys(newErrors).length === 0;
 	}
 
 	// Use Better Auth session store
 	const session = authClient.useSession();
-	$: isLoggedIn = !!$session.data?.user; // Reactive boolean for login state
+	const isLoggedIn = $derived(!!$session.data?.user);
 
 	const { handleSubmit, updateField } = createForm({
 		initialValues: {
@@ -274,9 +258,9 @@
 			if (!validateForm()) return;
 
 			// Check login status using reactive variable from Better Auth
-			if (!isLoggedIn && $visibility !== 'public') {
+			if (!isLoggedIn && visibility !== 'public') {
 				const confirmed = confirm(
-					`Log in to create a ${$visibility} formation.\n\n` +
+					`Log in to create a ${visibility} formation.\n\n` +
 						'Click OK to log in with Google\n' +
 						'Click Cancel to create as public instead'
 				);
@@ -284,14 +268,14 @@
 				if (confirmed) {
 					// Store form data in sessionStorage
 					const formData = {
-						name: $name,
-						brief_description: $brief_description,
-						detailed_description: $detailed_description,
-						diagrams: $diagrams,
-						tags: $tags,
-						visibility: $visibility,
-						is_editable_by_others: $is_editable_by_others,
-						formation_type: $formation_type
+						name,
+						brief_description,
+						detailed_description,
+						diagrams,
+						tags,
+						visibility,
+						is_editable_by_others,
+						formation_type
 					};
 					sessionStorage.setItem('pendingFormationData', JSON.stringify(formData));
 					try {
@@ -308,14 +292,14 @@
 					return; // Stop submission if redirecting to login
 				} else {
 					updateField('visibility', 'public');
-					visibility.set('public'); // Update local values for this submission
+					visibility = 'public'; // Update local values for this submission
 				}
 			}
 
 			// If not logged in (after the check), force public/editable
 			if (!isLoggedIn) {
 				updateField('is_editable_by_others', true);
-				is_editable_by_others.set(true);
+				is_editable_by_others = true;
 			}
 
 			try {
@@ -325,14 +309,14 @@
 
 				const requestBody = {
 					id: formation.id, // The ID is included in the body for PUT requests
-					name: $name,
-					brief_description: $brief_description,
-					detailed_description: $detailed_description,
-					diagrams: $diagrams,
-					tags: $tags,
-					is_editable_by_others: $is_editable_by_others,
-					visibility: $visibility,
-					formation_type: $formation_type
+					name,
+					brief_description,
+					detailed_description,
+					diagrams,
+					tags,
+					is_editable_by_others,
+					visibility,
+					formation_type
 				};
 
 				// Log the data being sent, excluding the potentially large diagrams array
@@ -411,13 +395,14 @@
 	});
 
 	// Update visibility and editable status based on login state changes
-	$: {
-		if (!isLoggedIn) {
-			// Use reactive boolean
-			updateField('visibility', 'public');
-			updateField('is_editable_by_others', true);
-		}
-	}
+	$effect(() => {
+		if (isLoggedIn) return;
+
+		updateField('visibility', 'public');
+		updateField('is_editable_by_others', true);
+		visibility = 'public';
+		is_editable_by_others = true;
+	});
 
 	onMount(() => {
 		// Restore form data after login
@@ -426,14 +411,14 @@
 			try {
 				const data = JSON.parse(pendingData);
 				// Restore all the form values
-				name.set(data.name);
-				brief_description.set(data.brief_description);
-				detailed_description.set(data.detailed_description);
-				diagrams.set(parseDiagrams(data.diagrams));
-				tags.set(data.tags);
-				is_editable_by_others.set(data.is_editable_by_others);
-				visibility.set(data.visibility);
-				formation_type.set(data.formation_type || 'offense');
+				name = data.name;
+				brief_description = data.brief_description;
+				detailed_description = data.detailed_description;
+				diagrams = parseDiagrams(data.diagrams);
+				tags = data.tags;
+				is_editable_by_others = data.is_editable_by_others;
+				visibility = data.visibility;
+				formation_type = data.formation_type || 'offense';
 				toast.push('Resuming formation creation...');
 			} catch (e) {
 				console.error('Error parsing pending formation data:', e);
@@ -449,7 +434,7 @@
 		// Load TinyMCE editor component dynamically
 		import('@tinymce/tinymce-svelte')
 			.then((module) => {
-				Editor = module.default;
+				Editor = module.Editor ?? module.default;
 			})
 			.catch((error) => {
 				console.error('Failed to load TinyMCE Editor:', error);
@@ -458,18 +443,18 @@
 	});
 
 	// Update form when formation prop changes
-	$: {
-		if (formation?.id) {
-			name.set(formation.name ?? '');
-			brief_description.set(formation.brief_description ?? '');
-			detailed_description.set(formation.detailed_description ?? '');
-			tags.set(formation.tags ?? []);
-			diagrams.set(parseDiagrams(formation.diagrams));
-			is_editable_by_others.set(formation.is_editable_by_others ?? false);
-			visibility.set(formation.visibility ?? 'public');
-			formation_type.set(formation.formation_type ?? 'offense');
-		}
-	}
+	$effect(() => {
+		if (!formation?.id) return;
+
+		name = formation.name ?? '';
+		brief_description = formation.brief_description ?? '';
+		detailed_description = formation.detailed_description ?? '';
+		tags = formation.tags ?? [];
+		diagrams = parseDiagrams(formation.diagrams);
+		is_editable_by_others = formation.is_editable_by_others ?? false;
+		visibility = formation.visibility ?? 'public';
+		formation_type = formation.formation_type ?? 'offense';
+	});
 </script>
 
 <svelte:head>
@@ -489,21 +474,27 @@
 					<h1 class="text-2xl font-bold text-center mb-6">
 						{formation.id ? 'Edit Formation' : 'Create Formation'}
 					</h1>
-					<form on:submit|preventDefault={handleSubmit} class="space-y-6">
+					<form
+						onsubmit={(event) => {
+							event.preventDefault();
+							handleSubmit(event);
+						}}
+						class="space-y-6"
+					>
 						<div class="flex flex-col">
 							<label for="name" class="mb-1 text-sm font-medium text-gray-700"
 								>Formation Name:</label
 							>
 							<input
 								id="name"
-								bind:value={$name}
-								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.name
+								bind:value={name}
+								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.name
 									? 'border-red-500 focus:ring-red-500'
 									: ''}"
 								placeholder="Enter formation name"
 							/>
 						</div>
-						{#if $errors.name}
+						{#if errors.name}
 							<p class="text-red-500 text-sm mt-1 flex items-center gap-1">
 								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
 									<path
@@ -512,7 +503,7 @@
 										clip-rule="evenodd"
 									/>
 								</svg>
-								{$errors.name}
+								{errors.name}
 							</p>
 						{/if}
 
@@ -523,14 +514,14 @@
 							<p class="text-xs text-gray-500 mb-1">For display on the formation listings page</p>
 							<input
 								id="brief_description"
-								bind:value={$brief_description}
-								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {$errors.brief_description
+								bind:value={brief_description}
+								class="p-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 {errors.brief_description
 									? 'border-red-500 focus:ring-red-500'
 									: ''}"
 								placeholder="Brief summary of the formation"
 							/>
 						</div>
-						{#if $errors.brief_description}
+						{#if errors.brief_description}
 							<p class="text-red-500 text-sm mt-1 flex items-center gap-1">
 								<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
 									<path
@@ -539,7 +530,7 @@
 										clip-rule="evenodd"
 									/>
 								</svg>
-								{$errors.brief_description}
+								{errors.brief_description}
 							</p>
 						{/if}
 
@@ -551,10 +542,9 @@
 
 							{#if Editor}
 								<div class="min-h-[300px]">
-									<svelte:component
-										this={Editor}
+									<Editor
 										apiKey={import.meta.env.VITE_TINY_API_KEY}
-										bind:value={$detailed_description}
+										bind:value={detailed_description}
 										init={{
 											height: 300,
 											menubar: false,
@@ -588,7 +578,7 @@
 							{:else}
 								<textarea
 									id="detailed_description"
-									bind:value={$detailed_description}
+									bind:value={detailed_description}
 									class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
 									rows="8"
 								></textarea>
@@ -604,8 +594,8 @@
 							<div class="relative">
 								<input
 									id="tags"
-									bind:value={$newTag}
-									on:keydown={handleTagKeydown}
+									bind:value={newTag}
+									onkeydown={handleTagKeydown}
 									placeholder="Add tags to categorize this formation"
 									class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
 								/>
@@ -613,7 +603,7 @@
 
 							<!-- Selected tags display -->
 							<div class="flex flex-wrap gap-2 mt-2">
-								{#each $tags as tag (tag)}
+								{#each tags as tag (tag)}
 									<span
 										class="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full flex items-center"
 									>
@@ -621,7 +611,7 @@
 										<button
 											type="button"
 											class="ml-1 text-blue-600 hover:text-blue-800"
-											on:click={() => removeTag(tag)}
+											onclick={() => removeTag(tag)}
 										>
 											×
 										</button>
@@ -643,7 +633,7 @@
 								<label class="inline-flex items-center">
 									<input
 										type="radio"
-										bind:group={$formation_type}
+										bind:group={formation_type}
 										value="offense"
 										class="form-radio text-blue-600"
 									/>
@@ -652,7 +642,7 @@
 								<label class="inline-flex items-center">
 									<input
 										type="radio"
-										bind:group={$formation_type}
+										bind:group={formation_type}
 										value="defense"
 										class="form-radio text-blue-600"
 									/>
@@ -674,7 +664,7 @@
 								<label class="inline-flex items-center">
 									<input
 										type="radio"
-										bind:group={$visibility}
+										bind:group={visibility}
 										value="public"
 										class="form-radio text-blue-600"
 									/>
@@ -683,7 +673,7 @@
 								<label class="inline-flex items-center">
 									<input
 										type="radio"
-										bind:group={$visibility}
+										bind:group={visibility}
 										value="unlisted"
 										class="form-radio text-blue-600"
 									/>
@@ -692,7 +682,7 @@
 								<label class="inline-flex items-center">
 									<input
 										type="radio"
-										bind:group={$visibility}
+										bind:group={visibility}
 										value="private"
 										class="form-radio text-blue-600"
 									/>
@@ -706,7 +696,7 @@
 							<input
 								type="checkbox"
 								id="is_editable_by_others"
-								bind:checked={$is_editable_by_others}
+								bind:checked={is_editable_by_others}
 								class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
 							/>
 							<label for="is_editable_by_others" class="ml-2 text-sm font-medium text-gray-700">
@@ -719,7 +709,7 @@
 							<h2 class="text-lg font-semibold">Diagrams</h2>
 							<p class="text-sm text-gray-600">Add diagrams to visualize the formation</p>
 
-							{#each $diagrams as diagram, i (i + '-' + diagramKey)}
+							{#each diagrams as diagram, i (i + '-' + diagramKey)}
 								<div class="border rounded-md p-4 mt-4">
 									<div class="flex justify-between items-center mb-2">
 										<h3 class="text-md font-medium">Diagram {i + 1}</h3>
@@ -727,14 +717,14 @@
 											<button
 												type="button"
 												class="px-2 py-1 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"
-												on:click={() => duplicateDiagram(i)}
+												onclick={() => duplicateDiagram(i)}
 											>
 												Duplicate
 											</button>
 											<button
 												type="button"
 												class="px-2 py-1 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
-												on:click={() => handleMoveUp(i)}
+												onclick={() => handleMoveUp(i)}
 												disabled={i === 0}
 											>
 												↑
@@ -742,15 +732,15 @@
 											<button
 												type="button"
 												class="px-2 py-1 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
-												on:click={() => handleMoveDown(i)}
-												disabled={i === $diagrams.length - 1}
+												onclick={() => handleMoveDown(i)}
+												disabled={i === diagrams.length - 1}
 											>
 												↓
 											</button>
 											<button
 												type="button"
 												class="px-2 py-1 bg-red-100 text-red-800 rounded-md hover:bg-red-200"
-												on:click={() => deleteDiagram(i)}
+												onclick={() => deleteDiagram(i)}
 											>
 												Delete
 											</button>
@@ -761,7 +751,7 @@
 										id={`diagram-${i}`}
 										index={i}
 										bind:this={diagramRefs[i]}
-										on:save={(event) => handleDiagramSave(event, i)}
+										onSave={(diagramData) => handleDiagramSave(diagramData, i)}
 									/>
 								</div>
 							{/each}
@@ -769,7 +759,7 @@
 							<button
 								type="button"
 								class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
-								on:click={() => {
+								onclick={() => {
 									showAddDiagramModal = true;
 								}}
 							>
@@ -781,7 +771,7 @@
 							<button
 								type="button"
 								class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md"
-								on:click={() => goto('/formations')}
+								onclick={() => goto('/formations')}
 							>
 								Cancel
 							</button>
@@ -844,7 +834,7 @@
 				<button
 					type="button"
 					class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md"
-					on:click={() => {
+					onclick={() => {
 						showAddDiagramModal = false;
 					}}
 				>
@@ -853,7 +843,7 @@
 				<button
 					type="button"
 					class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
-					on:click={addDiagram}
+					onclick={addDiagram}
 				>
 					Add
 				</button>

@@ -1,5 +1,5 @@
 <script>
-	import { onMount, createEventDispatcher, tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { browser } from '$app/environment';
 	import {
 		createInitialImageElements,
@@ -7,28 +7,30 @@
 		CANVAS_HEIGHT
 	} from '$lib/utils/excalidrawTemplates.js';
 
-	export let data = null;
-	export let id = '';
-	export let showSaveButton = false;
-	export let readonly = false;
-	export let viewOnly = false; // Support both viewOnly and readonly props
-	export let template = 'blank';
-	export let startFullscreen = false;
+	let {
+		data = null,
+		id = '',
+		showSaveButton = false,
+		readonly = false,
+		viewOnly = false, // Support both viewOnly and readonly props
+		template = 'blank',
+		startFullscreen = false,
+		onSave
+	} = $props();
 
 	// Use either viewOnly or readonly to determine if the diagram is read-only
-	$: isReadOnly = viewOnly || readonly;
+	const isReadOnly = $derived(viewOnly || readonly);
 
-	const dispatch = createEventDispatcher();
-	let excalidrawAPI;
-	let fullscreenExcalidrawAPI;
-	let ExcalidrawComponent;
-	let isFullscreen = startFullscreen;
-	let initialSceneData = null;
-	let excalidrawWrapper;
+	let excalidrawAPI = $state(null);
+	let fullscreenExcalidrawAPI = $state(null);
+	let ExcalidrawComponent = $state(null);
+	let isFullscreen = $state(startFullscreen);
+	let initialSceneData = $state(null);
+	let excalidrawWrapper = $state(null);
 	let hasInitialized = false;
 
-	let fullscreenExcalidrawComponent;
-	let fullscreenContainer;
+	let fullscreenExcalidrawComponent = $state(null);
+	let fullscreenContainer = $state(null);
 
 	if (browser) {
 		window.process = {
@@ -155,7 +157,7 @@
 				if (excalidrawAPI) {
 					// Update the preview with latest state
 					excalidrawAPI.updateScene(initialSceneData);
-					dispatch('save', initialSceneData);
+					onSave?.(initialSceneData);
 				}
 			});
 		} catch (error) {
@@ -179,7 +181,7 @@
 				},
 				files
 			};
-			dispatch('save', sceneData);
+			onSave?.(sceneData);
 		}
 	}
 
@@ -262,16 +264,16 @@
 				initialSceneData = await createInitialImageElements(template);
 			} else {
 				const fixedElements = fixGuideRectanglePosition([...data.elements]);
-					initialSceneData = {
-						elements: fixedElements,
-						appState: {
-							viewBackgroundColor: '#ffffff',
-							gridSize: 20,
-							...(data.appState || {}),
-							collaborators: Array.isArray(data.appState?.collaborators)
-								? data.appState.collaborators
-								: []
-						},
+				initialSceneData = {
+					elements: fixedElements,
+					appState: {
+						viewBackgroundColor: '#ffffff',
+						gridSize: 20,
+						...(data.appState || {}),
+						collaborators: Array.isArray(data.appState?.collaborators)
+							? data.appState.collaborators
+							: []
+					},
 					files: data.files || {}
 				};
 			}
@@ -366,7 +368,7 @@
 			const appState = excalidrawAPI.getAppState();
 			const files = excalidrawAPI.getFiles();
 			const diagramData = { elements, appState, files };
-			dispatch('save', diagramData);
+			onSave?.(diagramData);
 			return diagramData;
 		}
 		return null;
@@ -377,13 +379,11 @@
 	{#if browser && ExcalidrawComponent}
 		<div class="excalidraw-container" style="height: 600px;">
 			<div class="excalidraw-mount-point relative w-full h-full">
-					{#if !isReadOnly && showSaveButton}
-						<button
-							type="button"
-							class="absolute top-2 right-2 z-10 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md flex items-center gap-1"
-						on:click={() => {
-							toggleFullscreen();
-						}}
+				{#if !isReadOnly && showSaveButton}
+					<button
+						type="button"
+						class="absolute top-2 right-2 z-10 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md flex items-center gap-1"
+						onclick={toggleFullscreen}
 						disabled={!excalidrawAPI}
 					>
 						<svg
@@ -417,13 +417,13 @@
 					<div class="flex gap-2">
 						<button
 							class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-							on:click={handleSaveAndClose}
+							onclick={handleSaveAndClose}
 						>
 							Save & Close
 						</button>
 						<button
 							class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-							on:click={handleCancel}
+							onclick={handleCancel}
 						>
 							Cancel
 						</button>

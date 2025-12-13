@@ -1,3 +1,1 @@
-import { writable } from 'svelte/store';
-
-export const feedbackModalVisible = writable(false);
+export { feedbackStore } from './feedbackStore.svelte.js';

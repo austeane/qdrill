@@ -1,16 +1,14 @@
 <script>
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { toast } from '@zerodevx/svelte-toast';
 	import { dev } from '$app/environment';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
-	export let planId;
-	export let createdBy = null;
-	export let onDelete = () => {};
+	let { planId, createdBy = null, onDelete = () => {} } = $props();
 
-	$: isAdmin = $page.data.session?.user?.role === 'admin';
-	$: canDelete = isAdmin || $page.data.session?.user?.id === createdBy || dev;
+	const isAdmin = $derived(page.data.session?.user?.role === 'admin');
+	const canDelete = $derived(isAdmin || page.data.session?.user?.id === createdBy || dev);
 
 	async function deletePlan() {
 		if (
@@ -41,7 +39,7 @@
 				theme: { '--toastBackground': '#48bb78', '--toastColor': '#fff' }
 			});
 
-			if ($page.url.pathname === `/practice-plans/${planId}`) {
+			if (page.url.pathname === `/practice-plans/${planId}`) {
 				await goto('/practice-plans');
 			}
 		} catch (error) {
@@ -55,7 +53,7 @@
 
 {#if canDelete}
 	<button
-		on:click={deletePlan}
+		onclick={deletePlan}
 		class="text-red-600 hover:text-red-800 font-medium transition-colors duration-200"
 		title="Delete practice plan"
 	>

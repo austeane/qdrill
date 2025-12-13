@@ -1,52 +1,56 @@
 <script>
 	import { goto } from '$app/navigation';
+	import { toLocalISO } from '$lib/utils/date.js';
 
-	export let season;
-	export let practices = [];
-	export let markers = [];
-	export let currentWeek = new Date();
-	export let isAdmin = false;
-	export let teamSlug;
-	export let teamTimezone = 'UTC';
+	let {
+		season,
+		practices = $bindable([]),
+		markers = [],
+		currentWeek = new Date(),
+		isAdmin = false,
+		teamSlug = '',
+		teamTimezone = 'UTC'
+	} = $props();
 
-	let weekStart;
-	let weekEnd;
-	let weekDays = [];
-	let groupedPractices = {};
-	let publishingId = null;
-
-	$: {
+	const weekStart = $derived.by(() => {
 		// Calculate week boundaries
 		const startOfWeek = new Date(currentWeek);
 		startOfWeek.setDate(currentWeek.getDate() - currentWeek.getDay());
 		startOfWeek.setHours(0, 0, 0, 0);
-		weekStart = startOfWeek;
+		return startOfWeek;
+	});
 
-		const endOfWeek = new Date(startOfWeek);
-		endOfWeek.setDate(startOfWeek.getDate() + 6);
+	const weekEnd = $derived.by(() => {
+		const endOfWeek = new Date(weekStart);
+		endOfWeek.setDate(weekStart.getDate() + 6);
 		endOfWeek.setHours(23, 59, 59, 999);
-		weekEnd = endOfWeek;
+		return endOfWeek;
+	});
 
-		// Generate week days
-		weekDays = [];
+	const weekDays = $derived.by(() => {
+		const days = [];
 		for (let i = 0; i < 7; i++) {
-			const day = new Date(startOfWeek);
-			day.setDate(startOfWeek.getDate() + i);
-			weekDays.push(day);
+			const day = new Date(weekStart);
+			day.setDate(weekStart.getDate() + i);
+			days.push(day);
 		}
+		return days;
+	});
 
-		// Group practices by date
-		groupedPractices = {};
+	const groupedPractices = $derived.by(() => {
+		const grouped = {};
 		practices.forEach((practice) => {
 			const dateKey = practice.scheduled_date;
-			if (!groupedPractices[dateKey]) {
-				groupedPractices[dateKey] = [];
+			if (!grouped[dateKey]) {
+				grouped[dateKey] = [];
 			}
-			groupedPractices[dateKey].push(practice);
+			grouped[dateKey].push(practice);
 		});
-	}
+		return grouped;
+	});
 
-	import { toLocalISO } from '$lib/utils/date.js';
+	let publishingId = $state(null);
+
 	function navigateToWeek(date) {
 		const dateStr = toLocalISO(date);
 		// Navigate to same route with updated week param to trigger SSR reload
@@ -181,7 +185,7 @@
 	<div class="bg-gray-50 border-b px-4 py-3 flex items-center justify-between">
 		<div class="flex items-center space-x-2">
 			<button
-				on:click={() => navigateWeek(-1)}
+				onclick={() => navigateWeek(-1)}
 				class="p-2 hover:bg-gray-200 rounded transition-colors"
 				title="Previous week"
 				aria-label="Previous week"
@@ -196,7 +200,7 @@
 				</svg>
 			</button>
 			<button
-				on:click={() => navigateWeek(1)}
+				onclick={() => navigateWeek(1)}
 				class="p-2 hover:bg-gray-200 rounded transition-colors"
 				title="Next week"
 				aria-label="Next week"
@@ -206,7 +210,7 @@
 				</svg>
 			</button>
 			<button
-				on:click={goToToday}
+				onclick={goToToday}
 				class="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
 			>
 				Today
@@ -292,7 +296,7 @@
 										</a>
 										{#if !practice.is_published}
 											<button
-												on:click={() => publishPractice(practice.id)}
+												onclick={() => publishPractice(practice.id)}
 												disabled={publishingId === practice.id}
 												class="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600
                                disabled:opacity-50 disabled:cursor-not-allowed"
@@ -313,7 +317,7 @@
 						{/each}
 					{:else if isAdmin && !isPast}
 						<button
-							on:click={() => quickCreatePractice(day)}
+							onclick={() => quickCreatePractice(day)}
 							class="w-full text-center py-2 px-3 border-2 border-dashed border-gray-300
                      rounded text-gray-500 hover:border-blue-400 hover:text-blue-600
                      transition-colors text-sm"

@@ -1,16 +1,9 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-
-	/** @type {string} */
-	export let value = '';
-	/** @type {Array<{value: string, label: string}>} */
-	export let tabs = [];
-
-	const dispatch = createEventDispatcher();
+	let { value = $bindable(''), tabs = [], children, onChange } = $props();
 
 	function selectTab(tabValue) {
 		value = tabValue;
-		dispatch('change', { value: tabValue });
+		onChange?.({ value: tabValue });
 	}
 
 	function handleKeydown(e, tabValue, index) {
@@ -38,15 +31,15 @@
 				role="tab"
 				aria-selected={value === tab.value}
 				tabindex={value === tab.value ? 0 : -1}
-				on:click={() => selectTab(tab.value)}
-				on:keydown={(e) => handleKeydown(e, tab.value, index)}
+				onclick={() => selectTab(tab.value)}
+				onkeydown={(e) => handleKeydown(e, tab.value, index)}
 			>
 				{tab.label}
 			</button>
 		{/each}
 	</div>
 
-	<slot />
+	{@render children?.()}
 </div>
 
 <style>

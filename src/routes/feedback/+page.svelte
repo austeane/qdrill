@@ -2,14 +2,14 @@
 	import { invalidate } from '$app/navigation';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 
-	export let data; // Accept data from load function
+	let { data } = $props(); // Accept data from load function
 
 	// Initialize feedbackEntries from server-side data
-	let feedbackEntries = data.feedbackEntries || [];
-	let isDev = data.isDev || false; // Get dev status from load
+	let feedbackEntries = $state(data.feedbackEntries || []);
+	let isDev = $state(data.isDev || false); // Get dev status from load
 
-	let filterType = 'all';
-	let sortBy = 'date';
+	let filterType = $state('all');
+	let sortBy = $state('newest');
 
 	// Function to invalidate feedback data
 	function invalidateFeedbackData() {
@@ -17,17 +17,23 @@
 	}
 
 	// Filtering and sorting remain client-side for now
-	$: filteredFeedback = feedbackEntries.filter(
+	const filteredFeedback = $derived(
+		feedbackEntries.filter(
 		(entry) => filterType === 'all' || entry.feedback_type === filterType
+		)
 	);
 
-	$: sortedFeedback = [...filteredFeedback].sort((a, b) => {
-		if (sortBy === 'upvotes') {
-			return b.upvotes - a.upvotes;
-		} else {
+	const sortedFeedback = $derived(
+		[...filteredFeedback].sort((a, b) => {
+			if (sortBy === 'upvotes') {
+				return b.upvotes - a.upvotes;
+			}
+			if (sortBy === 'oldest') {
+				return new Date(a.timestamp) - new Date(b.timestamp);
+			}
 			return new Date(b.timestamp) - new Date(a.timestamp);
-		}
-	});
+		})
+	);
 
 	async function upvoteFeedback(id) {
 		try {
@@ -50,15 +56,17 @@
 	}
 
 	// Re-initialize feedbackEntries when data prop changes (after invalidation)
-	$: if (data.feedbackEntries) {
-		feedbackEntries = data.feedbackEntries || [];
-	}
-	$: isDev = data.isDev || false;
+	$effect(() => {
+		if (data.feedbackEntries) {
+			feedbackEntries = data.feedbackEntries || [];
+		}
+		isDev = data.isDev || false;
+	});
 
-	let newFeedback = '';
-	let newFeedbackType = 'general';
-	let name = '';
-	let email = '';
+	let newFeedback = $state('');
+	let newFeedbackType = $state('general');
+	let name = $state('');
+	let email = $state('');
 
 	async function submitDetailedFeedback() {
 		const payload = {
@@ -126,7 +134,7 @@
 			placeholder="Your email (optional)"
 		/>
 		<button
-			on:click={submitDetailedFeedback}
+			onclick={submitDetailedFeedback}
 			class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
 			disabled={!newFeedback.trim()}
 		>
@@ -167,7 +175,7 @@
 							<span> | Submitted on: {new Date(entry.timestamp).toLocaleString()}</span>
 							<span> | Upvotes: {entry.upvotes}</span>
 							<button
-								on:click={() => upvoteFeedback(entry.id)}
+								onclick={() => upvoteFeedback(entry.id)}
 								class="ml-2 px-2 py-1 bg-green-500 text-white rounded text-xs"
 							>
 								Upvote
@@ -175,7 +183,7 @@
 							<!-- Use isDev prop passed from server -->
 							{#if isDev}
 								<button
-									on:click={() => deleteFeedback(entry.id)}
+									onclick={() => deleteFeedback(entry.id)}
 									class="ml-2 px-2 py-1 bg-red-500 text-white rounded text-xs"
 								>
 									Delete

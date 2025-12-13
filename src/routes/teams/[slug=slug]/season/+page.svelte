@@ -1,46 +1,51 @@
 <script>
-	export let data;
-
-	// Early check to prevent loading components if no data
-	if (!data || !data.seasons) {
-		console.warn('Season page: No data or seasons available');
-	}
-
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
+	import { apiFetch } from '$lib/utils/apiFetch.js';
 	// Lazy-load season components to prevent SSR crashes
-	let SeasonShell;
-	let Overview;
-	let Schedule;
-	let Manage;
-	let ShareSettings;
-	let componentsLoading = true;
-	let componentLoadError = null;
 	import { Button } from '$lib/components/ui/button';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Dialog from '$lib/components/ui/Dialog.svelte';
 	import Checkbox from '$lib/components/ui/Checkbox.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
-	import { apiFetch } from '$lib/utils/apiFetch.js';
+
+	let { data } = $props();
+
+	const teamSlug = $derived(page.params.slug);
+	const isAdmin = $derived(data.userRole === 'admin');
+	const teamTimezone = $derived(data.team?.timezone || 'UTC');
+
+	let SeasonShell = $state(null);
+	let Overview = $state(null);
+	let Schedule = $state(null);
+	let Manage = $state(null);
+	let ShareSettings = $state(null);
+	let componentsLoading = $state(true);
+	let componentLoadError = $state(null);
 
 	// Page title is set below in <svelte:head>
 
-	let seasons = data.seasons || [];
-	let activeSeason = seasons.find((s) => s.is_active);
-	let sections = [];
-	let markers = [];
-	let practices = [];
-	let showCreateModal = false;
-	let isCreating = false;
-	let createError = '';
-	let activeTab = 'overview'; // For tab navigation
+	let seasons = $state([]);
+	$effect(() => {
+		seasons = data.seasons || [];
+	});
 
-	let newSeason = {
+	const activeSeason = $derived(seasons.find((s) => s.is_active) ?? null);
+
+	let sections = $state([]);
+	let markers = $state([]);
+	let practices = $state([]);
+	let showCreateModal = $state(false);
+	let isCreating = $state(false);
+	let createError = $state('');
+	let activeTab = $state('overview'); // For tab navigation
+
+	let newSeason = $state({
 		name: '',
 		start_date: '',
 		end_date: '',
 		is_active: false
-	};
+	});
 
 	onMount(async () => {
 		// Dynamically import all season components after mount (client-side only)
@@ -59,59 +64,91 @@
 			Schedule = scheduleModule.default;
 			Manage = manageModule.default;
 			ShareSettings = shareModule.default;
-			componentsLoading = false;
 		} catch (err) {
 			console.error('Failed to load season components:', err);
 			componentLoadError = err;
+		} finally {
 			componentsLoading = false;
-		}
-
-		if (activeSeason) {
-			await loadTimelineData();
 		}
 	});
 
-	async function loadTimelineData() {
-		if (!activeSeason) return;
+	async function refreshTimelineData() {
+		const season = activeSeason;
+		if (!season) return;
 
-			try {
-				const sectionsRes = await apiFetch(`/api/seasons/${activeSeason.id}/sections`);
-				sections = sectionsRes;
-			} catch (err) {
-				console.warn('Failed to load season sections:', err);
-			}
+		try {
+			const sectionsRes = await apiFetch(`/api/seasons/${season.id}/sections`);
+			sections = sectionsRes || [];
+		} catch (err) {
+			console.warn('Failed to load season sections:', err);
+		}
 
-			try {
-				const markersRes = await apiFetch(`/api/seasons/${activeSeason.id}/markers`);
-				markers = markersRes;
-			} catch (err) {
-				console.warn('Failed to load season markers:', err);
-			}
+		try {
+			const markersRes = await apiFetch(`/api/seasons/${season.id}/markers`);
+			markers = markersRes || [];
+		} catch (err) {
+			console.warn('Failed to load season markers:', err);
+		}
 
+		try {
+			const practicesRes = await apiFetch(`/api/teams/${teamSlug}/practice-plans`);
+			const list = practicesRes?.items || [];
+			practices = list.filter((p) => p.season_id === season.id);
+		} catch (err) {
+			console.warn('Failed to load season practices:', err);
+		}
+	}
+
+	$effect(() => {
+		if (!activeSeason) {
+			sections = [];
+			markers = [];
+			practices = [];
+			return;
+		}
+
+		let cancelled = false;
+
+		(async () => {
 			try {
-				const practicesRes = await apiFetch(`/api/teams/${$page.params.slug}/practice-plans`);
+				const [sectionsRes, markersRes, practicesRes] = await Promise.all([
+					apiFetch(`/api/seasons/${activeSeason.id}/sections`),
+					apiFetch(`/api/seasons/${activeSeason.id}/markers`),
+					apiFetch(`/api/teams/${teamSlug}/practice-plans`)
+				]);
+
+				if (cancelled) return;
+
+				sections = sectionsRes || [];
+				markers = markersRes || [];
+
 				const list = practicesRes?.items || [];
 				practices = list.filter((p) => p.season_id === activeSeason.id);
 			} catch (err) {
-				console.warn('Failed to load season practices:', err);
+				if (cancelled) return;
+				console.warn('Failed to load season timeline data:', err);
 			}
-		}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
+	});
 
 	async function createSeason() {
 		if (!newSeason.name || !newSeason.start_date || !newSeason.end_date) return;
 		isCreating = true;
 		createError = '';
 		try {
-			const season = await apiFetch(`/api/teams/${$page.params.slug}/seasons`, {
+			const season = await apiFetch(`/api/teams/${teamSlug}/seasons`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(newSeason)
 			});
+
 			seasons = [...seasons, season];
 			if (season.is_active) {
-				activeSeason = season;
 				seasons = seasons.map((s) => ({ ...s, is_active: s.id === season.id }));
-				await loadTimelineData();
 			}
 			showCreateModal = false;
 			resetForm();
@@ -129,13 +166,12 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ is_active: true })
 			});
-				seasons = seasons.map((s) => ({ ...s, is_active: s.id === seasonId }));
-				activeSeason = seasons.find((s) => s.id === seasonId);
-				await loadTimelineData();
-			} catch (err) {
-				console.warn('Failed to set active season:', err);
-			}
+
+			seasons = seasons.map((s) => ({ ...s, is_active: s.id === seasonId }));
+		} catch (err) {
+			console.warn('Failed to set active season:', err);
 		}
+	}
 
 	function resetForm() {
 		newSeason = {
@@ -147,35 +183,52 @@
 		createError = '';
 	}
 
-	// Event handlers
-	function handleTabChange(event) {
-		activeTab = event.detail;
-	}
-
 	function handleSectionChange() {
-		loadTimelineData();
+		refreshTimelineData();
 	}
 
 	function handleMarkerChange() {
-		loadTimelineData();
+		refreshTimelineData();
 	}
 
-	function handlePracticeCreated(event) {
-		practices = [...practices, event.detail.plan || event.detail];
-		loadTimelineData();
+	function handlePracticeCreated(detail) {
+		// Schedule view returns the created plan directly
+		if (detail) {
+			practices = [...practices, detail];
+		}
+		refreshTimelineData();
 	}
 
-	function handleCreatePractice(event) {
-		// Navigate to practice creation with prefilled data
-		const { date, sectionId } = event.detail;
+	function handleCreatePractice(detail) {
+		const { date, sectionId } = detail ?? {};
 		// This could open a modal or navigate to practice creation page
 		console.log('Create practice for date:', date, 'section:', sectionId);
 	}
 </script>
 
 <svelte:head>
-	<title>Season - {$page.params.slug}</title>
+	<title>Season - {teamSlug}</title>
 </svelte:head>
+
+{#snippet createSeasonFooter()}
+	<Button
+		variant="ghost"
+		onclick={() => {
+			showCreateModal = false;
+			resetForm();
+		}}
+		disabled={isCreating}
+	>
+		Cancel
+	</Button>
+	<Button
+		variant="primary"
+		onclick={createSeason}
+		disabled={!newSeason.name || !newSeason.start_date || !newSeason.end_date || isCreating}
+	>
+		{isCreating ? 'Creating...' : 'Create'}
+	</Button>
+{/snippet}
 
 {#if activeSeason}
 	{#if componentsLoading}
@@ -199,63 +252,46 @@
 			</Card>
 		</div>
 	{:else if SeasonShell}
-		<svelte:component
-			this={SeasonShell}
-			season={activeSeason}
-			{sections}
-			{markers}
-			{practices}
-			isAdmin={data.userRole === 'admin'}
-			teamSlug={$page.params.slug}
-			bind:activeTab
-			on:tabChange={handleTabChange}
-		>
+		<SeasonShell season={activeSeason} {sections} {markers} {practices} teamId={teamSlug} {isAdmin} bind:activeTab>
 			{#if activeTab === 'overview' && Overview}
-				<svelte:component
-					this={Overview}
+				<Overview
 					season={activeSeason}
-					bind:sections
-					bind:markers
-					bind:practices
-					isAdmin={data.userRole === 'admin'}
-					teamSlug={$page.params.slug}
-					teamTimezone={data.team?.timezone || 'UTC'}
-					on:sectionChange={handleSectionChange}
-					on:markerChange={handleMarkerChange}
-					on:createPractice={handleCreatePractice}
+					{sections}
+					{markers}
+					{practices}
+					{isAdmin}
+					{teamSlug}
+					teamTimezone={teamTimezone}
+					onSectionChange={handleSectionChange}
+					onMarkerChange={handleMarkerChange}
+					onCreatePractice={handleCreatePractice}
 				/>
 			{:else if activeTab === 'schedule' && Schedule}
-				<svelte:component
-					this={Schedule}
+				<Schedule
 					season={activeSeason}
-					bind:sections
-					bind:markers
-					bind:practices
-					isAdmin={data.userRole === 'admin'}
-					teamSlug={$page.params.slug}
-					teamTimezone={data.team?.timezone || 'UTC'}
-					on:practiceCreated={handlePracticeCreated}
-					on:markerChange={handleMarkerChange}
+					{sections}
+					{markers}
+					{practices}
+					{isAdmin}
+					{teamSlug}
+					teamTimezone={teamTimezone}
+					onPracticeCreated={handlePracticeCreated}
+					onMarkerChange={handleMarkerChange}
 				/>
 			{:else if activeTab === 'manage' && Manage}
-				<svelte:component
-					this={Manage}
+				<Manage
 					season={activeSeason}
 					bind:sections
 					bind:markers
-					teamSlug={$page.params.slug}
-					on:change={loadTimelineData}
-					on:sectionChange={handleSectionChange}
-					on:markerChange={handleMarkerChange}
+					{teamSlug}
+					onChange={refreshTimelineData}
+					onSectionChange={handleSectionChange}
+					onMarkerChange={handleMarkerChange}
 				/>
 			{:else if activeTab === 'share' && ShareSettings}
-				<svelte:component
-					this={ShareSettings}
-					seasonId={activeSeason.id}
-					isAdmin={data.userRole === 'admin'}
-				/>
+				<ShareSettings seasonId={activeSeason.id} {isAdmin} />
 			{/if}
-		</svelte:component>
+		</SeasonShell>
 	{/if}
 {:else}
 	<!-- No Active Season -->
@@ -272,10 +308,10 @@
 					</p>
 				</div>
 
-				{#if data.userRole === 'admin'}
+				{#if isAdmin}
 					<Button
 						variant="primary"
-						on:click={() => (showCreateModal = true)}
+						onclick={() => (showCreateModal = true)}
 						class="w-full sm:w-auto"
 					>
 						Create Season
@@ -285,25 +321,27 @@
 				{#if seasons.length > 0}
 					<h2 class="text-lg font-semibold mt-8 mb-4">All Seasons</h2>
 					<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-						{#each seasons as season (season.id)}
-							<Card>
-								<h3 slot="header" class="font-semibold">{season.name}</h3>
-								<p class="text-sm text-gray-600 mt-1">
-									{new Date(season.start_date).toLocaleDateString()} - {new Date(
-										season.end_date
-									).toLocaleDateString()}
-								</p>
-								<div slot="footer">
-									{#if data.userRole === 'admin'}
-										<Button variant="ghost" size="sm" on:click={() => setActive(season.id)}>
-											Set Active
-										</Button>
-									{/if}
-								</div>
-							</Card>
-						{/each}
-					</div>
-				{/if}
+							{#each seasons as season (season.id)}
+								<Card>
+									{#snippet header()}
+										<h3 class="font-semibold">{season.name}</h3>
+									{/snippet}
+									<p class="text-sm text-gray-600 mt-1">
+										{new Date(season.start_date).toLocaleDateString()} - {new Date(
+											season.end_date
+										).toLocaleDateString()}
+									</p>
+									{#snippet footer()}
+										{#if isAdmin}
+											<Button variant="ghost" size="sm" onclick={() => setActive(season.id)}>
+												Set Active
+											</Button>
+										{/if}
+									{/snippet}
+								</Card>
+							{/each}
+						</div>
+					{/if}
 			</div>
 		</Card>
 	</div>
@@ -314,6 +352,8 @@
 	bind:open={showCreateModal}
 	title="Create Season"
 	description="Define the dates and optionally set it active."
+	footer={createSeasonFooter}
+	onClose={resetForm}
 >
 	<div class="grid gap-4">
 		<Input
@@ -328,24 +368,6 @@
 		{#if createError}
 			<p class="text-sm text-red-600">{createError}</p>
 		{/if}
-	</div>
-
-	<div slot="footer" class="flex justify-end gap-2">
-		<Button
-			variant="ghost"
-			on:click={() => {
-				showCreateModal = false;
-				resetForm();
-			}}
-			disabled={isCreating}>Cancel</Button
-		>
-		<Button
-			variant="primary"
-			on:click={createSeason}
-			disabled={!newSeason.name || !newSeason.start_date || !newSeason.end_date || isCreating}
-		>
-			{isCreating ? 'Creating...' : 'Create'}
-		</Button>
 	</div>
 </Dialog>
 

@@ -1,5 +1,5 @@
 <script>
-	import { timeline, basicInfo } from '$lib/stores/wizardStore';
+	import { wizardStore } from '$lib/stores/wizardStore';
 	import { sections as sectionsStore } from '$lib/stores/sectionsStore'; // Import the main store
 	// Removed import for wizardStore sections
 	// Removed import for wizardValidation
@@ -12,119 +12,70 @@
 	};
 
 	// Reactive statement to initialize and sync timeline with sectionsStore
-	$: {
-		const sections = $sectionsStore;
-		let currentTimeline = $timeline;
-		let needsUpdate = false;
+	$effect(() => {
+		const sections = sectionsStore ?? [];
+		const currentTimeline = wizardStore.timeline;
 
-		// --- Sync Timeline with SectionsStore ---
+		const totalTime = wizardStore.basicInfo.totalTime || currentTimeline.totalTime || 120;
+		const defaultDuration = sections.length > 0 ? Math.floor(totalTime / sections.length) : 15;
 
-		// 1. Check for removals: Filter out timeline sections whose IDs are no longer in sectionsStore
-		const sectionIds = new Set(sections.map((s) => s.id));
-		const syncedTimelineSections = currentTimeline.sections.filter((ts) => sectionIds.has(ts.id));
-		if (syncedTimelineSections.length !== currentTimeline.sections.length) {
-			needsUpdate = true;
-		}
+		const existingById = new Map(currentTimeline.sections.map((section) => [section.id, section]));
 
-		// 2. Check for additions: Find sections in sectionsStore not yet in the timeline
-		const timelineSectionIds = new Set(syncedTimelineSections.map((ts) => ts.id));
-		const addedSections = sections.filter((s) => !timelineSectionIds.has(s.id));
-		if (addedSections.length > 0) {
-			needsUpdate = true;
-			const defaultDuration =
-				sections.length > 0 ? Math.floor($basicInfo.totalTime / sections.length) : 15;
-			addedSections.forEach((section) => {
-				syncedTimelineSections.push({
-					id: section.id,
-					name: section.name, // Get name from sectionsStore
-					// icon: section.icon, // Icon is not in sectionsStore
-					duration: defaultDuration, // Assign default duration
-					startTime: 0 // Start time will be recalculated
-				});
+		let currentStartTime = 0;
+		const nextSections = sections.map((section) => {
+			const existing = existingById.get(section.id);
+			const duration = existing?.duration ?? defaultDuration;
+
+			const next = {
+				...existing,
+				id: section.id,
+				name: section.name,
+				duration,
+				startTime: currentStartTime
+			};
+
+			currentStartTime += duration || 0;
+			return next;
+		});
+
+		const needsUpdate =
+			currentTimeline.sections.length !== nextSections.length ||
+			currentTimeline.sections.some((section, index) => {
+				const next = nextSections[index];
+				if (!next) return true;
+				return (
+					section.id !== next.id ||
+					section.name !== next.name ||
+					(section.duration || 0) !== (next.duration || 0) ||
+					(section.startTime || 0) !== (next.startTime || 0)
+				);
 			});
-		}
 
-		// 3. Check for name changes and reorder based on sectionsStore order
-		let reorderedAndUpdated = sections
-			.map((section) => {
-				let timelineSection = syncedTimelineSections.find((ts) => ts.id === section.id);
-				if (timelineSection) {
-					// Update name if it changed
-					if (timelineSection.name !== section.name) {
-						timelineSection.name = section.name;
-						needsUpdate = true;
-					}
-					return timelineSection;
-				} else {
-					// This case should theoretically be handled by additions check, but as a fallback:
-					const defaultDuration =
-						sections.length > 0 ? Math.floor($basicInfo.totalTime / sections.length) : 15;
-					needsUpdate = true;
-					return {
-						id: section.id,
-						name: section.name,
-						duration: defaultDuration,
-						startTime: 0
-					};
-				}
-			})
-			.filter(Boolean); // Filter out any potential undefined entries
-
-		if (reorderedAndUpdated.length !== syncedTimelineSections.length) {
-			needsUpdate = true; // Length change indicates sync issue
-		}
-		// Check if order actually changed
-		if (!needsUpdate) {
-			for (let i = 0; i < reorderedAndUpdated.length; i++) {
-				if (reorderedAndUpdated[i].id !== syncedTimelineSections[i]?.id) {
-					needsUpdate = true;
-					break;
-				}
-			}
-		}
-
-		// 4. Recalculate start times if any update occurred
 		if (needsUpdate) {
-			let currentStartTime = 0;
-			reorderedAndUpdated = reorderedAndUpdated.map((section) => {
-				const sectionCopy = { ...section }; // Create copy before modifying
-				sectionCopy.startTime = currentStartTime;
-				currentStartTime += sectionCopy.duration || 0;
-				return sectionCopy;
-			});
-
-			// 5. Update the timeline store
-			timeline.set({
-				totalTime: currentTimeline.totalTime || $basicInfo.totalTime, // Preserve totalTime if exists
-				sections: reorderedAndUpdated
-			});
+			wizardStore.timeline.sections = nextSections;
+			wizardStore.timeline.totalTime = currentTimeline.totalTime || wizardStore.basicInfo.totalTime;
 		}
-	}
+	});
 
 	// Handle duration change - still modifies the timeline store directly
 	function handleDurationChange(index, newDuration) {
 		touched.sections = true;
-		timeline.update((current) => {
-			const updated = { ...current };
-			const sections = [...updated.sections]; // Ensure we modify a copy
+		const sections = [...wizardStore.timeline.sections];
 
-			if (sections[index]) {
-				sections[index] = {
-					...sections[index],
-					duration: Math.max(1, parseInt(newDuration) || 0)
-				};
-			}
+		if (sections[index]) {
+			sections[index] = {
+				...sections[index],
+				duration: Math.max(1, parseInt(newDuration) || 0)
+			};
+		}
 
-			// Recalculate start times
-			let currentStartTime = 0;
-			updated.sections = sections.map((section) => {
-				const sectionCopy = { ...section }; // Create copy before modifying
-				sectionCopy.startTime = currentStartTime;
-				currentStartTime += sectionCopy.duration || 0;
-				return sectionCopy;
-			});
-
-			return updated;
+		// Recalculate start times
+		let currentStartTime = 0;
+		wizardStore.timeline.sections = sections.map((section) => {
+			const sectionCopy = { ...section };
+			sectionCopy.startTime = currentStartTime;
+			currentStartTime += sectionCopy.duration || 0;
+			return sectionCopy;
 		});
 	}
 
@@ -142,33 +93,29 @@
 		const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'));
 		if (sourceIndex === targetIndex) return;
 
-		timeline.update((current) => {
-			const updated = { ...current };
-			const sections = [...updated.sections]; // Operate on a copy
-			const [removed] = sections.splice(sourceIndex, 1);
-			sections.splice(targetIndex, 0, removed);
+		const sections = [...wizardStore.timeline.sections];
+		const [removed] = sections.splice(sourceIndex, 1);
+		sections.splice(targetIndex, 0, removed);
 
-			// Recalculate start times
-			let currentStartTime = 0;
-			updated.sections = sections.map((section) => {
-				const sectionCopy = { ...section }; // Create copy before modifying
-				sectionCopy.startTime = currentStartTime;
-				currentStartTime += sectionCopy.duration || 0;
-				return sectionCopy;
-			});
-
-			return updated;
+		// Recalculate start times
+		let currentStartTime = 0;
+		wizardStore.timeline.sections = sections.map((section) => {
+			const sectionCopy = { ...section };
+			sectionCopy.startTime = currentStartTime;
+			currentStartTime += sectionCopy.duration || 0;
+			return sectionCopy;
 		});
 	}
 
 	// Calculate total time used
-	$: totalTimeUsed = $timeline.sections.reduce(
-		(total, section) => total + (section.duration || 0),
-		0
+	const totalTimeUsed = $derived(
+		wizardStore.timeline.sections.reduce((total, section) => total + (section.duration || 0), 0)
 	);
 	// Use basicInfo totalTime which might be separately editable
-	$: definedTotalTime = $basicInfo.totalTime || $timeline.totalTime || 120; // Provide a fallback
-	$: timeRemaining = definedTotalTime - totalTimeUsed;
+	const definedTotalTime = $derived(
+		wizardStore.basicInfo.totalTime || wizardStore.timeline.totalTime || 120
+	); // Provide a fallback
+	const timeRemaining = $derived(definedTotalTime - totalTimeUsed);
 
 	// Format time for display
 	function formatTime(minutes) {
@@ -216,16 +163,16 @@
 		<h3 class="text-lg font-medium text-gray-900 mb-4">Timeline Setup</h3>
 
 		<div class="space-y-4" role="list">
-			{#if $timeline.sections.length > 0}
-				{#each $timeline.sections as section, index (section.id)}
+			{#if wizardStore.timeline.sections.length > 0}
+				{#each wizardStore.timeline.sections as section, index (section.id)}
 					<!-- Use section.id as key -->
 					<div
 						role="listitem"
 						class="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
 						draggable="true"
-						on:dragstart={(e) => handleDragStart(e, index)}
-						on:dragover={handleDragOver}
-						on:drop={(e) => handleDrop(e, index)}
+						ondragstart={(e) => handleDragStart(e, index)}
+						ondragover={handleDragOver}
+						ondrop={(e) => handleDrop(e, index)}
 					>
 						<div class="flex items-center justify-between">
 							<div class="flex items-center space-x-3">
@@ -243,7 +190,7 @@
 										type="number"
 										min="1"
 										value={section.duration}
-										on:input={(e) => handleDurationChange(index, e.target.value)}
+										oninput={(e) => handleDurationChange(index, e.target.value)}
 										class="shadow-sm focus:ring-blue-500 focus:border-blue-500 w-20 sm:text-sm border-gray-300 rounded-md"
 									/>
 									<span class="text-sm text-gray-500">min</span>
@@ -252,7 +199,7 @@
 									<button
 										type="button"
 										class="p-1 text-gray-400 hover:text-gray-500"
-										on:click={() =>
+										onclick={() =>
 											handleDurationChange(index, Math.max(1, (section.duration || 0) - 5))}
 										aria-label="Decrease duration by 5 minutes"
 									>
@@ -272,7 +219,7 @@
 									<button
 										type="button"
 										class="p-1 text-gray-400 hover:text-gray-500"
-										on:click={() => handleDurationChange(index, (section.duration || 0) + 5)}
+										onclick={() => handleDurationChange(index, (section.duration || 0) + 5)}
 										aria-label="Increase duration by 5 minutes"
 									>
 										<svg

@@ -1,18 +1,13 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
-
-	export let section;
-	export let onRemove;
-
-	const dispatch = createEventDispatcher();
+	let { section, onRemove, onOpenDrillSearch, onOpenTimelineSelector } = $props();
 
 	function openDrillSearch() {
-		dispatch('openDrillSearch', { sectionId: section.id });
+		onOpenDrillSearch?.({ sectionId: section.id });
 	}
 
 	function openTimelineSelector() {
-		const parallelGroupId = section.items.find((i) => i.parallel_group_id)?.parallel_group_id;
-		dispatch('openTimelineSelector', { sectionId: section.id, parallelGroupId });
+		const parallelGroupId = section.items?.find((i) => i.parallel_group_id)?.parallel_group_id;
+		onOpenTimelineSelector?.({ sectionId: section.id, parallelGroupId });
 	}
 </script>
 
@@ -26,21 +21,21 @@
 	<button
 		type="button"
 		class="text-blue-500 hover:text-blue-700 text-sm"
-		on:click={openDrillSearch}
+		onclick={openDrillSearch}
 	>
 		Add Drill
 	</button>
 	<button
 		type="button"
 		class="text-blue-500 hover:text-blue-700 text-sm"
-		on:click={openTimelineSelector}
+		onclick={openTimelineSelector}
 	>
 		Create Parallel Block
 	</button>
 	<button
 		type="button"
 		class="text-red-500 hover:text-red-700"
-		on:click={() => onRemove(section.id)}
+		onclick={() => onRemove(section.id)}
 	>
 		Remove Section
 	</button>

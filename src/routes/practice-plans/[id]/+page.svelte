@@ -12,12 +12,16 @@
 	import { toast } from '@zerodevx/svelte-toast';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { sanitizeHtml } from '$lib/utils/sanitize.js';
+	import { SectionObserver } from '$lib/utils/observers';
 
 	let { data } = $props();
 	const practicePlan = $derived(data?.practicePlan);
 
-	// State for tracking the current section
-	let currentSectionId = $state(null);
+	let sectionsContainer;
+	const sectionObserver = new SectionObserver({
+		getScope: () => sectionsContainer
+	});
+	const currentSectionId = $derived(sectionObserver.currentSectionId);
 
 	// Group filter state
 	let selectedGroupFilter = $state('All Groups');
@@ -43,30 +47,8 @@
 	);
 
 	$effect(() => {
-		// Re-run when the rendered section list changes
 		filteredSections;
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				entries.forEach((entry) => {
-					if (entry.isIntersecting) {
-						const sectionId = entry.target.getAttribute('data-section-id');
-						currentSectionId = sectionId;
-					}
-				});
-			},
-			{
-				rootMargin: '-50px 0px -50px 0px',
-				threshold: 0.1
-			}
-		);
-
-		// Observe all sections
-		document.querySelectorAll('[data-section-id]').forEach((section) => {
-			observer.observe(section);
-		});
-
-		return () => observer.disconnect();
+		sectionObserver.refresh();
 	});
 
 	// Format time for display
@@ -276,7 +258,7 @@
 			/>
 
 		<!-- Practice Plan Content -->
-		<div class="flex-1">
+		<div class="flex-1" bind:this={sectionsContainer}>
 			{#each filteredSections as section, index (section.id)}
 					<div data-section-id={section.id} class="mb-6">
 						<Section

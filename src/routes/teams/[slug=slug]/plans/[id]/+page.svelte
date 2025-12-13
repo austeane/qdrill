@@ -6,14 +6,18 @@
 	import DeletePracticePlan from '$lib/components/DeletePracticePlan.svelte';
 	import GroupFilter from '$lib/components/practice-plan/GroupFilter.svelte';
 	import { filterSectionsByGroup } from '$lib/utils/groupFilter.js';
+	import { SectionObserver } from '$lib/utils/observers';
 
 	let { data } = $props();
 	const practicePlan = $derived(data.practicePlan);
 	const team = $derived(data.team);
 	const userRole = $derived(data.userRole);
 
-	// Store for tracking the current section
-	let currentSectionId = $state(null);
+	let sectionsContainer;
+	const sectionObserver = new SectionObserver({
+		getScope: () => sectionsContainer
+	});
+	const currentSectionId = $derived(sectionObserver.currentSectionId);
 
 	// Group filter state
 	let selectedGroupFilter = $state('All Groups');
@@ -33,31 +37,9 @@
 	// Add this near the other state variables
 	let isDescriptionExpanded = $state(true);
 
-	// Intersection Observer setup for section tracking
 	$effect(() => {
-		filteredSections.length;
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				entries.forEach((entry) => {
-					if (entry.isIntersecting) {
-						const sectionId = entry.target.getAttribute('data-section-id');
-						currentSectionId = sectionId;
-					}
-				});
-			},
-			{
-				rootMargin: '-50px 0px -50px 0px',
-				threshold: 0.1
-			}
-		);
-
-		// Observe all sections
-		document.querySelectorAll('[data-section-id]').forEach((section) => {
-			observer.observe(section);
-		});
-
-		return () => observer.disconnect();
+		filteredSections;
+		sectionObserver.refresh();
 	});
 
 	// Format time for display
@@ -196,7 +178,7 @@
 		</div>
 
 	<!-- Sections -->
-		<div class="sections-container">
+		<div class="sections-container" bind:this={sectionsContainer}>
 			{#each filteredSections as section, index (section.id)}
 				<div data-section-id={section.id}>
 					<Section {section} sectionIndex={index} isActive={section.id === currentSectionId} />

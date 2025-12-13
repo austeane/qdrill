@@ -1,46 +1,44 @@
 <script>
-	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
+	import { on } from 'svelte/events';
 
 	let { fallback: Fallback = null, onError = null, children } = $props();
 
-	let hasError = $state(false);
-	let error = $state(null);
+	let globalError = $state(null);
 
-	// Error boundaries in Svelte are not yet fully supported like in React
-	// This is a simplified version that can catch some errors
-	onMount(() => {
-		// Set up global error handler for this component tree
+	function reportError(error, context = {}) {
+		onError?.(error, context);
+		console.error('Error boundary caught error:', error);
+	}
+
+	function retryGlobal() {
+		globalError = null;
+	}
+
+	$effect(() => {
+		if (!browser) return;
+
 		const handleError = (event) => {
-			hasError = true;
-			error = event.error || event.reason || new Error('Unknown error');
-
-			if (onError) {
-				onError(error, { componentStack: 'ErrorBoundary' });
-			}
-
-			// Log to monitoring service
-			console.error('Error boundary caught error:', error);
-
-			// Prevent default error handling
-			event.preventDefault();
+			globalError = event.error || event.reason || new Error('Unknown error');
+			reportError(globalError, { componentStack: 'ErrorBoundary' });
+			event.preventDefault?.();
 		};
 
-		window.addEventListener('error', handleError);
-		window.addEventListener('unhandledrejection', handleError);
+		const offError = on(window, 'error', handleError);
+		const offRejection = on(window, 'unhandledrejection', handleError);
 
 		return () => {
-			window.removeEventListener('error', handleError);
-			window.removeEventListener('unhandledrejection', handleError);
+			offError();
+			offRejection();
 		};
 	});
 
-	function retry() {
-		hasError = false;
-		error = null;
+	function handleBoundaryError(error, reset) {
+		reportError(error, { componentStack: 'ErrorBoundary', reset });
 	}
 </script>
 
-{#if hasError}
+{#snippet fallbackUi(error, retry)}
 	{#if Fallback}
 		<Fallback {error} {retry} />
 	{:else}
@@ -52,7 +50,7 @@
 							stroke-linecap="round"
 							stroke-linejoin="round"
 							stroke-width="2"
-							d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+							d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77-.833.192 2.5 1.732 2.5z"
 						/>
 					</svg>
 				</div>
@@ -73,6 +71,16 @@
 			</div>
 		</div>
 	{/if}
+{/snippet}
+
+{#if globalError}
+	{@render fallbackUi(globalError, retryGlobal)}
 {:else}
-	{@render children?.()}
+	<svelte:boundary onerror={handleBoundaryError}>
+		{@render children?.()}
+
+		{#snippet failed(error, reset)}
+			{@render fallbackUi(error, reset)}
+		{/snippet}
+	</svelte:boundary>
 {/if}

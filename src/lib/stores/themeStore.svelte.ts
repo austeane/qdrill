@@ -1,16 +1,7 @@
 import { browser } from '$app/environment';
+import { MediaQuery } from 'svelte/reactivity';
 
 export type Theme = 'light' | 'dark' | 'system';
-
-function getSystemRenderedTheme(): 'light' | 'dark' {
-	if (!browser) return 'light';
-	return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-function resolveRenderedTheme(theme: Theme): 'light' | 'dark' {
-	if (theme === 'system') return getSystemRenderedTheme();
-	return theme === 'dark' ? 'dark' : 'light';
-}
 
 function applyThemeToDom(rendered: 'light' | 'dark') {
 	if (!browser) return;
@@ -35,9 +26,16 @@ function readStoredTheme(): Theme {
 
 class ThemeStore {
 	value = $state<Theme>(readStoredTheme());
-	rendered = $state<'light' | 'dark'>('light');
 
+	#prefersDark = new MediaQuery('prefers-color-scheme: dark', false);
 	#cleanup: (() => void) | null = null;
+
+	get rendered(): 'light' | 'dark' {
+		if (this.value === 'system') {
+			return this.#prefersDark.current ? 'dark' : 'light';
+		}
+		return this.value;
+	}
 
 	init() {
 		// In case the import is server-side and then hydrated, ensure we apply
@@ -45,28 +43,19 @@ class ThemeStore {
 		if (!browser) return;
 		if (this.#cleanup) return;
 
-		const apply = () => {
-			this.rendered = resolveRenderedTheme(this.value);
-			applyThemeToDom(this.rendered);
-		};
+		applyThemeToDom(this.rendered);
 
-		apply();
-
-		const media = window.matchMedia('(prefers-color-scheme: dark)');
-		const handler = () => {
-			if (this.value !== 'system') return;
-			apply();
-		};
-
-		media.addEventListener('change', handler);
-		this.#cleanup = () => media.removeEventListener('change', handler);
+		this.#cleanup = $effect.root(() => {
+			$effect(() => {
+				applyThemeToDom(this.rendered);
+			});
+		});
 	}
 
 	set(next: Theme) {
 		this.value = next;
 		if (browser) {
 			localStorage.setItem('theme', next);
-			this.rendered = resolveRenderedTheme(this.value);
 			applyThemeToDom(this.rendered);
 		}
 	}

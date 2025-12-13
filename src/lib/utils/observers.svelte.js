@@ -70,6 +70,9 @@ export class SectionObserver {
 
 	refresh() {
 		if (!browser) return;
+		if (!this.#observer) {
+			this.#subscribe();
+		}
 		if (!this.#observer) return;
 
 		this.#observer.disconnect();

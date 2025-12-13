@@ -36,34 +36,66 @@
 		'#f97316' // Orange
 	];
 
+	// Clamp a date to season bounds
+	function clampToSeason(date) {
+		if (!season?.start_date || !season?.end_date) return date;
+
+		const seasonStart = new Date(season.start_date);
+		const seasonEnd = new Date(season.end_date);
+		const d = new Date(date);
+
+		if (d < seasonStart) return seasonStart;
+		if (d > seasonEnd) return seasonEnd;
+		return d;
+	}
+
+	// Get reference date (today if within season, or season start if outside)
+	function getSeasonReferenceDate() {
+		const today = new Date();
+		if (!season?.start_date || !season?.end_date) return today;
+
+		const seasonStart = new Date(season.start_date);
+		const seasonEnd = new Date(season.end_date);
+
+		if (today < seasonStart) return seasonStart;
+		if (today > seasonEnd) return seasonEnd;
+		return today;
+	}
+
 	// Quick date range options
 	function setDateRange(option) {
-		const today = new Date();
-		const start = new Date(today);
+		const referenceDate = getSeasonReferenceDate();
+		const start = new Date(referenceDate);
 
 		switch (option) {
 			case 'this-week': {
 				// Start from Sunday of this week
 				const dayOfWeek = start.getDay();
 				start.setDate(start.getDate() - dayOfWeek);
-				startDate = toLocalISO(start);
+				const clampedStart = clampToSeason(start);
+				startDate = toLocalISO(clampedStart);
 
 				const endOfWeek = new Date(start);
 				endOfWeek.setDate(start.getDate() + 6);
-				endDate = toLocalISO(endOfWeek);
+				const clampedEnd = clampToSeason(endOfWeek);
+				endDate = toLocalISO(clampedEnd);
 				break;
 			}
 
 			case 'next-4-weeks': {
-				startDate = toLocalISO(today);
-				const fourWeeksLater = new Date(today);
-				fourWeeksLater.setDate(today.getDate() + 28);
-				endDate = toLocalISO(fourWeeksLater);
+				const clampedStart = clampToSeason(referenceDate);
+				startDate = toLocalISO(clampedStart);
+
+				const fourWeeksLater = new Date(referenceDate);
+				fourWeeksLater.setDate(referenceDate.getDate() + 28);
+				const clampedEnd = clampToSeason(fourWeeksLater);
+				endDate = toLocalISO(clampedEnd);
 				break;
 			}
 
 			case 'to-season-end': {
-				startDate = toLocalISO(today);
+				const clampedStart = clampToSeason(referenceDate);
+				startDate = toLocalISO(clampedStart);
 				endDate = season?.end_date || '';
 				break;
 			}

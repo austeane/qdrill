@@ -180,6 +180,8 @@
 			label="Practice Date"
 			type="date"
 			bind:value={selectedDate}
+			min={season?.start_date}
+			max={season?.end_date}
 			required
 			disabled={loading}
 		/>

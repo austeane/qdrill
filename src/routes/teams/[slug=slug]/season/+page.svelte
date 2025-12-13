@@ -204,6 +204,13 @@
 		// This could open a modal or navigate to practice creation page
 		console.log('Create practice for date:', date, 'section:', sectionId);
 	}
+
+	function handleSeasonUpdate(updatedSeason) {
+		// Update the season in the seasons array
+		seasons = seasons.map((s) =>
+			s.id === updatedSeason.id ? { ...s, ...updatedSeason } : s
+		);
+	}
 </script>
 
 <svelte:head>
@@ -252,7 +259,7 @@
 			</Card>
 		</div>
 	{:else if SeasonShell}
-		<SeasonShell season={activeSeason} {sections} {markers} {practices} teamId={teamSlug} {isAdmin} bind:activeTab>
+		<SeasonShell season={activeSeason} {sections} {markers} {practices} teamId={teamSlug} {isAdmin} bind:activeTab onSeasonUpdate={handleSeasonUpdate}>
 			{#if activeTab === 'overview' && Overview}
 				<Overview
 					season={activeSeason}

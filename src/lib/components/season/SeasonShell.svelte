@@ -1,6 +1,7 @@
 <script>
 	import { device } from '$lib/stores/deviceStore';
-	import { Layers, Calendar, Settings, Share2 } from 'lucide-svelte';
+	import { Layers, Calendar, Settings, Share2, Pencil } from 'lucide-svelte';
+	import EditSeasonDialog from './desktop/EditSeasonDialog.svelte';
 
 	let {
 		activeTab = $bindable('overview'),
@@ -11,8 +12,15 @@
 		isAdmin = false,
 		teamId = '',
 		onTabChange,
+		onSeasonUpdate,
 		children
 	} = $props();
+
+	let showEditSeasonDialog = $state(false);
+
+	function handleSeasonSaved(updatedSeason) {
+		onSeasonUpdate?.(updatedSeason);
+	}
 
 	// Tab configuration
 	const tabs = [
@@ -57,6 +65,15 @@
 			<div class="header-content">
 				<h1 class="season-name">{season?.name || 'Season'}</h1>
 				<div class="header-info">
+					{#if isAdmin}
+						<button
+							class="edit-season-button"
+							onclick={() => (showEditSeasonDialog = true)}
+							aria-label="Edit season"
+						>
+							<Pencil size={14} />
+						</button>
+					{/if}
 					<span class="date-badge">
 						{#if season}
 							{new Date(season.start_date).toLocaleDateString('en-US', {
@@ -115,6 +132,16 @@
 							})}
 						</span>
 					{/if}
+					{#if isAdmin}
+						<button
+							class="edit-season-button desktop"
+							onclick={() => (showEditSeasonDialog = true)}
+							aria-label="Edit season"
+						>
+							<Pencil size={16} />
+							<span>Edit</span>
+						</button>
+					{/if}
 				</div>
 
 				<nav class="desktop-nav">
@@ -138,6 +165,13 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Edit Season Dialog -->
+<EditSeasonDialog
+	bind:open={showEditSeasonDialog}
+	{season}
+	onSave={handleSeasonSaved}
+/>
 
 <style>
 	.season-shell {
@@ -174,6 +208,34 @@
 		background: #f3f4f6;
 		padding: 4px 8px;
 		border-radius: 4px;
+	}
+
+	.edit-season-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		background: #f3f4f6;
+		border: 1px solid #e5e7eb;
+		border-radius: 6px;
+		color: #6b7280;
+		cursor: pointer;
+		transition: all 0.2s;
+	}
+
+	.edit-season-button:hover {
+		background: #e5e7eb;
+		color: #374151;
+		border-color: #d1d5db;
+	}
+
+	.edit-season-button.desktop {
+		width: auto;
+		padding: 4px 10px;
+		gap: 6px;
+		font-size: 13px;
+		font-weight: 500;
 	}
 
 	.mobile-content {
@@ -327,6 +389,18 @@
 
 	:global(.dark) .date-badge {
 		background: #374151;
+	}
+
+	:global(.dark) .edit-season-button {
+		background: #374151;
+		border-color: #4b5563;
+		color: #9ca3af;
+	}
+
+	:global(.dark) .edit-season-button:hover {
+		background: #4b5563;
+		color: #d1d5db;
+		border-color: #6b7280;
 	}
 
 	:global(.dark) .mobile-nav {

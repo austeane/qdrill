@@ -262,6 +262,8 @@
 					label={formData.is_range ? 'Start Date' : 'Date'}
 					type="date"
 					bind:value={formData.date}
+					min={season?.start_date}
+					max={season?.end_date}
 					required
 					disabled={loading}
 				/>
@@ -271,7 +273,8 @@
 						label="End Date"
 						type="date"
 						bind:value={formData.end_date}
-						min={formData.date}
+						min={formData.date || season?.start_date}
+						max={season?.end_date}
 						required
 						disabled={loading}
 					/>

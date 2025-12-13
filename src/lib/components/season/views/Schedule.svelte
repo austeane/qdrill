@@ -32,6 +32,10 @@
 	let weekOffset = $state(0);
 	let monthOffset = $state(0);
 
+	// Season date bounds
+	const seasonStart = $derived(season?.start_date ? new Date(season.start_date) : null);
+	const seasonEnd = $derived(season?.end_date ? new Date(season.end_date) : null);
+
 	// Initialize view
 	onMount(() => {
 		if (viewMode === 'week') {
@@ -41,10 +45,39 @@
 		}
 	});
 
+	// Check if a date is within season bounds
+	function isWithinSeason(date) {
+		if (!seasonStart || !seasonEnd) return true;
+		const checkDate = new Date(date);
+		checkDate.setHours(0, 0, 0, 0);
+		const start = new Date(seasonStart);
+		start.setHours(0, 0, 0, 0);
+		const end = new Date(seasonEnd);
+		end.setHours(0, 0, 0, 0);
+		return checkDate >= start && checkDate <= end;
+	}
+
+	// Get the reference date (today if within season, or season start if today is before, or season end if today is after)
+	function getSeasonReferenceDate() {
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+
+		if (!seasonStart || !seasonEnd) return today;
+
+		const start = new Date(seasonStart);
+		start.setHours(0, 0, 0, 0);
+		const end = new Date(seasonEnd);
+		end.setHours(0, 0, 0, 0);
+
+		if (today < start) return start;
+		if (today > end) return end;
+		return today;
+	}
+
 	function generateWeek(offset) {
 		weekOffset = offset;
-		const today = new Date();
-		const startOfWeek = new Date(today);
+		const referenceDate = getSeasonReferenceDate();
+		const startOfWeek = new Date(referenceDate);
 
 		// Adjust to start of week (Sunday)
 		const dayOfWeek = startOfWeek.getDay();
@@ -59,9 +92,9 @@
 
 	function generateMonth(offset) {
 		monthOffset = offset;
-		const today = new Date();
-		const year = today.getFullYear();
-		const month = today.getMonth() + offset;
+		const referenceDate = getSeasonReferenceDate();
+		const year = referenceDate.getFullYear();
+		const month = referenceDate.getMonth() + offset;
 
 		const firstDay = new Date(year, month, 1);
 		const lastDay = new Date(year, month + 1, 0);
@@ -90,7 +123,49 @@
 		}
 	}
 
+	// Check if we can navigate in a direction (stays within season bounds)
+	function canNavigate(direction) {
+		if (!seasonStart || !seasonEnd) return true;
+
+		if (viewMode === 'week') {
+			// Check if the target week would have any days within season
+			const referenceDate = getSeasonReferenceDate();
+			const targetStart = new Date(referenceDate);
+			const dayOfWeek = targetStart.getDay();
+			targetStart.setDate(targetStart.getDate() - dayOfWeek + (weekOffset + direction) * 7);
+			const targetEnd = new Date(targetStart);
+			targetEnd.setDate(targetStart.getDate() + 6);
+
+			const start = new Date(seasonStart);
+			start.setHours(0, 0, 0, 0);
+			const end = new Date(seasonEnd);
+			end.setHours(0, 0, 0, 0);
+
+			// Allow navigation if there's any overlap with season
+			return targetEnd >= start && targetStart <= end;
+		} else {
+			// Check if the target month overlaps with season
+			const referenceDate = getSeasonReferenceDate();
+			const targetMonth = referenceDate.getMonth() + monthOffset + direction;
+			const targetYear = referenceDate.getFullYear() + Math.floor(targetMonth / 12);
+			const adjustedMonth = ((targetMonth % 12) + 12) % 12;
+
+			const monthStart = new Date(targetYear, adjustedMonth, 1);
+			const monthEnd = new Date(targetYear, adjustedMonth + 1, 0);
+
+			const start = new Date(seasonStart);
+			start.setHours(0, 0, 0, 0);
+			const end = new Date(seasonEnd);
+			end.setHours(0, 0, 0, 0);
+
+			// Allow navigation if there's any overlap with season
+			return monthEnd >= start && monthStart <= end;
+		}
+	}
+
 	function navigate(direction) {
+		if (!canNavigate(direction)) return;
+
 		if (viewMode === 'week') {
 			generateWeek(weekOffset + direction);
 		} else {
@@ -118,6 +193,10 @@
 		const checkDate = new Date(date);
 		checkDate.setHours(0, 0, 0, 0);
 		return checkDate < today;
+	}
+
+	function isOutsideSeason(date) {
+		return !isWithinSeason(date);
 	}
 
 	import { toLocalISO } from '$lib/utils/date.js';
@@ -239,6 +318,7 @@
 			<button
 				class="nav-button"
 				onclick={() => navigate(-1)}
+				disabled={!canNavigate(-1)}
 				aria-label={viewMode === 'week' ? 'Previous week' : 'Previous month'}
 			>
 				<ChevronLeft size={20} />
@@ -251,6 +331,7 @@
 			<button
 				class="nav-button"
 				onclick={() => navigate(1)}
+				disabled={!canNavigate(1)}
 				aria-label={viewMode === 'week' ? 'Next week' : 'Next month'}
 			>
 				<ChevronRight size={20} />
@@ -301,11 +382,13 @@
 					{@const dayMarkers = getDayMarkers(date)}
 					{@const daySections = getDaySections(date)}
 					{@const isPast = isPastDate(date)}
+					{@const outsideSeason = isOutsideSeason(date)}
 
 					<div
 						class="day-cell"
 						class:today={isToday(date)}
 						class:past={isPast}
+						class:outside-season={outsideSeason}
 						class:has-content={dayPractices.length > 0 || dayMarkers.length > 0}
 					>
 						<div class="day-header">
@@ -357,7 +440,7 @@
 								{/each}
 							{/if}
 
-							{#if !isPast && isAdmin && dayPractices.length === 0}
+							{#if !isPast && !outsideSeason && isAdmin && dayPractices.length === 0}
 								<button class="add-practice-hint" onclick={() => handleDayClick(date)}>
 									<Plus size={16} />
 								</button>
@@ -382,16 +465,18 @@
 					{@const dayMarkers = getDayMarkers(date)}
 					{@const daySections = getDaySections(date)}
 					{@const isPast = isPastDate(date)}
+					{@const outsideSeason = isOutsideSeason(date)}
 
 					<button
 						class="month-day"
 						class:other-month={!isCurrentMonth}
+						class:outside-season={outsideSeason}
 						class:today={isToday(date)}
 						class:past={isPast}
 						class:has-practice={dayPractices.length > 0}
 						class:has-marker={dayMarkers.length > 0}
-						onclick={() => isCurrentMonth && handleDayClick(date)}
-						disabled={!isCurrentMonth || isPast || !isAdmin}
+						onclick={() => isCurrentMonth && !outsideSeason && handleDayClick(date)}
+						disabled={!isCurrentMonth || isPast || outsideSeason || !isAdmin}
 					>
 						<span class="month-day-number">{date.getDate()}</span>
 						{#if daySections.length > 0}
@@ -512,9 +597,14 @@
 		transition: all 0.2s;
 	}
 
-	.nav-button:hover {
+	.nav-button:hover:not(:disabled) {
 		background: #f3f4f6;
 		border-color: #d1d5db;
+	}
+
+	.nav-button:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
 	}
 
 	.date-header {
@@ -590,6 +680,15 @@
 	.day-cell.past {
 		background: #fafafa;
 		opacity: 0.7;
+	}
+
+	.day-cell.outside-season {
+		background: #f3f4f6;
+		opacity: 0.5;
+	}
+
+	.day-cell.outside-season .day-header {
+		background: #e5e7eb;
 	}
 
 	.day-header {
@@ -803,6 +902,12 @@
 	.month-day.past {
 		background: #fafafa;
 		opacity: 0.5;
+	}
+
+	.month-day.outside-season {
+		background: #f3f4f6;
+		opacity: 0.4;
+		cursor: not-allowed;
 	}
 
 	.month-day-number {

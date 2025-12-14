@@ -36,9 +36,6 @@ const config = {
 		prerender: {
 			entries: [],
 			handleHttpError: 'warn'
-		},
-		csrf: {
-			checkOrigin: process.env.NODE_ENV !== 'development'
 		}
 	},
 	preprocess: vitePreprocess()

@@ -1,10 +1,11 @@
 import { getSections, moveItem, moveSection, setSections } from './sectionsStore';
 import { addToHistory } from './historyStore';
+import { browser, dev } from '$app/environment';
 
 // ----------------------------------------
 // LOGGER CONFIGURATION
 // ----------------------------------------
-const DEBUG_MODE = typeof window !== 'undefined' && window.location.search.includes('debug=true');
+const DEBUG_MODE = dev && browser && window.location.search.includes('debug=true');
 
 // Simple logger utility to control console output
 const logger = {
@@ -528,7 +529,7 @@ export function handleItemDragOver(
 				state.sourceGroupId === item.parallel_group_id &&
 				state.sourceTimeline === item.parallel_timeline
 			) {
-				console.log('[DEBUG] Timeline item reordering:', {
+				logger.debug('Timeline item reordering:', {
 					fromIndex: state.sourceIndex,
 					fromTimelineIndex: state.sourceTimelineIndex,
 					toIndex: itemIndex,
@@ -815,7 +816,7 @@ export function handleDragLeave(event) {
 			}
 		}
 	} catch (error) {
-		console.error('Error handling drag leave:', error);
+		logger.error('Error handling drag leave:', error);
 	}
 }
 
@@ -846,7 +847,7 @@ export function handleDragEnd(event) {
 		// Reset drag state
 		resetDragState();
 	} catch (error) {
-		console.error('Error handling drag end:', error);
+		logger.error('Error handling drag end:', error);
 	}
 }
 
@@ -881,20 +882,20 @@ export function handleDrop(event) {
 						if (parsedData.id) {
 							recoveredItemId = parsedData.id;
 							recoveredItemName = parsedData.name;
-							console.log('[DEBUG] Recovered item data from JSON:', {
+							logger.debug('Recovered item data from JSON:', {
 								id: recoveredItemId,
 								name: recoveredItemName
 							});
 						}
 					}
 				} else {
-					console.log('[DEBUG] Recovered item data from dataTransfer:', {
+					logger.debug('Recovered item data from dataTransfer:', {
 						id: recoveredItemId,
 						name: recoveredItemName
 					});
 				}
 			} catch (e) {
-				console.error('Failed to parse dataTransfer data:', e);
+				logger.error('Failed to parse dataTransfer data:', e);
 			}
 		}
 
@@ -903,7 +904,7 @@ export function handleDrop(event) {
 			recoveredItemId = event.currentTarget.dataset.itemId;
 			recoveredItemName = event.currentTarget.dataset.itemName;
 			if (recoveredItemId) {
-				console.log('[DEBUG] Recovered item data from dataset:', {
+				logger.debug('Recovered item data from dataset:', {
 					id: recoveredItemId,
 					name: recoveredItemName
 				});
@@ -915,14 +916,14 @@ export function handleDrop(event) {
 
 		// Update the drag state with the recovered information if needed
 		if (recoveredItemId && (!state.itemId || state.itemId !== parseInt(recoveredItemId))) {
-			console.log('[DEBUG] Updating drag state with recovered item ID:', recoveredItemId);
+			logger.debug('Updating drag state with recovered item ID:', recoveredItemId);
 			dragState.itemId = parseInt(recoveredItemId);
 			dragState.itemName = recoveredItemName;
 			// Refresh state after update
 			state = getDragStateSnapshot();
 		}
 
-		console.log('[DEBUG] Drop handler called with state:', {
+		logger.debug('Drop handler called with state:', {
 			isDragging: state.isDragging,
 			dragType: state.dragType,
 			sourceSection: state.sourceSection,
@@ -944,7 +945,7 @@ export function handleDrop(event) {
 				const groupId = targetEl.getAttribute('data-group-id');
 
 				if (!isNaN(sectionIndex) && timelineName && groupId) {
-					console.log('[DEBUG] Recovering drop target from attributes:', {
+					logger.debug('Recovering drop target from attributes:', {
 						sectionIndex,
 						timelineName,
 						groupId
@@ -974,7 +975,7 @@ export function handleDrop(event) {
 			state.targetSection === undefined ||
 			state.dropPosition === null
 		) {
-			console.log('[DEBUG] No valid drop target, aborting drop:', {
+			logger.debug('No valid drop target, aborting drop:', {
 				targetSection: state.targetSection,
 				dropPosition: state.dropPosition
 			});
@@ -997,7 +998,7 @@ export function handleDrop(event) {
 		// Make a full backup of sections in case anything goes wrong during the drop operation
 		const sectionsBeforeAllDrops = JSON.parse(JSON.stringify(getSections()));
 
-		console.log('[DEBUG] About to process drop with type:', state.dragType);
+		logger.debug('About to process drop with type:', state.dragType);
 
 		// Create a copy of state to prevent modifications during async operations
 		const dragParams = { ...state };
@@ -1030,14 +1031,14 @@ export function handleDrop(event) {
 				);
 			}
 		} catch (error) {
-			console.error('Error handling drop:', error);
+			logger.error('Error handling drop:', error);
 
 			// Try to recover state using the backup if anything went wrong
 			try {
-				console.warn('Trying to recover state from backup after drop error');
+				logger.warn('Trying to recover state from backup after drop error');
 				setSections(sectionsBeforeAllDrops);
 			} catch (recoveryError) {
-				console.error('Failed to recover state:', recoveryError);
+				logger.error('Failed to recover state:', recoveryError);
 			}
 		}
 
@@ -1048,7 +1049,7 @@ export function handleDrop(event) {
 		}
 		multiPhaseCleanup();
 	} catch (error) {
-		console.error('Error in main drop handler:', error);
+		logger.error('Error in main drop handler:', error);
 		handleDragEnd(event);
 	}
 }
@@ -1062,7 +1063,7 @@ export function handleDrop(event) {
  */
 function handleItemDrop(state) {
 	try {
-		console.log('[DEBUG] handleItemDrop called with state:', state);
+		logger.debug('handleItemDrop called with state:', state);
 
 		// Get the current sections
 		const allSections = getSections();
@@ -1072,7 +1073,7 @@ function handleItemDrop(state) {
 			!isValidSectionIndex(allSections, state.sourceSection) ||
 			!isValidSectionIndex(allSections, state.targetSection)
 		) {
-			console.error('Invalid section indexes:', {
+			logger.error('Invalid section indexes:', {
 				sourceSection: state.sourceSection,
 				targetSection: state.targetSection,
 				sectionCount: allSections.length
@@ -1085,7 +1086,7 @@ function handleItemDrop(state) {
 
 		// If we couldn't find the item, log and abort
 		if (!itemToMove) {
-			console.error('Could not find item to move:', state);
+			logger.error('Could not find item to move:', state);
 			return;
 		}
 
@@ -1096,7 +1097,7 @@ function handleItemDrop(state) {
 		};
 
 		// Log what we're moving for debugging
-		console.log('[DEBUG] Moving item:', {
+		logger.debug('Moving item:', {
 			id: movedItem.id,
 			name: movedItem.name,
 			from: {
@@ -1113,16 +1114,16 @@ function handleItemDrop(state) {
 		// Different handling based on drop type
 		if (state.targetTimeline) {
 			// Dropping into a timeline
-				handleTimelineDrop(state, movedItem);
-			} else {
-				// Regular drop before/after another item
-				handleRegularDrop(state, movedItem);
-			}
+			handleTimelineDrop(state, movedItem);
+		} else {
+			// Regular drop before/after another item
+			handleRegularDrop(state, movedItem);
+		}
 
 		// Final cleanup of any indicators
 		multiPhaseCleanup();
 	} catch (error) {
-		console.error('Error handling item drop:', error);
+		logger.error('Error handling item drop:', error);
 		throw error; // Re-throw to allow recovery in main handler
 	}
 }
@@ -1208,7 +1209,7 @@ function handleRegularDrop(state, movedItem) {
 			})
 		});
 	} catch (error) {
-		console.error('Error handling regular drop:', error);
+		logger.error('Error handling regular drop:', error);
 		throw error;
 	}
 }
@@ -1223,7 +1224,7 @@ function handleGroupDrop(state) {
 		const targetSection = secs[state.targetSection];
 
 		if (!sourceSection || !targetSection || !state.sourceGroupId) {
-			console.error('Invalid indices or group ID for group drop:', state);
+			logger.error('Invalid indices or group ID for group drop:', state);
 			return;
 		}
 
@@ -1232,7 +1233,7 @@ function handleGroupDrop(state) {
 		);
 
 		if (groupItems.length === 0) {
-			console.error('No group items found for group ID:', state.sourceGroupId);
+			logger.error('No group items found for group ID:', state.sourceGroupId);
 			return;
 		}
 
@@ -1251,7 +1252,7 @@ function handleGroupDrop(state) {
 
 		setTimeout(() => multiPhaseCleanup(), 50);
 	} catch (error) {
-		console.error('Error handling group drop:', error);
+		logger.error('Error handling group drop:', error);
 		throw error;
 	}
 }
@@ -1262,7 +1263,7 @@ function handleGroupDrop(state) {
 function handleSectionDrop(state) {
 	try {
 		if (state.sourceSection === null || state.targetSection === null) {
-			console.error('Invalid source or target in section drag state:', state);
+			logger.error('Invalid source or target in section drag state:', state);
 			return;
 		}
 
@@ -1271,7 +1272,7 @@ function handleSectionDrop(state) {
 		const targetSection = secs[state.targetSection];
 
 		if (!sourceSection || !targetSection) {
-			console.error('Section indices out of bounds:', state);
+			logger.error('Section indices out of bounds:', state);
 			return;
 		}
 
@@ -1283,7 +1284,7 @@ function handleSectionDrop(state) {
 
 		setTimeout(() => multiPhaseCleanup(), 50);
 	} catch (error) {
-		console.error('Error handling section drop:', error);
+		logger.error('Error handling section drop:', error);
 		throw error;
 	}
 }

@@ -6,7 +6,7 @@
 
 	let { data } = $props();
 
-	let pollOptions = $state(data.pollOptions || []);
+	let pollOptions = $state([]);
 	const allDrillNames = $derived(data.allDrillNames || []);
 	let drillOptions = $state([]);
 	let newDescription = $state('');
@@ -149,7 +149,6 @@
 			toast.push('Failed to vote', { theme: { '--toastBackground': '#F56565' } });
 		}
 	}
-
 </script>
 
 <div class="max-w-4xl mx-auto">

@@ -1,3 +1,4 @@
+import { browser, dev } from '$app/environment';
 import { toast } from '@zerodevx/svelte-toast';
 import { SvelteSet } from 'svelte/reactivity';
 import { addToHistory, setSnapshotGetter, setSnapshotApplier } from './historyStore';
@@ -88,6 +89,24 @@ let selectedSectionId = $state(null);
 export const customTimelineColors = $state({});
 export const customTimelineNames = $state({});
 
+function isDebugEnabled() {
+	if (!dev || !browser) return false;
+	try {
+		const params = new URLSearchParams(window.location.search);
+		return params.has('debug') || window.localStorage.getItem('qdrill_debug') === '1';
+	} catch {
+		return false;
+	}
+}
+
+function debug(...args) {
+	if (isDebugEnabled()) console.log(...args);
+}
+
+function debugWarn(...args) {
+	if (isDebugEnabled()) console.warn(...args);
+}
+
 function replaceSections(nextSections) {
 	sections.splice(0, sections.length, ...nextSections);
 }
@@ -123,7 +142,7 @@ export function getTimelineColor(timeline) {
 // Helper function to get a timeline's name (custom or default)
 export function getTimelineName(timeline) {
 	if (!timeline) {
-		console.warn('[DEBUG] getTimelineName called with undefined timeline');
+		debugWarn('[sectionsStore] getTimelineName called with undefined timeline');
 		return '';
 	}
 
@@ -131,24 +150,26 @@ export function getTimelineName(timeline) {
 
 	// Check if there's a custom name for this timeline
 	if (customNames && customNames[timeline]) {
-		console.log(`[DEBUG] Using custom name for ${timeline}: ${customNames[timeline]}`);
+		debug(`[sectionsStore] Using custom name for ${timeline}: ${customNames[timeline]}`);
 		return customNames[timeline];
 	}
 
 	// Check if there's a default name
 	if (DEFAULT_TIMELINE_NAMES[timeline]) {
-		console.log(`[DEBUG] Using default name for ${timeline}: ${DEFAULT_TIMELINE_NAMES[timeline]}`);
+		debug(
+			`[sectionsStore] Using default name for ${timeline}: ${DEFAULT_TIMELINE_NAMES[timeline]}`
+		);
 		return DEFAULT_TIMELINE_NAMES[timeline];
 	}
 
 	// If all else fails, use the timeline key
-	console.log(`[DEBUG] No name found for ${timeline}, using key as name`);
+	debug(`[sectionsStore] No name found for ${timeline}, using key as name`);
 	return timeline;
 }
 
 // Helper function to update a timeline's name
 export function updateTimelineName(timeline, name) {
-	console.log('[DEBUG] updateTimelineName called with:', { timeline, name });
+	debug('[sectionsStore] updateTimelineName called with:', { timeline, name });
 
 	if (!name || name.trim() === '') {
 		console.warn(`Cannot use empty name for timeline "${timeline}". Using default instead.`);
@@ -156,7 +177,7 @@ export function updateTimelineName(timeline, name) {
 	}
 
 	customTimelineNames[timeline] = name;
-	console.log('[DEBUG] Updated customTimelineNames:', customTimelineNames);
+	debug('[sectionsStore] Updated customTimelineNames:', customTimelineNames);
 
 	// Update the PARALLEL_TIMELINES for compatibility with existing code
 	if (PARALLEL_TIMELINES[timeline]) {
@@ -164,13 +185,15 @@ export function updateTimelineName(timeline, name) {
 			...PARALLEL_TIMELINES[timeline],
 			name: name
 		};
-		console.log('[DEBUG] Updated PARALLEL_TIMELINES entry:', PARALLEL_TIMELINES[timeline]);
+		debug('[sectionsStore] Updated PARALLEL_TIMELINES entry:', PARALLEL_TIMELINES[timeline]);
 	} else {
-		console.warn(`[DEBUG] Could not update PARALLEL_TIMELINES for ${timeline} - entry not found`);
+		debugWarn(
+			`[sectionsStore] Could not update PARALLEL_TIMELINES for ${timeline} - entry not found`
+		);
 	}
 
 	// Log the result of getting the timeline name to verify it works
-	console.log('[DEBUG] getTimelineName result after update:', getTimelineName(timeline));
+	debug('[sectionsStore] getTimelineName result after update:', getTimelineName(timeline));
 
 	// Update all section items that use this timeline to ensure reactivity
 	updateSections((currentSections) => {
@@ -294,7 +317,7 @@ export function formatDrillItem(item, sectionId) {
 		base.groupTimelines = null;
 	}
 
-	console.log('[DEBUG] formatDrillItem - output base:', {
+	debug('[sectionsStore] formatDrillItem - output base:', {
 		id: base.id,
 		type: base.type,
 		parallel_group_id: base.parallel_group_id,
@@ -348,7 +371,7 @@ export function initializeSections(practicePlan) {
 						groupTimelines: Array.from(parallelGroups.get(item.parallel_group_id) || [])
 					})
 				};
-				console.log('[DEBUG] Formatted item with group timelines:', formattedItem);
+				debug('[sectionsStore] Formatted item with group timelines:', formattedItem);
 				return formattedItem;
 			})
 		}))
@@ -394,19 +417,19 @@ export function initializeTimelinesFromPlan(plan) {
 
 	if (allTimelines.size > 0) {
 		replaceSelectedTimelines(allTimelines);
-		console.log('[DEBUG] Initialized selectedTimelines from plan:', Array.from(allTimelines));
+		debug('[sectionsStore] Initialized selectedTimelines from plan:', Array.from(allTimelines));
 	}
 
 	// Initialize custom colors if any were found
 	if (Object.keys(colors).length > 0) {
 		replaceRecord(customTimelineColors, colors);
-		console.log('[DEBUG] Initialized customTimelineColors from plan:', colors);
+		debug('[sectionsStore] Initialized customTimelineColors from plan:', colors);
 	}
 
 	// Initialize custom names if any were found
 	if (Object.keys(names).length > 0) {
 		replaceRecord(customTimelineNames, names);
-		console.log('[DEBUG] Initialized customTimelineNames from plan:', names);
+		debug('[sectionsStore] Initialized customTimelineNames from plan:', names);
 
 		// Update PARALLEL_TIMELINES for compatibility
 		Object.entries(names).forEach(([timeline, name]) => {
@@ -422,13 +445,13 @@ export function initializeTimelinesFromPlan(plan) {
 
 // Section management functions
 export function addSection() {
-	console.log('[sectionsStore.js] addSection called');
+	debug('[sectionsStore] addSection called');
 	// Create snapshot for history before changing state
 	addToHistory('ADD_SECTION', null, 'Added section');
 
 	updateSections((currentSections) => {
-		console.log(
-			'[sectionsStore.js] sections.update started. Current sections count:',
+		debug(
+			'[sectionsStore] sections.update started. Current sections count:',
 			currentSections.length
 		);
 		const newSectionData = {
@@ -440,10 +463,7 @@ export function addSection() {
 			items: []
 		};
 		const newSectionsArray = [...currentSections, newSectionData];
-		console.log(
-			'[sectionsStore.js] sections.update finished. New sections count:',
-			newSectionsArray.length
-		);
+		debug('[sectionsStore] sections.update finished. New sections count:', newSectionsArray.length);
 		return newSectionsArray;
 	});
 }
@@ -632,13 +652,13 @@ export function removeItem(sectionIndex, itemIndex) {
 			// If only one item remains in the group, remove the group
 			if (remainingGroupItems.length === 1) {
 				section.items = section.items.map((item) => {
-						if (item.parallel_group_id === itemToRemove.parallel_group_id) {
-							const rest = { ...item };
-							delete rest.parallel_group_id;
-							return {
-								...rest,
-								id: item.drill?.id || item.id,
-								drill: item.drill || { id: item.id, name: item.name }
+					if (item.parallel_group_id === itemToRemove.parallel_group_id) {
+						const rest = { ...item };
+						delete rest.parallel_group_id;
+						return {
+							...rest,
+							id: item.drill?.id || item.id,
+							drill: item.drill || { id: item.id, name: item.name }
 						};
 					}
 					return item;
@@ -651,7 +671,7 @@ export function removeItem(sectionIndex, itemIndex) {
 }
 
 export function handleDurationChange(sectionIndex, itemIndex, newDuration) {
-	console.log('[DEBUG] Updating duration', { sectionIndex, itemIndex, newDuration });
+	debug('[sectionsStore] Updating duration', { sectionIndex, itemIndex, newDuration });
 
 	// Validate the duration - allow empty string during editing
 	if (newDuration === '' || (newDuration >= 1 && newDuration <= 120)) {
@@ -704,7 +724,7 @@ export function handleDurationChange(sectionIndex, itemIndex, newDuration) {
 }
 
 export function handleTimelineChange(sectionIndex, itemIndex, newTimeline) {
-	console.log('[DEBUG] Updating timeline', { sectionIndex, itemIndex, newTimeline });
+	debug('[sectionsStore] Updating timeline', { sectionIndex, itemIndex, newTimeline });
 
 	// Get the item before changing for history
 	const currentSections = sections;
@@ -782,10 +802,10 @@ export function addParallelActivities(sectionId, activities) {
 
 // Parallel group management functions
 export function handleUngroup(groupId) {
-	console.log('[DEBUG] Starting ungroup for groupId', groupId);
+	debug('[sectionsStore] Starting ungroup for groupId', groupId);
 
 	if (!groupId) {
-		console.log('[DEBUG] No groupId provided');
+		debug('[sectionsStore] No groupId provided');
 		return;
 	}
 
@@ -803,36 +823,36 @@ export function handleUngroup(groupId) {
 	addToHistory('UNGROUP', { groupId, groupItems }, 'Ungrouped parallel drills');
 
 	updateSections((currentSections) => {
-		console.log('[DEBUG] Current sections', currentSections);
+		debug('[sectionsStore] Current sections', currentSections);
 
 		return currentSections.map((section) => {
 			// Find all items in this group
 			const groupItems = section.items.filter((item) => item.parallel_group_id === groupId);
 
-			console.log('[DEBUG] Found group items count', groupItems.length);
+			debug('[sectionsStore] Found group items count', groupItems.length);
 
 			if (groupItems.length === 0) return section;
 
 			// Update all items in the section
 			const updatedItems = section.items.map((item) => {
-					if (item.parallel_group_id === groupId) {
-						// Remove parallel group info but preserve drill information and important properties
-						const rest = { ...item };
-						const parallelTimeline = rest.parallel_timeline;
-						delete rest.parallel_group_id;
-						delete rest.parallel_timeline;
-						delete rest.groupTimelines;
-							return {
-								...rest,
-								id: item.drill?.id || item.id,
-								drill: item.drill || { id: item.id, name: item.name },
-								// Preserve these properties when ungrouping with prefixes
-								// This allows us to potentially recover them if the item is grouped again
-								// without interfering with the normal item structure
-								_previous_timeline: parallelTimeline,
-								_previous_color: item.timeline_color,
-								_previous_group_name: item.group_name
-							};
+				if (item.parallel_group_id === groupId) {
+					// Remove parallel group info but preserve drill information and important properties
+					const rest = { ...item };
+					const parallelTimeline = rest.parallel_timeline;
+					delete rest.parallel_group_id;
+					delete rest.parallel_timeline;
+					delete rest.groupTimelines;
+					return {
+						...rest,
+						id: item.drill?.id || item.id,
+						drill: item.drill || { id: item.id, name: item.name },
+						// Preserve these properties when ungrouping with prefixes
+						// This allows us to potentially recover them if the item is grouped again
+						// without interfering with the normal item structure
+						_previous_timeline: parallelTimeline,
+						_previous_color: item.timeline_color,
+						_previous_group_name: item.group_name
+					};
 				}
 				return item;
 			});
@@ -851,8 +871,8 @@ export function createParallelBlock() {
 	const sectionId = selectedSectionId;
 	if (!sectionId) return;
 
-	console.log(
-		'[DEBUG] createParallelBlock - starting. Global selectedTimelines:',
+	debug(
+		'[sectionsStore] createParallelBlock - starting. Global selectedTimelines:',
 		Array.from(selectedTimelines)
 	);
 
@@ -865,19 +885,19 @@ export function createParallelBlock() {
 		const newSections = [...currentSections];
 		const section = newSections.find((s) => s.id === sectionId);
 		if (!section) {
-			console.log(
-				'[DEBUG] createParallelBlock - section not found for selectedSectionId:',
+			debug(
+				'[sectionsStore] createParallelBlock - section not found for selectedSectionId:',
 				sectionId
 			);
 			return currentSections;
 		}
 
-			const parallelGroupId = `group_${Date.now()}`;
-			// Capture the timelines at this moment
-			const groupTimelines = Array.from(selectedTimelines);
+		const parallelGroupId = `group_${Date.now()}`;
+		// Capture the timelines at this moment
+		const groupTimelines = Array.from(selectedTimelines);
 
-			console.log(
-				'[DEBUG] createParallelBlock - captured groupTimelines for new block:',
+		debug(
+			'[sectionsStore] createParallelBlock - captured groupTimelines for new block:',
 			groupTimelines
 		);
 
@@ -885,7 +905,7 @@ export function createParallelBlock() {
 		const placeholderDrills = groupTimelines.map((timeline) => {
 			// Debug the timeline name that will be used
 			const timelineName = getTimelineName(timeline);
-			console.log(`[DEBUG] Creating placeholder for ${timeline}, using name: ${timelineName}`);
+			debug(`[sectionsStore] Creating placeholder for ${timeline}, using name: ${timelineName}`);
 
 			return {
 				id: `placeholder_${timeline}_${Date.now()}`,
@@ -903,13 +923,16 @@ export function createParallelBlock() {
 			};
 		});
 
-		console.log('[DEBUG] createParallelBlock - placeholderDrills to be added:', placeholderDrills);
+		debug(
+			'[sectionsStore] createParallelBlock - placeholderDrills to be added:',
+			placeholderDrills
+		);
 		section.items = [...section.items, ...placeholderDrills];
 		return newSections;
 	});
 
 	toast.push('Created parallel block. Drag drills into each timeline.');
-	console.log('[DEBUG] createParallelBlock - parallel block created in section:', sectionId);
+	debug('[sectionsStore] createParallelBlock - parallel block created in section:', sectionId);
 }
 
 export function updateParallelBlockTimelines(sectionId, parallelGroupId, newTimelines) {
@@ -966,8 +989,8 @@ export function updateParallelBlockTimelines(sectionId, parallelGroupId, newTime
 			const newPlaceholders = newTimelinesToAdd.map((timeline) => {
 				// Debug the timeline name that will be used
 				const timelineName = getTimelineName(timeline);
-				console.log(
-					`[DEBUG] Creating placeholder in updateParallelBlockTimelines for ${timeline}, using name: ${timelineName}`
+				debug(
+					`[sectionsStore] Creating placeholder in updateParallelBlockTimelines for ${timeline}, using name: ${timelineName}`
 				);
 
 				return {
@@ -981,9 +1004,7 @@ export function updateParallelBlockTimelines(sectionId, parallelGroupId, newTime
 					groupTimelines: newTimelines,
 					group_name: groupName,
 					timeline_color:
-						customTimelineColors[timeline] ||
-						DEFAULT_TIMELINE_COLORS[timeline] ||
-						'bg-gray-500',
+						customTimelineColors[timeline] || DEFAULT_TIMELINE_COLORS[timeline] || 'bg-gray-500',
 					timeline_name: timelineName // Store the name directly
 				};
 			});
@@ -1037,27 +1058,27 @@ export function handleTimelineSave() {
 
 export function removeTimelineFromGroup(sectionId, parallelGroupId, timeline) {
 	updateSections((currentSections) => {
-			const section = currentSections.find((s) => s.id === sectionId);
-			if (!section) return currentSections;
+		const section = currentSections.find((s) => s.id === sectionId);
+		if (!section) return currentSections;
 
-			// If this is the last or second-to-last timeline, ungroup everything
-			const groupItems = section.items.filter((item) => item.parallel_group_id === parallelGroupId);
+		// If this is the last or second-to-last timeline, ungroup everything
+		const groupItems = section.items.filter((item) => item.parallel_group_id === parallelGroupId);
 		if (groupItems.length <= 2) {
 			return currentSections.map((s) => ({
 				...s,
-					items: s.items.map((item) => {
-						if (item.parallel_group_id === parallelGroupId) {
-							const rest = { ...item };
-							const parallelTimeline = rest.parallel_timeline;
-							delete rest.parallel_group_id;
-							delete rest.parallel_timeline;
-							delete rest.groupTimelines;
-							return {
-								...rest,
-								// Preserve these properties when ungrouping with prefixes
-								// This allows us to potentially recover them if the item is grouped again
-								// without interfering with the normal item structure
-								_previous_timeline: parallelTimeline,
+				items: s.items.map((item) => {
+					if (item.parallel_group_id === parallelGroupId) {
+						const rest = { ...item };
+						const parallelTimeline = rest.parallel_timeline;
+						delete rest.parallel_group_id;
+						delete rest.parallel_timeline;
+						delete rest.groupTimelines;
+						return {
+							...rest,
+							// Preserve these properties when ungrouping with prefixes
+							// This allows us to potentially recover them if the item is grouped again
+							// without interfering with the normal item structure
+							_previous_timeline: parallelTimeline,
 							_previous_color: item.timeline_color,
 							_previous_group_name: item.group_name
 						};
@@ -1187,12 +1208,11 @@ export function calculateTimelineDurations(items, groupId) {
 // DEBUG function to check the state of the timeline names
 export function debugTimelineNames() {
 	const customNames = customTimelineNames;
-	console.log('[DEBUG] Current custom timeline names:', customNames);
-
-	console.log('[DEBUG] Current PARALLEL_TIMELINES:', JSON.stringify(PARALLEL_TIMELINES, null, 2));
+	debug('[sectionsStore] Current custom timeline names:', customNames);
+	debug('[sectionsStore] Current PARALLEL_TIMELINES:', PARALLEL_TIMELINES);
 
 	Object.keys(DEFAULT_TIMELINE_NAMES).forEach((key) => {
-		console.log(`[DEBUG] Timeline ${key} name:`, getTimelineName(key));
+		debug(`[sectionsStore] Timeline ${key} name:`, getTimelineName(key));
 	});
 
 	return customNames;
@@ -1359,31 +1379,31 @@ export function removeFromParallelGroup(itemId, items) {
 	// If only one item would remain, dissolve the group
 	if (remainingGroupItems.length <= 1) {
 		return items.map((item) => {
-				if (item.parallel_group_id === groupId) {
-					// Remove group properties
-					const rest = { ...item };
-					delete rest.parallel_group_id;
-					delete rest.parallel_timeline;
-					delete rest.groupTimelines;
-					// Restore original duration? Or keep selected_duration?
-					// Let's keep selected_duration for now, assuming it was manually set.
-					return rest;
-				}
+			if (item.parallel_group_id === groupId) {
+				// Remove group properties
+				const rest = { ...item };
+				delete rest.parallel_group_id;
+				delete rest.parallel_timeline;
+				delete rest.groupTimelines;
+				// Restore original duration? Or keep selected_duration?
+				// Let's keep selected_duration for now, assuming it was manually set.
+				return rest;
+			}
 			return item;
 		});
 	}
 
 	// Otherwise, just remove the one item from the group
-		return items.map((item) => {
-			if (item.id === itemId) {
-				const rest = { ...item };
-				delete rest.parallel_group_id;
-				delete rest.parallel_timeline;
-				delete rest.groupTimelines;
-				return rest;
-			}
-			return item;
-		});
+	return items.map((item) => {
+		if (item.id === itemId) {
+			const rest = { ...item };
+			delete rest.parallel_group_id;
+			delete rest.parallel_timeline;
+			delete rest.groupTimelines;
+			return rest;
+		}
+		return item;
+	});
 }
 
 // ------------------------------------------------------

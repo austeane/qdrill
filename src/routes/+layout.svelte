@@ -44,12 +44,10 @@
 					// Legacy plain-id storage
 				}
 				try {
-					console.log(`Found ${item.key} with ID ${entityId}, attempting to associate...`);
 					await apiFetch(`${item.endpoint}/${entityId}/associate`, {
 						method: 'POST',
 						body: JSON.stringify({ claimToken })
 					});
-					console.log(`${item.key} ${entityId} associated successfully.`);
 					// Optional: Show success toast
 					// toast.push(`Successfully claimed your ${item.key.replace('ToAssociate', '')}.`);
 				} catch (error) {
@@ -59,7 +57,6 @@
 				} finally {
 					// Remove the item from sessionStorage regardless of success/failure
 					sessionStorage.removeItem(item.key);
-					console.log(`Removed ${item.key} from sessionStorage.`);
 				}
 			}
 		}
@@ -119,11 +116,5 @@
 	}
 	.min-h-screen {
 		min-height: 100vh;
-	}
-	.flex-1 {
-		flex: 1;
-	}
-	main {
-		display: contents;
 	}
 </style>

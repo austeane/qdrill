@@ -19,11 +19,6 @@
 		const generatedPlanFromAI = event; // This should now be in the correct format
 		try {
 			// No transformation needed if AI prompt and schema are aligned with backend
-			console.log(
-				'Sending AI-generated plan (expected to match backend schema):',
-				JSON.stringify(generatedPlanFromAI, null, 2)
-			);
-
 			const body = await apiFetch('/api/practice-plans', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },

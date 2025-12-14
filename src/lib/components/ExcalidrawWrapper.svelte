@@ -24,10 +24,17 @@
 	let excalidrawAPI = $state(null);
 	let fullscreenExcalidrawAPI = $state(null);
 	let ExcalidrawComponent = $state(null);
-	let isFullscreen = $state(startFullscreen);
+	let isFullscreen = $state(false);
 	let initialSceneData = $state(null);
 	let excalidrawWrapper = $state(null);
 	let hasInitialized = false;
+	let didInitFullscreen = false;
+
+	$effect(() => {
+		if (didInitFullscreen) return;
+		isFullscreen = startFullscreen;
+		didInitFullscreen = true;
+	});
 
 	let fullscreenExcalidrawComponent = $state(null);
 	let fullscreenContainer = $state(null);

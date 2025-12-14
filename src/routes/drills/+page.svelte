@@ -12,11 +12,12 @@
 	import { apiFetch } from '$lib/utils/apiFetch.js';
 	import { sanitizeHtml } from '$lib/utils/sanitize.js';
 	import SkeletonLoader from '$lib/components/SkeletonLoader.svelte';
-		import { slide } from 'svelte/transition';
+	import { slide } from 'svelte/transition';
+	import { onDocumentEvent } from '$lib/utils/windowEvents.svelte.js';
 
-		import { drillsStore } from '$lib/stores/drillsStore';
+	import { drillsStore } from '$lib/stores/drillsStore';
 
-		import Pagination from '$lib/components/Pagination.svelte';
+	import Pagination from '$lib/components/Pagination.svelte';
 
 	let { data } = $props();
 
@@ -56,59 +57,59 @@
 
 	// Initialize filter stores from URL search params on mount or when URL changes
 	const urlSearch = $derived(page.url.search);
-		$effect(() => {
-			const params = new URLSearchParams(urlSearch);
+	$effect(() => {
+		const params = new URLSearchParams(urlSearch);
 
-			// Helper to parse comma-separated params into store object
-			const parseCommaSeparatedToStore = (paramName, field) => {
-				const values =
-					params
-						.get(paramName)
-						?.split(',')
+		// Helper to parse comma-separated params into store object
+		const parseCommaSeparatedToStore = (paramName, field) => {
+			const values =
+				params
+					.get(paramName)
+					?.split(',')
 					.map((t) => t.trim())
 					.filter((t) => t) || [];
-				const newState = {};
-				values.forEach((v) => {
-					newState[v] = FILTER_STATES.REQUIRED;
-				}); // Assume URL values mean REQUIRED
-				drillsStore[field] = newState;
-			};
+			const newState = {};
+			values.forEach((v) => {
+				newState[v] = FILTER_STATES.REQUIRED;
+			}); // Assume URL values mean REQUIRED
+			drillsStore[field] = newState;
+		};
 
-			// Helper to parse simple param into store
-			const parseSimpleParamToStore = (paramName, field, defaultValue = null, parser = (v) => v) => {
-				drillsStore[field] = params.has(paramName) ? parser(params.get(paramName)) : defaultValue;
-			};
+		// Helper to parse simple param into store
+		const parseSimpleParamToStore = (paramName, field, defaultValue = null, parser = (v) => v) => {
+			drillsStore[field] = params.has(paramName) ? parser(params.get(paramName)) : defaultValue;
+		};
 
-			const parseBooleanParamToStore = (paramName, field) => {
-				const value = params.get(paramName)?.toLowerCase();
-				drillsStore[field] = value === 'true' ? true : value === 'false' ? false : null;
-			};
+		const parseBooleanParamToStore = (paramName, field) => {
+			const value = params.get(paramName)?.toLowerCase();
+			drillsStore[field] = value === 'true' ? true : value === 'false' ? false : null;
+		};
 
-			parseCommaSeparatedToStore('skillLevel', 'selectedSkillLevels');
-			parseCommaSeparatedToStore('complexity', 'selectedComplexities');
-			parseCommaSeparatedToStore('skills', 'selectedSkillsFocusedOn');
-			parseCommaSeparatedToStore('positions', 'selectedPositionsFocusedOn');
-			parseCommaSeparatedToStore('types', 'selectedDrillTypes');
+		parseCommaSeparatedToStore('skillLevel', 'selectedSkillLevels');
+		parseCommaSeparatedToStore('complexity', 'selectedComplexities');
+		parseCommaSeparatedToStore('skills', 'selectedSkillsFocusedOn');
+		parseCommaSeparatedToStore('positions', 'selectedPositionsFocusedOn');
+		parseCommaSeparatedToStore('types', 'selectedDrillTypes');
 
-			parseSimpleParamToStore('minPeople', 'selectedNumberOfPeopleMin', null, parseInt);
-			parseSimpleParamToStore('maxPeople', 'selectedNumberOfPeopleMax', null, parseInt);
-			parseSimpleParamToStore('minLength', 'selectedSuggestedLengthsMin', null, parseInt);
-			parseSimpleParamToStore('maxLength', 'selectedSuggestedLengthsMax', null, parseInt);
-			parseSimpleParamToStore('q', 'searchQuery', '');
+		parseSimpleParamToStore('minPeople', 'selectedNumberOfPeopleMin', null, parseInt);
+		parseSimpleParamToStore('maxPeople', 'selectedNumberOfPeopleMax', null, parseInt);
+		parseSimpleParamToStore('minLength', 'selectedSuggestedLengthsMin', null, parseInt);
+		parseSimpleParamToStore('maxLength', 'selectedSuggestedLengthsMax', null, parseInt);
+		parseSimpleParamToStore('q', 'searchQuery', '');
 
-			parseBooleanParamToStore('hasVideo', 'selectedHasVideo');
-			parseBooleanParamToStore('hasDiagrams', 'selectedHasDiagrams');
-			parseBooleanParamToStore('hasImages', 'selectedHasImages');
+		parseBooleanParamToStore('hasVideo', 'selectedHasVideo');
+		parseBooleanParamToStore('hasDiagrams', 'selectedHasDiagrams');
+		parseBooleanParamToStore('hasImages', 'selectedHasImages');
 
-			// Initialize sort stores
-			sortStore.selectedSortOption = params.get('sort') || 'date_created';
-			sortStore.selectedSortOrder = params.get('order') || 'desc';
+		// Initialize sort stores
+		sortStore.selectedSortOption = params.get('sort') || 'date_created';
+		sortStore.selectedSortOrder = params.get('order') || 'desc';
 
-			// Update pagination state from load + URL
-			drillsStore.currentPage = data.pagination?.page || 1;
-			drillsStore.totalPages = data.pagination?.totalPages || 1;
-			drillsStore.drillsPerPage = parseInt(params.get('limit') || '10');
-		});
+		// Update pagination state from load + URL
+		drillsStore.currentPage = data.pagination?.page || 1;
+		drillsStore.totalPages = data.pagination?.totalPages || 1;
+		drillsStore.drillsPerPage = parseInt(params.get('limit') || '10');
+	});
 
 	// Functions to navigate pages
 	let debounceTimer;
@@ -120,20 +121,20 @@
 	function applyFiltersAndNavigate({ resetPage = false } = {}) {
 		const params = new URLSearchParams(); // Start fresh
 
-			// Pagination
-			const pageToNavigate = resetPage ? 1 : page.url.searchParams.get('page') || 1;
-			params.set('page', pageToNavigate.toString());
-			params.set('limit', drillsStore.drillsPerPage.toString());
+		// Pagination
+		const pageToNavigate = resetPage ? 1 : page.url.searchParams.get('page') || 1;
+		params.set('page', pageToNavigate.toString());
+		params.set('limit', drillsStore.drillsPerPage.toString());
 
-			// Sorting
-			if (sortStore.selectedSortOption && sortStore.selectedSortOption !== 'date_created') {
-				// Only add if not default
-				params.set('sort', sortStore.selectedSortOption);
-			}
-			if (sortStore.selectedSortOrder && sortStore.selectedSortOrder !== 'desc') {
-				// Only add if not default
-				params.set('order', sortStore.selectedSortOrder);
-			}
+		// Sorting
+		if (sortStore.selectedSortOption && sortStore.selectedSortOption !== 'date_created') {
+			// Only add if not default
+			params.set('sort', sortStore.selectedSortOption);
+		}
+		if (sortStore.selectedSortOrder && sortStore.selectedSortOrder !== 'desc') {
+			// Only add if not default
+			params.set('order', sortStore.selectedSortOrder);
+		}
 
 		// Filters
 		// Helper to set params for comma-separated values from filter store objects
@@ -160,29 +161,29 @@
 			}
 		};
 
-			updateCommaSeparatedParam('skillLevel', drillsStore.selectedSkillLevels);
-			updateCommaSeparatedParam('complexity', drillsStore.selectedComplexities);
-			updateCommaSeparatedParam('skills', drillsStore.selectedSkillsFocusedOn);
-			updateCommaSeparatedParam('positions', drillsStore.selectedPositionsFocusedOn);
-			updateCommaSeparatedParam('types', drillsStore.selectedDrillTypes);
+		updateCommaSeparatedParam('skillLevel', drillsStore.selectedSkillLevels);
+		updateCommaSeparatedParam('complexity', drillsStore.selectedComplexities);
+		updateCommaSeparatedParam('skills', drillsStore.selectedSkillsFocusedOn);
+		updateCommaSeparatedParam('positions', drillsStore.selectedPositionsFocusedOn);
+		updateCommaSeparatedParam('types', drillsStore.selectedDrillTypes);
 
 		// Range params – only include if they differ from the defaults
 		const defaultMinPeople = filterOptions.numberOfPeopleOptions?.min ?? 0;
 		const defaultMaxPeople = filterOptions.numberOfPeopleOptions?.max ?? 100;
 		const defaultMinLength = filterOptions.suggestedLengths?.min ?? 0;
-			const defaultMaxLength = filterOptions.suggestedLengths?.max ?? 120;
+		const defaultMaxLength = filterOptions.suggestedLengths?.max ?? 120;
 
-			updateSimpleParam('minPeople', drillsStore.selectedNumberOfPeopleMin, defaultMinPeople);
-			updateSimpleParam('maxPeople', drillsStore.selectedNumberOfPeopleMax, defaultMaxPeople);
-			updateSimpleParam('minLength', drillsStore.selectedSuggestedLengthsMin, defaultMinLength);
-			updateSimpleParam('maxLength', drillsStore.selectedSuggestedLengthsMax, defaultMaxLength);
+		updateSimpleParam('minPeople', drillsStore.selectedNumberOfPeopleMin, defaultMinPeople);
+		updateSimpleParam('maxPeople', drillsStore.selectedNumberOfPeopleMax, defaultMaxPeople);
+		updateSimpleParam('minLength', drillsStore.selectedSuggestedLengthsMin, defaultMinLength);
+		updateSimpleParam('maxLength', drillsStore.selectedSuggestedLengthsMax, defaultMaxLength);
 
-			updateBooleanParam('hasVideo', drillsStore.selectedHasVideo);
-			updateBooleanParam('hasDiagrams', drillsStore.selectedHasDiagrams);
-			updateBooleanParam('hasImages', drillsStore.selectedHasImages);
+		updateBooleanParam('hasVideo', drillsStore.selectedHasVideo);
+		updateBooleanParam('hasDiagrams', drillsStore.selectedHasDiagrams);
+		updateBooleanParam('hasImages', drillsStore.selectedHasImages);
 
-			// Pass null for searchQuery if it's empty to avoid adding '?q='
-			updateSimpleParam('q', drillsStore.searchQuery === '' ? null : drillsStore.searchQuery);
+		// Pass null for searchQuery if it's empty to avoid adding '?q='
+		updateSimpleParam('q', drillsStore.searchQuery === '' ? null : drillsStore.searchQuery);
 
 		goto(`/drills?${params.toString()}`, { keepFocus: true, noScroll: true });
 	}
@@ -235,17 +236,13 @@
 	let showSortOptions = $state(false);
 	let sortOptionsRef = $state(null);
 
-	$effect(() => {
-		const handleClickOutside = (event) => {
-			if (sortOptionsRef && !sortOptionsRef.contains(event.target)) {
-				showSortOptions = false;
-			}
-		};
-		document.addEventListener('click', handleClickOutside);
-		return () => {
-			document.removeEventListener('click', handleClickOutside);
-		};
-	});
+	const handleSortClickOutside = (event) => {
+		if (!showSortOptions) return;
+		if (sortOptionsRef && !sortOptionsRef.contains(event.target)) {
+			showSortOptions = false;
+		}
+	};
+	onDocumentEvent('click', handleSortClickOutside);
 
 	function toggleSortOptions(event) {
 		event.stopPropagation();
@@ -310,9 +307,7 @@
 				href="/practice-plans/create"
 				class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-300"
 			>
-				Create Practice Plan with {cart.drills.length} Drill{cart.drills.length !== 1
-					? 's'
-					: ''}
+				Create Practice Plan with {cart.drills.length} Drill{cart.drills.length !== 1 ? 's' : ''}
 			</a>
 		</div>
 	</div>
@@ -350,37 +345,37 @@
 					class="absolute left-0 mt-2 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm z-10"
 				>
 					<div class="flex flex-col space-y-2">
-							<select
-								class="p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-gray-200"
-								onchange={handleSortChange}
-								value={sortStore.selectedSortOption}
-								data-testid="sort-select"
-							>
+						<select
+							class="p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 dark:text-gray-200"
+							onchange={handleSortChange}
+							value={sortStore.selectedSortOption}
+							data-testid="sort-select"
+						>
 							{#each sortOptions as option (option.value)}
 								<option value={option.value}>{option.label}</option>
 							{/each}
 						</select>
 						<button
 							class="px-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-300 dark:text-gray-200"
-								onclick={toggleSortOrder}
-								data-testid="sort-order-toggle"
-							>
-								{sortStore.selectedSortOrder === 'asc' ? '↑ Ascending' : '↓ Descending'}
-							</button>
-						</div>
+							onclick={toggleSortOrder}
+							data-testid="sort-order-toggle"
+						>
+							{sortStore.selectedSortOrder === 'asc' ? '↑ Ascending' : '↓ Descending'}
+						</button>
 					</div>
+				</div>
 			{/if}
 		</div>
 
-			<input
-				type="text"
-				placeholder="Search drills..."
-				class="flex-grow p-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-gray-200"
-				bind:value={drillsStore.searchQuery}
-				oninput={handleSearchInput}
-				aria-label="Search drills"
-				data-testid="search-input"
-			/>
+		<input
+			type="text"
+			placeholder="Search drills..."
+			class="flex-grow p-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-gray-200"
+			bind:value={drillsStore.searchQuery}
+			oninput={handleSearchInput}
+			aria-label="Search drills"
+			data-testid="search-input"
+		/>
 	</div>
 
 	<!-- Loading and Empty States -->

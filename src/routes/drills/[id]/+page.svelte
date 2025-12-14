@@ -13,7 +13,7 @@
 
 	let { data } = $props();
 
-	let drill = $state(data.drill || {});
+	let drill = $state({});
 
 	// Check if user is admin or owner
 	const session = $derived(page.data.session);
@@ -23,7 +23,7 @@
 
 	// Reactively update the local store if the data prop changes
 	$effect(() => {
-		if (data.drill) drill = data.drill;
+		drill = data.drill || {};
 	});
 
 	const allVariants = $derived.by(() => {
@@ -432,7 +432,7 @@
 					<h2 class="text-lg font-semibold mb-2 dark:text-white">Images</h2>
 					<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
 						{#each Array.isArray(drill.images) ? drill.images : [] as image, i (i)}
-							<img src={image} alt="Drill Image" class="w-full h-48 object-cover rounded-lg" />
+							<img src={image} alt="" class="w-full h-48 object-cover rounded-lg" />
 						{/each}
 					</div>
 				</div>
@@ -471,14 +471,14 @@
 						{/if}
 					</div>
 				</div>
-				{/if}
+			{/if}
 
-				<div class="mb-6">
-					<h2 class="text-lg font-semibold mb-2 dark:text-white">Comments</h2>
-					<Comments drillId={page.params.id} />
-				</div>
+			<div class="mb-6">
+				<h2 class="text-lg font-semibold mb-2 dark:text-white">Comments</h2>
+				<Comments drillId={page.params.id} />
 			</div>
 		</div>
+	</div>
 
 	{#if showVariantModal}
 		<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -607,21 +607,3 @@
 		</div>
 	{/if}
 </section>
-
-<style>
-	.diagram-container {
-		/* Set a fixed aspect ratio matching the CANVAS dimensions (500x600) */
-		aspect-ratio: 5/6;
-		width: 100%;
-		max-width: 500px; /* Match CANVAS_WIDTH */
-		margin: 0 auto; /* Center the container */
-	}
-
-	/* Make the container responsive but maintain aspect ratio */
-	@media (max-width: 500px) {
-		.diagram-container {
-			width: 100%;
-			max-width: none;
-		}
-	}
-</style>

@@ -16,29 +16,29 @@
 		section,
 		sectionIndex,
 		onRemoveSection = (sectionId) => {
-		console.warn('onRemoveSection prop not provided to SectionContainer', sectionId);
+			console.warn('onRemoveSection prop not provided to SectionContainer', sectionId);
 		},
 		onRemoveItem = (sectionIndex, itemIndex) => {
-		console.warn('onRemoveItem prop not provided to SectionContainer', sectionIndex, itemIndex);
+			console.warn('onRemoveItem prop not provided to SectionContainer', sectionIndex, itemIndex);
 		},
 		onDurationChange = (sectionIndex, itemIndex, newDuration) => {
-		console.warn(
-			'onDurationChange prop not provided to SectionContainer',
-			sectionIndex,
-			itemIndex,
-			newDuration
-		);
+			console.warn(
+				'onDurationChange prop not provided to SectionContainer',
+				sectionIndex,
+				itemIndex,
+				newDuration
+			);
 		},
 		onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
-		console.warn(
-			'onTimelineChange prop not provided to SectionContainer',
-			sectionIndex,
-			itemIndex,
-			newTimeline
-		);
+			console.warn(
+				'onTimelineChange prop not provided to SectionContainer',
+				sectionIndex,
+				itemIndex,
+				newTimeline
+			);
 		},
 		onUngroup = (groupId) => {
-		console.warn('onUngroup prop not provided to SectionContainer', groupId);
+			console.warn('onUngroup prop not provided to SectionContainer', groupId);
 		},
 		timelineNameGetter = (timeline) => timeline,
 		customTimelineNamesData = {},
@@ -57,6 +57,8 @@
 
 <div
 	class="section-container bg-white rounded-lg shadow-sm p-4 mb-4"
+	role="region"
+	aria-label={section?.name || 'Practice plan section'}
 	draggable="true"
 	ondragstart={(e) => startSectionDrag(e, sectionIndex)}
 	ondragover={(e) => handleSectionDragOver(e, sectionIndex, e.currentTarget)}
@@ -75,6 +77,8 @@
 		{#if section.items.length === 0}
 			<div
 				class="empty-section-placeholder h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-500"
+				role="region"
+				aria-label="Empty section drop area"
 				ondragover={(e) => handleEmptySectionDragOver(e, sectionIndex, e.currentTarget)}
 				ondragleave={handleDragLeave}
 				ondrop={handleDrop}

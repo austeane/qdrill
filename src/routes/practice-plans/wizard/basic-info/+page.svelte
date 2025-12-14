@@ -7,10 +7,8 @@
 
 	onMount(async () => {
 		try {
-			console.log('Loading TinyMCE editor...');
 			const module = await import('@tinymce/tinymce-svelte');
 			Editor = module.default;
-			console.log('TinyMCE editor loaded successfully');
 		} catch (error) {
 			console.error('Error loading TinyMCE:', error);
 		}
@@ -93,9 +91,9 @@
 					class="bg-white text-gray-900 placeholder-gray-400 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
 					aria-label="Number of Participants"
 					aria-invalid={wizardStore.validationErrors.participants ? 'true' : 'false'}
-					aria-describedby={
-						wizardStore.validationErrors.participants ? 'participants-error' : undefined
-					}
+					aria-describedby={wizardStore.validationErrors.participants
+						? 'participants-error'
+						: undefined}
 				/>
 				{#if wizardStore.validationErrors.participants}
 					<p id="participants-error" class="mt-1 text-sm text-red-600">
@@ -116,9 +114,7 @@
 					class="bg-white text-gray-900 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
 					aria-label="Phase of Season"
 					aria-invalid={wizardStore.validationErrors.phaseOfSeason ? 'true' : 'false'}
-					aria-describedby={
-						wizardStore.validationErrors.phaseOfSeason ? 'phase-error' : undefined
-					}
+					aria-describedby={wizardStore.validationErrors.phaseOfSeason ? 'phase-error' : undefined}
 				>
 					<option value={null}>Select a phase (optional)</option>
 					{#each phaseOptions as phase (phase)}
@@ -157,9 +153,9 @@
 							placeholder="Enter a practice goal"
 							class="bg-white text-gray-900 placeholder-gray-400 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm rounded-md px-3 py-2"
 							aria-label={`Practice Goal ${index + 1}`}
-							aria-invalid={
-								wizardStore.validationErrors.practiceGoals?.[index] ? 'true' : undefined
-							}
+							aria-invalid={wizardStore.validationErrors.practiceGoals?.[index]
+								? 'true'
+								: undefined}
 						/>
 						<button
 							type="button"
@@ -196,14 +192,14 @@
 				Description (Optional)
 			</label>
 			<div class="mt-1">
-					{#if Editor}
-						<div class="min-h-[300px]">
-							<Editor
-								id="description"
-								apiKey={import.meta.env.VITE_TINY_API_KEY}
-								init={{
-									height: 300,
-									menubar: false,
+				{#if Editor}
+					<div class="min-h-[300px]">
+						<Editor
+							id="description"
+							apiKey={import.meta.env.VITE_TINY_API_KEY}
+							init={{
+								height: 300,
+								menubar: false,
 								plugins: [
 									'advlist',
 									'autolink',
@@ -234,14 +230,14 @@
 										handleChange();
 									});
 								}
-								}}
-								value={wizardStore.basicInfo.description}
-								aria-invalid={wizardStore.validationErrors.description ? 'true' : 'false'}
-								aria-describedby={
-									wizardStore.validationErrors.description ? 'description-error' : undefined
-								}
-							/>
-						</div>
+							}}
+							value={wizardStore.basicInfo.description}
+							aria-invalid={wizardStore.validationErrors.description ? 'true' : 'false'}
+							aria-describedby={wizardStore.validationErrors.description
+								? 'description-error'
+								: undefined}
+						/>
+					</div>
 				{:else}
 					<textarea
 						id="description"
@@ -250,9 +246,9 @@
 						class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
 						rows="8"
 						aria-invalid={wizardStore.validationErrors.description ? 'true' : 'false'}
-						aria-describedby={
-							wizardStore.validationErrors.description ? 'description-error' : undefined
-						}
+						aria-describedby={wizardStore.validationErrors.description
+							? 'description-error'
+							: undefined}
 					></textarea>
 				{/if}
 				{#if wizardStore.validationErrors.description}
@@ -274,9 +270,7 @@
 				onchange={handleChange}
 				class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
 				aria-invalid={wizardStore.validationErrors.visibility ? 'true' : 'false'}
-				aria-describedby={
-					wizardStore.validationErrors.visibility ? 'visibility-error' : undefined
-				}
+				aria-describedby={wizardStore.validationErrors.visibility ? 'visibility-error' : undefined}
 			>
 				<option value="public">Public</option>
 				<option value="private">Private</option>
@@ -298,9 +292,9 @@
 					onchange={handleChange}
 					class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
 					aria-invalid={wizardStore.validationErrors.isEditableByOthers ? 'true' : 'false'}
-					aria-describedby={
-						wizardStore.validationErrors.isEditableByOthers ? 'editable-error' : undefined
-					}
+					aria-describedby={wizardStore.validationErrors.isEditableByOthers
+						? 'editable-error'
+						: undefined}
 				/>
 				<span class="text-sm text-gray-700">Allow others to edit this practice plan</span>
 			</label>

@@ -34,6 +34,7 @@
 			id="containsDrill-content"
 			class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 			role="menu"
 			tabindex="0"
 		>
@@ -52,11 +53,15 @@
 				{#if suggestions.length > 0}
 					<ul class="max-h-48 overflow-y-auto">
 						{#each suggestions as drill (drill.id)}
-							<li
-								class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-100"
-								onclick={() => onSelect(drill)}
-							>
-								<span class="font-normal block truncate">{drill.name}</span>
+							<li class="relative">
+								<button
+									type="button"
+									role="menuitem"
+									class="w-full text-left cursor-pointer select-none py-2 pl-3 pr-9 hover:bg-blue-100"
+									onclick={() => onSelect(drill)}
+								>
+									<span class="font-normal block truncate">{drill.name}</span>
+								</button>
 							</li>
 						{/each}
 					</ul>

@@ -658,10 +658,6 @@
 		gap: 16px;
 	}
 
-	.empty-state svg {
-		color: #d1d5db;
-	}
-
 	.empty-state p {
 		margin: 0;
 		color: #6b7280;
@@ -722,10 +718,6 @@
 	:global(.dark) .action-button.delete:not(:disabled):hover {
 		background: #7f1d1d;
 		border-color: #991b1b;
-	}
-
-	:global(.dark) .empty-state svg {
-		color: #4b5563;
 	}
 
 	:global(.dark) .empty-state p {

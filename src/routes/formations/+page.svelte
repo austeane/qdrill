@@ -8,6 +8,7 @@
 		resetFormationFilters
 	} from '$lib/stores/formationsStore';
 	import { slide } from 'svelte/transition'; // Keep for potential sort dropdown
+	import { onDocumentEvent } from '$lib/utils/windowEvents.svelte.js';
 
 	let { data } = $props();
 
@@ -20,9 +21,7 @@
 	// REMOVED: tagsList and onMount logic fetching all and extracting tags
 
 	// Filter options from load (Placeholder - implement in +page.server.js if needed)
-	const filterOptions = $derived(
-		data.filterOptions || { tags: [], types: ['offense', 'defense'] }
-	); // Example structure
+	const filterOptions = $derived(data.filterOptions || { tags: [], types: ['offense', 'defense'] }); // Example structure
 
 	// --- Navigation Logic ---
 
@@ -139,18 +138,14 @@
 			formationsStore.selectedSortOrder === 'asc' ? 'desc' : 'asc';
 		applyFiltersAndNavigate({ resetPage: true });
 	}
-	// Close dropdown on click outside
-	import { onMount } from 'svelte'; // Keep onMount for this
 
-	onMount(() => {
-		const handleClickOutside = (event) => {
-			if (sortOptionsRef && !sortOptionsRef.contains(event.target)) {
-				showSortOptions = false;
-			}
-		};
-		document.addEventListener('click', handleClickOutside);
-		return () => document.removeEventListener('click', handleClickOutside);
-	});
+	const handleSortClickOutside = (event) => {
+		if (!showSortOptions) return;
+		if (sortOptionsRef && !sortOptionsRef.contains(event.target)) {
+			showSortOptions = false;
+		}
+	};
+	onDocumentEvent('click', handleSortClickOutside);
 </script>
 
 <svelte:head>
@@ -213,15 +208,17 @@
 			<!-- Sort -->
 			<div class="relative">
 				<span id="sort-label" class="block text-sm font-medium text-gray-700 mb-1">Sort</span>
-					<button
-						aria-labelledby="sort-label"
-						onclick={toggleSortOptions}
-						class="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-blue-500"
-					>
+				<button
+					aria-labelledby="sort-label"
+					onclick={toggleSortOptions}
+					class="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-blue-500"
+				>
 					<span class="font-medium"
 						>{formationsStore.selectedSortOption
 							? sortOptions.find((o) => o.value === formationsStore.selectedSortOption)?.label
-							: 'Select Sort'} ({formationsStore.selectedSortOrder === 'asc' ? 'Asc' : 'Desc'})</span
+							: 'Select Sort'} ({formationsStore.selectedSortOrder === 'asc'
+							? 'Asc'
+							: 'Desc'})</span
 					>
 					<span
 						class="transform transition-transform duration-300"

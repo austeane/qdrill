@@ -18,29 +18,29 @@
 		parallelGroupId,
 		totalDuration = 0,
 		onRemoveItem = (sectionIndex, itemIndex) => {
-		console.warn('onRemoveItem prop not provided to TimelineColumn', sectionIndex, itemIndex);
+			console.warn('onRemoveItem prop not provided to TimelineColumn', sectionIndex, itemIndex);
 		},
 		onDurationChange = (sectionIndex, itemIndex, newDuration) => {
-		console.warn(
-			'onDurationChange prop not provided to TimelineColumn',
-			sectionIndex,
-			itemIndex,
-			newDuration
-		);
+			console.warn(
+				'onDurationChange prop not provided to TimelineColumn',
+				sectionIndex,
+				itemIndex,
+				newDuration
+			);
 		},
 		onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
-		console.warn(
-			'onTimelineChange prop not provided to TimelineColumn',
-			sectionIndex,
-			itemIndex,
-			newTimeline
-		);
+			console.warn(
+				'onTimelineChange prop not provided to TimelineColumn',
+				sectionIndex,
+				itemIndex,
+				newTimeline
+			);
 		},
 		timelineNameGetter = (timeline) => timeline, // Simple default
 		customTimelineNamesData = {} // Pass the reactive data (not directly used here, but needed by getter)
 	} = $props();
 
-		// `customTimelineNamesData` is passed so `timelineNameGetter` can be reactive.
+	// `customTimelineNamesData` is passed so `timelineNameGetter` can be reactive.
 
 	// Get the timeline name reactively using the passed getter
 	const timelineName = $derived(timelineNameGetter(timeline));
@@ -63,6 +63,8 @@
 
 <div
 	class="timeline-column bg-white rounded-lg border border-gray-200 p-2 min-h-[150px] flex flex-col transition-all duration-200"
+	role="region"
+	aria-label={timelineName}
 	data-section-index={sectionIndex}
 	data-timeline={timeline}
 	data-group-id={parallelGroupId}
@@ -100,15 +102,6 @@
 			dragState.isSameTimeline = isSameTimeline;
 			dragState.dropPosition = 'inside';
 		}
-
-		console.log('[TIMELINE DROP] Direct handler with attributes:', {
-			sectionIndex,
-			timeline,
-			parallelGroupId,
-			timelineItems: timelineSpecificItems.length,
-			isSameTimeline:
-				dragState.sourceTimeline === timeline && dragState.sourceGroupId === parallelGroupId
-		});
 
 		// Call the main drop handler
 		handleDrop(e);

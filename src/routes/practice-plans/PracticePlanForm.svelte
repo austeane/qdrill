@@ -6,6 +6,7 @@
 	import { enhance } from '$app/forms'; // Import enhance
 	import { cart } from '$lib/stores/cartStore';
 	import { undo, redo, getCanUndo, getCanRedo, initializeHistory } from '$lib/stores/historyStore';
+	import { onWindowEvent } from '$lib/utils/windowEvents.svelte.js';
 
 	// Import NEW stores and utils
 	import {
@@ -60,6 +61,33 @@
 	const canUndo = $derived(getCanUndo());
 	const canRedo = $derived(getCanRedo());
 
+	function handleKeydown(e) {
+		const activeElement = document.activeElement;
+		const isEditing =
+			activeElement &&
+			(activeElement.tagName === 'INPUT' ||
+				activeElement.tagName === 'TEXTAREA' ||
+				activeElement.tagName === 'SELECT' ||
+				activeElement.closest('.tox-tinymce'));
+
+		if (isEditing) return;
+
+		if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+			e.preventDefault();
+			if (canUndo) undo();
+			return;
+		}
+
+		if (
+			((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) ||
+			((e.ctrlKey || e.metaKey) && e.key === 'y')
+		) {
+			e.preventDefault();
+			if (canRedo) redo();
+		}
+	}
+	onWindowEvent('keydown', handleKeydown);
+
 	// UI state
 	let showDrillSearch = $state(false);
 	let showTimelineSelector = $state(false);
@@ -74,7 +102,6 @@
 		// Only initialize from practicePlan prop (edit mode)
 		if (!practicePlan) return;
 
-		console.log('[PracticePlanForm] Initializing with EXISTING plan data:', practicePlan);
 		initializeForm(practicePlan);
 		initializeSections(practicePlan);
 		initializeHistory(); // Initialize history for existing plan too
@@ -133,27 +160,28 @@
 	}
 
 	// Component initialization
-	onMount(async () => {
-		// Initialize history store regardless of data source
-		// Note: If pendingPlanData exists, it will re-initialize history above in the reactive block.
-		// If only practicePlan exists, it also initializes above.
-		// If neither exists (fresh create), initialize here.
-		if (!practicePlan) {
-			initializeHistory();
-		}
+	onMount(() => {
+		(async () => {
+			// Initialize history store regardless of data source
+			// Note: If pendingPlanData exists, it will re-initialize history above in the reactive block.
+			// If only practicePlan exists, it also initializes above.
+			// If neither exists (fresh create), initialize here.
+			if (!practicePlan) {
+				initializeHistory();
+			}
 
-		// Removed pendingPlanData logic
-		if (!practicePlan) {
-			if (cart.drills.length > 0) {
-				const cartItems = cart.drills.map((drill) => ({
-					id: drill.id,
-					type: 'drill',
-					name: drill.name,
-					drill: drill,
-					expanded: false,
-					selected_duration: 15,
-					diagram_data: null,
-					parallel_group_id: null
+			// Removed pendingPlanData logic
+			if (!practicePlan) {
+				if (cart.drills.length > 0) {
+					const cartItems = cart.drills.map((drill) => ({
+						id: drill.id,
+						type: 'drill',
+						name: drill.name,
+						drill: drill,
+						expanded: false,
+						selected_duration: 15,
+						diagram_data: null,
+						parallel_group_id: null
 					}));
 
 					// Add cart items to sections
@@ -162,9 +190,7 @@
 
 						const skillBuildingIndex = nextSections.findIndex((s) => s.name === 'Skill Building');
 						const targetIndex =
-							skillBuildingIndex !== -1
-								? skillBuildingIndex
-								: Math.min(1, nextSections.length - 1);
+							skillBuildingIndex !== -1 ? skillBuildingIndex : Math.min(1, nextSections.length - 1);
 
 						const targetSection = nextSections[targetIndex] ?? nextSections[0];
 						if (!targetSection) return;
@@ -185,56 +211,18 @@
 					}
 				}
 			} else if (practicePlan) {
-			// If editing an existing plan (and not restoring pending), initialize timelines
-			initializeTimelinesFromPlan(practicePlan);
-		}
-
-		// Add keyboard shortcuts
-		function handleKeydown(e) {
-			// Check if the active element is an input field or textarea
-			const activeElement = document.activeElement;
-			const isEditing =
-				activeElement &&
-				(activeElement.tagName === 'INPUT' ||
-					activeElement.tagName === 'TEXTAREA' ||
-					activeElement.tagName === 'SELECT' ||
-					activeElement.closest('.tox-tinymce')); // Check if inside TinyMCE
-
-			// Only process shortcuts if we're not in an input field
-			if (!isEditing) {
-				// Undo: Ctrl/Cmd + Z
-				if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-					e.preventDefault();
-					if (canUndo) undo();
-				}
-
-				// Redo: Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y
-				if (
-					((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) ||
-					((e.ctrlKey || e.metaKey) && e.key === 'y')
-				) {
-					e.preventDefault();
-					if (canRedo) redo();
-				}
+				// If editing an existing plan (and not restoring pending), initialize timelines
+				initializeTimelinesFromPlan(practicePlan);
 			}
-		}
 
-		// Add event listener for keyboard shortcuts
-		window.addEventListener('keydown', handleKeydown);
-
-		// Load TinyMCE Editor
-		try {
-			console.log('[DEBUG] Loading TinyMCE editor...');
-			const module = await import('@tinymce/tinymce-svelte');
-			_Editor = module.default;
-			console.log('[DEBUG] TinyMCE editor loaded successfully');
-		} catch (error) {
-			console.log('[DEBUG] Error loading TinyMCE', error);
-		}
-		// Clean up event listener on component destruction
-		return () => {
-			window.removeEventListener('keydown', handleKeydown);
-		};
+			// Load TinyMCE Editor
+			try {
+				const module = await import('@tinymce/tinymce-svelte');
+				_Editor = module.default;
+			} catch (error) {
+				console.error('Failed to load TinyMCE editor:', error);
+			}
+		})();
 	});
 
 	// Modal event handlers
@@ -274,7 +262,7 @@
 			return;
 		}
 
-			const sectionsValueForSubmission = $state.snapshot(sections);
+		const sectionsValueForSubmission = $state.snapshot(sections);
 
 		// Clean up sections to remove circular references and unnecessary data
 		const cleanedSections = sectionsValueForSubmission.map((section) => ({
@@ -331,7 +319,9 @@
 					result.status < 300 &&
 					result.type !== 'redirect'
 				) {
-					toast.push(effectiveMode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!');
+					toast.push(
+						effectiveMode === 'edit' ? 'Practice plan updated!' : 'Practice plan created!'
+					);
 					if (!practicePlan) {
 						cart.clear();
 					}

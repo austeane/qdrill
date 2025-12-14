@@ -56,14 +56,6 @@ export async function load({ fetch, url, locals }) {
 		// Remove undefined filters
 		Object.keys(filters).forEach((key) => filters[key] === undefined && delete filters[key]);
 
-		console.log('Loading drills page with:', {
-			page,
-			limit,
-			sortBy,
-			sortOrder,
-			filters
-		});
-
 		// Define options for the service call (pagination + sorting)
 		const serviceOptions = { page, limit, sortBy, sortOrder, userId };
 

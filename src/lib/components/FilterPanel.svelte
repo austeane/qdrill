@@ -1,16 +1,16 @@
-	<script>
-		import RangeSlider from 'svelte-range-slider-pips';
-		import { drillsStore } from '$lib/stores/drillsStore';
-		import { onMount } from 'svelte';
-		import { sortStore } from '$lib/stores/sortStore';
-		import { apiFetch } from '$lib/utils/apiFetch.js';
-		import ThreeStateCheckbox from '$lib/components/ThreeStateCheckbox.svelte';
-		import { FILTER_STATES } from '$lib/constants';
-		import {
-			practicePlanFilterStore,
-			updateFilterState as updatePracticePlanFilterState
-		} from '$lib/stores/practicePlanFilterStore';
-		import debounce from 'lodash/debounce';
+<script>
+	import RangeSlider from 'svelte-range-slider-pips';
+	import { drillsStore } from '$lib/stores/drillsStore';
+	import { onMount } from 'svelte';
+	import { sortStore } from '$lib/stores/sortStore';
+	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import ThreeStateCheckbox from '$lib/components/ThreeStateCheckbox.svelte';
+	import { FILTER_STATES } from '$lib/constants';
+	import {
+		practicePlanFilterStore,
+		updateFilterState as updatePracticePlanFilterState
+	} from '$lib/stores/practicePlanFilterStore';
+	import debounce from 'lodash/debounce';
 
 	let {
 		customClass = '',
@@ -26,34 +26,34 @@
 		suggestedLengths = { min: 0, max: 120 },
 		phaseOfSeasonOptions = [],
 		practiceGoalsOptions = [],
-			sortOptions = [],
-			drillTypes = [],
-			onFilterChange = () => {}
-		} = $props();
+		sortOptions = [],
+		drillTypes = [],
+		onFilterChange = () => {}
+	} = $props();
 
-		// Drill filter state (shared)
-		const selectedSkillLevels = $derived(drillsStore.selectedSkillLevels);
-		const selectedComplexities = $derived(drillsStore.selectedComplexities);
-		const selectedSkillsFocusedOn = $derived(drillsStore.selectedSkillsFocusedOn);
-		const selectedPositionsFocusedOn = $derived(drillsStore.selectedPositionsFocusedOn);
-		const selectedNumberOfPeopleMin = $derived(drillsStore.selectedNumberOfPeopleMin);
-		const selectedNumberOfPeopleMax = $derived(drillsStore.selectedNumberOfPeopleMax);
-		const selectedSuggestedLengthsMin = $derived(drillsStore.selectedSuggestedLengthsMin);
-		const selectedSuggestedLengthsMax = $derived(drillsStore.selectedSuggestedLengthsMax);
-		const selectedHasVideo = $derived(drillsStore.selectedHasVideo);
-		const selectedHasDiagrams = $derived(drillsStore.selectedHasDiagrams);
-		const selectedHasImages = $derived(drillsStore.selectedHasImages);
-		const selectedDrillTypes = $derived(drillsStore.selectedDrillTypes);
+	// Drill filter state (shared)
+	const selectedSkillLevels = $derived(drillsStore.selectedSkillLevels);
+	const selectedComplexities = $derived(drillsStore.selectedComplexities);
+	const selectedSkillsFocusedOn = $derived(drillsStore.selectedSkillsFocusedOn);
+	const selectedPositionsFocusedOn = $derived(drillsStore.selectedPositionsFocusedOn);
+	const selectedNumberOfPeopleMin = $derived(drillsStore.selectedNumberOfPeopleMin);
+	const selectedNumberOfPeopleMax = $derived(drillsStore.selectedNumberOfPeopleMax);
+	const selectedSuggestedLengthsMin = $derived(drillsStore.selectedSuggestedLengthsMin);
+	const selectedSuggestedLengthsMax = $derived(drillsStore.selectedSuggestedLengthsMax);
+	const selectedHasVideo = $derived(drillsStore.selectedHasVideo);
+	const selectedHasDiagrams = $derived(drillsStore.selectedHasDiagrams);
+	const selectedHasImages = $derived(drillsStore.selectedHasImages);
+	const selectedDrillTypes = $derived(drillsStore.selectedDrillTypes);
 
-		// Practice plan filter state (shared)
-		const selectedPhaseOfSeason = $derived(practicePlanFilterStore.selectedPhaseOfSeason);
-		const selectedPracticeGoals = $derived(practicePlanFilterStore.selectedPracticeGoals);
-		const selectedEstimatedParticipantsMin = $derived(
-			practicePlanFilterStore.selectedEstimatedParticipantsMin
-		);
-		const selectedEstimatedParticipantsMax = $derived(
-			practicePlanFilterStore.selectedEstimatedParticipantsMax
-		);
+	// Practice plan filter state (shared)
+	const selectedPhaseOfSeason = $derived(practicePlanFilterStore.selectedPhaseOfSeason);
+	const selectedPracticeGoals = $derived(practicePlanFilterStore.selectedPracticeGoals);
+	const selectedEstimatedParticipantsMin = $derived(
+		practicePlanFilterStore.selectedEstimatedParticipantsMin
+	);
+	const selectedEstimatedParticipantsMax = $derived(
+		practicePlanFilterStore.selectedEstimatedParticipantsMax
+	);
 
 	// Toggle states for drill filters
 	let showSkillLevels = $state(false);
@@ -98,74 +98,74 @@
 	let drillLoading = $state(false);
 	let drillError = $state(null);
 
-		// Reactive checks for active filters
-		const hasActiveDrillFilters = $derived(
-			Object.keys(selectedSkillLevels).length > 0 ||
-				Object.keys(selectedComplexities).length > 0 ||
-				Object.keys(selectedSkillsFocusedOn).length > 0 ||
-				Object.keys(selectedPositionsFocusedOn).length > 0 ||
-				selectedNumberOfPeopleMin !== effectiveNumberOfPeopleOptions.min ||
-				selectedNumberOfPeopleMax !== effectiveNumberOfPeopleOptions.max ||
-				selectedSuggestedLengthsMin !== effectiveSuggestedLengths.min ||
-				selectedSuggestedLengthsMax !== effectiveSuggestedLengths.max ||
-				selectedHasVideo !== null ||
-				selectedHasDiagrams !== null ||
-				selectedHasImages !== null ||
-				Object.keys(selectedDrillTypes).length > 0
-		);
+	// Reactive checks for active filters
+	const hasActiveDrillFilters = $derived(
+		Object.keys(selectedSkillLevels).length > 0 ||
+			Object.keys(selectedComplexities).length > 0 ||
+			Object.keys(selectedSkillsFocusedOn).length > 0 ||
+			Object.keys(selectedPositionsFocusedOn).length > 0 ||
+			selectedNumberOfPeopleMin !== effectiveNumberOfPeopleOptions.min ||
+			selectedNumberOfPeopleMax !== effectiveNumberOfPeopleOptions.max ||
+			selectedSuggestedLengthsMin !== effectiveSuggestedLengths.min ||
+			selectedSuggestedLengthsMax !== effectiveSuggestedLengths.max ||
+			selectedHasVideo !== null ||
+			selectedHasDiagrams !== null ||
+			selectedHasImages !== null ||
+			Object.keys(selectedDrillTypes).length > 0
+	);
 
-		const hasActivePracticePlanFilters = $derived(
-			Object.keys(selectedPhaseOfSeason).length > 0 ||
-				Object.keys(selectedPracticeGoals).length > 0 ||
-				selectedEstimatedParticipantsMin !== 1 ||
-				selectedEstimatedParticipantsMax !== 100 ||
-				selectedDrills.length > 0
-		);
+	const hasActivePracticePlanFilters = $derived(
+		Object.keys(selectedPhaseOfSeason).length > 0 ||
+			Object.keys(selectedPracticeGoals).length > 0 ||
+			selectedEstimatedParticipantsMin !== 1 ||
+			selectedEstimatedParticipantsMax !== 100 ||
+			selectedDrills.length > 0
+	);
 
-		let mounted = false;
+	let mounted = false;
 
-		onMount(() => {
-			mounted = true;
-			// Initialize slider ranges from store values in case they were loaded from URL
-			numberOfPeopleRange = [
-				selectedNumberOfPeopleMin ?? effectiveNumberOfPeopleOptions.min,
-				selectedNumberOfPeopleMax ?? effectiveNumberOfPeopleOptions.max
-			];
-			suggestedLengthsRange = [
-				selectedSuggestedLengthsMin ?? effectiveSuggestedLengths.min,
-				selectedSuggestedLengthsMax ?? effectiveSuggestedLengths.max
-			];
-		});
+	onMount(() => {
+		mounted = true;
+		// Initialize slider ranges from store values in case they were loaded from URL
+		numberOfPeopleRange = [
+			selectedNumberOfPeopleMin ?? effectiveNumberOfPeopleOptions.min,
+			selectedNumberOfPeopleMax ?? effectiveNumberOfPeopleOptions.max
+		];
+		suggestedLengthsRange = [
+			selectedSuggestedLengthsMin ?? effectiveSuggestedLengths.min,
+			selectedSuggestedLengthsMax ?? effectiveSuggestedLengths.max
+		];
+	});
 
-		// Function to reset all filters
-		function resetFilters() {
-			drillsStore.selectedSkillLevels = {};
-			drillsStore.selectedComplexities = {};
-			drillsStore.selectedSkillsFocusedOn = {};
-			drillsStore.selectedPositionsFocusedOn = {};
-			drillsStore.selectedNumberOfPeopleMin = effectiveNumberOfPeopleOptions.min;
-			drillsStore.selectedNumberOfPeopleMax = effectiveNumberOfPeopleOptions.max;
-			drillsStore.selectedSuggestedLengthsMin = effectiveSuggestedLengths.min;
-			drillsStore.selectedSuggestedLengthsMax = effectiveSuggestedLengths.max;
-			drillsStore.selectedHasVideo = null;
-			drillsStore.selectedHasDiagrams = null;
-			drillsStore.selectedHasImages = null;
-			drillsStore.selectedDrillTypes = {};
+	// Function to reset all filters
+	function resetFilters() {
+		drillsStore.selectedSkillLevels = {};
+		drillsStore.selectedComplexities = {};
+		drillsStore.selectedSkillsFocusedOn = {};
+		drillsStore.selectedPositionsFocusedOn = {};
+		drillsStore.selectedNumberOfPeopleMin = effectiveNumberOfPeopleOptions.min;
+		drillsStore.selectedNumberOfPeopleMax = effectiveNumberOfPeopleOptions.max;
+		drillsStore.selectedSuggestedLengthsMin = effectiveSuggestedLengths.min;
+		drillsStore.selectedSuggestedLengthsMax = effectiveSuggestedLengths.max;
+		drillsStore.selectedHasVideo = null;
+		drillsStore.selectedHasDiagrams = null;
+		drillsStore.selectedHasImages = null;
+		drillsStore.selectedDrillTypes = {};
 
-			// Reset local slider state
-			numberOfPeopleRange = [effectiveNumberOfPeopleOptions.min, effectiveNumberOfPeopleOptions.max];
-			suggestedLengthsRange = [effectiveSuggestedLengths.min, effectiveSuggestedLengths.max];
+		// Reset local slider state
+		numberOfPeopleRange = [effectiveNumberOfPeopleOptions.min, effectiveNumberOfPeopleOptions.max];
+		suggestedLengthsRange = [effectiveSuggestedLengths.min, effectiveSuggestedLengths.max];
 
-			if (filterType === 'practice-plans') {
-				practicePlanFilterStore.selectedPhaseOfSeason = {};
-				practicePlanFilterStore.selectedPracticeGoals = {};
-				practicePlanFilterStore.selectedEstimatedParticipantsMin = 1;
-				practicePlanFilterStore.selectedEstimatedParticipantsMax = 100;
-				selectedDrills = [];
-			}
-			closeAllFilters();
-			onFilterChange();
+		if (filterType === 'practice-plans') {
+			practicePlanFilterStore.selectedPhaseOfSeason = {};
+			practicePlanFilterStore.selectedPracticeGoals = {};
+			practicePlanFilterStore.selectedEstimatedParticipantsMin = 1;
+			practicePlanFilterStore.selectedEstimatedParticipantsMax = 100;
+			selectedDrills = [];
 		}
+		closeAllFilters();
+		onFilterChange();
+	}
 
 	// Function to handle toggling filters
 	function toggleFilter(filterName) {
@@ -289,16 +289,16 @@
 		}
 	}
 
-		// Reactive statements to initialize selectedSuggestedLengthsMin and Max
-		$effect(() => {
-			if (effectiveSuggestedLengths.min != null && selectedSuggestedLengthsMin === 0) {
-				drillsStore.selectedSuggestedLengthsMin = effectiveSuggestedLengths.min;
-			}
+	// Reactive statements to initialize selectedSuggestedLengthsMin and Max
+	$effect(() => {
+		if (effectiveSuggestedLengths.min != null && selectedSuggestedLengthsMin === 0) {
+			drillsStore.selectedSuggestedLengthsMin = effectiveSuggestedLengths.min;
+		}
 
-			if (effectiveSuggestedLengths.max != null && selectedSuggestedLengthsMax === 120) {
-				drillsStore.selectedSuggestedLengthsMax = effectiveSuggestedLengths.max;
-			}
-		});
+		if (effectiveSuggestedLengths.max != null && selectedSuggestedLengthsMax === 120) {
+			drillsStore.selectedSuggestedLengthsMax = effectiveSuggestedLengths.max;
+		}
+	});
 
 	// Subscribe to Practice Plans Filters if needed
 
@@ -332,136 +332,145 @@
 		onDrillRemove(drillId);
 	}
 
-		function toggleDrillTypeState(type, newState) {
-			const updated = { ...(drillsStore.selectedDrillTypes || {}) };
+	function toggleDrillTypeState(type, newState) {
+		const updated = { ...(drillsStore.selectedDrillTypes || {}) };
+		if (newState === FILTER_STATES.NEUTRAL) {
+			delete updated[type];
+		} else {
+			updated[type] = newState;
+		}
+		drillsStore.selectedDrillTypes = updated;
+		onFilterChange();
+	}
+
+	// Helper function for updating DRILL filter states
+	function updateFilterState(field) {
+		return (value, newState) => {
+			const current = drillsStore[field] || {};
+			const updated = { ...current };
 			if (newState === FILTER_STATES.NEUTRAL) {
-				delete updated[type];
+				delete updated[value];
 			} else {
-				updated[type] = newState;
+				updated[value] = newState;
 			}
-			drillsStore.selectedDrillTypes = updated;
-			onFilterChange();
-		}
-
-		// Helper function for updating DRILL filter states
-		function updateFilterState(field) {
-			return (value, newState) => {
-				const current = drillsStore[field] || {};
-				const updated = { ...current };
-				if (newState === FILTER_STATES.NEUTRAL) {
-					delete updated[value];
-				} else {
-					updated[value] = newState;
-				}
-				drillsStore[field] = updated;
-				onFilterChange();
-			};
-		}
-
-		// Create update handlers for each filter type
-		const updateSkillLevel = updateFilterState('selectedSkillLevels');
-		const updateComplexity = updateFilterState('selectedComplexities');
-		const updateSkillsFocused = updateFilterState('selectedSkillsFocusedOn');
-		const updatePositionsFocused = updateFilterState('selectedPositionsFocusedOn');
-
-		const applyPhaseOfSeason = updatePracticePlanFilterState('selectedPhaseOfSeason');
-		const updatePhaseOfSeason = (value, newState) => {
-			applyPhaseOfSeason(value, newState);
+			drillsStore[field] = updated;
 			onFilterChange();
 		};
+	}
 
-		const applyPracticeGoals = updatePracticePlanFilterState('selectedPracticeGoals');
-		const updatePracticeGoals = (value, newState) => {
-			applyPracticeGoals(value, newState);
-			onFilterChange();
-		};
+	// Create update handlers for each filter type
+	const updateSkillLevel = updateFilterState('selectedSkillLevels');
+	const updateComplexity = updateFilterState('selectedComplexities');
+	const updateSkillsFocused = updateFilterState('selectedSkillsFocusedOn');
+	const updatePositionsFocused = updateFilterState('selectedPositionsFocusedOn');
+
+	const applyPhaseOfSeason = updatePracticePlanFilterState('selectedPhaseOfSeason');
+	const updatePhaseOfSeason = (value, newState) => {
+		applyPhaseOfSeason(value, newState);
+		onFilterChange();
+	};
+
+	const applyPracticeGoals = updatePracticePlanFilterState('selectedPracticeGoals');
+	const updatePracticeGoals = (value, newState) => {
+		applyPracticeGoals(value, newState);
+		onFilterChange();
+	};
 
 	// Keep range filter stores in sync with slider bindings.
 	// (RangeSlider dispatches legacy component events; in runes mode we react to the bound values instead.)
-		$effect(() => {
-			const [min, max] = numberOfPeopleRange;
+	$effect(() => {
+		const [min, max] = numberOfPeopleRange;
 
-			if (selectedNumberOfPeopleMin == null || selectedNumberOfPeopleMax == null) {
-				drillsStore.selectedNumberOfPeopleMin = min;
-				drillsStore.selectedNumberOfPeopleMax = max;
-				return;
-			}
-
-			if (min === selectedNumberOfPeopleMin && max === selectedNumberOfPeopleMax) return;
-
+		if (selectedNumberOfPeopleMin == null || selectedNumberOfPeopleMax == null) {
 			drillsStore.selectedNumberOfPeopleMin = min;
 			drillsStore.selectedNumberOfPeopleMax = max;
-			onFilterChange();
-		});
+			return;
+		}
 
-		$effect(() => {
-			const [min, max] = suggestedLengthsRange;
+		if (min === selectedNumberOfPeopleMin && max === selectedNumberOfPeopleMax) return;
 
-			if (selectedSuggestedLengthsMin == null || selectedSuggestedLengthsMax == null) {
-				drillsStore.selectedSuggestedLengthsMin = min;
-				drillsStore.selectedSuggestedLengthsMax = max;
-				return;
-			}
+		drillsStore.selectedNumberOfPeopleMin = min;
+		drillsStore.selectedNumberOfPeopleMax = max;
+		onFilterChange();
+	});
 
-			if (min === selectedSuggestedLengthsMin && max === selectedSuggestedLengthsMax) return;
+	$effect(() => {
+		const [min, max] = suggestedLengthsRange;
 
+		if (selectedSuggestedLengthsMin == null || selectedSuggestedLengthsMax == null) {
 			drillsStore.selectedSuggestedLengthsMin = min;
 			drillsStore.selectedSuggestedLengthsMax = max;
-			onFilterChange();
-		});
+			return;
+		}
 
-		$effect(() => {
-			const [min, max] = estimatedParticipantsRange;
+		if (min === selectedSuggestedLengthsMin && max === selectedSuggestedLengthsMax) return;
 
-			if (selectedEstimatedParticipantsMin == null || selectedEstimatedParticipantsMax == null) {
-				practicePlanFilterStore.selectedEstimatedParticipantsMin = min;
-				practicePlanFilterStore.selectedEstimatedParticipantsMax = max;
-				return;
-			}
+		drillsStore.selectedSuggestedLengthsMin = min;
+		drillsStore.selectedSuggestedLengthsMax = max;
+		onFilterChange();
+	});
 
-			if (min === selectedEstimatedParticipantsMin && max === selectedEstimatedParticipantsMax) return;
+	$effect(() => {
+		const [min, max] = estimatedParticipantsRange;
 
+		if (selectedEstimatedParticipantsMin == null || selectedEstimatedParticipantsMax == null) {
 			practicePlanFilterStore.selectedEstimatedParticipantsMin = min;
 			practicePlanFilterStore.selectedEstimatedParticipantsMax = max;
-			onFilterChange();
-		});
+			return;
+		}
+
+		if (min === selectedEstimatedParticipantsMin && max === selectedEstimatedParticipantsMax)
+			return;
+
+		practicePlanFilterStore.selectedEstimatedParticipantsMin = min;
+		practicePlanFilterStore.selectedEstimatedParticipantsMax = max;
+		onFilterChange();
+	});
 
 	let skillsSearchTerm = $state('');
 
-	const filteredSkills = $derived((skillsFocusedOn || [])
-		.map((skill) => (typeof skill === 'object' ? skill.skill : skill))
-		.filter(
-			(skill, index, self) =>
-				// Remove duplicates
-				self.indexOf(skill) === index &&
-				// Filter by search term
-				skill.toLowerCase().includes(skillsSearchTerm.toLowerCase())
-		));
+	const filteredSkills = $derived(
+		(skillsFocusedOn || [])
+			.map((skill) => (typeof skill === 'object' ? skill.skill : skill))
+			.filter(
+				(skill, index, self) =>
+					// Remove duplicates
+					self.indexOf(skill) === index &&
+					// Filter by search term
+					skill.toLowerCase().includes(skillsSearchTerm.toLowerCase())
+			)
+	);
 
-		// Helper to toggle tri‑state boolean filters (null → true → false → null)
-		function toggleBooleanFilter(field) {
-			const current = drillsStore[field];
-			drillsStore[field] = current === null ? true : current === true ? false : null;
-			onFilterChange();
-		}
+	// Helper to toggle tri‑state boolean filters (null → true → false → null)
+	function toggleBooleanFilter(field) {
+		const current = drillsStore[field];
+		drillsStore[field] = current === null ? true : current === true ? false : null;
+		onFilterChange();
+	}
 
-		function toggleHasVideo() {
-			toggleBooleanFilter('selectedHasVideo');
-		}
+	function toggleHasVideo() {
+		toggleBooleanFilter('selectedHasVideo');
+	}
 
-		function toggleHasDiagrams() {
-			toggleBooleanFilter('selectedHasDiagrams');
-		}
+	function toggleHasDiagrams() {
+		toggleBooleanFilter('selectedHasDiagrams');
+	}
 
-		function toggleHasImages() {
-			toggleBooleanFilter('selectedHasImages');
-		}
-	</script>
+	function toggleHasImages() {
+		toggleBooleanFilter('selectedHasImages');
+	}
+</script>
 
 <!-- Filter Buttons -->
-<div class={`flex flex-wrap gap-2 mb-4 relative ${customClass}`} onkeydown={handleKeydown}>
+<div
+	class={`flex flex-wrap gap-2 mb-4 relative ${customClass}`}
+	role="toolbar"
+	aria-label="Filters"
+	tabindex="0"
+	onkeydown={handleKeydown}
+>
 	<!-- Drills Filters -->
-		{#if filterType === 'drills' && (skillLevels.length || complexities.length || skillsFocusedOn.length || positionsFocusedOn.length || numberOfPeopleOptions.min !== null || numberOfPeopleOptions.max !== null || suggestedLengths.min !== null || suggestedLengths.max !== null || selectedHasVideo || selectedHasDiagrams || selectedHasImages)}
+	{#if filterType === 'drills' && (skillLevels.length || complexities.length || skillsFocusedOn.length || positionsFocusedOn.length || numberOfPeopleOptions.min !== null || numberOfPeopleOptions.max !== null || suggestedLengths.min !== null || suggestedLengths.max !== null || selectedHasVideo || selectedHasDiagrams || selectedHasImages)}
 		<!-- Skill Levels Filter -->
 		{#if skillLevels.length}
 			<div class="relative">
@@ -486,7 +495,6 @@
 					<div
 						id="skillLevels-content"
 						class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 w-64"
-						onclick={(e) => e.stopPropagation()}
 						role="menu"
 						tabindex="0"
 					>
@@ -527,7 +535,6 @@
 					<div
 						id="drillComplexity-content"
 						class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 w-64"
-						onclick={(e) => e.stopPropagation()}
 						role="menu"
 						tabindex="0"
 					>
@@ -568,7 +575,6 @@
 					<div
 						id="skillsFocusedOn-content"
 						class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 w-64"
-						onclick={(e) => e.stopPropagation()}
 						role="menu"
 						tabindex="0"
 					>
@@ -616,7 +622,6 @@
 					<div
 						id="positionsFocusedOn-content"
 						class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 w-64"
-						onclick={(e) => e.stopPropagation()}
 						role="menu"
 						tabindex="0"
 					>
@@ -657,7 +662,6 @@
 				<div
 					id="numberOfPeople-content"
 					class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
-					onclick={(e) => e.stopPropagation()}
 					role="menu"
 					tabindex="0"
 				>
@@ -708,7 +712,6 @@
 				<div
 					id="suggestedLengths-content"
 					class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
-					onclick={(e) => e.stopPropagation()}
 					role="menu"
 					tabindex="0"
 				>
@@ -808,7 +811,6 @@
 					<div
 						id="drillTypes-content"
 						class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 w-64"
-						onclick={(e) => e.stopPropagation()}
 						role="menu"
 						tabindex="0"
 					>
@@ -852,7 +854,6 @@
 					<div
 						id="phaseOfSeason-content"
 						class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 w-64"
-						onclick={(e) => e.stopPropagation()}
 						role="menu"
 						tabindex="0"
 					>
@@ -892,7 +893,6 @@
 					<div
 						id="practiceGoals-content"
 						class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg max-h-72 overflow-y-auto z-10 w-64"
-						onclick={(e) => e.stopPropagation()}
 						role="menu"
 						tabindex="0"
 					>
@@ -920,9 +920,9 @@
 				Estimated Participants
 				<span class="ml-2 text-sm font-semibold">
 					{selectedEstimatedParticipantsMin === 1 ? 'Any' : selectedEstimatedParticipantsMin} - {selectedEstimatedParticipantsMax ===
-						100
-							? 'Any'
-							: selectedEstimatedParticipantsMax}
+					100
+						? 'Any'
+						: selectedEstimatedParticipantsMax}
 				</span>
 			</button>
 
@@ -930,7 +930,6 @@
 				<div
 					id="estimatedParticipants-content"
 					class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
-					onclick={(e) => e.stopPropagation()}
 					role="menu"
 					tabindex="0"
 				>
@@ -976,17 +975,16 @@
 				<div
 					id="containsDrill-content"
 					class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
-					onclick={(e) => e.stopPropagation()}
 					role="menu"
 					tabindex="0"
 				>
-						<input
-							type="text"
-							placeholder="Search for drills..."
-							class="w-full p-2 border border-gray-300 rounded-md mb-2"
-							bind:value={drillSearchTerm}
-							oninput={debouncedFetchDrillSuggestions}
-						/>
+					<input
+						type="text"
+						placeholder="Search for drills..."
+						class="w-full p-2 border border-gray-300 rounded-md mb-2"
+						bind:value={drillSearchTerm}
+						oninput={debouncedFetchDrillSuggestions}
+					/>
 					{#if drillLoading}
 						<p class="text-gray-500">Loading...</p>
 					{:else if drillError}
@@ -994,11 +992,15 @@
 					{:else if drillSuggestions.length > 0}
 						<ul class="max-h-48 overflow-y-auto">
 							{#each drillSuggestions as drill (drill.id)}
-								<li
-									class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-100"
-									onclick={() => addDrillToSelected(drill)}
-								>
-									<span class="font-normal block truncate">{drill.name}</span>
+								<li class="relative">
+									<button
+										type="button"
+										role="menuitem"
+										class="w-full text-left cursor-pointer select-none py-2 pl-3 pr-9 hover:bg-blue-100"
+										onclick={() => addDrillToSelected(drill)}
+									>
+										<span class="font-normal block truncate">{drill.name}</span>
+									</button>
 								</li>
 							{/each}
 						</ul>
@@ -1050,7 +1052,6 @@
 				<div
 					id="sortBy-content"
 					class="absolute top-full left-0 bg-white border border-gray-300 rounded-md p-4 mt-2 shadow-lg z-10 w-64"
-					onclick={(e) => e.stopPropagation()}
 					role="menu"
 					tabindex="0"
 				>
@@ -1102,11 +1103,12 @@
 
 	<!-- Overlay to close dropdown when clicking outside -->
 	{#if (filterType === 'drills' && (showSkillLevels || showDrillComplexity || showSkillsFocusedOn || showPositionsFocusedOn || showNumberOfPeople || showSuggestedLengths || showHasImages || showDrillTypes)) || (filterType === 'practice-plans' && (showPhaseOfSeason || showPracticeGoals || showEstimatedParticipants || showContainsDrill || showSortBy))}
-		<div
+		<button
+			type="button"
 			class="fixed inset-0 bg-transparent z-0"
 			onclick={closeAllFilters}
 			aria-label="Close filters"
-		></div>
+		></button>
 	{/if}
 </div>
 

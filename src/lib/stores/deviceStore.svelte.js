@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { on } from 'svelte/events';
 import {
 	getDeviceType,
 	isTouchDevice,
@@ -84,13 +85,19 @@ if (browser) {
 
 	const handleResize = throttle(() => device.refresh(), 100);
 
-	window.addEventListener('resize', handleResize);
-	window.addEventListener('orientationchange', handleResize);
-
-	document.addEventListener('visibilitychange', () => {
-		if (!document.hidden) {
-			device.refresh();
-		}
+	const offResize = on(window, 'resize', handleResize);
+	const offOrientationChange = on(window, 'orientationchange', handleResize);
+	const offVisibilityChange = on(document, 'visibilitychange', () => {
+		if (!document.hidden) device.refresh();
 	});
-}
 
+	const cleanup = () => {
+		offResize();
+		offOrientationChange();
+		offVisibilityChange();
+	};
+
+	if (import.meta.hot) {
+		import.meta.hot.dispose(cleanup);
+	}
+}

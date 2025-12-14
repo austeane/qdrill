@@ -67,9 +67,6 @@ export async function POST({ request, locals }) {
 		const session = locals.session;
 		const userId = session?.user?.id || null;
 
-		console.log('Creating formation with data:', JSON.stringify(formationData, null, 2));
-		console.log('User ID:', userId);
-
 		const newFormation = await formationService.createFormation(formationData, userId);
 		if (!userId && newFormation?.id) {
 			newFormation.claimToken = generateClaimToken('formation', newFormation.id);

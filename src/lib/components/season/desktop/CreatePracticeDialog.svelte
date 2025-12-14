@@ -9,8 +9,15 @@
 	import Checkbox from '$lib/components/ui/Checkbox.svelte';
 	import Dialog from '$lib/components/ui/Dialog.svelte';
 
-	let { open = $bindable(false), season = null, sections = [], date = null, teamId = '', onSave, onClose } =
-		$props();
+	let {
+		open = $bindable(false),
+		season = null,
+		sections = [],
+		date = null,
+		teamId = '',
+		onSave,
+		onClose
+	} = $props();
 
 	let loading = $state(false);
 	let startTime = $state('18:00');
@@ -39,15 +46,25 @@
 		return clampDateToSeason(today);
 	}
 
-	let selectedDate = $state(date ? clampDateToSeason(date) : getDefaultDate());
+	let selectedDate = $state(getDefaultDate());
+	let didInitSelectedDate = false;
 
 	const overlappingSections = $derived(getOverlappingSections(selectedDate));
 
 	$effect(() => {
-		// Keep selectedDate in sync when parent updates the date while dialog is open
-		if (open && date && date !== selectedDate) {
-			selectedDate = clampDateToSeason(date);
+		if (!open) {
+			didInitSelectedDate = false;
+			return;
 		}
+
+		if (!didInitSelectedDate) {
+			selectedDate = date ? clampDateToSeason(date) : getDefaultDate();
+			didInitSelectedDate = true;
+			return;
+		}
+
+		// Keep selectedDate in sync when parent updates the date while dialog is open
+		if (date && date !== selectedDate) selectedDate = clampDateToSeason(date);
 	});
 
 	const practiceTypeOptions = [

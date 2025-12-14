@@ -145,7 +145,9 @@
 	}
 
 	const markerGroups = $derived(groupMarkersByMonth());
-	const markerMonths = $derived(Object.keys(markerGroups).sort((a, b) => new Date(a) - new Date(b)));
+	const markerMonths = $derived(
+		Object.keys(markerGroups).sort((a, b) => new Date(a) - new Date(b))
+	);
 </script>
 
 <div class="overview-container" class:desktop={!device.isMobile}>
@@ -258,41 +260,69 @@
 
 							<div class="markers-list">
 								{#each markerGroups[month] as marker (marker.id)}
-									<div
-										class="marker-item"
-										class:clickable={isAdmin}
-										onclick={() => isAdmin && handleEditMarker(marker)}
-										onkeydown={(e) => e.key === 'Enter' && isAdmin && handleEditMarker(marker)}
-										role={isAdmin ? 'button' : 'listitem'}
-										tabindex={isAdmin ? 0 : -1}
-									>
-										<div class="marker-color" style="background-color: {marker.color}"></div>
-										<div class="marker-info">
-											<div class="marker-name">{marker.name || marker.title}</div>
-											<div class="marker-date">
-												{#if marker.end_date}
-													{formatInTz(marker.date || marker.start_date, teamTimezone, {
-														month: 'short',
-														day: 'numeric'
-													})}
-													–
-													{formatInTz(marker.end_date, teamTimezone, {
-														month: 'short',
-														day: 'numeric'
-													})}
-												{:else}
-													{formatInTz(marker.date || marker.start_date, teamTimezone, {
-														weekday: 'short',
-														month: 'short',
-														day: 'numeric'
-													})}
-												{/if}
+									{#if isAdmin}
+										<button
+											type="button"
+											class="marker-item clickable"
+											onclick={() => handleEditMarker(marker)}
+										>
+											<div class="marker-color" style="background-color: {marker.color}"></div>
+											<div class="marker-info">
+												<div class="marker-name">{marker.name || marker.title}</div>
+												<div class="marker-date">
+													{#if marker.end_date}
+														{formatInTz(marker.date || marker.start_date, teamTimezone, {
+															month: 'short',
+															day: 'numeric'
+														})}
+														–
+														{formatInTz(marker.end_date, teamTimezone, {
+															month: 'short',
+															day: 'numeric'
+														})}
+													{:else}
+														{formatInTz(marker.date || marker.start_date, teamTimezone, {
+															weekday: 'short',
+															month: 'short',
+															day: 'numeric'
+														})}
+													{/if}
+												</div>
 											</div>
+											<Badge variant="secondary" size="xs">
+												{marker.type}
+											</Badge>
+										</button>
+									{:else}
+										<div class="marker-item" role="listitem">
+											<div class="marker-color" style="background-color: {marker.color}"></div>
+											<div class="marker-info">
+												<div class="marker-name">{marker.name || marker.title}</div>
+												<div class="marker-date">
+													{#if marker.end_date}
+														{formatInTz(marker.date || marker.start_date, teamTimezone, {
+															month: 'short',
+															day: 'numeric'
+														})}
+														–
+														{formatInTz(marker.end_date, teamTimezone, {
+															month: 'short',
+															day: 'numeric'
+														})}
+													{:else}
+														{formatInTz(marker.date || marker.start_date, teamTimezone, {
+															weekday: 'short',
+															month: 'short',
+															day: 'numeric'
+														})}
+													{/if}
+												</div>
+											</div>
+											<Badge variant="secondary" size="xs">
+												{marker.type}
+											</Badge>
 										</div>
-										<Badge variant="secondary" size="xs">
-											{marker.type}
-										</Badge>
-									</div>
+									{/if}
 								{/each}
 							</div>
 						</div>

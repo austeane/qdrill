@@ -15,26 +15,26 @@
 		sectionIndex,
 		sectionId,
 		onUngroup = (groupId) => {
-		console.warn('onUngroup prop not provided to ParallelGroup', groupId);
+			console.warn('onUngroup prop not provided to ParallelGroup', groupId);
 		},
 		onDurationChange = (sectionIndex, itemIndex, newDuration) => {
-		console.warn(
-			'onDurationChange prop not provided to ParallelGroup',
-			sectionIndex,
-			itemIndex,
-			newDuration
-		);
+			console.warn(
+				'onDurationChange prop not provided to ParallelGroup',
+				sectionIndex,
+				itemIndex,
+				newDuration
+			);
 		},
 		onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
-		console.warn(
-			'onTimelineChange prop not provided to ParallelGroup',
-			sectionIndex,
-			itemIndex,
-			newTimeline
-		);
+			console.warn(
+				'onTimelineChange prop not provided to ParallelGroup',
+				sectionIndex,
+				itemIndex,
+				newTimeline
+			);
 		},
 		onRemoveItem = (sectionIndex, itemIndex) => {
-		console.warn('onRemoveItem prop not provided to ParallelGroup', sectionIndex, itemIndex);
+			console.warn('onRemoveItem prop not provided to ParallelGroup', sectionIndex, itemIndex);
 		},
 		timelineNameGetter = (timeline) => timeline,
 		customTimelineNamesData = {}
@@ -84,9 +84,9 @@
 
 	const isBeingDragged = $derived(
 		dragState.isDragging &&
-		dragState.dragType === 'group' &&
-		dragState.sourceSection === sectionIndex &&
-		dragState.sourceGroupId === groupId
+			dragState.dragType === 'group' &&
+			dragState.sourceSection === sectionIndex &&
+			dragState.sourceGroupId === groupId
 	);
 
 	const _isDropTarget = $derived(
@@ -98,6 +98,8 @@
 	class="parallel-group-container relative px-2 py-2 mb-2 bg-blue-50 border-l-4 border-blue-300 rounded {isBeingDragged
 		? 'dragging'
 		: ''}"
+	role="group"
+	aria-label={groupName}
 	draggable="true"
 	ondragstart={(e) => startGroupDrag(e, sectionIndex, groupId)}
 	ondragover={(e) => handleGroupDragOver(e, sectionIndex, groupId, e.currentTarget)}

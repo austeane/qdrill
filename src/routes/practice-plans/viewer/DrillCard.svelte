@@ -41,7 +41,8 @@
 			numberOfPeopleMax: baseItem.number_of_people_max || baseItem.drill?.number_of_people_max,
 			drillType: baseItem.drill_type || baseItem.drill?.drill_type || [],
 			drill,
-			hasDiagrams: (baseItem.drill?.diagrams?.length ?? 0) > 0 || (baseItem.diagrams?.length ?? 0) > 0,
+			hasDiagrams:
+				(baseItem.drill?.diagrams?.length ?? 0) > 0 || (baseItem.diagrams?.length ?? 0) > 0,
 			hasVideo: Boolean(baseItem.drill?.video_link || baseItem.video_link),
 			isBreak: baseItem.type === 'break'
 		};
@@ -138,15 +139,15 @@
 			<!-- Duration Control -->
 			<div class="duration-control">
 				{#if editable}
-						<input
-							type="number"
-							min="1"
-							class="duration-input"
-							value={normalizedItem.duration}
-							oninput={handleDurationInput}
-							onblur={handleDurationInput}
-							onclick={(e) => e.stopPropagation()}
-						/>
+					<input
+						type="number"
+						min="1"
+						class="duration-input"
+						value={normalizedItem.duration}
+						oninput={handleDurationInput}
+						onblur={handleDurationInput}
+						onclick={(e) => e.stopPropagation()}
+					/>
 					<span class="duration-label">min</span>
 				{:else}
 					<div class="flex flex-col items-end">
@@ -385,9 +386,6 @@
 	}
 
 	.duration-control > .flex.flex-col {
-		display: flex;
-	}
-	.duration-control > .flex.items-center:not(.editable-input-wrapper) {
 		display: flex;
 	}
 

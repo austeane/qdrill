@@ -1,5 +1,4 @@
 <script>
-	import { onMount } from 'svelte';
 	import {
 		startItemDrag,
 		handleItemDragOver,
@@ -15,20 +14,20 @@
 		sectionIndex,
 		onRemove,
 		onDurationChange = (sectionIndex, itemIndex, newDuration) => {
-		console.warn(
-			'onDurationChange prop not provided to DrillItem',
-			sectionIndex,
-			itemIndex,
-			newDuration
-		);
+			console.warn(
+				'onDurationChange prop not provided to DrillItem',
+				sectionIndex,
+				itemIndex,
+				newDuration
+			);
 		},
 		onTimelineChange = (sectionIndex, itemIndex, newTimeline) => {
-		console.warn(
-			'onTimelineChange prop not provided to DrillItem',
-			sectionIndex,
-			itemIndex,
-			newTimeline
-		);
+			console.warn(
+				'onTimelineChange prop not provided to DrillItem',
+				sectionIndex,
+				itemIndex,
+				newTimeline
+			);
 		},
 		timelineItemIndex = null,
 		timeline = null,
@@ -41,9 +40,9 @@
 	// Reactive drag states for this item - use ID instead of index
 	const isBeingDragged = $derived(
 		dragState.isDragging &&
-		dragState.dragType === 'item' &&
-		dragState.sourceSection === sectionIndex &&
-		dragState.itemId === itemId
+			dragState.dragType === 'item' &&
+			dragState.sourceSection === sectionIndex &&
+			dragState.itemId === itemId
 	);
 
 	const _isDropTarget = $derived(
@@ -51,11 +50,6 @@
 	);
 
 	// Only log when mounted in the DOM
-	onMount(() => {
-		console.log(
-			`[DrillItem] Mounted: ${item.name} (ID: ${itemId}) at section ${sectionIndex} index ${itemIndex}${item.parallel_timeline ? ` in ${item.parallel_timeline} timeline (position ${timelineItemIndex})` : ''}`
-		);
-	});
 </script>
 
 <li
@@ -81,11 +75,6 @@
 			e.currentTarget.dataset.timeline = timeline || item.parallel_timeline;
 			e.currentTarget.dataset.groupId = parallelGroupId || item.parallel_group_id;
 		}
-
-		// Print what we're actually dragging
-		console.log(
-			`[DRAGSTART] ${item.name} (ID: ${itemId}) from section ${sectionIndex} index ${itemIndex}${timelineItemIndex !== null ? ` timeline position ${timelineItemIndex}` : ''}`
-		);
 
 		// Pass additional timeline position info for better reordering
 		startItemDrag(e, sectionIndex, itemIndex, item, itemId, timelineItemIndex);

@@ -123,41 +123,41 @@
 		<div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
 			<!-- Title and Description -->
 			<div class="w-full sm:w-auto order-last sm:order-first">
-					<h1 class="text-2xl font-bold break-words">{practicePlan.name}</h1>
-					{#if practicePlan.description}
-						<div class="mt-2">
-							{#if isDescriptionExpanded}
-								<div class="flex justify-end">
-									<button
-										class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md mb-2"
-										onclick={() => (isDescriptionExpanded = false)}
-									>
-										Show less of description ↑
-									</button>
-								</div>
-							{/if}
-							<div
-								class="text-gray-600 dark:text-gray-300 prose prose-sm sm:prose lg:prose-lg dark:prose-invert"
-								class:truncate={!isDescriptionExpanded}
-							>
-								{@html sanitizeHtml(practicePlan.description)}
+				<h1 class="text-2xl font-bold break-words">{practicePlan.name}</h1>
+				{#if practicePlan.description}
+					<div class="mt-2">
+						{#if isDescriptionExpanded}
+							<div class="flex justify-end">
+								<button
+									class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md mb-2"
+									onclick={() => (isDescriptionExpanded = false)}
+								>
+									Show less of description ↑
+								</button>
 							</div>
-							<div class="flex justify-end mt-1">
-								{#if isDescriptionExpanded}
-									<button
-										class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md"
-										onclick={() => (isDescriptionExpanded = false)}
-									>
-										Show less of description ↓
-									</button>
-								{:else}
-									<button
-										class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md"
-										onclick={() => (isDescriptionExpanded = true)}
-									>
-										Show more of description ↓
-									</button>
-								{/if}
+						{/if}
+						<div
+							class="text-gray-600 dark:text-gray-300 prose prose-sm sm:prose lg:prose-lg dark:prose-invert"
+							class:truncate={!isDescriptionExpanded}
+						>
+							{@html sanitizeHtml(practicePlan.description)}
+						</div>
+						<div class="flex justify-end mt-1">
+							{#if isDescriptionExpanded}
+								<button
+									class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md"
+									onclick={() => (isDescriptionExpanded = false)}
+								>
+									Show less of description ↓
+								</button>
+							{:else}
+								<button
+									class="text-blue-500 hover:text-blue-600 text-sm font-medium bg-blue-50 px-3 py-1 rounded-md"
+									onclick={() => (isDescriptionExpanded = true)}
+								>
+									Show more of description ↓
+								</button>
+							{/if}
 						</div>
 					</div>
 				{/if}
@@ -172,14 +172,14 @@
 					>
 						Edit Plan
 					</a>
-					{/if}
-					{#if page.data.session}
-						<button
-							onclick={handleDuplicate}
-							class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors text-sm sm:text-base whitespace-nowrap"
-						>
-							Duplicate Plan
-						</button>
+				{/if}
+				{#if page.data.session}
+					<button
+						onclick={handleDuplicate}
+						class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors text-sm sm:text-base whitespace-nowrap"
+					>
+						Duplicate Plan
+					</button>
 				{/if}
 				<DeletePracticePlan planId={practicePlan.id} createdBy={practicePlan.created_by} />
 				<UpvoteDownvote practicePlanId={practicePlan.id} />
@@ -245,29 +245,25 @@
 		</div>
 	{/if}
 
-		<!-- Group Filter -->
-		<GroupFilter sections={practicePlan.sections} bind:selectedFilter={selectedGroupFilter} />
+	<!-- Group Filter -->
+	<GroupFilter sections={practicePlan.sections} bind:selectedFilter={selectedGroupFilter} />
 
 	<!-- Main Content -->
 	<div class="flex gap-6">
 		<!-- Timeline (hidden on mobile) -->
-			<Timeline
-				sections={filteredSections}
-				{currentSectionId}
-				{totalDuration}
-			/>
+		<Timeline sections={filteredSections} {currentSectionId} {totalDuration} />
 
 		<!-- Practice Plan Content -->
 		<div class="flex-1" bind:this={sectionsContainer}>
 			{#each filteredSections as section, index (section.id)}
-					<div data-section-id={section.id} class="mb-6">
-						<Section
-							{section}
-							isActive={section.id === currentSectionId}
-							canEdit={false}
-							sectionIndex={index}
-							startTime={calculateSectionStartTime(filteredSections, index)}
-						/>
+				<div data-section-id={section.id} class="mb-6">
+					<Section
+						{section}
+						isActive={section.id === currentSectionId}
+						canEdit={false}
+						sectionIndex={index}
+						startTime={calculateSectionStartTime(filteredSections, index)}
+					/>
 				</div>
 			{/each}
 		</div>
@@ -335,6 +331,7 @@
 		overflow: hidden;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 	}
 

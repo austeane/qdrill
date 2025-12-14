@@ -198,6 +198,10 @@
 	>
 		<div
 			class="modal-content"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Add to Practice Plan"
+			tabindex="0"
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
 		>
@@ -252,13 +256,13 @@
 
 						<div class="search-results">
 							{#each drillSearchResults as drill (drill.id)}
-								<div class="result-item" onclick={() => handleAddDrill(drill)}>
+								<button type="button" class="result-item" onclick={() => handleAddDrill(drill)}>
 									<div class="result-name">{drill.name}</div>
 									<div class="result-details">
 										{drill.skill_level?.join(', ')} • {drill.suggested_length_min}-{drill.suggested_length_max}
 										min
 									</div>
-								</div>
+								</button>
 							{/each}
 						</div>
 					</div>
@@ -289,12 +293,16 @@
 
 						<div class="search-results">
 							{#each formationSearchResults as formation (formation.id)}
-								<div class="result-item" onclick={() => handleAddFormation(formation)}>
+								<button
+									type="button"
+									class="result-item"
+									onclick={() => handleAddFormation(formation)}
+								>
 									<div class="result-name">{formation.name}</div>
 									<div class="result-details">
 										{formation.formation_type || 'Tactical'} Formation
 									</div>
-								</div>
+								</button>
 							{/each}
 						</div>
 					</div>

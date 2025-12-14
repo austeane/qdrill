@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import {
 	ANTHROPIC_API_KEY,
 	OPENAI_API_KEY,
@@ -96,10 +97,12 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
 		// The Google Auth library will pick this up
 		process.env.GOOGLE_APPLICATION_CREDENTIALS = keyFilePath;
 
-		console.log(
-			'[Auth Setup] Successfully set GOOGLE_APPLICATION_CREDENTIALS from base64 env var to:',
-			keyFilePath
-		);
+		if (dev) {
+			console.log(
+				'[Auth Setup] Successfully set GOOGLE_APPLICATION_CREDENTIALS from base64 env var to:',
+				keyFilePath
+			);
+		}
 	} catch (error) {
 		console.error(
 			'[Auth Setup] CRITICAL: Failed to decode/write GOOGLE_APPLICATION_CREDENTIALS_BASE64:',
@@ -111,9 +114,11 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
 		// For now, it will log and the subsequent GoogleAuth call will likely fail as before, but with this log for context.
 	}
 } else {
-	console.warn(
-		'[Auth Setup] GOOGLE_APPLICATION_CREDENTIALS_BASE64 environment variable not found.'
-	);
+	if (dev) {
+		console.warn(
+			'[Auth Setup] GOOGLE_APPLICATION_CREDENTIALS_BASE64 environment variable not found.'
+		);
+	}
 	// The application will attempt to use other ADC methods, which will likely fail in Vercel if this was the intended auth method.
 }
 // --- END ADDED CODE FOR GOOGLE AUTH ---
@@ -176,29 +181,26 @@ export async function POST({ request, locals }) {
 			return json({ error: 'Failed to check usage limits.' }, { status: 500 });
 		}
 	} else {
-		console.log('Skipping rate limit check for anonymous user.');
+		if (dev) console.log('Skipping rate limit check for anonymous user.');
 	}
 
 	if (!user) {
 		return json({ error: 'Unauthorized' }, { status: 401 });
 	}
 
-		try {
-			const requestBody = await request.json();
-			const validationResult = ParameterSchema.safeParse(requestBody.parameters);
-			if (!validationResult.success) {
-				// Zod 4: Use .format() for better structured error messages
-				const formattedErrors = validationResult.error.format();
-				console.error('Invalid input parameters:', formattedErrors);
-				return json(
-					{ error: 'Invalid input parameters.', issues: formattedErrors },
-					{ status: 400 }
-				);
-			}
+	try {
+		const requestBody = await request.json();
+		const validationResult = ParameterSchema.safeParse(requestBody.parameters);
+		if (!validationResult.success) {
+			// Zod 4: Use .format() for better structured error messages
+			const formattedErrors = validationResult.error.format();
+			console.error('Invalid input parameters:', formattedErrors);
+			return json({ error: 'Invalid input parameters.', issues: formattedErrors }, { status: 400 });
+		}
 		const parameters = validationResult.data;
 		const selectedModelInfo = MODEL_MAP[parameters.modelId];
 
-		console.log('Received valid parameters for AI generation:', parameters);
+		if (dev) console.log('AI generation parameters received.');
 
 		// --- Initialize AI SDK Provider ---
 		let llm;
@@ -240,7 +242,11 @@ export async function POST({ request, locals }) {
 		let allDrillDetails = [];
 		try {
 			allDrillDetails = await drillService.getAllDrillDetailsForAI(user?.id);
-			console.log(`Fetched details for ${allDrillDetails.length} existing drills for AI context.`);
+			if (dev) {
+				console.log(
+					`Fetched details for ${allDrillDetails.length} existing drills for AI context.`
+				);
+			}
 		} catch (fetchError) {
 			console.error('Failed to fetch drill details for AI prompt:', fetchError);
 			return json(
@@ -251,7 +257,7 @@ export async function POST({ request, locals }) {
 
 		const drillContextJson = JSON.stringify(allDrillDetails, null, 2);
 		const estimatedTokens = Math.ceil(drillContextJson.length / 3.5);
-		console.log(`Estimated token count for drill context: ${estimatedTokens}`);
+		if (dev) console.log(`Estimated token count for drill context: ${estimatedTokens}`);
 
 		const systemPrompt = `You are an expert quadball coach. Generate a practice plan based on the user's specifications and the provided list of available drills.
 
@@ -336,9 +342,9 @@ Participant Count: ${parameters.participantCount || 'Not specified'}
 Goals to interpret: ${parameters.goals || 'Not specified'}
 Focus Areas: ${parameters.focusAreas?.join(', ') || 'Not specified'}`;
 
-		console.log(
-			`Sending request to ${selectedModelInfo.provider} model: ${selectedModelInfo.id}...`
-		);
+		if (dev) {
+			console.log(`AI generation request → ${selectedModelInfo.provider}:${selectedModelInfo.id}`);
+		}
 
 		// Using generateObject from Vercel AI SDK
 		const {
@@ -351,17 +357,13 @@ Focus Areas: ${parameters.focusAreas?.join(', ') || 'Not specified'}`;
 			schema: GeneratedPlanSchema, // Your Zod schema for the expected output
 			prompt: userMessageContent, // User message can go here
 			system: systemPrompt, // System prompt for overall instructions
-				maxOutputTokens: 8000 // Increased from 2500
-				// temperature: 0.3, // Example: for more deterministic output
-			});
+			maxOutputTokens: 8000 // Increased from 2500
+			// temperature: 0.3, // Example: for more deterministic output
+		});
 
-		console.log('Received response from AI SDK.');
-		console.log('AI Usage:', usage);
-		console.log('Finish Reason:', finishReason);
-		if (warnings) console.warn('AI Warnings:', warnings);
-
-		// Log the raw JSON before validation (it's already parsed by generateObject)
-		console.log('Parsed AI Response JSON:', JSON.stringify(rawGeneratedJson, null, 2));
+		if (dev) {
+			console.log('AI generation response', { usage, finishReason, warnings });
+		}
 
 		// Validation against Zod schema is implicitly handled by generateObject if schema is strict.
 		// However, generateObject returns the object directly, so planValidation is not needed in the same way.
@@ -406,10 +408,6 @@ Focus Areas: ${parameters.focusAreas?.join(', ') || 'Not specified'}`;
 				{ status: 400 }
 			);
 		}
-
-		console.log(
-			'Skipping name-to-ID mapping as AI should provide IDs and generateObject provides structured output.'
-		);
 
 		// user_id is not expected from the AI anymore with the new schema.
 		// It will be handled by the backend API when saving the plan, using the session user.

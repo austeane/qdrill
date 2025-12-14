@@ -2,7 +2,14 @@
 	import { X } from 'lucide-svelte';
 	import { fade, scale } from 'svelte/transition';
 
-	let { open = $bindable(false), title = '', description = '', children, footer, onClose } = $props();
+	let {
+		open = $bindable(false),
+		title = '',
+		description = '',
+		children,
+		footer,
+		onClose
+	} = $props();
 
 	const baseId = $props.id();
 	const titleId = $derived(`dialog-title-${baseId}`);
@@ -50,8 +57,21 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if open}
-	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-	<div class="dialog-overlay" transition:fade={{ duration: 150 }} onclick={handleOverlayClick}>
+	<div
+		class="dialog-overlay"
+		transition:fade={{ duration: 150 }}
+		role="button"
+		tabindex="0"
+		aria-label="Close dialog"
+		onclick={handleOverlayClick}
+		onkeydown={(e) => {
+			if (e.target !== e.currentTarget) return;
+			if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				handleClose();
+			}
+		}}
+	>
 		<div
 			class="dialog-content"
 			role="dialog"

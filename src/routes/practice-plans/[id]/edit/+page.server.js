@@ -19,16 +19,13 @@ export const load = authGuard(async ({ params, locals, cookies, fetch }) => {
 	// --- 1. Check for Pending Plan Data ---
 	const token = cookies.get(COOKIE_NAME);
 	if (token) {
-		console.log(`[Load /practice-plans/edit] Found pending plan token: ${token}`);
 		try {
 			const data = await apiFetch('/api/pending-plans', {}, fetch);
 			if (data && data.plan) {
 				pendingPlanData = data.plan;
-				console.log('[Load /practice-plans/edit] Successfully loaded pending plan data.');
 				// Delete after load
 				try {
 					await apiFetch('/api/pending-plans', { method: 'DELETE' }, fetch);
-					console.log('[Load /practice-plans/edit] Pending plan deleted after load.');
 				} catch (deleteError) {
 					console.error(
 						'[Load /practice-plans/edit] Error deleting pending plan after load:',
@@ -36,7 +33,6 @@ export const load = authGuard(async ({ params, locals, cookies, fetch }) => {
 					);
 				}
 			} else {
-				console.log('[Load /practice-plans/edit] Pending plan data from API was null/empty.');
 				cookies.delete(COOKIE_NAME, { path: '/' });
 			}
 		} catch (err) {
@@ -87,11 +83,11 @@ export const load = authGuard(async ({ params, locals, cookies, fetch }) => {
 	};
 });
 
-	/** @type {import('./$types').Actions} */
-	export const actions = {
-		default: authGuard(async ({ request, locals, params }) => {
-			const userId = locals.user?.id; // Fix: use locals.user.id like in the load function
-			const planId = parseInt(params.id);
+/** @type {import('./$types').Actions} */
+export const actions = {
+	default: authGuard(async ({ request, locals, params }) => {
+		const userId = locals.user?.id;
+		const planId = parseInt(params.id);
 
 		if (isNaN(planId)) {
 			return fail(400, { success: false, errors: { general: 'Invalid Practice Plan ID' } });
@@ -116,8 +112,6 @@ export const load = authGuard(async ({ params, locals, cookies, fetch }) => {
 			start_time: data.startTime ? data.startTime + ':00' : null,
 			sections
 		};
-
-		console.log(`[Edit Action - Plan ${planId}] Received planData:`, planData);
 
 		// --- Validation ---
 		try {
@@ -176,10 +170,8 @@ export const load = authGuard(async ({ params, locals, cookies, fetch }) => {
 				sections: normalizedSections
 			};
 
-			console.log(`[Edit Action - Plan ${planId}] Calling service with data:`, finalPlanData);
 			await practicePlanService.updatePracticePlan(planId, finalPlanData, userId);
 
-			console.log(`[Edit Action - Plan ${planId}] Service call successful.`);
 			// Redirect on success
 			redirect(303, `/practice-plans/${planId}`);
 		} catch (err) {

@@ -23,14 +23,14 @@
 
 	let { formation = createEmptyFormation() } = $props();
 
-	let name = $state(formation.name ?? '');
-	let brief_description = $state(formation.brief_description ?? '');
-	let detailed_description = $state(formation.detailed_description ?? '');
-	let tags = $state(formation.tags ?? []);
+	let name = $state('');
+	let brief_description = $state('');
+	let detailed_description = $state('');
+	let tags = $state([]);
 	let newTag = $state('');
-	let is_editable_by_others = $state(formation.is_editable_by_others ?? false);
-	let visibility = $state(formation.visibility ?? 'public');
-	let formation_type = $state(formation.formation_type ?? 'offense');
+	let is_editable_by_others = $state(false);
+	let visibility = $state('public');
+	let formation_type = $state('offense');
 	// Parse diagrams if they come as JSON strings
 	const parseDiagrams = (diagramsData) => {
 		if (!diagramsData || diagramsData.length === 0) {
@@ -60,7 +60,26 @@
 		});
 	};
 
-	let diagrams = $state(parseDiagrams(formation.diagrams));
+	let diagrams = $state(parseDiagrams([]));
+	let lastHydratedKey = null;
+	$effect(() => {
+		const key = JSON.stringify({
+			id: formation?.id ?? null,
+			name: formation?.name ?? ''
+		});
+
+		if (key === lastHydratedKey) return;
+		lastHydratedKey = key;
+
+		name = formation?.name ?? '';
+		brief_description = formation?.brief_description ?? '';
+		detailed_description = formation?.detailed_description ?? '';
+		tags = formation?.tags ?? [];
+		is_editable_by_others = formation?.is_editable_by_others ?? false;
+		visibility = formation?.visibility ?? 'public';
+		formation_type = formation?.formation_type ?? 'offense';
+		diagrams = parseDiagrams(formation?.diagrams);
+	});
 
 	let errors = $state({});
 	let _mounted = false;
@@ -235,14 +254,14 @@
 
 	const { handleSubmit, updateField } = createForm({
 		initialValues: {
-			name: formation.name ?? '',
-			brief_description: formation.brief_description ?? '',
-			detailed_description: formation.detailed_description ?? '',
-			diagrams: parseDiagrams(formation.diagrams),
-			tags: formation.tags ?? [],
-			is_editable_by_others: formation.is_editable_by_others ?? false,
-			visibility: formation.visibility ?? 'public',
-			formation_type: formation.formation_type ?? 'offense'
+			name: '',
+			brief_description: '',
+			detailed_description: '',
+			diagrams: parseDiagrams([]),
+			tags: [],
+			is_editable_by_others: false,
+			visibility: 'public',
+			formation_type: 'offense'
 		},
 		onSubmit: async (_values) => {
 			// Trigger saveDiagram on each component to dispatch 'save' events

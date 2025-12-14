@@ -32,8 +32,6 @@
 	async function handleGenerateAI() {
 		isGenerating = true;
 		try {
-			console.log('Sending parameters to AI:', aiParams);
-
 			const responseBody = await apiFetch('/api/practice-plans/generate-ai', {
 				method: 'POST',
 				headers: {
@@ -41,8 +39,6 @@
 				},
 				body: JSON.stringify({ parameters: aiParams })
 			});
-
-			console.log('Received AI generated plan:', responseBody);
 
 			// Validate the structure roughly before dispatching
 			if (!responseBody.name || !responseBody.sections || !Array.isArray(responseBody.sections)) {
@@ -68,10 +64,14 @@
 		<!-- Replaced CardTitle -->
 		<div class="flex items-center space-x-2">
 			<h3 class="text-lg font-semibold leading-none tracking-tight">Generate Plan with AI</h3>
-			<div
+			<button
+				type="button"
 				class="relative"
 				onmouseenter={() => (showInfoTooltip = true)}
 				onmouseleave={() => (showInfoTooltip = false)}
+				onfocus={() => (showInfoTooltip = true)}
+				onblur={() => (showInfoTooltip = false)}
+				aria-label="About AI plan generation"
 			>
 				<Info class="h-4 w-4 text-gray-500 cursor-pointer" />
 				{#if showInfoTooltip}
@@ -82,7 +82,7 @@
 						Opus 4.5, and uses all of that information to generate your plan.
 					</div>
 				{/if}
-			</div>
+			</button>
 		</div>
 		<!-- Replaced CardDescription -->
 		<p class="text-sm text-muted-foreground">

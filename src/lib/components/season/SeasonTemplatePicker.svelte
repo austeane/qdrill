@@ -4,7 +4,7 @@
 	let { seasonId, currentTemplateId, onSelect, onClose } = $props();
 
 	let templates = $state([]);
-	let selectedTemplateId = $state(currentTemplateId ?? null);
+	let selectedTemplateId = $state(null);
 	let loading = $state(true);
 
 	$effect(() => {

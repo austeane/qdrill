@@ -77,8 +77,6 @@
 				})
 			};
 
-			console.log('Submitting Plan Data:', JSON.stringify(planData, null, 2));
-
 			const data = await apiFetch('/api/practice-plans', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },

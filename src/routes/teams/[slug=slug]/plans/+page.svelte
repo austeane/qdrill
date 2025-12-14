@@ -59,22 +59,22 @@
 				if (!plan.scheduled_date) return false;
 				const planDate = new Date(plan.scheduled_date + 'T00:00:00');
 
-					switch (date) {
-						case 'upcoming':
-							return planDate >= today;
-						case 'past':
-							return planDate < today;
-						case 'this-week': {
-							const weekStart = new Date(today);
-							weekStart.setDate(today.getDate() - today.getDay());
-							const weekEnd = new Date(weekStart);
-							weekEnd.setDate(weekStart.getDate() + 6);
-							return planDate >= weekStart && planDate <= weekEnd;
-						}
-						case 'this-month':
-							return (
-								planDate.getMonth() === today.getMonth() &&
-								planDate.getFullYear() === today.getFullYear()
+				switch (date) {
+					case 'upcoming':
+						return planDate >= today;
+					case 'past':
+						return planDate < today;
+					case 'this-week': {
+						const weekStart = new Date(today);
+						weekStart.setDate(today.getDate() - today.getDay());
+						const weekEnd = new Date(weekStart);
+						weekEnd.setDate(weekStart.getDate() + 6);
+						return planDate >= weekStart && planDate <= weekEnd;
+					}
+					case 'this-month':
+						return (
+							planDate.getMonth() === today.getMonth() &&
+							planDate.getFullYear() === today.getFullYear()
 						);
 					default:
 						return true;
@@ -527,6 +527,7 @@
 		line-height: 1.5;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}

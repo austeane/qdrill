@@ -5,8 +5,8 @@
 	let { data } = $props(); // Accept data from load function
 
 	// Initialize feedbackEntries from server-side data
-	let feedbackEntries = $state(data.feedbackEntries || []);
-	let isDev = $state(data.isDev || false); // Get dev status from load
+	let feedbackEntries = $state([]);
+	let isDev = $state(false); // Get dev status from load
 
 	let filterType = $state('all');
 	let sortBy = $state('newest');
@@ -18,9 +18,7 @@
 
 	// Filtering and sorting remain client-side for now
 	const filteredFeedback = $derived(
-		feedbackEntries.filter(
-		(entry) => filterType === 'all' || entry.feedback_type === filterType
-		)
+		feedbackEntries.filter((entry) => filterType === 'all' || entry.feedback_type === filterType)
 	);
 
 	const sortedFeedback = $derived(
@@ -57,9 +55,7 @@
 
 	// Re-initialize feedbackEntries when data prop changes (after invalidation)
 	$effect(() => {
-		if (data.feedbackEntries) {
-			feedbackEntries = data.feedbackEntries || [];
-		}
+		feedbackEntries = data.feedbackEntries || [];
 		isDev = data.isDev || false;
 	});
 

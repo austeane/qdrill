@@ -37,15 +37,6 @@ export async function load({ url, locals }) {
 		const session = locals.session;
 		const userId = session?.user?.id || null;
 
-		console.log('Loading formations page with:', {
-			page,
-			limit,
-			sortBy,
-			sortOrder,
-			filters,
-			userId
-		});
-
 		// Fetch formations using the service
 		// Pass userId to see both public formations and user's private formations
 		const formationsResult = await formationService.getAll({

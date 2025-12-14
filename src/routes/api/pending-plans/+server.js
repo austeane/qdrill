@@ -27,8 +27,7 @@ export async function POST({ request, cookies }) {
 		// Set the cookie
 		cookies.set(COOKIE_NAME, token, COOKIE_OPTS);
 
-		console.log(`[API /api/pending-plans] Saved pending plan with token: ${token}`);
-		return json({ success: true, token }, { status: 201 });
+		return json({ success: true }, { status: 201 });
 	} catch (error) {
 		// Note: If save throws specific errors (e.g., validation), handleApiError will map them
 		return handleApiError(error);
@@ -40,7 +39,6 @@ export async function GET({ cookies }) {
 	const token = cookies.get(COOKIE_NAME);
 
 	if (!token) {
-		console.log('[API /api/pending-plans] No pending plan token found in cookies.');
 		// Throw NotFoundError for consistent handling
 		// Client should interpret this as no pending plan found
 		throw new NotFoundError('No pending plan token found');
@@ -51,12 +49,10 @@ export async function GET({ cookies }) {
 		// pendingPracticePlanService.get should throw NotFoundError if token is invalid/expired
 		const planData = await pendingPracticePlanService.get(token);
 
-		console.log(`[API /api/pending-plans] Retrieved pending plan for token: ${token}`);
 		return json({ plan: planData }); // Return plan data directly
 	} catch (error) {
 		// Clear the cookie if the plan wasn't found or other error occurred
 		if (error instanceof NotFoundError) {
-			console.log(`[API /api/pending-plans] Pending plan not found or expired for token: ${token}`);
 			cookies.delete(COOKIE_NAME, { path: COOKIE_OPTS.path });
 		}
 		return handleApiError(error);
@@ -73,7 +69,6 @@ export async function DELETE({ cookies }) {
 	}
 
 	if (!token) {
-		console.log('[API /api/pending-plans] Delete requested but no token found.');
 		// Nothing to delete server-side, return success (204 No Content)
 		return new Response(null, { status: 204 });
 	}
@@ -83,16 +78,12 @@ export async function DELETE({ cookies }) {
 		// Assuming delete might implicitly handle non-existent tokens gracefully
 		await pendingPracticePlanService.delete(token);
 
-		console.log(`[API /api/pending-plans] Deleted pending plan data for token: ${token}`);
 		// Return 204 No Content on successful deletion
 		return new Response(null, { status: 204 });
 	} catch (error) {
 		// Log the error, but the cookie is already cleared.
 		// Return the standardized error response.
-		console.error(
-			`[API /api/pending-plans] Error deleting pending plan for token ${token}:`,
-			error
-		);
+		console.error('[API /api/pending-plans] Error deleting pending plan:', error);
 		return handleApiError(error);
 	}
 }

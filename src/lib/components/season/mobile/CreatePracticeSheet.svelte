@@ -32,9 +32,25 @@
 		return clampDateToSeason(today);
 	}
 
-	let selectedDate = $state(date ? clampDateToSeason(date) : getDefaultDate());
+	let selectedDate = $state(getDefaultDate());
+	let didInitSelectedDate = false;
 
 	const overlappingSections = $derived(getOverlappingSections(selectedDate));
+
+	$effect(() => {
+		if (!open) {
+			didInitSelectedDate = false;
+			return;
+		}
+
+		if (!didInitSelectedDate) {
+			selectedDate = date ? clampDateToSeason(date) : getDefaultDate();
+			didInitSelectedDate = true;
+			return;
+		}
+
+		if (date && date !== selectedDate) selectedDate = clampDateToSeason(date);
+	});
 
 	function getOverlappingSections(dateStr) {
 		if (!dateStr) return [];
@@ -171,14 +187,14 @@
 			<div class="sections-preview">
 				<h3 class="preview-title">Overlapping Sections</h3>
 				<p class="preview-description">This practice will be prefilled with content from:</p>
-					<div class="section-list">
-						{#each overlappingSections as section (section.id)}
-							<div class="section-item">
-								<div class="section-color" style="background-color: {section.color}"></div>
-								<span class="section-name">{section.name}</span>
-							</div>
-						{/each}
-					</div>
+				<div class="section-list">
+					{#each overlappingSections as section (section.id)}
+						<div class="section-item">
+							<div class="section-color" style="background-color: {section.color}"></div>
+							<span class="section-name">{section.name}</span>
+						</div>
+					{/each}
+				</div>
 
 				<label class="checkbox-label">
 					<input type="checkbox" bind:checked={seedDefaults} disabled={loading} />

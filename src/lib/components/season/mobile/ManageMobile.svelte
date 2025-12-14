@@ -198,7 +198,7 @@
 	<div class="manage-card">
 		<div class="card-header">
 			<h2 class="card-title">Season Sections</h2>
-			<button class="add-button" onclick={handleAddSection}>
+			<button class="add-button" onclick={handleAddSection} aria-label="Add season section">
 				<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
 					<line x1="12" y1="5" x2="12" y2="19" />
 					<line x1="5" y1="12" x2="19" y2="12" />
@@ -206,14 +206,14 @@
 			</button>
 		</div>
 
-			<div class="items-list">
-				{#each sections as section, index (section.id)}
-					<div class="list-item" animate:flip={{ duration: 200 }}>
-						<div class="item-color" style="background-color: {section.color}"></div>
+		<div class="items-list">
+			{#each sections as section, index (section.id)}
+				<div class="list-item" animate:flip={{ duration: 200 }}>
+					<div class="item-color" style="background-color: {section.color}"></div>
 
-						<div class="item-content">
-							<div class="item-name">{section.name}</div>
-							<div class="item-details">
+					<div class="item-content">
+						<div class="item-name">{section.name}</div>
+						<div class="item-details">
 							{formatDateRange(section.start_date, section.end_date)}
 						</div>
 					</div>
@@ -283,7 +283,11 @@
 	<div class="manage-card">
 		<div class="card-header">
 			<h2 class="card-title">Events & Milestones</h2>
-			<button class="add-button" onclick={handleAddMarker}>
+			<button
+				class="add-button"
+				onclick={handleAddMarker}
+				aria-label="Add season event or milestone"
+			>
 				<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
 					<line x1="12" y1="5" x2="12" y2="19" />
 					<line x1="5" y1="12" x2="19" y2="12" />
@@ -291,14 +295,14 @@
 			</button>
 		</div>
 
-			<div class="items-list">
-				{#each markers as marker (marker.id)}
-					<div class="list-item" animate:flip={{ duration: 200 }}>
-						<div class="item-color" style="background-color: {marker.color}"></div>
+		<div class="items-list">
+			{#each markers as marker (marker.id)}
+				<div class="list-item" animate:flip={{ duration: 200 }}>
+					<div class="item-color" style="background-color: {marker.color}"></div>
 
-						<div class="item-content">
-							<div class="item-name">{marker.name}</div>
-							<div class="item-details">
+					<div class="item-content">
+						<div class="item-name">{marker.name}</div>
+						<div class="item-details">
 							<span class="marker-type">{marker.type}</span>
 							<span class="marker-date">
 								{formatDateRange(marker.date, marker.end_date || marker.date)}

@@ -212,15 +212,15 @@
 				<span class="day-label">
 					{date.toLocaleDateString('en-US', { weekday: 'short' })}
 				</span>
-					<span class="day-number">
-						{date.getDate()}
-					</span>
-					{#if getDayPractices(date).length > 0}
-						<div class="day-indicator"></div>
-					{/if}
-				</button>
-			{/each}
-		</div>
+				<span class="day-number">
+					{date.getDate()}
+				</span>
+				{#if getDayPractices(date).length > 0}
+					<div class="day-indicator"></div>
+				{/if}
+			</button>
+		{/each}
+	</div>
 
 	<!-- Day List -->
 	<div class="day-list">
@@ -232,8 +232,15 @@
 				dayPractices.length > 0 || daySections.length > 0 || dayMarkers.length > 0}
 
 			{#if hasContent || isToday(date)}
+				<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 				<div
 					class="day-card"
+					role="group"
+					aria-label={date.toLocaleDateString('en-US', {
+						weekday: 'long',
+						month: 'short',
+						day: 'numeric'
+					})}
 					ontouchstart={(e) => startLongPress(date, e)}
 					ontouchend={cancelLongPress}
 					ontouchmove={cancelLongPress}

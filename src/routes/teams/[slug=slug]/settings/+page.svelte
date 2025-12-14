@@ -12,8 +12,8 @@
 
 	let { data } = $props();
 
-	let team = $state({ ...data.team });
-	let members = $state(data.members || []);
+	let team = $state({ name: '', slug: '', description: '', timezone: '', default_start_time: '' });
+	let members = $state([]);
 	let isUpdating = $state(false);
 	let updateError = $state('');
 	let updateSuccess = $state(false);
@@ -176,10 +176,10 @@
 					<p class="mb-4 text-green-600">Team updated successfully!</p>
 				{/if}
 
-					<Card>
-						{#snippet header()}
-							<h2 class="text-xl font-semibold">Team Information</h2>
-						{/snippet}
+				<Card>
+					{#snippet header()}
+						<h2 class="text-xl font-semibold">Team Information</h2>
+					{/snippet}
 
 					<div class="grid gap-4">
 						<Input label="Team Name" bind:value={team.name} disabled={isUpdating} />
@@ -203,24 +203,24 @@
 						/>
 					</div>
 
-						{#snippet footer()}
-							<Button variant="primary" onclick={updateTeam} disabled={isUpdating}>
-								{isUpdating ? 'Updating...' : 'Update Team'}
+					{#snippet footer()}
+						<Button variant="primary" onclick={updateTeam} disabled={isUpdating}>
+							{isUpdating ? 'Updating...' : 'Update Team'}
+						</Button>
+					{/snippet}
+				</Card>
+			</div>
+		{:else if activeTab === 'members'}
+			<div class="tabs-content">
+				<Card>
+					{#snippet header()}
+						<div class="flex justify-between items-center">
+							<h2 class="text-xl font-semibold">Team Members</h2>
+							<Button variant="primary" size="sm" onclick={() => (showAddMemberDialog = true)}>
+								+ Add Member
 							</Button>
-						{/snippet}
-					</Card>
-				</div>
-			{:else if activeTab === 'members'}
-				<div class="tabs-content">
-					<Card>
-						{#snippet header()}
-							<div class="flex justify-between items-center">
-								<h2 class="text-xl font-semibold">Team Members</h2>
-								<Button variant="primary" size="sm" onclick={() => (showAddMemberDialog = true)}>
-									+ Add Member
-								</Button>
-							</div>
-						{/snippet}
+						</div>
+					{/snippet}
 
 					<div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
 						{members.length} member{members.length !== 1 ? 's' : ''}
@@ -270,8 +270,7 @@
 									<Button
 										size="sm"
 										variant="destructive"
-										onclick={() =>
-											removeMember(member.user_id, member.user?.name || 'this member')}
+										onclick={() => removeMember(member.user_id, member.user?.name || 'this member')}
 										disabled={members.filter((m) => m.role === 'admin').length === 1 &&
 											member.role === 'admin'}
 									>

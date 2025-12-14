@@ -18,43 +18,24 @@
 	} = $props();
 
 	// Initialize stores based on props
-	let name = $state(prefilledName || drill.name || '');
-	let brief_description = $state(drill.brief_description ?? '');
-	let detailed_description = $state(drill.detailed_description ?? '');
-	let skill_level = $state(drill.skill_level ?? []);
-	let complexity = $state((drill.complexity ?? '').toLowerCase());
-	let suggested_length = $state(drill.suggested_length ?? '');
-	let number_of_people_min = $state(drill.number_of_people_min ?? '');
-	let number_of_people_max = $state(drill.number_of_people_max ?? '');
-	let selectedSkills = $state(drill.skills_focused_on ?? []);
+	let name = $state('');
+	let brief_description = $state('');
+	let detailed_description = $state('');
+	let skill_level = $state([]);
+	let complexity = $state('');
+	let suggested_length = $state('');
+	let number_of_people_min = $state('');
+	let number_of_people_max = $state('');
+	let selectedSkills = $state([]);
 	let newSkill = $state('');
 	let skillSearchTerm = $state('');
-	let positions_focused_on = $state(drill.positions_focused_on ?? []);
-	let video_link = $state(drill.video_link ?? '');
-	let images = $state(
-		drill.images?.map((image, index) => ({
-			id: `image-${index}`,
-			file: image
-		})) ?? []
-	);
-	let diagrams = $state(
-		drill.diagrams?.length > 0
-			? drill.diagrams
-			: [
-					{
-						elements: [],
-						appState: {
-							viewBackgroundColor: '#ffffff',
-							gridSize: 20,
-							collaborators: []
-						},
-						files: {}
-					}
-				]
-	);
-	let drill_type = $state(drill.drill_type ?? []);
-	let is_editable_by_others = $state(drill.is_editable_by_others ?? false);
-	let visibility = $state(drill.visibility ?? 'public');
+	let positions_focused_on = $state([]);
+	let video_link = $state('');
+	let images = $state([]);
+	let diagrams = $state([]);
+	let drill_type = $state([]);
+	let is_editable_by_others = $state(false);
+	let visibility = $state('public');
 
 	let errors = $state({});
 	let numberWarnings = $state({});
@@ -65,8 +46,68 @@
 	let modalSkillSearchTerm = $state('');
 	let isSubmitting = $state(false);
 
-	let isVariation = $state(!!drill.parent_drill_id || !!parentId);
-	let parentDrillId = $state(drill.parent_drill_id ?? (parentId ? parseInt(parentId, 10) : null));
+	let isVariation = $state(false);
+	let parentDrillId = $state(null);
+
+	function getInitialDiagrams(sourceDrill) {
+		if (Array.isArray(sourceDrill?.diagrams) && sourceDrill.diagrams.length > 0) {
+			return sourceDrill.diagrams;
+		}
+
+		return [
+			{
+				elements: [],
+				appState: {
+					viewBackgroundColor: '#ffffff',
+					gridSize: 20,
+					collaborators: []
+				},
+				files: {}
+			}
+		];
+	}
+
+	function getInitialImages(sourceDrill) {
+		return (
+			sourceDrill?.images?.map((image, index) => ({
+				id: `image-${index}`,
+				file: image
+			})) ?? []
+		);
+	}
+
+	let lastHydratedKey = null;
+	$effect(() => {
+		const drillId = drill?.id ?? null;
+		const key = JSON.stringify({
+			drillId,
+			parentId: parentId ?? null,
+			prefilledName: prefilledName ?? null
+		});
+
+		if (key === lastHydratedKey) return;
+		lastHydratedKey = key;
+
+		name = prefilledName || drill?.name || '';
+		brief_description = drill?.brief_description ?? '';
+		detailed_description = drill?.detailed_description ?? '';
+		skill_level = drill?.skill_level ?? [];
+		complexity = (drill?.complexity ?? '').toLowerCase();
+		suggested_length = drill?.suggested_length ?? '';
+		number_of_people_min = drill?.number_of_people_min ?? '';
+		number_of_people_max = drill?.number_of_people_max ?? '';
+		selectedSkills = drill?.skills_focused_on ?? [];
+		positions_focused_on = drill?.positions_focused_on ?? [];
+		video_link = drill?.video_link ?? '';
+		images = getInitialImages(drill);
+		diagrams = getInitialDiagrams(drill);
+		drill_type = drill?.drill_type ?? [];
+		is_editable_by_others = drill?.is_editable_by_others ?? false;
+		visibility = drill?.visibility ?? 'public';
+
+		isVariation = !!drill?.parent_drill_id || !!parentId;
+		parentDrillId = drill?.parent_drill_id ?? (parentId ? parseInt(parentId, 10) : null);
+	});
 
 	// Clear validation errors reactively when field values change
 	$effect(() => {
@@ -221,8 +262,7 @@
 								appState: { viewBackgroundColor: '#ffffff', gridSize: 20, collaborators: [] },
 								files: {}
 							}
-						]
-			;
+						];
 			drill_type = data.drill_type;
 			is_editable_by_others = data.is_editable_by_others;
 			visibility = data.visibility;
@@ -354,8 +394,7 @@
 		if (!brief_description) newErrors.brief_description = 'Brief description is required';
 		if (skill_level.length === 0) newErrors.skill_level = 'Skill level is required';
 		if (!suggested_length) newErrors.suggested_length = 'Suggested length of time is required';
-		if (selectedSkills.length === 0)
-			newErrors.skills_focused_on = 'Skills focused on are required';
+		if (selectedSkills.length === 0) newErrors.skills_focused_on = 'Skills focused on are required';
 		if (positions_focused_on.length === 0)
 			newErrors.positions_focused_on = 'Positions focused on are required';
 		if (drill_type.length === 0) newErrors.drill_type = 'At least one drill type is required';
@@ -720,14 +759,14 @@
 								setup, focus areas, adaptations, or credit for the creator of the drill.
 							</p>
 
-								{#if Editor}
-									<div class="min-h-[300px]">
-										<Editor
-											apiKey={import.meta.env.VITE_TINY_API_KEY}
-											bind:value={detailed_description}
-											init={{
-												height: 300,
-												menubar: false,
+							{#if Editor}
+								<div class="min-h-[300px]">
+									<Editor
+										apiKey={import.meta.env.VITE_TINY_API_KEY}
+										bind:value={detailed_description}
+										init={{
+											height: 300,
+											menubar: false,
 											plugins: [
 												'advlist',
 												'autolink',
@@ -749,12 +788,12 @@
 												'bold italic | alignleft aligncenter ' +
 												'alignright alignjustify | bullist numlist outdent indent | ' +
 												'removeformat | help',
-												content_style:
-													'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
-												branding: false
-											}}
-										/>
-									</div>
+											content_style:
+												'body { font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif; font-size: 14px; }',
+											branding: false
+										}}
+									/>
+								</div>
 							{:else}
 								<textarea
 									id="detailed_description"
@@ -1071,38 +1110,38 @@
 							<label for="visibility-select" class="mb-1 text-sm font-medium text-gray-700"
 								>Visibility:</label
 							>
-								<select
-									id="visibility-select"
-									bind:value={visibility}
-									class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-									disabled={!page.data.session}
-									title={!page.data.session ? 'Log in to create private or unlisted drills' : ''}
-								>
+							<select
+								id="visibility-select"
+								bind:value={visibility}
+								class="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+								disabled={!page.data.session}
+								title={!page.data.session ? 'Log in to create private or unlisted drills' : ''}
+							>
 								<option value="public">Public</option>
 								<option value="unlisted">Unlisted</option>
 								<option value="private">Private</option>
 							</select>
-								{#if !page.data.session}
-									<p class="text-sm text-gray-500 mt-1">
-										Log in to create private or unlisted drills
-									</p>
-								{/if}
+							{#if !page.data.session}
+								<p class="text-sm text-gray-500 mt-1">
+									Log in to create private or unlisted drills
+								</p>
+							{/if}
 						</div>
 
 						<div class="flex items-center">
-								<input
-									id="editable_by_others"
-									type="checkbox"
-									bind:checked={is_editable_by_others}
-									disabled={!page.data.session}
-									class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-								/>
-								<label for="editable_by_others" class="ml-2 block text-sm text-gray-700">
-									Allow others to edit this drill
-									{#if !page.data.session}
-										<span class="text-gray-500">(required for anonymous submissions)</span>
-									{/if}
-								</label>
+							<input
+								id="editable_by_others"
+								type="checkbox"
+								bind:checked={is_editable_by_others}
+								disabled={!page.data.session}
+								class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+							/>
+							<label for="editable_by_others" class="ml-2 block text-sm text-gray-700">
+								Allow others to edit this drill
+								{#if !page.data.session}
+									<span class="text-gray-500">(required for anonymous submissions)</span>
+								{/if}
+							</label>
 						</div>
 
 						<div class="mb-4">
@@ -1143,12 +1182,12 @@
 			<div class="w-full md:w-64 flex-shrink-0 md:p-4">
 				<div class="sticky top-4 bg-white p-4 border rounded-md shadow-sm">
 					<h2 class="text-lg font-semibold mb-4">Actions</h2>
-						<button
-							type="submit"
-							onclick={handleSubmit}
-							disabled={isSubmitting}
-							class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mb-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-						>
+					<button
+						type="submit"
+						onclick={handleSubmit}
+						disabled={isSubmitting}
+						class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mb-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+					>
 						{#if isSubmitting}
 							<div
 								class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"
@@ -1158,12 +1197,12 @@
 							{drill?.id ? 'Save Changes' : 'Create Drill'}
 						{/if}
 					</button>
-						<button
-							type="button"
-							onclick={() => goto(drill?.id ? `/drills/${drill.id}` : '/drills')}
-							class="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-						>
-							Cancel
+					<button
+						type="button"
+						onclick={() => goto(drill?.id ? `/drills/${drill.id}` : '/drills')}
+						class="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+					>
+						Cancel
 					</button>
 				</div>
 			</div>
@@ -1175,27 +1214,27 @@
 			<div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
 				<div class="p-4 border-b flex justify-between items-center">
 					<h3 class="text-lg font-medium">Browse Skills</h3>
-						<button onclick={closeSkillsModal} class="text-gray-500 hover:text-gray-700"
-							>&times;</button
-						>
+					<button onclick={closeSkillsModal} class="text-gray-500 hover:text-gray-700"
+						>&times;</button
+					>
 				</div>
 				<div class="p-4">
-						<input
-							type="text"
-							placeholder="Search skills..."
-							bind:value={modalSkillSearchTerm}
-							oninput={handleModalSkillInput}
-							class="w-full p-2 border border-gray-300 rounded-md mb-4"
-						/>
+					<input
+						type="text"
+						placeholder="Search skills..."
+						bind:value={modalSkillSearchTerm}
+						oninput={handleModalSkillInput}
+						class="w-full p-2 border border-gray-300 rounded-md mb-4"
+					/>
 				</div>
 				<div class="overflow-y-auto flex-grow p-4 pt-0">
 					<div class="flex flex-wrap gap-2">
-							{#each modalSkillSuggestionsDerived as skill (skill.skill)}
-								<button
-									onclick={() => selectSkillFromModal(skill)}
-									class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full hover:bg-blue-200"
-								>
-									{skill.skill} ({skill.usage_count})
+						{#each modalSkillSuggestionsDerived as skill (skill.skill)}
+							<button
+								onclick={() => selectSkillFromModal(skill)}
+								class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full hover:bg-blue-200"
+							>
+								{skill.skill} ({skill.usage_count})
 							</button>
 						{/each}
 						{#if modalSkillSuggestionsDerived.length === 0}
@@ -1204,10 +1243,10 @@
 					</div>
 				</div>
 				<div class="p-4 border-t text-right">
-						<button
-							onclick={closeSkillsModal}
-							class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Close</button
-						>
+					<button
+						onclick={closeSkillsModal}
+						class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Close</button
+					>
 				</div>
 			</div>
 		</div>
@@ -1232,14 +1271,14 @@
 					</select>
 				</div>
 				<div class="flex justify-end space-x-3">
-						<button
-							onclick={() => (showAddDiagramModal = false)}
-							class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button
-						>
-						<button
-							onclick={addDiagram}
-							class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">Add</button
-						>
+					<button
+						onclick={() => (showAddDiagramModal = false)}
+						class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button
+					>
+					<button
+						onclick={addDiagram}
+						class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">Add</button
+					>
 				</div>
 			</div>
 		</div>

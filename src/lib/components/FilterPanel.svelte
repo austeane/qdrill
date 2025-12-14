@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { sortStore } from '$lib/stores/sortStore';
 	import { apiFetch } from '$lib/utils/apiFetch.js';
+	import { onDocumentEvent } from '$lib/utils/windowEvents.svelte.js';
 	import ThreeStateCheckbox from '$lib/components/ThreeStateCheckbox.svelte';
 	import { FILTER_STATES } from '$lib/constants';
 	import {
@@ -71,6 +72,8 @@
 	let showEstimatedParticipants = $state(false);
 	let showContainsDrill = $state(false);
 	let showSortBy = $state(false);
+
+	let filterPanelRef = $state(null);
 
 	// Provide safe defaults in case props are undefined
 	const fallbackNumberOfPeople = { min: 0, max: 100 };
@@ -289,6 +292,33 @@
 		}
 	}
 
+	const handleClickOutside = (event) => {
+		if (!filterPanelRef) return;
+
+		const anyOpen =
+			(filterType === 'drills' &&
+				(showSkillLevels ||
+					showDrillComplexity ||
+					showSkillsFocusedOn ||
+					showPositionsFocusedOn ||
+					showNumberOfPeople ||
+					showSuggestedLengths ||
+					showHasImages ||
+					showDrillTypes)) ||
+			(filterType === 'practice-plans' &&
+				(showPhaseOfSeason ||
+					showPracticeGoals ||
+					showEstimatedParticipants ||
+					showContainsDrill ||
+					showSortBy));
+
+		if (!anyOpen) return;
+		if (!filterPanelRef.contains(event.target)) {
+			closeAllFilters();
+		}
+	};
+	onDocumentEvent('click', handleClickOutside);
+
 	// Reactive statements to initialize selectedSuggestedLengthsMin and Max
 	$effect(() => {
 		if (effectiveSuggestedLengths.min != null && selectedSuggestedLengthsMin === 0) {
@@ -468,6 +498,7 @@
 	aria-label="Filters"
 	tabindex="0"
 	onkeydown={handleKeydown}
+	bind:this={filterPanelRef}
 >
 	<!-- Drills Filters -->
 	{#if filterType === 'drills' && (skillLevels.length || complexities.length || skillsFocusedOn.length || positionsFocusedOn.length || numberOfPeopleOptions.min !== null || numberOfPeopleOptions.max !== null || suggestedLengths.min !== null || suggestedLengths.max !== null || selectedHasVideo || selectedHasDiagrams || selectedHasImages)}
@@ -1099,16 +1130,6 @@
 		>
 			Reset Filters
 		</button>
-	{/if}
-
-	<!-- Overlay to close dropdown when clicking outside -->
-	{#if (filterType === 'drills' && (showSkillLevels || showDrillComplexity || showSkillsFocusedOn || showPositionsFocusedOn || showNumberOfPeople || showSuggestedLengths || showHasImages || showDrillTypes)) || (filterType === 'practice-plans' && (showPhaseOfSeason || showPracticeGoals || showEstimatedParticipants || showContainsDrill || showSortBy))}
-		<button
-			type="button"
-			class="fixed inset-0 bg-transparent z-0"
-			onclick={closeAllFilters}
-			aria-label="Close filters"
-		></button>
 	{/if}
 </div>
 
